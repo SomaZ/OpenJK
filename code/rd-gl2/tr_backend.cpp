@@ -1158,8 +1158,7 @@ static void RB_LightSolidSurfaces(dlight_t *dlights, int numDlights)
 	float zmin = r_znear->value;
 	vec4_t viewInfo = { zmax / zmin, zmax, 0.0f, 0.0f };
 	FBO_t *fbo = glState.currentFBO;
-	//FBO_Bind(tr.deferredLightFbo);
-	GL_State(GLS_DEPTHTEST_DISABLE);
+	FBO_Bind(tr.deferredLightFbo);
 	//
 	// Light grid lighting
 	//
@@ -1167,28 +1166,11 @@ static void RB_LightSolidSurfaces(dlight_t *dlights, int numDlights)
 	{
 		vec2_t lightScales;
 
-		vec4_t quadVerts[4];
-		vec2_t texCoords[4];
-
-		VectorSet4(quadVerts[0], -1, 1, 0, 1);
-		VectorSet4(quadVerts[1], 1, 1, 0, 1);
-		VectorSet4(quadVerts[2], 1, -1, 0, 1);
-		VectorSet4(quadVerts[3], -1, -1, 0, 1);
-
-		texCoords[0][0] = 0; texCoords[0][1] = 0;
-		texCoords[1][0] = 1; texCoords[1][1] = 0;
-		texCoords[2][0] = 1; texCoords[2][1] = 1;
-		texCoords[3][0] = 0; texCoords[3][1] = 1;
-
-		qglViewport(0, 0, tr.deferredLightFbo->width, tr.deferredLightFbo->height);
-		qglScissor(0, 0, tr.deferredLightFbo->width, tr.deferredLightFbo->height);
-
-		GL_State(GLS_SRCBLEND_ONE | GLS_DSTBLEND_ONE | GLS_DEPTHTEST_DISABLE);
-		GL_Cull(CT_TWO_SIDED);
+		GL_State(GLS_SRCBLEND_ONE | GLS_DSTBLEND_ONE);
 		// Only affect non-world entities
-		//qglEnable(GL_STENCIL_TEST);
-		//qglStencilFunc(GL_EQUAL, 1, 0xff);
-		//qglStencilMask(0);
+		qglEnable(GL_STENCIL_TEST);
+		qglStencilFunc(GL_EQUAL, 1, 0xff);
+		qglStencilMask(0);
 
 		GLSL_BindProgram(&tr.lightall_deferredShader[DEFERREDDEF_USE_LIGHT_GRID]);
 
@@ -1225,10 +1207,9 @@ static void RB_LightSolidSurfaces(dlight_t *dlights, int numDlights)
 		GL_BindToTMU(tr.world->directionalLightImages[0], 5);
 		GL_BindToTMU(tr.world->ambientLightImages[0], 6);
 
-		RB_InstantQuad2(quadVerts, texCoords);
-		//qglDrawArrays(GL_TRIANGLE_FAN, 0, 4);
+		qglDrawArrays(GL_TRIANGLE_FAN, 0, 4);
 
-		//qglDisable(GL_STENCIL_TEST);
+		qglDisable(GL_STENCIL_TEST);
 	}
 
 	//
@@ -1591,7 +1572,7 @@ static void RB_RenderDrawSurfList(drawSurf_t *drawSurfs, int numDrawSurfs, int t
 	void *allocMark = backEndData->perFrameMemory->Mark();
 	assert(backEndData->currentPass == nullptr);
 	backEndData->currentPass = RB_CreatePass(
-		*backEndData->perFrameMemory, numDrawSurfs * 4);
+		*backEndData->perFrameMemory, numDrawSurfs * 5);
 
 	// save original time for entity shader offsets
 	float originalTime = backEnd.refdef.floatTime;
@@ -1601,17 +1582,16 @@ static void RB_RenderDrawSurfList(drawSurf_t *drawSurfs, int numDrawSurfs, int t
 	backEnd.pc.c_surfaces += numDrawSurfs;
 
 	switch (type) {
+	case RT_DEFERRED_SOLID:
 	case RT_DEPTH:
 		RB_SubmitDrawSurfsSolidsOnly(drawSurfs, numDrawSurfs, originalTime);
 		break;
 	case RT_FORWARD:
 		RB_SubmitDrawSurfs(drawSurfs, numDrawSurfs, originalTime);
 		break;
-	case RT_DEFERRED_SOLID:
-		RB_SubmitDrawSurfsSolidsOnly(drawSurfs, numDrawSurfs, originalTime);
-		break;
 	case RT_FORWARD_TRANPARENT:
 		RB_SubmitDrawSurfsNonSolidsOnly(drawSurfs, numDrawSurfs, originalTime);
+		break;
 	default:
 		break;
 	}
@@ -2412,16 +2392,18 @@ static void RB_RenderMainPass(drawSurf_t *drawSurfs, int numDrawSurfs)
 	if (r_deferredShading->integer && backEnd.viewParms.targetFbo != tr.renderCubeFbo)
 	{
 		backEnd.deferredPass = qtrue;
+		qglStencilMask(0xff);
 		qglClear(GL_STENCIL_BUFFER_BIT);
+
 		qglEnable(GL_STENCIL_TEST);
 		qglStencilFunc(GL_ALWAYS, 1, 0xff);
 		qglStencilMask(0xff);
 		RB_RenderDrawSurfList(drawSurfs, numDrawSurfs, RT_DEFERRED_SOLID );
 		qglDisable(GL_STENCIL_TEST);
-
-		RB_LightSolidSurfaces(backEnd.refdef.dlights, backEnd.refdef.num_dlights);
 		backEnd.deferredPass = qfalse;
 
+		RB_LightSolidSurfaces(backEnd.refdef.dlights, backEnd.refdef.num_dlights);
+		
 		RB_RenderDrawSurfList(drawSurfs, numDrawSurfs, RT_FORWARD_TRANPARENT);
 	}
 	else
@@ -2743,7 +2725,7 @@ static const void	*RB_SwapBuffers( const void *data ) {
 		long sum = 0;
 		unsigned char *stencilReadback;
 
-		stencilReadback = (unsigned char *)R_Malloc(glConfig.vidWidth * glConfig.vidHeight * 5, TAG_TEMP_WORKSPACE, qfalse);
+		stencilReadback = (unsigned char *)R_Malloc(glConfig.vidWidth * glConfig.vidHeight, TAG_TEMP_WORKSPACE, qfalse);
 		qglReadPixels( 0, 0, glConfig.vidWidth, glConfig.vidHeight, GL_STENCIL_INDEX, GL_UNSIGNED_BYTE, stencilReadback );
 
 		for ( i = 0; i < glConfig.vidWidth * glConfig.vidHeight; i++ ) {
@@ -3107,7 +3089,7 @@ const void *RB_ExportCubemaps(const void *data)
 	{
 		FBO_t *oldFbo = glState.currentFBO;
 		int sideSize = r_cubemapSize->integer * r_cubemapSize->integer * 4;
-		byte *cubemapPixels = (byte *)R_Malloc(sideSize * 6 * 5, TAG_TEMP_WORKSPACE);
+		byte *cubemapPixels = (byte *)R_Malloc(sideSize * 6, TAG_TEMP_WORKSPACE);
 		int i, j;
 
 		FBO_Bind(tr.renderCubeFbo);

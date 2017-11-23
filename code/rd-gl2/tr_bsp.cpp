@@ -1998,8 +1998,8 @@ static void R_CreateWorldVBOs( world_t *worldData )
 		ri.Printf(PRINT_ALL, "...calculating world VBO %d ( %i verts %i tris )\n", k, numVerts, numIndexes / 3);
 
 		// create arrays
-		verts = (packedVertex_t *)R_Malloc(numVerts * sizeof(packedVertex_t) * 5, TAG_TEMP_WORKSPACE, qfalse);
-		indexes = (glIndex_t *)R_Malloc(numIndexes * sizeof(glIndex_t) * 5, TAG_TEMP_WORKSPACE, qfalse);
+		verts = (packedVertex_t *)R_Malloc(numVerts * sizeof(packedVertex_t), TAG_TEMP_WORKSPACE, qfalse);
+		indexes = (glIndex_t *)R_Malloc(numIndexes * sizeof(glIndex_t), TAG_TEMP_WORKSPACE, qfalse);
 
 		// set up indices and copy vertices
 		numVerts = 0;
@@ -3702,9 +3702,9 @@ static void R_GenerateSurfaceSprites( const world_t *world )
 static void R_BuildLightGridTextures(world_t *world)
 {
 	// Upload light grid as 3D textures
-	byte *ambientBase = (byte *)R_Malloc(world->numGridArrayElements * sizeof(byte) * 4 * 5, TAG_TEMP_WORKSPACE, qtrue);
-	byte *directionalBase = (byte *)R_Malloc(world->numGridArrayElements * sizeof(byte) * 4 * 5, TAG_TEMP_WORKSPACE, qtrue);
-	byte *directionBase = (byte *)R_Malloc(world->numGridArrayElements * sizeof(byte) * 4 * 5, TAG_TEMP_WORKSPACE, qtrue);
+	byte *ambientBase = (byte *)R_Malloc(world->numGridArrayElements * sizeof(byte) * 4, TAG_TEMP_WORKSPACE, qtrue);
+	byte *directionalBase = (byte *)R_Malloc(world->numGridArrayElements * sizeof(byte) * 4, TAG_TEMP_WORKSPACE, qtrue);
+	byte *directionBase = (byte *)R_Malloc(world->numGridArrayElements * sizeof(byte) * 4, TAG_TEMP_WORKSPACE, qtrue);
 
 	byte *ambient = ambientBase;
 	byte *directional = directionalBase;

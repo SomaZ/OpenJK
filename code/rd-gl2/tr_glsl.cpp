@@ -783,7 +783,7 @@ bool ShaderProgramBuilder::AddShader(const GPUShaderDesc& shaderDesc, const char
 bool ShaderProgramBuilder::Build(shaderProgram_t *shaderProgram)
 {
 	const size_t nameBufferSize = strlen(name) + 1;
-	shaderProgram->name = (char *)R_Malloc(nameBufferSize * 5, TAG_GP2, qfalse);
+	shaderProgram->name = (char *)R_Malloc(nameBufferSize, TAG_GP2, qfalse);
 	Q_strncpyz(shaderProgram->name, name, nameBufferSize);
 
 	shaderProgram->program = program;
@@ -832,9 +832,9 @@ static bool GLSL_LoadGPUShader(
 void GLSL_InitUniforms(shaderProgram_t *program)
 {
 	program->uniforms = (GLint *)R_Malloc(
-		UNIFORM_COUNT * sizeof(*program->uniforms) * 5, TAG_GP2, qfalse);
+		UNIFORM_COUNT * sizeof(*program->uniforms), TAG_GP2, qfalse);
 	program->uniformBufferOffsets = (short *)R_Malloc(
-		UNIFORM_COUNT * sizeof(*program->uniformBufferOffsets) * 5, TAG_GP2, qfalse);
+		UNIFORM_COUNT * sizeof(*program->uniformBufferOffsets), TAG_GP2, qfalse);
 
 	GLint *uniforms = program->uniforms;
 	int size = 0;
@@ -1708,13 +1708,6 @@ static int GLSL_LoadGPUProgramLightAll(
 				break;
 			}
 
-			/*case LIGHTDEF_USE_DEFERRED:
-			{
-				Q_strcat(extradefines, sizeof(extradefines), "#define USE_DEFERRED\n");
-				Q_strcat(extradefines, sizeof(extradefines), "#define USE_LIGHTMAP\n");
-				break;
-			}*/
-
 			case LIGHTDEF_USE_LIGHT_VERTEX:
 			{
 				Q_strcat(extradefines, sizeof(extradefines), "#define USE_LIGHT_VERTEX\n");
@@ -1807,6 +1800,9 @@ static int GLSL_LoadGPUProgramLightAll(
 		if (i & LIGHTDEF_USE_GLOW_BUFFER)
 			Q_strcat(extradefines, sizeof(extradefines), "#define USE_GLOW_BUFFER\n");
 
+		if (i & LIGHTDEF_USE_DEFERRED_SHADING)
+			Q_strcat(extradefines, sizeof(extradefines), "#define USE_DEFERRED\n");
+
 		if (!GLSL_LoadGPUShader(builder, &tr.lightallShader[i], "lightall", attribs,
 			extradefines, *programDesc))
 		{
@@ -1888,6 +1884,12 @@ static int GLSL_LoadGPUProgramDeferredShading(
 		if (i & DEFERREDDEF_USE_LIGHT_VERTEX)
 		{
 			Q_strcat(extradefines, sizeof(extradefines), "#define LIGHT_VERTEX\n");
+		}
+
+		if (!GLSL_LoadGPUShader(builder, &tr.lightall_deferredShader[i], "lightall_deferred", attribs,
+			extradefines, *programDesc))
+		{
+			ri.Error(ERR_FATAL, "Could not load lightall shader!");
 		}
 
 		GLSL_InitUniforms(&tr.lightall_deferredShader[i]);

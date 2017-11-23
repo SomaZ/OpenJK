@@ -829,7 +829,7 @@ void main()
 	out_Color = diffuse * var_Color;
 	out_SpecularAndGloss = vec4(specular.rgb, 1.0 - roughness);
 	out_Normal = vec4(EncodeNormal(N), 0.0, 0.0);
-	out_Light = vec4((lightmapColor).rgb, 1.0);
+	out_Light.rgb = (out_Color * lightmapColor).rgb;
 #endif
 
 #else

@@ -1,15 +1,15 @@
 /*[Vertex]*/
 #if defined(LIGHT_POINT)
 
-uniform vec4 u_DlightTransforms[MAX_DLIGHTS]; // xyz = position, w = scale
-uniform vec3 u_DlightColors[MAX_DLIGHTS];
+uniform vec4 u_DlightTransforms[16]; // xyz = position, w = scale
+uniform vec3 u_DlightColors[16];
 uniform mat4 u_ModelViewProjectionMatrix;
 uniform vec3 u_ViewOrigin;
 
 in vec3 in_Position;
 
-out flat vec3 var_LightPosition;
-out flat vec3 var_LightColor;
+flat out vec3 var_LightPosition;
+flat out vec3 var_LightColor;
 
 #elif defined(LIGHT_GRID)
 
@@ -37,19 +37,16 @@ void main()
 
 #elif defined(LIGHT_GRID)
 
-	/*const vec2 positions[] = vec2[4](
+	const vec2 positions[] = vec2[4](
 		vec2(-1.0, -1.0),
 		vec2(-1.0,  1.0),
 		vec2( 1.0,  1.0),
 		vec2( 1.0, -1.0)
 	);
 	
-	vec2 position = positions[gl_VertexID];*/
+	vec2 position = positions[gl_VertexID];
 	var_ViewDir = (u_ViewForward + u_ViewLeft * -position.x) + u_ViewUp * position.y;
 	gl_Position = vec4(position, 0.0, 1.0);
-
-	gl_Position = attr_Position;
-	var_ScreenTex = attr_TexCoord0.xy;
 
 #endif
 }
@@ -81,8 +78,8 @@ uniform vec2 u_LightGridLightScale;
 
 in vec3 var_ViewDir;
 #if defined(LIGHT_POINT)
-in flat vec3 var_LightPosition;
-in flat vec3 var_LightColor;
+flat in vec3 var_LightPosition;
+flat in vec3 var_LightColor;
 #endif
 
 out vec4 out_Color;
@@ -125,7 +122,7 @@ void main()
 	float attenuation = 1.0 / (distanceToLight * distanceToLight);
 
 	vec3 diffuse = albedo * var_LightColor;
-	result = var_LightColor;//diffuse * NdotL * attenuation;
+	result = diffuse * NdotL * attenuation;
 
 #elif defined(LIGHT_GRID)
 
@@ -183,5 +180,5 @@ void main()
   #endif
 #endif
 	
-	out_Color = vec4(1.0,1.0,0.5, 1.0);
+	out_Color = vec4(result, 1.0);
 }

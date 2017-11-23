@@ -1371,13 +1371,6 @@ static shaderProgram_t *SelectShaderProgram( int stageIndex, shaderStage_t *stag
 		}
 		else
 		{
-			/*if (r_deferredShading->integer &&
-				(backEnd.deferredPass) &&
-				(index & LIGHTDEF_LIGHTTYPE_MASK))
-			{
-				index = LIGHTDEF_USE_DEFERRED;
-			}*/
-
 			if (backEnd.currentEntity && backEnd.currentEntity != &tr.worldEntity)
 			{
 				if (glState.vertexAnimation)
@@ -1424,6 +1417,9 @@ static shaderProgram_t *SelectShaderProgram( int stageIndex, shaderStage_t *stag
 				index |= LIGHTDEF_USE_ATEST_GE;
 			}
 		}
+
+		if (backEnd.deferredPass && r_deferredShading->integer)
+			index |= LIGHTDEF_USE_DEFERRED_SHADING;
 
 		result = &stage->glslShaderGroup[index];
 		backEnd.pc.c_lightallDraws++;

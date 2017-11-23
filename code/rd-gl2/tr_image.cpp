@@ -1291,7 +1291,7 @@ static void R_MipMap2(byte *in, int inWidth, int inHeight) {
 
 	outWidth = inWidth >> 1;
 	outHeight = inHeight >> 1;
-	temp = (unsigned int *)R_Malloc(outWidth * outHeight * 4 * 5, TAG_TEMP_WORKSPACE, qfalse);
+	temp = (unsigned int *)R_Malloc(outWidth * outHeight * 4, TAG_TEMP_WORKSPACE, qfalse);
 
 	inWidthMask = inWidth - 1;
 	inHeightMask = inHeight - 1;
@@ -1338,7 +1338,7 @@ static void R_MipMapsRGB(byte *in, int inWidth, int inHeight)
 
 	outWidth = inWidth >> 1;
 	outHeight = inHeight >> 1;
-	temp = (byte *)R_Malloc(outWidth * outHeight * 4 * 5, TAG_TEMP_WORKSPACE, qfalse);
+	temp = (byte *)R_Malloc(outWidth * outHeight * 4, TAG_TEMP_WORKSPACE, qfalse);
 
 	for (i = 0; i < outHeight; i++) {
 		byte *outbyte = temp + (i          * outWidth) * 4;
@@ -1621,7 +1621,7 @@ static void RawImage_ScaleToPower2(byte **data, int *inout_width, int *inout_hei
 			finalheight >>= 1;
 		}
 
-		*resampledBuffer = (byte *)R_Malloc(finalwidth * finalheight * 4 * 5, TAG_TEMP_WORKSPACE, qfalse);
+		*resampledBuffer = (byte *)R_Malloc(finalwidth * finalheight * 4, TAG_TEMP_WORKSPACE, qfalse);
 
 		if (scaled_width != width || scaled_height != height)
 		{
@@ -1673,7 +1673,7 @@ static void RawImage_ScaleToPower2(byte **data, int *inout_width, int *inout_hei
 	else if (scaled_width != width || scaled_height != height) {
 		if (data && resampledBuffer)
 		{
-			*resampledBuffer = (byte *)R_Malloc(scaled_width * scaled_height * 4 * 5, TAG_TEMP_WORKSPACE, qfalse);
+			*resampledBuffer = (byte *)R_Malloc(scaled_width * scaled_height * 4, TAG_TEMP_WORKSPACE, qfalse);
 			ResampleTexture(*data, width, height, *resampledBuffer, scaled_width, scaled_height);
 			*data = *resampledBuffer;
 		}
@@ -2086,7 +2086,7 @@ static void Upload32(byte *data, int width, int height, imgType_t type, int flag
 		RawImage_ScaleToPower2(&data, &width, &height, &scaled_width, &scaled_height, type, flags, &resampledBuffer);
 	}
 
-	scaledBuffer = (byte *)R_Malloc(sizeof(unsigned) * scaled_width * scaled_height * 5, TAG_TEMP_WORKSPACE, qfalse);
+	scaledBuffer = (byte *)R_Malloc(sizeof(unsigned) * scaled_width * scaled_height, TAG_TEMP_WORKSPACE, qfalse);
 
 	//
 	// scan the texture for each channel's max values
@@ -2474,7 +2474,7 @@ void R_UpdateSubImage(image_t *image, byte *pic, int x, int y, int width, int he
 
 	RawImage_ScaleToPower2(&pic, &width, &height, &scaled_width, &scaled_height, image->type, image->flags, &resampledBuffer);
 
-	scaledBuffer = (byte *)R_Malloc(sizeof(unsigned) * scaled_width * scaled_height * 5, TAG_TEMP_WORKSPACE, qfalse);
+	scaledBuffer = (byte *)R_Malloc(sizeof(unsigned) * scaled_width * scaled_height, TAG_TEMP_WORKSPACE, qfalse);
 
 	GL_SelectTexture(image->TMU);
 	GL_Bind(image);
@@ -2818,7 +2818,7 @@ static void R_CreateFogImage(void) {
 	float	d;
 	float	borderColor[4];
 
-	data = (byte *)R_Malloc(FOG_S * FOG_T * 4 * 5, TAG_TEMP_WORKSPACE, qfalse);
+	data = (byte *)R_Malloc(FOG_S * FOG_T * 4, TAG_TEMP_WORKSPACE, qfalse);
 
 	// S is distance, T is depth
 	for (x = 0; x<FOG_S; x++) {
