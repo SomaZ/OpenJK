@@ -2212,7 +2212,9 @@ void RB_Refractive(srfVBOMDVMesh_t * surface)
 	newRefractiveItem.depthRange.maxDepth = 1.0f;
 	newRefractiveItem.numSamplerBindings = 1;
 	newRefractiveItem.ibo = surface->ibo;
-	
+
+	newRefractiveItem.isLightmapped = (qboolean)(shader->lightmapIndex > 0);
+
 	VertexArraysProperties vertexArrays;
 	vertexAttribute_t attribs[ATTR_INDEX_MAX] = {};
 	

@@ -208,6 +208,7 @@ cvar_t  *r_ssao;
 cvar_t  *r_normalMapping;
 cvar_t  *r_specularMapping;
 cvar_t  *r_deluxeMapping;
+cvar_t	*r_deferredShading;
 cvar_t  *r_parallaxMapping;
 cvar_t  *r_cubeMapping;
 cvar_t  *r_horizonFade;
@@ -629,7 +630,7 @@ byte *RB_ReadPixels(int x, int y, int width, int height, size_t *offset, int *pa
 	padwidth = PAD(linelen, packAlign);
 
 	// Allocate a few more bytes so that we can choose an alignment we like
-	buffer = (byte *)R_Malloc(padwidth * height + *offset + packAlign - 1, TAG_TEMP_WORKSPACE, qfalse);
+	buffer = (byte *)R_Malloc(padwidth * height + *offset + packAlign - 1 * 5, TAG_TEMP_WORKSPACE, qfalse);
 
 	bufstart = (byte*)(PADP((intptr_t)buffer + *offset, packAlign));
 	qglReadPixels(x, y, width, height, GL_RGB, GL_UNSIGNED_BYTE, bufstart);
@@ -839,7 +840,7 @@ static void R_LevelShot(void) {
 	allsource = RB_ReadPixels(0, 0, glConfig.vidWidth, glConfig.vidHeight, &offset, &padlen);
 	source = allsource + offset;
 
-	buffer = (byte *)R_Malloc(LEVELSHOTSIZE * LEVELSHOTSIZE * 3 + 18, TAG_TEMP_WORKSPACE, qfalse);
+	buffer = (byte *)R_Malloc(LEVELSHOTSIZE * LEVELSHOTSIZE * 3 + 18 * 5, TAG_TEMP_WORKSPACE, qfalse);
 	Com_Memset(buffer, 0, 18);
 	buffer[2] = 2;		// uncompressed type
 	buffer[12] = LEVELSHOTSIZE & 255;
@@ -1334,6 +1335,7 @@ void R_Register(void)
 	r_normalMapping = ri.Cvar_Get("r_normalMapping", "1", CVAR_ARCHIVE | CVAR_LATCH);
 	r_specularMapping = ri.Cvar_Get("r_specularMapping", "1", CVAR_ARCHIVE | CVAR_LATCH);
 	r_deluxeMapping = ri.Cvar_Get("r_deluxeMapping", "1", CVAR_ARCHIVE | CVAR_LATCH);
+	r_deferredShading = ri.Cvar_Get("r_deferredShading", "1", CVAR_ARCHIVE | CVAR_LATCH);
 	r_parallaxMapping = ri.Cvar_Get("r_parallaxMapping", "1", CVAR_ARCHIVE | CVAR_LATCH);
 	r_cubeMapping = ri.Cvar_Get("r_cubeMapping", "1", CVAR_ARCHIVE | CVAR_LATCH);
 	r_horizonFade = ri.Cvar_Get("r_horizonFade", "3", CVAR_ARCHIVE | CVAR_LATCH);

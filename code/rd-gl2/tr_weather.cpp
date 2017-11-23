@@ -133,6 +133,8 @@ void RB_SurfaceWeather( srfWeather_t *surf )
 	item.program = &tr.weatherShader;
 	item.depthRange = { 0.0f, 1.0f };
 
+	item.isLightmapped = qfalse;
+
 	vertexAttribute_t attribs[2] = {};
 	attribs[0].index = ATTR_INDEX_POSITION;
 	attribs[0].numComponents = 3;

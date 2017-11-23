@@ -238,6 +238,7 @@ extern cvar_t   *r_ssao;
 extern cvar_t   *r_normalMapping;
 extern cvar_t   *r_specularMapping;
 extern cvar_t   *r_deluxeMapping;
+extern cvar_t   *r_deferredShading;
 extern cvar_t   *r_parallaxMapping;
 extern cvar_t   *r_cubeMapping;
 extern cvar_t   *r_horizonFade;
@@ -730,6 +731,14 @@ enum
 	NUM_TEXTURE_BUNDLES = 11,
 };
 
+enum
+{
+	RT_DEPTH,
+	RT_FORWARD,
+	RT_DEFERRED_SOLID,
+	RT_FORWARD_TRANPARENT
+};
+
 typedef enum
 {
 	// material shader stage types
@@ -856,6 +865,7 @@ typedef struct shader_s {
 	skyParms_t	sky;
 	qboolean	isLiquid;
 	liquidParms_t liquid;
+	qboolean    isLightmapped;
 
 	fogParms_t	fogParms;
 
@@ -987,6 +997,8 @@ enum
 	GLS_STENCILTEST_ENABLE				= (1 << 27),
 
 	GLS_POLYGON_OFFSET_FILL				= (1 << 28),
+
+	GLS_STENCIL_REPLACE					= (1 << 29),
 
 	GLS_DEFAULT							= GLS_DEPTHMASK_TRUE
 };
@@ -1125,6 +1137,16 @@ enum
 	LIGHTDEF_COUNT               		= LIGHTDEF_ALL + 1
 };
 
+enum
+{
+	DEFERREDDEF_USE_LIGHT_GRID = 0x0001,
+	DEFERREDDEF_USE_LIGHT_POINT = 0x0002,
+	DEFERREDDEF_USE_LIGHT_VERTEX = 0x0003,
+
+	DEFERREDDEF_ALL = 0x03FF,
+	DEFERREDDEF_COUNT = DEFERREDDEF_ALL + 1
+};
+
 // Surface sprite shader flags
 enum
 {
@@ -1140,8 +1162,11 @@ enum
 {
 	GLSL_INT,
 	GLSL_FLOAT,
+	GLSL_FLOATN,
 	GLSL_VEC2,
+	GLSL_VEC2N,
 	GLSL_VEC3,
+	GLSL_VEC3N,
 	GLSL_VEC4,
 	GLSL_MAT4x3,
 	GLSL_MAT4x4,
@@ -1215,6 +1240,10 @@ typedef enum
 	UNIFORM_SCREENIMAGEMAP,
 	UNIFORM_SCREENDEPTHMAP,
 
+	UNIFORM_SCREENNORMALMAP,
+	UNIFORM_SCREENSPECULARANDGLOSSMAP,
+	UNIFORM_SCREENDIFFUSEMAP,
+
 	UNIFORM_LIGHTGRIDDIRECTIONMAP,
 	UNIFORM_LIGHTGRIDDIRECTIONALLIGHTMAP,
 	UNIFORM_LIGHTGRIDAMBIENTLIGHTMAP,
@@ -1262,6 +1291,8 @@ typedef enum
 	UNIFORM_LIGHTRADIUS,
 	UNIFORM_AMBIENTLIGHT,
 	UNIFORM_DIRECTEDLIGHT,
+	UNIFORM_DLIGHTTRANSFORMS,
+	UNIFORM_DLIGHTCOLORS,
 
 	UNIFORM_PORTALRANGE,
 
@@ -2097,6 +2128,8 @@ typedef struct glstate_s {
 	matrix_t        modelview;
 	matrix_t        projection;
 	matrix_t		modelviewProjection;
+	int				attrIndex;
+	int				attrStepRate;
 } glstate_t;
 
 typedef enum {
@@ -2214,8 +2247,25 @@ typedef struct {
 	FBO_t *last2DFBO;
 	qboolean    colorMask[4];
 	qboolean    framePostProcessed;
+	qboolean    deferredPass;
 	qboolean    depthFill;
 } backEndState_t;
+
+typedef struct gpuMesh_s
+{
+	shaderProgram_t *program;
+	VBO_t *vbo;
+	IBO_t *ibo;
+	
+	// vertexFormat_t *vertexFormat;
+	// constants
+	// additional GL state
+	
+	int numVerts;
+	int numIndexes;
+	int indexOffset;
+	int baseVertex;
+} gpuMesh_t;
 
 /*
 ** trGlobals_t 
@@ -2267,6 +2317,9 @@ typedef struct trGlobals_s {
 	
 
 	image_t					*renderImage;
+	image_t					*gbufferNormals;
+	image_t					*gbufferSpecularAndGloss;
+	image_t					*gbufferLight;
 	image_t					*glowImage;
 	image_t					*glowImageScaled[6];
 	image_t					*refractiveImage;
@@ -2289,6 +2342,7 @@ typedef struct trGlobals_s {
 	image_t					*textureDepthImage;
 
 	FBO_t					*renderFbo;
+	FBO_t					*deferredLightFbo;
 	FBO_t					*refractiveFbo;
 	FBO_t					*glowFboScaled[6];
 	FBO_t					*msaaResolveFbo;
@@ -2343,6 +2397,7 @@ typedef struct trGlobals_s {
 	shaderProgram_t fogShader[FOGDEF_COUNT];
 	shaderProgram_t dlightShader[DLIGHTDEF_COUNT];
 	shaderProgram_t lightallShader[LIGHTDEF_COUNT];
+	shaderProgram_t lightall_deferredShader[DEFERREDDEF_COUNT];
 	shaderProgram_t refractionShader;
 	shaderProgram_t shadowmapShader;
 	shaderProgram_t pshadowShader;
@@ -2362,6 +2417,10 @@ typedef struct trGlobals_s {
 	shaderProgram_t spriteShader[SSDEF_COUNT];
 	shaderProgram_t weatherShader;
 
+	//
+	// Built-in meshes
+	//
+	gpuMesh_t lightSphereVolume;
 	// -----------------------------------------
 
 	viewParms_t				viewParms;
@@ -2816,6 +2875,10 @@ void GLSL_SetUniformFloatN(shaderProgram_t *program, int uniformNum, const float
 void GLSL_SetUniformVec2(shaderProgram_t *program, int uniformNum, const vec2_t v);
 void GLSL_SetUniformVec3(shaderProgram_t *program, int uniformNum, const vec3_t v);
 void GLSL_SetUniformVec4(shaderProgram_t *program, int uniformNum, const vec4_t v);
+void GLSL_SetUniformFloatN(shaderProgram_t *program, int uniformNum, const GLfloat *v, int numFloats);
+void GLSL_SetUniformVec2N(shaderProgram_t *program, int uniformNum, const vec2_t *v, int numVec2s);
+void GLSL_SetUniformVec3N(shaderProgram_t *program, int uniformNum, const vec3_t *v, int numVec3s);
+void GLSL_SetUniformVec4N(shaderProgram_t *program, int uniformNum, const vec4_t *v, int numVec4s);
 void GLSL_SetUniformMatrix4x3(shaderProgram_t *program, int uniformNum, const float *matrix, int numElements = 1);
 void GLSL_SetUniformMatrix4x4(shaderProgram_t *program, int uniformNum, const float *matrix, int numElements = 1);
 void GLSL_SetUniforms( shaderProgram_t *program, UniformData *uniformData );
@@ -3308,6 +3371,8 @@ struct DrawItem
 	uint32_t stateBits;
 	uint32_t cullType; // this is stupid
 	DepthRange depthRange;
+
+	qboolean isLightmapped;
 
 	IBO_t *ibo;
 	shaderProgram_t *program;

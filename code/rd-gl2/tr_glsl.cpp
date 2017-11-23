@@ -35,6 +35,7 @@ extern const GPUProgramDesc fallback_fogpassProgram;
 extern const GPUProgramDesc fallback_gaussian_blurProgram;
 extern const GPUProgramDesc fallback_genericProgram;
 extern const GPUProgramDesc fallback_lightallProgram;
+extern const GPUProgramDesc fallback_lightall_deferredProgram;
 extern const GPUProgramDesc fallback_pshadowProgram;
 extern const GPUProgramDesc fallback_shadowfillProgram;
 extern const GPUProgramDesc fallback_shadowmaskProgram;
@@ -78,6 +79,9 @@ static uniformInfo_t uniformsInfo[] =
 
 	{ "u_ScreenImageMap", GLSL_INT, 1 },
 	{ "u_ScreenDepthMap", GLSL_INT, 1 },
+	{ "u_ScreenNormalMap", GLSL_INT, 1 },
+	{ "u_ScreenSpecularAndGlossMap", GLSL_INT, 1 },
+	{ "u_ScreenDiffuseMap", GLSL_INT, 1 },
 
 	{ "u_LightGridDirectionMap", GLSL_INT, 1 },
 	{ "u_LightGridDirectionalLightMap", GLSL_INT, 1 },
@@ -125,6 +129,8 @@ static uniformInfo_t uniformsInfo[] =
 	{ "u_LightRadius",   GLSL_FLOAT, 1 },
 	{ "u_AmbientLight",  GLSL_VEC3, 1 },
 	{ "u_DirectedLight", GLSL_VEC3, 1 },
+	{ "u_DlightTransforms", GLSL_VEC4, MAX_DLIGHTS },
+	{ "u_DlightColors", GLSL_VEC3, MAX_DLIGHTS },
 
 	{ "u_PortalRange", GLSL_FLOAT, 1 },
 
@@ -615,6 +621,9 @@ static void GLSL_BindShaderInterface(shaderProgram_t *program)
 	static const char *shaderOutputNames[] = {
 		"out_Color",  // Color output
 		"out_Glow",  // Glow output
+		"out_SpecularAndGloss",
+		"out_Normal",
+		"out_Light",
 	};
 
 	const uint32_t attribs = program->attribs;
@@ -774,7 +783,7 @@ bool ShaderProgramBuilder::AddShader(const GPUShaderDesc& shaderDesc, const char
 bool ShaderProgramBuilder::Build(shaderProgram_t *shaderProgram)
 {
 	const size_t nameBufferSize = strlen(name) + 1;
-	shaderProgram->name = (char *)R_Malloc(nameBufferSize, TAG_GP2, qfalse);
+	shaderProgram->name = (char *)R_Malloc(nameBufferSize * 5, TAG_GP2, qfalse);
 	Q_strncpyz(shaderProgram->name, name, nameBufferSize);
 
 	shaderProgram->program = program;
@@ -823,9 +832,9 @@ static bool GLSL_LoadGPUShader(
 void GLSL_InitUniforms(shaderProgram_t *program)
 {
 	program->uniforms = (GLint *)R_Malloc(
-		UNIFORM_COUNT * sizeof(*program->uniforms), TAG_GP2, qfalse);
+		UNIFORM_COUNT * sizeof(*program->uniforms) * 5, TAG_GP2, qfalse);
 	program->uniformBufferOffsets = (short *)R_Malloc(
-		UNIFORM_COUNT * sizeof(*program->uniformBufferOffsets), TAG_GP2, qfalse);
+		UNIFORM_COUNT * sizeof(*program->uniformBufferOffsets) * 5, TAG_GP2, qfalse);
 
 	GLint *uniforms = program->uniforms;
 	int size = 0;
@@ -964,6 +973,105 @@ void GLSL_SetUniforms(shaderProgram_t *program, UniformData *uniformData)
 		}
 		}
 	}
+}
+
+void GLSL_SetUniformVec2N(shaderProgram_t *program, int uniformNum, const vec2_t *v, int numVec2s)
+{
+	GLint *uniforms = program->uniforms;
+	float *compare = (float *)(program->uniformBuffer + program->uniformBufferOffsets[uniformNum]);
+
+	if (uniforms[uniformNum] == -1)
+		return;
+
+	if (uniformsInfo[uniformNum].type != GLSL_VEC2)
+	{
+		ri.Printf(PRINT_WARNING, "GLSL_SetUniformVec4N: wrong type for uniform %i in program %s\n", uniformNum, program->name);
+		return;
+	}
+
+	if (uniformsInfo[uniformNum].size < numVec2s)
+	{
+		ri.Printf(PRINT_WARNING, "GLSL_SetUniformVec4N: uniform %i only has %d elements! Tried to set %d\n",
+			uniformNum,
+			uniformsInfo[uniformNum].size,
+			numVec2s);
+		return;
+	}
+
+	if (memcmp(compare, v, sizeof(vec2_t) * numVec2s) == 0)
+	{
+		return;
+	}
+
+	memcpy(compare, v, sizeof(vec2_t) * numVec2s);
+
+	qglUniform2fv(uniforms[uniformNum], numVec2s, (float *)v);
+}
+
+void GLSL_SetUniformVec3N(shaderProgram_t *program, int uniformNum, const vec3_t *v, int numVec3s)
+{
+	GLint *uniforms = program->uniforms;
+	float *compare = (float *)(program->uniformBuffer + program->uniformBufferOffsets[uniformNum]);
+
+	if (uniforms[uniformNum] == -1)
+		return;
+
+	if (uniformsInfo[uniformNum].type != GLSL_VEC3)
+	{
+		ri.Printf(PRINT_WARNING, "GLSL_SetUniformVec3N: wrong type for uniform %i in program %s\n", uniformNum, program->name);
+		return;
+	}
+
+	if (uniformsInfo[uniformNum].size < numVec3s)
+	{
+		ri.Printf(PRINT_WARNING, "GLSL_SetUniformVec3N: uniform %i only has %d elements! Tried to set %d\n",
+			uniformNum,
+			uniformsInfo[uniformNum].size,
+			numVec3s);
+		return;
+	}
+
+	if (memcmp(compare, v, sizeof(vec3_t) * numVec3s) == 0)
+	{
+		return;
+	}
+
+	memcpy(compare, v, sizeof(vec3_t) * numVec3s);
+
+	qglUniform3fv(uniforms[uniformNum], numVec3s, (float *)v);
+}
+
+void GLSL_SetUniformVec4N(shaderProgram_t *program, int uniformNum, const vec4_t *v, int numVec4s)
+{
+	GLint *uniforms = program->uniforms;
+	float *compare = (float *)(program->uniformBuffer + program->uniformBufferOffsets[uniformNum]);
+
+	if (uniforms[uniformNum] == -1)
+		return;
+
+	if (uniformsInfo[uniformNum].type != GLSL_VEC4)
+	{
+		ri.Printf(PRINT_WARNING, "GLSL_SetUniformVec4N: wrong type for uniform %i in program %s\n", uniformNum, program->name);
+		return;
+	}
+
+	if (uniformsInfo[uniformNum].size < numVec4s)
+	{
+		ri.Printf(PRINT_WARNING, "GLSL_SetUniformVec4N: uniform %i only has %d elements! Tried to set %d\n",
+			uniformNum,
+			uniformsInfo[uniformNum].size,
+			numVec4s);
+		return;
+	}
+
+	if (memcmp(compare, v, sizeof(vec4_t) * numVec4s) == 0)
+	{
+		return;
+	}
+
+	memcpy(compare, v, sizeof(vec4_t) * numVec4s);
+
+	qglUniform4fv(uniforms[uniformNum], numVec4s, (float *)v);
 }
 
 void GLSL_SetUniformInt(shaderProgram_t *program, int uniformNum, GLint value)
@@ -1600,6 +1708,13 @@ static int GLSL_LoadGPUProgramLightAll(
 				break;
 			}
 
+			/*case LIGHTDEF_USE_DEFERRED:
+			{
+				Q_strcat(extradefines, sizeof(extradefines), "#define USE_DEFERRED\n");
+				Q_strcat(extradefines, sizeof(extradefines), "#define USE_LIGHTMAP\n");
+				break;
+			}*/
+
 			case LIGHTDEF_USE_LIGHT_VERTEX:
 			{
 				Q_strcat(extradefines, sizeof(extradefines), "#define USE_LIGHT_VERTEX\n");
@@ -1741,6 +1856,58 @@ static int GLSL_LoadGPUProgramBasic(
 	}
 
 	return 1;
+}
+
+static int GLSL_LoadGPUProgramDeferredShading(
+	ShaderProgramBuilder& builder,
+	Allocator& scratchAlloc)
+{
+	int numPrograms = 0;
+	Allocator allocator(scratchAlloc.Base(), scratchAlloc.GetSize());
+
+	char extradefines[1200];
+	const GPUProgramDesc *programDesc =
+		LoadProgramSource("lightall_deferred", allocator, fallback_lightall_deferredProgram);
+
+	for (int i = 0; i < DEFERREDDEF_COUNT; i++)
+	{
+		uint32_t attribs = ATTR_POSITION;
+
+		extradefines[0] = '\0';
+
+		if (i & DEFERREDDEF_USE_LIGHT_GRID)
+		{
+			Q_strcat(extradefines, sizeof(extradefines), "#define LIGHT_GRID\n");
+		}
+
+		if (i & DEFERREDDEF_USE_LIGHT_POINT)
+		{
+			Q_strcat(extradefines, sizeof(extradefines), "#define LIGHT_POINT\n");
+		}
+
+		if (i & DEFERREDDEF_USE_LIGHT_VERTEX)
+		{
+			Q_strcat(extradefines, sizeof(extradefines), "#define LIGHT_VERTEX\n");
+		}
+
+		GLSL_InitUniforms(&tr.lightall_deferredShader[i]);
+
+		qglUseProgram(tr.lightall_deferredShader[i].program);
+		GLSL_SetUniformInt(&tr.lightall_deferredShader[i], UNIFORM_SCREENDIFFUSEMAP, 0);
+		GLSL_SetUniformInt(&tr.lightall_deferredShader[i], UNIFORM_SCREENDEPTHMAP, 1);
+		GLSL_SetUniformInt(&tr.lightall_deferredShader[i], UNIFORM_SCREENNORMALMAP, 2);
+		GLSL_SetUniformInt(&tr.lightall_deferredShader[i], UNIFORM_SCREENSPECULARANDGLOSSMAP, 3);
+		GLSL_SetUniformInt(&tr.lightall_deferredShader[i], UNIFORM_LIGHTGRIDDIRECTIONMAP, 4);
+		GLSL_SetUniformInt(&tr.lightall_deferredShader[i], UNIFORM_LIGHTGRIDDIRECTIONALLIGHTMAP, 5);
+		GLSL_SetUniformInt(&tr.lightall_deferredShader[i], UNIFORM_LIGHTGRIDAMBIENTLIGHTMAP, 6);
+		qglUseProgram(0);
+
+		GLSL_FinishGPUShader(&tr.lightall_deferredShader[i]);
+
+		++numPrograms;
+	}
+
+	return numPrograms;
 }
 
 static int GLSL_LoadGPUProgramSplashScreen(
@@ -2315,6 +2482,7 @@ void GLSL_LoadGPUShaders()
 	GLSL_LoadGPUProgramSplashScreen(builder, allocator);
 	numGenShaders += GLSL_LoadGPUProgramGeneric(builder, allocator);
 	numLightShaders += GLSL_LoadGPUProgramLightAll(builder, allocator);
+	numLightShaders += GLSL_LoadGPUProgramDeferredShading(builder, allocator);
 	numEtcShaders += GLSL_LoadGPUProgramFogPass(builder, allocator);
 	numEtcShaders += GLSL_LoadGPUProgramDLight(builder, allocator);
 	numEtcShaders += GLSL_LoadGPUProgramTextureColor(builder, allocator);

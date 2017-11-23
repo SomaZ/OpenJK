@@ -399,6 +399,11 @@ in vec4      var_PrimaryLightDir;
 
 out vec4 out_Color;
 out vec4 out_Glow;
+#if defined(USE_DEFERRED)
+out vec4 out_SpecularAndGloss;
+out vec4 out_Normal;
+out vec4 out_Light;
+#endif
 
 #define EPSILON 0.00000001
 
@@ -588,12 +593,21 @@ vec3 CalcNormal( in vec3 vertexNormal, in vec2 texCoords, in mat3 tangentToWorld
 	return normalize(N);
 }
 
+vec2 EncodeNormal(in vec3 N)
+{
+	float f = sqrt(8.0 * N.z + 8.0);
+	return N.xy / f + 0.5;
+}
+
 
 void main()
 {
 	vec3 viewDir, lightColor, ambientColor, reflectance, vertexColor, position;
 	vec3 L, N, E, H;
 	float NL, NH, NE, EH, attenuation;
+
+	vec4 lightmapColor = vec4(0.0);
+	vec4 specular = vec4(vec3(0.04), 0.1);
 
 #if defined(PER_PIXEL_LIGHTING)
 	mat3 tangentToWorld = mat3(var_Tangent.xyz, var_Bitangent.xyz, var_Normal.xyz);
@@ -607,7 +621,7 @@ void main()
 #endif
 
 #if defined(USE_LIGHTMAP)
-	vec4 lightmapColor = texture(u_LightMap, var_TexCoords.zw);
+	lightmapColor = texture(u_LightMap, var_TexCoords.zw);
   #if defined(RGBM_LIGHTMAP)
 	lightmapColor.rgb *= lightmapColor.a;
   #endif
@@ -641,6 +655,9 @@ void main()
 #if defined(PER_PIXEL_LIGHTING)
 	float isLightgrid = float(var_LightDir.w < 1.0);
 	L = var_LightDir.xyz;
+  #if defined(USE_LIGHT_VERTEX)
+	L = normalize(texture(u_LightGridDirectionMap, gridCell).rgb) * (1.0 - u_EnableTextures.y);
+  #endif
   #if defined(USE_DELUXEMAP)
 	L = normalize(texture(u_LightGridDirectionMap, gridCell).rgb) * (1.0 - u_EnableTextures.y);
 	L += (texture(u_DeluxeMap, var_TexCoords.zw).xyz - vec3(0.5)) * u_EnableTextures.y;
@@ -698,9 +715,9 @@ void main()
   #endif
 
   #if defined(USE_SPECULARMAP)
-	vec4 specular = texture(u_SpecularMap, texCoords);
+	specular = texture(u_SpecularMap, texCoords);
   #else
-	vec4 specular = vec4(0.5);
+	specular = vec4(0.5);
   #endif
 	specular *= u_SpecularScale;
 
@@ -807,6 +824,13 @@ void main()
   #if defined(USE_PBR)
 	out_Color.rgb = sqrt(out_Color.rgb);
   #endif
+
+#if defined(USE_DEFERRED)
+	out_Color = diffuse * var_Color;
+	out_SpecularAndGloss = vec4(specular.rgb, 1.0 - roughness);
+	out_Normal = vec4(EncodeNormal(N), 0.0, 0.0);
+	out_Light = vec4((lightmapColor).rgb, 1.0);
+#endif
 
 #else
 	lightColor = var_Color.rgb;

@@ -146,7 +146,7 @@ Draws triangle outlines for debugging
 ================
 */
 static void DrawTris (shaderCommands_t *input) {
-#if 0
+#if 1
 	GL_Bind( tr.whiteImage );
 
 	GL_State( GLS_POLYMODE_LINE | GLS_DEPTHMASK_TRUE );
@@ -1027,6 +1027,8 @@ static void ForwardDlight( const shaderCommands_t *input,  VertexArraysPropertie
 		item.depthRange = RB_GetDepthRange(backEnd.currentEntity, input->shader);
 		item.ibo = input->externalIBO ? input->externalIBO : backEndData->currentFrame->dynamicIbo;
 
+		item.isLightmapped = input->shader->isLightmapped;
+
 		item.numAttributes = vertexArrays->numVertexArrays;
 		item.attributes = ojkAllocArray<vertexAttribute_t>(
 			*backEndData->perFrameMemory, vertexArrays->numVertexArrays);
@@ -1124,6 +1126,8 @@ static void ProjectPshadowVBOGLSL( const shaderCommands_t *input, const VertexAr
 		item.depthRange = RB_GetDepthRange(backEnd.currentEntity, input->shader);
 		item.ibo = input->externalIBO ? input->externalIBO : backEndData->currentFrame->dynamicIbo;
 
+		item.isLightmapped = input->shader->isLightmapped;
+
 		item.numAttributes = vertexArrays->numVertexArrays;
 		item.attributes = ojkAllocArray<vertexAttribute_t>(
 			*backEndData->perFrameMemory, vertexArrays->numVertexArrays);
@@ -1217,6 +1221,8 @@ static void RB_FogPass( shaderCommands_t *input, const fog_t *fog, const VertexA
 	item.program = sp;
 	item.depthRange = RB_GetDepthRange(backEnd.currentEntity, input->shader);
 	item.ibo = input->externalIBO ? input->externalIBO : backEndData->currentFrame->dynamicIbo;
+
+	item.isLightmapped = input->shader->isLightmapped;
 
 	item.numAttributes = vertexArrays->numVertexArrays;
 	item.attributes = ojkAllocArray<vertexAttribute_t>(
@@ -1365,6 +1371,13 @@ static shaderProgram_t *SelectShaderProgram( int stageIndex, shaderStage_t *stag
 		}
 		else
 		{
+			/*if (r_deferredShading->integer &&
+				(backEnd.deferredPass) &&
+				(index & LIGHTDEF_LIGHTTYPE_MASK))
+			{
+				index = LIGHTDEF_USE_DEFERRED;
+			}*/
+
 			if (backEnd.currentEntity && backEnd.currentEntity != &tr.worldEntity)
 			{
 				if (glState.vertexAnimation)
@@ -1548,6 +1561,8 @@ void RB_StageIteratorLiquid( void )
 	item.program = &tr.refractionShader;
 	item.depthRange = RB_GetDepthRange(backEnd.currentEntity, input->shader);
 	item.ibo = input->externalIBO ? input->externalIBO : backEndData->currentFrame->dynamicIbo;
+
+	item.isLightmapped = input->shader->isLightmapped;
 
 	item.numAttributes = vertexArrays.numVertexArrays;
 	item.attributes = ojkAllocArray<vertexAttribute_t>(
@@ -1940,6 +1955,8 @@ static void RB_IterateStagesGeneric( shaderCommands_t *input, const VertexArrays
 		item.depthRange = RB_GetDepthRange(backEnd.currentEntity, input->shader);
 		item.ibo = input->externalIBO ? input->externalIBO : backEndData->currentFrame->dynamicIbo;
 
+		item.isLightmapped = input->shader->isLightmapped;
+
 		item.numAttributes = vertexArrays->numVertexArrays;
 		item.attributes = ojkAllocArray<vertexAttribute_t>(
 			*backEndData->perFrameMemory, vertexArrays->numVertexArrays);
@@ -1996,6 +2013,8 @@ static void RB_RenderShadowmap( shaderCommands_t *input, const VertexArraysPrope
 	item.program = sp;
 	item.depthRange = RB_GetDepthRange(backEnd.currentEntity, input->shader);
 	item.ibo = input->externalIBO ? input->externalIBO : backEndData->currentFrame->dynamicIbo;
+
+	item.isLightmapped = input->shader->isLightmapped;
 
 	item.numAttributes = vertexArrays->numVertexArrays;
 	item.attributes = ojkAllocArray<vertexAttribute_t>(
@@ -2085,7 +2104,8 @@ void RB_StageIteratorGeneric( void )
 		if (r_shadows->integer == 4 &&
 				tess.pshadowBits &&
 				tess.shader->sort <= SS_OPAQUE &&
-				!(tess.shader->surfaceFlags & (SURF_NODLIGHT | SURF_SKY)))
+				!(tess.shader->surfaceFlags & (SURF_NODLIGHT | SURF_SKY)) &&
+				!r_deferredShading->integer)
 		{
 			ProjectPshadowVBOGLSL(input, &vertexArrays);
 		}
@@ -2095,7 +2115,8 @@ void RB_StageIteratorGeneric( void )
 		//
 		if ( tess.dlightBits &&
 			 tess.shader->lightingStage >= 0 &&
-			 r_dlightMode->integer)
+			 r_dlightMode->integer && 
+			 !r_deferredShading->integer)
 		{
 			ForwardDlight(input, &vertexArrays);
 		}
