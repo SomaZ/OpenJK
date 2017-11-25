@@ -1154,14 +1154,23 @@ static void RB_PrepareForEntity(int entityNum, int *oldDepthRange, float origina
 
 static void RB_LightSolidSurfaces(dlight_t *dlights, int numDlights)
 {
-	float zmax = backEnd.viewParms.zFar;
-	float zmin = r_znear->value;
+	const float zmax = backEnd.viewParms.zFar;
+	const float zmin = r_znear->value;
 	vec4_t viewInfo = { zmax / zmin, zmax, 0.0f, 0.0f };
 	FBO_t *fbo = glState.currentFBO;
 	FBO_Bind(tr.deferredLightFbo);
 	//
 	// Light grid lighting
 	//
+
+	const float ymax = zmax * tanf(backEnd.viewParms.fovY * M_PI / 360.0f);
+	const float xmax = zmax * tanf(backEnd.viewParms.fovX * M_PI / 360.0f);
+
+	vec3_t viewBasis[3];
+	VectorScale(backEnd.refdef.viewaxis[0], zmax, viewBasis[0]);
+	VectorScale(backEnd.refdef.viewaxis[1], xmax, viewBasis[1]);
+	VectorScale(backEnd.refdef.viewaxis[2], ymax, viewBasis[2]);
+
 	if (backEnd.refdef.num_entities)
 	{
 		vec2_t lightScales;
@@ -1174,30 +1183,19 @@ static void RB_LightSolidSurfaces(dlight_t *dlights, int numDlights)
 
 		GLSL_BindProgram(&tr.lightall_deferredShader[DEFERREDDEF_USE_LIGHT_GRID]);
 
-		const float zmax = backEnd.viewParms.zFar;
-		const float ymax = zmax * tanf(backEnd.viewParms.fovY * M_PI / 360.0f);
-		const float xmax = zmax * tanf(backEnd.viewParms.fovX * M_PI / 360.0f);
-
-		const float zmin = r_znear->value;
-
-		vec3_t viewBasis[3];
-		VectorScale(backEnd.refdef.viewaxis[0], zmax, viewBasis[0]);
-		VectorScale(backEnd.refdef.viewaxis[1], xmax, viewBasis[1]);
-		VectorScale(backEnd.refdef.viewaxis[2], ymax, viewBasis[2]);
-
-		GLSL_SetUniformVec3(&tr.lightall_deferredShader[0], UNIFORM_VIEWFORWARD, viewBasis[0]);
-		GLSL_SetUniformVec3(&tr.lightall_deferredShader[0], UNIFORM_VIEWLEFT, viewBasis[1]);
-		GLSL_SetUniformVec3(&tr.lightall_deferredShader[0], UNIFORM_VIEWUP, viewBasis[2]);
+		GLSL_SetUniformVec3(&tr.lightall_deferredShader[DEFERREDDEF_USE_LIGHT_GRID], UNIFORM_VIEWFORWARD, viewBasis[0]);
+		GLSL_SetUniformVec3(&tr.lightall_deferredShader[DEFERREDDEF_USE_LIGHT_GRID], UNIFORM_VIEWLEFT, viewBasis[1]);
+		GLSL_SetUniformVec3(&tr.lightall_deferredShader[DEFERREDDEF_USE_LIGHT_GRID], UNIFORM_VIEWUP, viewBasis[2]);
 
 		lightScales[0] = r_ambientScale->value;
 		lightScales[1] = r_directedScale->value;
 
-		GLSL_SetUniformVec3(&tr.lightall_deferredShader[0], UNIFORM_LIGHTGRIDORIGIN, tr.world->lightGridOrigin);
-		GLSL_SetUniformVec3(&tr.lightall_deferredShader[0], UNIFORM_LIGHTGRIDCELLINVERSESIZE, tr.world->lightGridInverseSize);
-		GLSL_SetUniformVec2(&tr.lightall_deferredShader[0], UNIFORM_LIGHTGRIDLIGHTSCALE, lightScales);
+		GLSL_SetUniformVec3(&tr.lightall_deferredShader[DEFERREDDEF_USE_LIGHT_GRID], UNIFORM_LIGHTGRIDORIGIN, tr.world->lightGridOrigin);
+		GLSL_SetUniformVec3(&tr.lightall_deferredShader[DEFERREDDEF_USE_LIGHT_GRID], UNIFORM_LIGHTGRIDCELLINVERSESIZE, tr.world->lightGridInverseSize);
+		GLSL_SetUniformVec2(&tr.lightall_deferredShader[DEFERREDDEF_USE_LIGHT_GRID], UNIFORM_LIGHTGRIDLIGHTSCALE, lightScales);
 
-		GLSL_SetUniformVec3(&tr.lightall_deferredShader[0], UNIFORM_VIEWORIGIN, backEnd.viewParms.ori.origin);
-		GLSL_SetUniformVec4(&tr.lightall_deferredShader[0], UNIFORM_VIEWINFO, viewInfo);
+		GLSL_SetUniformVec3(&tr.lightall_deferredShader[DEFERREDDEF_USE_LIGHT_GRID], UNIFORM_VIEWORIGIN, backEnd.viewParms.ori.origin);
+		GLSL_SetUniformVec4(&tr.lightall_deferredShader[DEFERREDDEF_USE_LIGHT_GRID], UNIFORM_VIEWINFO, viewInfo);
 
 		GL_BindToTMU(tr.renderImage, 0);
 		GL_BindToTMU(tr.renderDepthImage, 1);
@@ -1221,8 +1219,7 @@ static void RB_LightSolidSurfaces(dlight_t *dlights, int numDlights)
 		vec3_t dlightColors[MAX_DLIGHTS];
 		matrix_t viewProjectionMatrix;
 
-		GL_State(GLS_SRCBLEND_ONE | GLS_DSTBLEND_ONE | GLS_DEPTHFUNC_GREATER);
-		GL_Cull(CT_BACK_SIDED);
+		GL_State(GLS_SRCBLEND_ONE | GLS_DSTBLEND_ONE);
 
 		for (int i = 0; i < numDlights; i++)
 		{
@@ -1244,23 +1241,27 @@ static void RB_LightSolidSurfaces(dlight_t *dlights, int numDlights)
 			viewProjectionMatrix);
 
 		tess.useInternalVBO = qfalse;
-		R_BindVBO(tr.lightSphereVolume.vbo);
-		R_BindIBO(tr.lightSphereVolume.ibo);
+		R_BindVBO(tr.screenQuad.vbo);
+		R_BindIBO(tr.screenQuad.ibo);
 		GLSL_VertexAttribsState(ATTR_POSITION, NULL);
-		GLSL_BindProgram(tr.lightSphereVolume.program);
+		GLSL_BindProgram(tr.screenQuad.program);
 
-		GLSL_SetUniformVec3(tr.lightSphereVolume.program, UNIFORM_VIEWORIGIN, backEnd.viewParms.ori.origin);
-		GLSL_SetUniformVec4(tr.lightSphereVolume.program, UNIFORM_VIEWINFO, viewInfo);
-		GLSL_SetUniformVec3N(tr.lightSphereVolume.program, UNIFORM_DLIGHTCOLORS, dlightColors, numDlights);
-		GLSL_SetUniformVec4N(tr.lightSphereVolume.program, UNIFORM_DLIGHTTRANSFORMS, dlightTransforms, numDlights);
-		GLSL_SetUniformMatrix4x4(tr.lightSphereVolume.program, UNIFORM_MODELVIEWPROJECTIONMATRIX, viewProjectionMatrix);
+		GLSL_SetUniformVec3(tr.screenQuad.program, UNIFORM_VIEWFORWARD, viewBasis[0]);
+		GLSL_SetUniformVec3(tr.screenQuad.program, UNIFORM_VIEWLEFT, viewBasis[1]);
+		GLSL_SetUniformVec3(tr.screenQuad.program, UNIFORM_VIEWUP, viewBasis[2]);
+
+		GLSL_SetUniformVec3(tr.screenQuad.program, UNIFORM_VIEWORIGIN, backEnd.viewParms.ori.origin);
+		GLSL_SetUniformVec4(tr.screenQuad.program, UNIFORM_VIEWINFO, viewInfo);
+		GLSL_SetUniformVec3N(tr.screenQuad.program, UNIFORM_DLIGHTCOLORS, dlightColors, numDlights);
+		GLSL_SetUniformVec4N(tr.screenQuad.program, UNIFORM_DLIGHTTRANSFORMS, dlightTransforms, numDlights);
+		GLSL_SetUniformMatrix4x4(tr.screenQuad.program, UNIFORM_MODELVIEWPROJECTIONMATRIX, viewProjectionMatrix);
 
 		GL_BindToTMU(tr.renderImage, 0);
 		GL_BindToTMU(tr.renderDepthImage, 1);
 		GL_BindToTMU(tr.gbufferNormals, 2);
 		GL_BindToTMU(tr.gbufferSpecularAndGloss, 3);
 
-		qglDrawElementsInstanced(GL_TRIANGLES, tr.lightSphereVolume.numIndexes, GL_UNSIGNED_INT, 0, numDlights);
+		qglDrawElementsInstanced(GL_TRIANGLES, tr.screenQuad.numIndexes, GL_UNSIGNED_INT, 0, numDlights);
 	}
 
 	GL_Bind(tr.renderImage);
@@ -2989,6 +2990,8 @@ const void *RB_PostProcess(const void *data)
 		FBO_BlitFromTexture(tr.gbufferNormals, NULL, NULL, NULL, dstBox, NULL, NULL, 0);
 		VectorSet4(dstBox, 512 + 512, glConfig.vidHeight - 256, 256, 256);
 		FBO_BlitFromTexture(tr.gbufferSpecularAndGloss, NULL, NULL, NULL, dstBox, NULL, NULL, 0);
+		VectorSet4(dstBox, 512 + 768, glConfig.vidHeight - 256, 256, 256);
+		FBO_BlitFromTexture(tr.renderDepthImage, NULL, NULL, NULL, dstBox, NULL, NULL, 0);
 	}
 
 	if (r_dynamicGlow->integer != 0)

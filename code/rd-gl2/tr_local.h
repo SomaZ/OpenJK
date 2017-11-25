@@ -1140,9 +1140,9 @@ enum
 
 enum
 {
-	DEFERREDDEF_USE_LIGHT_GRID = 0x0001,
+	DEFERREDDEF_USE_LIGHT_GRID	= 0x0001,
 	DEFERREDDEF_USE_LIGHT_POINT = 0x0002,
-	DEFERREDDEF_USE_LIGHT_VERTEX = 0x0003,
+	DEFERREDDEF_USE_CUBEMAP		= 0x0003,
 
 	DEFERREDDEF_ALL = 0x0003,
 	DEFERREDDEF_COUNT = DEFERREDDEF_ALL + 1
@@ -1559,7 +1559,7 @@ compared quickly during the qsorting process
 typedef struct drawSurf_s {
 	uint32_t sort; // bit combination for fast compares
 	int entityNum;
-	uint32_t dlightBits;
+	int dlightBits;
 	surfaceType_t *surface; // any of surface*_t
 	int fogIndex;
 } drawSurf_t;
@@ -2421,6 +2421,7 @@ typedef struct trGlobals_s {
 	//
 	// Built-in meshes
 	//
+	gpuMesh_t screenQuad;
 	gpuMesh_t lightSphereVolume;
 	// -----------------------------------------
 

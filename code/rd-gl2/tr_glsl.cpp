@@ -1881,7 +1881,7 @@ static int GLSL_LoadGPUProgramDeferredShading(
 			Q_strcat(extradefines, sizeof(extradefines), "#define LIGHT_POINT\n");
 		}
 
-		if (i & DEFERREDDEF_USE_LIGHT_VERTEX)
+		if (i & DEFERREDDEF_USE_CUBEMAP)
 		{
 			Q_strcat(extradefines, sizeof(extradefines), "#define LIGHT_VERTEX\n");
 		}

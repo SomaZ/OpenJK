@@ -8,18 +8,20 @@ uniform vec3 u_ViewOrigin;
 
 in vec3 in_Position;
 
-flat out vec3 var_LightPosition;
+flat out vec4 var_LightPosition;
 flat out vec3 var_LightColor;
 
 #elif defined(LIGHT_GRID)
 
-uniform vec3 u_ViewForward;
-uniform vec3 u_ViewLeft;
-uniform vec3 u_ViewUp;
+
 
 in vec4 attr_Position;
 
 #endif
+uniform vec3 u_ViewForward;
+uniform vec3 u_ViewLeft;
+uniform vec3 u_ViewUp;
+
 
 out vec3 var_ViewDir;
 
@@ -27,13 +29,20 @@ void main()
 {
 #if defined(LIGHT_POINT)
 
-	vec4 transform = u_DlightTransforms[gl_InstanceID];
-	vec3 worldSpacePosition = in_Position * transform.w * 4.0 + transform.xyz;
+	var_LightPosition = u_DlightTransforms[gl_InstanceID];;
+	var_LightColor = u_DlightColors[gl_InstanceID];
 
-	var_ViewDir = normalize(worldSpacePosition - u_ViewOrigin);
-	var_LightPosition = transform.xyz;
-	var_LightColor = u_DlightColors[gl_InstanceID] * transform.w * 4.0;
-	gl_Position = u_ModelViewProjectionMatrix * vec4(worldSpacePosition, 1.0);
+	const vec2 positions[] = vec2[4](
+		vec2(-1.0, -1.0),
+		vec2(-1.0, 1.0),
+		vec2(1.0, 1.0),
+		vec2(1.0, -1.0)
+		);
+
+	vec2 position = positions[gl_VertexID];
+
+	var_ViewDir = (u_ViewForward + u_ViewLeft * -position.x) + u_ViewUp * position.y;
+	gl_Position = vec4(position, 0.0, 1.0);
 
 #elif defined(LIGHT_GRID)
 
@@ -45,9 +54,9 @@ void main()
 	);
 	
 	vec2 position = positions[gl_VertexID];
+	
 	var_ViewDir = (u_ViewForward + u_ViewLeft * -position.x) + u_ViewUp * position.y;
 	gl_Position = vec4(position, 0.0, 1.0);
-
 #endif
 }
 
@@ -78,7 +87,7 @@ uniform vec2 u_LightGridLightScale;
 
 in vec3 var_ViewDir;
 #if defined(LIGHT_POINT)
-flat in vec3 var_LightPosition;
+flat in vec4 var_LightPosition;
 flat in vec3 var_LightColor;
 #endif
 
@@ -98,11 +107,24 @@ vec3 DecodeNormal(in vec2 N)
 	return vec3(encoded * g, 1.0 - f * 0.5);
 }
 
+float CalcLightAttenuation(float sqrDistance, float radius)
+{
+	float sqrRadius = radius * radius;
+	float d = (sqrDistance*sqrDistance) / (sqrRadius*sqrRadius);
+	float attenuation = clamp(1.0 - d, 0.0, 1.0);
+	attenuation *= attenuation;
+	attenuation /= max(sqrDistance, 0.0001);
+	attenuation *= radius;
+	return clamp(attenuation, 0.0, 1.0);
+}
+
 void main()
 {
 	ivec2 windowCoord = ivec2(gl_FragCoord.xy);
 	vec4 specularAndGloss = texelFetch(u_ScreenSpecularAndGlossMap, windowCoord, 0);
+	specularAndGloss *= specularAndGloss;
 	vec3 albedo = texelFetch(u_ScreenDiffuseMap, windowCoord, 0).rgb;
+	albedo *= albedo;
 	vec2 normal = texelFetch(u_ScreenNormalMap, windowCoord, 0).rg;
 	float depth = texelFetch(u_ScreenDepthMap, windowCoord, 0).r;
 
@@ -113,16 +135,16 @@ void main()
 
 #if defined(LIGHT_POINT)
 
-	position = u_ViewOrigin + normalize(var_ViewDir) * (u_ZFar * linearDepth);
-	vec3 vecToLight = var_LightPosition - position;
-	float distanceToLight = length(vecToLight);
-	vec3 L = normalize(vecToLight);
+	position			= u_ViewOrigin + var_ViewDir * linearDepth;
+	vec3 L				= var_LightPosition.xyz - position;
+	float sqrLightDist	= dot(L,L);
+	L				   /= sqrt(sqrLightDist);
 
 	float NdotL = clamp(dot(N, L), 0.0, 1.0);
-	float attenuation = 1.0 / (distanceToLight * distanceToLight);
+	float attenuation = CalcLightAttenuation(sqrLightDist, var_LightPosition.w);
 
-	vec3 diffuse = albedo * var_LightColor;
-	result = diffuse * NdotL * attenuation;
+	vec3 diffuse = albedo * var_LightColor * 4.0;
+	result = sqrt(diffuse * NdotL * attenuation);
 
 #elif defined(LIGHT_GRID)
 
@@ -136,7 +158,7 @@ void main()
 	vec3 directionalLight = texture(u_LightGridDirectionalLightMap, gridCell).rgb;
 	vec3 ambientLight = texture(u_LightGridAmbientLightMap, gridCell).rgb;
 
-	vec3 L = normalize(-lightDirection);
+	vec3 L = normalize(lightDirection);
 	float NdotL = clamp(dot(N, L), 0.0, 1.0);
 
 	result = 2.0 * u_LightGridDirectionalScale * (NdotL * directionalLight) +

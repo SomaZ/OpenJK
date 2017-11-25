@@ -829,7 +829,7 @@ void main()
 	out_Color = diffuse * var_Color;
 	out_SpecularAndGloss = vec4(specular.rgb, 1.0 - roughness);
 	out_Normal = vec4(EncodeNormal(N), 0.0, 0.0);
-	out_Light.rgb = (out_Color * lightmapColor).rgb;
+	out_Light.rgb = sqrt((out_Color * lightmapColor).rgb);
 #endif
 
 #else
@@ -839,7 +839,7 @@ void main()
 
 	out_Color.a = diffuse.a * var_Color.a;
 
-#if defined(USE_GLOW_BUFFER)
+#if defined(USE_GLOW_BUFFER) && !defined(USE_DEFERRED)
 	out_Glow = out_Color;
 #elif defined(GLOW_THRESHOLD)
 	out_Glow.r = max(0.0, (out_Color.r - GLOW_THRESHOLD));

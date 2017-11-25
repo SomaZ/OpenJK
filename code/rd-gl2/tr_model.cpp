@@ -1227,103 +1227,7 @@ static qboolean R_LoadMDR(model_t *mod, void *buffer, int filesize, const char *
 
 static void R_InitBuiltInModels()
 {
-#if 0
-	const int NUM_SIDES = 18;
-	vec3_t positions[NUM_SIDES*(NUM_SIDES - 1) + 2]; // +2 for vertices at poles
-	int numPositions = 0;
-	positions[0][0] = 0.0f;
-	positions[0][1] = 1.0f;
-	positions[0][2] = 0.0f;
-	numPositions++;
-	positions[1][0] = 0.0f;
-	positions[1][1] = -1.0f;
-	positions[1][2] = 0.0f;
-	numPositions++;
-	for (int y = 1; y < NUM_SIDES; y++)
-	{
-		float angleFromUpVector = y * M_PI / (float)NUM_SIDES;
-		float ypos = cosf(angleFromUpVector);
-		float ringRadius = sinf(angleFromUpVector);
-		for (int x = 0; x < NUM_SIDES; x++)
-		{
-			float angleFromForwardVector = x * 2.0f * M_PI / (float)NUM_SIDES;
-			float xpos = ringRadius * sinf(angleFromForwardVector);
-			float zpos = ringRadius * cosf(angleFromForwardVector);
-			positions[numPositions][0] = xpos;
-			positions[numPositions][1] = ypos;
-			positions[numPositions][2] = zpos;
-			numPositions++;
-		}
-	}
-	assert(numPositions == ARRAY_LEN(positions));
-	glIndex_t indices[2048];
-	glIndex_t *tri = indices;
-	// Indices at poles
-	int startIndexOfFirstRow = 2;
-	int startIndexOfLastRow = startIndexOfFirstRow + NUM_SIDES * (NUM_SIDES - 2);
-	for (int i = 0; i < NUM_SIDES; i++)
-	{
-		tri[0] = 0;
-		tri[1] = startIndexOfFirstRow + ((i + 1) % NUM_SIDES);
-		tri[2] = startIndexOfFirstRow + i;
-		tri += 3;
-		tri[0] = 1;
-		tri[1] = startIndexOfLastRow + i;
-		tri[2] = startIndexOfLastRow + ((i + 1) % NUM_SIDES);
-		tri += 3;
-	}
-	int startOfRow = startIndexOfFirstRow;
-	int startOfNextRow = startOfRow + NUM_SIDES;
-	int biggestIndex = 0;
-	for (int y = 1; y < (NUM_SIDES - 1); y++)
-	{
-		for (int x = 0; x < NUM_SIDES; x++)
-		{
-			int i0 = startOfRow + x;
-			int i1 = startOfRow + ((x + 1) % NUM_SIDES);
-			int i2 = startOfNextRow + x;
-			int i3 = startOfNextRow + ((x + 1) % NUM_SIDES);
-			assert(i0 < numPositions);
-			assert(i1 < numPositions);
-			assert(i2 < numPositions);
-			assert(i3 < numPositions);
-			tri[0] = i0;
-			tri[1] = i3;
-			tri[2] = i2;
-			tri += 3;
-			tri[0] = i0;
-			tri[1] = i1;
-			tri[2] = i3;
-			tri += 3;
-			biggestIndex = Q_max(i0, biggestIndex);
-			biggestIndex = Q_max(i1, biggestIndex);
-			biggestIndex = Q_max(i2, biggestIndex);
-			biggestIndex = Q_max(i3, biggestIndex);
-		}
-		startOfRow = startOfNextRow;
-		startOfNextRow += NUM_SIDES;
-	}
-	assert(biggestIndex == numPositions - 1);
-	int numIndices = tri - indices;
-	assert(numIndices < ARRAY_LEN(indices));
-	Com_Printf("vec3_t positions[] = {");
-	for (int i = 0; i < numPositions; i++)
-	{
-		Com_Printf("{%.6ff, %.6ff, %.6ff}, ", positions[i][0], positions[i][1], positions[i][2]);
-		if (!(i % 3))
-			Com_Printf("\n");
-	}
-	Com_Printf("};\n");
-	Com_Printf("glIndex_t indices[] = {");
-	for (int i = 0; i < numIndices; i++)
-	{
-		Com_Printf("%d, ", indices[i]);
-		if (!(i % 25))
-			Com_Printf("\n");
-	}
-	Com_Printf("};\n");
-#else
-	static const vec3_t positions[] = {
+	static const vec3_t positionsSphere[] = {
 		{ 0.000000f, 1.000000f, 0.000000f },{ 0.000000f, -1.000000f, 0.000000f },{ 0.000000f, 0.984808f, 0.173648f },
 		{ 0.059391f, 0.984808f, 0.163176f },{ 0.111619f, 0.984808f, 0.133022f },{ 0.150384f, 0.984808f, 0.086824f },
 		{ 0.171010f, 0.984808f, 0.030154f },{ 0.171010f, 0.984808f, -0.030154f },{ 0.150384f, 0.984808f, -0.086824f },
@@ -1429,7 +1333,7 @@ static void R_InitBuiltInModels()
 		{ -0.111619f, -0.984808f, 0.133022f },{ -0.059391f, -0.984808f, 0.163176f }
 	};
 
-	static const glIndex_t indices[] = {
+	static const glIndex_t indicesSphere[] = {
 		0, 3, 2, 1, 290, 291, 0, 4, 3, 1, 291, 292, 0, 5, 4, 1, 292, 293, 0,
 		6, 5, 1, 293, 294, 0, 7, 6, 1, 294, 295, 0, 8, 7, 1, 295, 296, 0, 9,
 		8, 1, 296, 297, 0, 10, 9, 1, 297, 298, 0, 11, 10, 1, 298, 299, 0, 12,
@@ -1552,15 +1456,31 @@ static void R_InitBuiltInModels()
 		304, 286, 287, 305, 287, 306, 305, 287, 288, 306, 288, 307, 306, 288,
 		289, 307, 289, 290, 307, 289, 272, 290
 	};
-#endif
 
-	tr.lightSphereVolume.ibo = R_CreateIBO((byte *)indices, sizeof(indices), VBO_USAGE_STATIC);
-	tr.lightSphereVolume.vbo = R_CreateVBO((byte *)positions, sizeof(positions), VBO_USAGE_STATIC);
-	tr.lightSphereVolume.numIndexes = ARRAY_LEN(indices);
-	tr.lightSphereVolume.numVerts = ARRAY_LEN(positions);
+	tr.lightSphereVolume.ibo = R_CreateIBO((byte *)indicesSphere, sizeof(indicesSphere), VBO_USAGE_STATIC);
+	tr.lightSphereVolume.vbo = R_CreateVBO((byte *)positionsSphere, sizeof(positionsSphere), VBO_USAGE_STATIC);
+	tr.lightSphereVolume.numIndexes = ARRAY_LEN(indicesSphere);
+	tr.lightSphereVolume.numVerts = ARRAY_LEN(positionsSphere);
 	tr.lightSphereVolume.indexOffset = 0;
 	tr.lightSphereVolume.baseVertex = 0;
-	tr.lightSphereVolume.program = &tr.lightall_deferredShader[DEFERREDDEF_USE_LIGHT_POINT];
+	tr.lightSphereVolume.program = &tr.lightall_deferredShader[DEFERREDDEF_USE_CUBEMAP];
+
+	static const vec3_t positions[] = {
+		{ 0.000000f, 1.000000f, 0.000000f },{ 0.000000f, -1.000000f, 0.000000f },{ 0.000000f, 0.984808f, 0.173648f },
+		{ 0.059391f, 0.984808f, 0.163176f }
+	};
+
+	static const glIndex_t indices[] = {
+		0, 1, 2, 0, 2, 3
+	};
+
+	tr.screenQuad.ibo = R_CreateIBO((byte *)indices, sizeof(indices), VBO_USAGE_STATIC);
+	tr.screenQuad.vbo = R_CreateVBO((byte *)positions, sizeof(positions), VBO_USAGE_STATIC);
+	tr.screenQuad.numIndexes = ARRAY_LEN(indices);
+	tr.screenQuad.numVerts = ARRAY_LEN(positions);
+	tr.screenQuad.indexOffset = 0;
+	tr.screenQuad.baseVertex = 0;
+	tr.screenQuad.program = &tr.lightall_deferredShader[DEFERREDDEF_USE_LIGHT_POINT];
 }
 
 
