@@ -107,6 +107,78 @@ vec3 DecodeNormal(in vec2 N)
 	return vec3(encoded * g, 1.0 - f * 0.5);
 }
 
+#if defined(LIGHT_POINT)
+
+float spec_D(
+	float NH,
+	float roughness)
+{
+	// normal distribution
+	// from http://blog.selfshadow.com/publications/s2013-shading-course/karis/s2013_pbs_epic_notes_v2.pdf
+	float alpha = roughness * roughness;
+	float quotient = alpha / max(1e-8, (NH*NH*(alpha*alpha - 1.0) + 1.0));
+	return (quotient * quotient) / M_PI;
+}
+
+vec3 spec_F(
+	float EH,
+	vec3 F0)
+{
+	// Fresnel
+	// from http://blog.selfshadow.com/publications/s2013-shading-course/karis/s2013_pbs_epic_notes_v2.pdf
+	float pow2 = pow(2.0, (-5.55473*EH - 6.98316) * EH);
+	return F0 + (vec3(1.0) - F0) * pow2;
+}
+
+vec3 fresnelSchlickRoughness(float cosTheta, vec3 F0, float roughness)
+{
+	return F0 + (max(vec3(1.0 - roughness), F0) - F0) * pow(1.0 - cosTheta, 5.0);
+}
+
+float G1(
+	float NV,
+	float k)
+{
+	return NV / (NV*(1.0 - k) + k);
+}
+
+float spec_G(float NL, float NE, float roughness)
+{
+	// GXX Schlick
+	// from http://blog.selfshadow.com/publications/s2013-shading-course/karis/s2013_pbs_epic_notes_v2.pdf
+	float k = max(((roughness + 1.0) * (roughness + 1.0)) / 8.0, 1e-5);
+	return G1(NL, k)*G1(NE, k);
+}
+
+vec3 CalcDiffuse(vec3 diffuseAlbedo, float NH, float EH, float roughness)
+{
+#if defined(USE_BURLEY)
+	// modified from https://disney-animation.s3.amazonaws.com/library/s2012_pbs_disney_brdf_notes_v2.pdf
+	float fd90 = -0.5 + EH * EH * roughness;
+	float burley = 1.0 + fd90 * 0.04 / NH;
+	burley *= burley;
+	return diffuseAlbedo * burley;
+#else
+	return diffuseAlbedo;
+#endif
+}
+
+vec3 CalcSpecular(
+	in vec3 specular,
+	in float NH,
+	in float NL,
+	in float NE,
+	in float EH,
+	in float roughness
+	)
+{
+	float distrib = spec_D(NH, roughness);
+	vec3 fresnel = spec_F(EH, specular);
+	float vis = spec_G(NL, NE, roughness);
+	return (distrib * fresnel * vis);
+	//return vec3(distrib);
+}
+
 float CalcLightAttenuation(float sqrDistance, float radius)
 {
 	float sqrRadius = radius * radius;
@@ -118,10 +190,13 @@ float CalcLightAttenuation(float sqrDistance, float radius)
 	return clamp(attenuation, 0.0, 1.0);
 }
 
+#endif
+
 void main()
 {
 	ivec2 windowCoord = ivec2(gl_FragCoord.xy);
 	vec4 specularAndGloss = texelFetch(u_ScreenSpecularAndGlossMap, windowCoord, 0);
+	float roughness = 1.0 - specularAndGloss.a;
 	specularAndGloss *= specularAndGloss;
 	vec3 albedo = texelFetch(u_ScreenDiffuseMap, windowCoord, 0).rgb;
 	albedo *= albedo;
@@ -140,11 +215,22 @@ void main()
 	float sqrLightDist	= dot(L,L);
 	L				   /= sqrt(sqrLightDist);
 
-	float NdotL = clamp(dot(N, L), 0.0, 1.0);
-	float attenuation = CalcLightAttenuation(sqrLightDist, var_LightPosition.w);
+	vec3 E, H;
+	float NL, NH, NE, EH, attenuation;
 
-	vec3 diffuse = albedo * var_LightColor * 4.0;
-	result = sqrt(diffuse * NdotL * attenuation);
+	attenuation = CalcLightAttenuation(sqrLightDist, var_LightPosition.w);
+
+	E = normalize(-var_ViewDir);
+	H = normalize(L + E);
+	EH = max(1e-8, dot(E, H));
+	NH = max(1e-8, dot(N, H));
+	NL = clamp(dot(N, L), 1e-8, 1.0);
+	NE = abs(dot(N, E)) + 1e-5;
+
+	vec3 reflectance = CalcDiffuse(albedo.rgb, NH, EH, roughness);
+	reflectance += CalcSpecular(specularAndGloss.rgb, NH, NL, NE, EH, roughness);
+
+	result = sqrt(var_LightColor * reflectance * (attenuation * NL));
 
 #elif defined(LIGHT_GRID)
 

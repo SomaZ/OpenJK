@@ -721,7 +721,7 @@ void main()
   #endif
 	specular *= u_SpecularScale;
 
-  #if defined(USE_PBR)
+  #if defined(USE_PBR) && !defined(USE_DEFERRED)
 	diffuse.rgb *= diffuse.rgb;
   #endif
 
@@ -753,11 +753,11 @@ void main()
 	
 	reflectance = CalcDiffuse(diffuse.rgb, NH, EH, roughness);
 
-  #if defined(USE_LIGHTMAP) || defined(USE_LIGHT_VERTEX)
+  #if defined(USE_LIGHTMAP) || defined(USE_LIGHT_VERTEX) && !defined(USE_DEFERRED)
 	NE = abs(dot(N, E)) + 1e-5;
 	reflectance += CalcSpecular(specular.rgb, NH, NL, NE, EH, roughness) * 0.5;
   #endif
-  #if defined(USE_LIGHT_VECTOR)
+  #if defined(USE_LIGHT_VECTOR) && !defined(USE_DEFERRED)
 	NE = abs(dot(N, E)) + 1e-5;
 	reflectance += CalcSpecular(specular.rgb, NH, NL, NE, EH, roughness);
   #endif
@@ -766,7 +766,7 @@ void main()
 	out_Color.rgb += ambientColor * ao * diffuse.rgb;
 
 
-  #if defined(USE_CUBEMAP)
+  #if defined(USE_CUBEMAP) && !defined(USE_DEFERRED)
 	NE = clamp(dot(N, E), 0.0, 1.0);
 	vec3 EnvBRDF = texture(u_EnvBrdfMap, vec2(roughness, NE)).rgb;
 
@@ -821,15 +821,15 @@ void main()
 	out_Color.rgb += lightColor * reflectance * NL2;
   #endif
 
-  #if defined(USE_PBR)
+  #if defined(USE_PBR) && !defined(USE_DEFERRED)
 	out_Color.rgb = sqrt(out_Color.rgb);
   #endif
 
 #if defined(USE_DEFERRED)
-	out_Color = diffuse * var_Color;
+	out_Color	= diffuse * var_Color;
 	out_SpecularAndGloss = vec4(specular.rgb, 1.0 - roughness);
-	out_Normal = vec4(EncodeNormal(N), 0.0, 0.0);
-	out_Light.rgb = sqrt((out_Color * lightmapColor).rgb);
+	out_Normal	= vec4(EncodeNormal(N), 0.0, 0.0);
+	out_Light	= sqrt((out_Color * lightmapColor));
 #endif
 
 #else
