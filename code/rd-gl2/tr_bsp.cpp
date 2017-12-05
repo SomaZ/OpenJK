@@ -3738,14 +3738,9 @@ static void R_BuildLightGridTextures(world_t *world)
 		slong = sinf(lng);
 		clong = cosf(lng);
 
-		vec3_t vector;
-		VectorSet(vector,(clat * slong), (slat * slong), (clong));
-		VectorNormalize(vector);
-		VectorScale(vector, 127.0f, vector);
-
-		direction[0] = (byte)vector[0];
-		direction[1] = (byte)vector[1];
-		direction[2] = (byte)vector[2];
+		direction[0] = (byte)floorf(clat * slong);
+		direction[1] = (byte)floorf(slat * slong);
+		direction[2] = (byte)floorf(clong);
 		direction[3] = 0;
 
 		ambient += 4;
@@ -3772,7 +3767,7 @@ static void R_BuildLightGridTextures(world_t *world)
 		world->lightGridBounds[0],
 		world->lightGridBounds[1],
 		world->lightGridBounds[2],
-		GL_RGBA8_SNORM);
+		GL_RGB8);
 
 	return;
 }

@@ -107,7 +107,7 @@ vec3 DecodeNormal(in vec2 N)
 	return vec3(encoded * g, 1.0 - f * 0.5);
 }
 
-#if defined(LIGHT_POINT)
+#if defined(LIGHT_POINT) || defined(LIGHT_GRID)
 
 float spec_D(
 	float NH,
@@ -194,6 +194,9 @@ float CalcLightAttenuation(float sqrDistance, float radius)
 
 void main()
 {
+	vec3 E, H;
+	float NL, NH, NE, EH;
+
 	ivec2 windowCoord = ivec2(gl_FragCoord.xy);
 	vec4 specularAndGloss = texelFetch(u_ScreenSpecularAndGlossMap, windowCoord, 0);
 	float roughness = 1.0 - specularAndGloss.a;
@@ -215,8 +218,7 @@ void main()
 	float sqrLightDist	= dot(L,L);
 	L				   /= sqrt(sqrLightDist);
 
-	vec3 E, H;
-	float NL, NH, NE, EH, attenuation;
+	float attenuation;
 
 	attenuation = CalcLightAttenuation(sqrLightDist, var_LightPosition.w);
 
@@ -240,17 +242,30 @@ void main()
 	ivec3 gridSize = textureSize(u_LightGridDirectionalLightMap, 0);
 	vec3 invGridSize = vec3(1.0) / vec3(gridSize);
 	vec3 gridCell = (position - u_LightGridOrigin) * u_LightGridCellInverseSize * invGridSize;
-	vec3 lightDirection = texture(u_LightGridDirectionMap, gridCell).rgb;
+	vec3 lightDirection = texture(u_LightGridDirectionMap, gridCell).rgb * 2.0 - vec3(1.0);
 	vec3 directionalLight = texture(u_LightGridDirectionalLightMap, gridCell).rgb;
 	vec3 ambientLight = texture(u_LightGridAmbientLightMap, gridCell).rgb;
 
-	vec3 L = normalize(lightDirection);
+	directionalLight *= directionalLight;
+	ambientLight *= ambientLight;
+
+	vec3 L = normalize(-lightDirection);
 	float NdotL = clamp(dot(N, L), 0.0, 1.0);
 
-	result = 2.0 * u_LightGridDirectionalScale * (NdotL * directionalLight) +
-			(u_LightGridAmbientScale * ambientLight + vec3(0.125));
+	vec3 reflectance = 2.0 * u_LightGridDirectionalScale * (NdotL * directionalLight) +
+		(u_LightGridAmbientScale * ambientLight);
+	reflectance *= albedo;
 
-	result *= albedo;
+	E = normalize(-var_ViewDir);
+	H = normalize(L + E);
+	EH = max(1e-8, dot(E, H));
+	NH = max(1e-8, dot(N, H));
+	NL = clamp(dot(N, L), 1e-8, 1.0);
+	NE = abs(dot(N, E)) + 1e-5;
+
+	reflectance += CalcSpecular(specularAndGloss.rgb, NH, NL, NE, EH, roughness);
+
+	result = sqrt(reflectance);
   #else
 	// Ray marching debug visualisation
 	ivec3 gridSize = textureSize(u_LightGridDirectionalLightMap, 0);
