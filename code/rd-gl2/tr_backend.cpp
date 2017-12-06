@@ -1171,44 +1171,44 @@ static void RB_LightSolidSurfaces(dlight_t *dlights, int numDlights)
 	VectorScale(backEnd.refdef.viewaxis[1], xmax, viewBasis[1]);
 	VectorScale(backEnd.refdef.viewaxis[2], ymax, viewBasis[2]);
 
-	if (backEnd.refdef.num_entities)
-	{
-		vec2_t lightScales;
+	//if (backEnd.refdef.num_entities)
+	//{
+	//	vec2_t lightScales;
 
-		GL_State(GLS_SRCBLEND_ONE | GLS_DSTBLEND_ONE);
-		// Only affect non-world entities
-		qglEnable(GL_STENCIL_TEST);
-		qglStencilFunc(GL_EQUAL, 1, 0xff);
-		qglStencilMask(0);
+	//	GL_State(GLS_SRCBLEND_ONE | GLS_DSTBLEND_ONE);
+	//	// Only affect non-world entities
+	//	qglEnable(GL_STENCIL_TEST);
+	//	qglStencilFunc(GL_EQUAL, 1, 0xff);
+	//	qglStencilMask(0);
 
-		GLSL_BindProgram(&tr.lightall_deferredShader[DEFERREDDEF_USE_LIGHT_GRID]);
+	//	GLSL_BindProgram(&tr.lightall_deferredShader[DEFERREDDEF_USE_LIGHT_GRID]);
 
-		GLSL_SetUniformVec3(&tr.lightall_deferredShader[DEFERREDDEF_USE_LIGHT_GRID], UNIFORM_VIEWFORWARD, viewBasis[0]);
-		GLSL_SetUniformVec3(&tr.lightall_deferredShader[DEFERREDDEF_USE_LIGHT_GRID], UNIFORM_VIEWLEFT, viewBasis[1]);
-		GLSL_SetUniformVec3(&tr.lightall_deferredShader[DEFERREDDEF_USE_LIGHT_GRID], UNIFORM_VIEWUP, viewBasis[2]);
+	//	GLSL_SetUniformVec3(&tr.lightall_deferredShader[DEFERREDDEF_USE_LIGHT_GRID], UNIFORM_VIEWFORWARD, viewBasis[0]);
+	//	GLSL_SetUniformVec3(&tr.lightall_deferredShader[DEFERREDDEF_USE_LIGHT_GRID], UNIFORM_VIEWLEFT, viewBasis[1]);
+	//	GLSL_SetUniformVec3(&tr.lightall_deferredShader[DEFERREDDEF_USE_LIGHT_GRID], UNIFORM_VIEWUP, viewBasis[2]);
 
-		lightScales[0] = r_ambientScale->value;
-		lightScales[1] = r_directedScale->value;
+	//	lightScales[0] = r_ambientScale->value;
+	//	lightScales[1] = r_directedScale->value;
 
-		GLSL_SetUniformVec3(&tr.lightall_deferredShader[DEFERREDDEF_USE_LIGHT_GRID], UNIFORM_LIGHTGRIDORIGIN, tr.world->lightGridOrigin);
-		GLSL_SetUniformVec3(&tr.lightall_deferredShader[DEFERREDDEF_USE_LIGHT_GRID], UNIFORM_LIGHTGRIDCELLINVERSESIZE, tr.world->lightGridInverseSize);
-		GLSL_SetUniformVec2(&tr.lightall_deferredShader[DEFERREDDEF_USE_LIGHT_GRID], UNIFORM_LIGHTGRIDLIGHTSCALE, lightScales);
+	//	GLSL_SetUniformVec3(&tr.lightall_deferredShader[DEFERREDDEF_USE_LIGHT_GRID], UNIFORM_LIGHTGRIDORIGIN, tr.world->lightGridOrigin);
+	//	GLSL_SetUniformVec3(&tr.lightall_deferredShader[DEFERREDDEF_USE_LIGHT_GRID], UNIFORM_LIGHTGRIDCELLINVERSESIZE, tr.world->lightGridInverseSize);
+	//	GLSL_SetUniformVec2(&tr.lightall_deferredShader[DEFERREDDEF_USE_LIGHT_GRID], UNIFORM_LIGHTGRIDLIGHTSCALE, lightScales);
 
-		GLSL_SetUniformVec3(&tr.lightall_deferredShader[DEFERREDDEF_USE_LIGHT_GRID], UNIFORM_VIEWORIGIN, backEnd.viewParms.ori.origin);
-		GLSL_SetUniformVec4(&tr.lightall_deferredShader[DEFERREDDEF_USE_LIGHT_GRID], UNIFORM_VIEWINFO, viewInfo);
+	//	GLSL_SetUniformVec3(&tr.lightall_deferredShader[DEFERREDDEF_USE_LIGHT_GRID], UNIFORM_VIEWORIGIN, backEnd.viewParms.ori.origin);
+	//	GLSL_SetUniformVec4(&tr.lightall_deferredShader[DEFERREDDEF_USE_LIGHT_GRID], UNIFORM_VIEWINFO, viewInfo);
 
-		GL_BindToTMU(tr.renderImage, 0);
-		GL_BindToTMU(tr.renderDepthImage, 1);
-		GL_BindToTMU(tr.gbufferNormals, 2);
-		GL_BindToTMU(tr.gbufferSpecularAndGloss, 3);
-		GL_BindToTMU(tr.world->directionImages, 4);
-		GL_BindToTMU(tr.world->directionalLightImages[0], 5);
-		GL_BindToTMU(tr.world->ambientLightImages[0], 6);
+	//	GL_BindToTMU(tr.renderImage, 0);
+	//	GL_BindToTMU(tr.renderDepthImage, 1);
+	//	GL_BindToTMU(tr.gbufferNormals, 2);
+	//	GL_BindToTMU(tr.gbufferSpecularAndGloss, 3);
+	//	GL_BindToTMU(tr.world->directionImages, 4);
+	//	GL_BindToTMU(tr.world->directionalLightImages[0], 5);
+	//	GL_BindToTMU(tr.world->ambientLightImages[0], 6);
 
-		qglDrawArrays(GL_TRIANGLE_FAN, 0, 4);
+	//	qglDrawArrays(GL_TRIANGLE_FAN, 0, 4);
 
-		qglDisable(GL_STENCIL_TEST);
-	}
+	//	qglDisable(GL_STENCIL_TEST);
+	//}
 
 	//
 	// Point lighting

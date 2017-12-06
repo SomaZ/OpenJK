@@ -176,7 +176,6 @@ vec3 CalcSpecular(
 	vec3 fresnel = spec_F(EH, specular);
 	float vis = spec_G(NL, NE, roughness);
 	return (distrib * fresnel * vis);
-	//return vec3(distrib);
 }
 
 float CalcLightAttenuation(float sqrDistance, float radius)
@@ -202,7 +201,6 @@ void main()
 	float roughness = 1.0 - specularAndGloss.a;
 	specularAndGloss *= specularAndGloss;
 	vec3 albedo = texelFetch(u_ScreenDiffuseMap, windowCoord, 0).rgb;
-	albedo *= albedo;
 	vec2 normal = texelFetch(u_ScreenNormalMap, windowCoord, 0).rg;
 	float depth = texelFetch(u_ScreenDepthMap, windowCoord, 0).r;
 
@@ -232,7 +230,7 @@ void main()
 	vec3 reflectance = CalcDiffuse(albedo.rgb, NH, EH, roughness);
 	reflectance += CalcSpecular(specularAndGloss.rgb, NH, NL, NE, EH, roughness);
 
-	result = sqrt(var_LightColor * reflectance * (attenuation * NL));
+	result = sqrt(var_LightColor * var_LightColor * reflectance * (attenuation * NL));
 
 #elif defined(LIGHT_GRID)
 

@@ -77,10 +77,10 @@ uniform float u_FXVolumetricBase;
 
 out vec4 var_TexCoords;
 out vec4 var_Color;
+out vec4 var_Normal;
 
 #if defined(PER_PIXEL_LIGHTING)
 out vec3 var_Position;
-out vec4 var_Normal;
 out vec4 var_Tangent;
 out vec4 var_Bitangent;
 #endif
@@ -298,6 +298,8 @@ void main()
   #endif
 #endif
 
+	var_Normal = vec4(normal, 0.0);
+
 #if defined(PER_PIXEL_LIGHTING)
 	vec3 viewDir = u_ViewOrigin - position;
 	var_Position = position;
@@ -370,11 +372,11 @@ uniform sampler2D u_EnvBrdfMap;
 uniform float u_AlphaTestValue;
 #endif
 
-in vec4      var_TexCoords;
-in vec4      var_Color;
+in vec4   var_TexCoords;
+in vec4   var_Color;
+in vec4   var_Normal;
 
 #if defined(PER_PIXEL_LIGHTING)
-in vec4   var_Normal;
 in vec4   var_Tangent;
 in vec4   var_Bitangent;
 in vec4   var_LightDir;
@@ -721,7 +723,7 @@ void main()
   #endif
 	specular *= u_SpecularScale;
 
-  #if defined(USE_PBR) && !defined(USE_DEFERRED)
+  #if defined(USE_PBR)
 	diffuse.rgb *= diffuse.rgb;
   #endif
 
@@ -753,7 +755,7 @@ void main()
 	
 	reflectance = CalcDiffuse(diffuse.rgb, NH, EH, roughness);
 
-  #if defined(USE_LIGHTMAP) || defined(USE_LIGHT_VERTEX) && !defined(USE_DEFERRED)
+  #if defined(USE_LIGHTMAP) || defined(USE_LIGHT_VERTEX)
 	NE = abs(dot(N, E)) + 1e-5;
 	reflectance += CalcSpecular(specular.rgb, NH, NL, NE, EH, roughness) * 0.5;
   #endif
@@ -821,25 +823,33 @@ void main()
 	out_Color.rgb += lightColor * reflectance * NL2;
   #endif
 
-  #if defined(USE_PBR) && !defined(USE_DEFERRED)
+  #if defined(USE_PBR)
 	out_Color.rgb = sqrt(out_Color.rgb);
   #endif
 
-#if defined(USE_DEFERRED)
-	out_Color	= diffuse * var_Color;
+#if defined(USE_DEFERRED) && !defined(USE_GLOW_BUFFER)
+	out_Color.a = diffuse.a * var_Color.a;
+	out_Light = out_Color;// sqrt((out_Color * lightmapColor));
 	out_SpecularAndGloss = vec4(specular.rgb, 1.0 - roughness);
 	out_Normal	= vec4(EncodeNormal(N), 0.0, 0.0);
-	out_Light	= sqrt((out_Color * lightmapColor));
+	out_Color = diffuse * var_Color;
 #endif
 
 #else
 	lightColor = var_Color.rgb;
 	out_Color.rgb = diffuse.rgb * lightColor;
+#if defined(USE_DEFERRED) && !defined(USE_GLOW_BUFFER)
+	out_Color.a = diffuse.a * var_Color.a;
+	out_Light = out_Color;// sqrt((out_Color * lightmapColor));
+	out_SpecularAndGloss = vec4(vec3(0.05), 0.45);
+	out_Normal = vec4(EncodeNormal(normalize(var_Normal.xyz)), 0.0, 0.0);
+	out_Color.rgb = diffuse.rgb * var_Color.rgb;
+#endif
 #endif
 
 	out_Color.a = diffuse.a * var_Color.a;
 
-#if defined(USE_GLOW_BUFFER) && !defined(USE_DEFERRED)
+#if defined(USE_GLOW_BUFFER)
 	out_Glow = out_Color;
 #elif defined(GLOW_THRESHOLD)
 	out_Glow.r = max(0.0, (out_Color.r - GLOW_THRESHOLD));
