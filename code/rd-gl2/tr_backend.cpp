@@ -464,6 +464,11 @@ void GL_SetModelviewMatrix(matrix_t matrix)
 	Matrix16Multiply(glState.projection, glState.modelview, glState.modelviewProjection);	
 }
 
+void GL_GetTextureHandleAndMakeResident(image_t *image)
+{
+	image->handle = qglGetTextureHandle(image->texnum);
+	qglMakeTextureHandleResident(image->handle);
+}
 
 /*
 ================

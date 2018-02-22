@@ -310,6 +310,17 @@ void main()
 #define PER_PIXEL_LIGHTING
 #endif
 
+#if defined(USE_BINDLESS_TEXTURES)
+layout(std140) uniform Textures
+{
+sampler2D u_DiffuseMap;
+sampler2D u_SpecularMap;
+sampler2D u_NormalMap;
+sampler2D u_LightMap;
+sampler2D u_DeluxeMap;
+sampler2D u_ShadowMap;
+};
+#else
 uniform sampler2D u_DiffuseMap;
 
 #if defined(USE_LIGHTMAP)
@@ -331,6 +342,8 @@ uniform sampler2D u_SpecularMap;
 #if defined(USE_SHADOWMAP)
 uniform sampler2D u_ShadowMap;
 #endif
+#endif
+
 
 #if defined(USE_CUBEMAP)
 uniform samplerCube u_CubeMap;
@@ -690,8 +703,16 @@ void main()
   #endif
 
   #if defined(USE_LIGHTMAP) || defined(USE_LIGHT_VERTEX)
-	float surfNL = clamp(dot(N, L), 0.0, 1.0) * 0.25;
-	ambientColor = max(lightColor - lightColor * surfNL, vec3(0.0));
+	ambientColor = lightColor;
+	float surfNL = clamp(dot(N, L), 0.0, 1.0);
+
+	// Scale the incoming light to compensate for the baked-in light angle
+	// attenuation.
+	lightColor /= max(surfNL, 0.25);
+
+	// Recover any unused light as ambient, in case attenuation is over 4x or
+	// light is below the surface
+	ambientColor = clamp(ambientColor - lightColor * surfNL, 0.0, 1.0);
   #endif
 
   #if defined(USE_SPECULARMAP)

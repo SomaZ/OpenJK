@@ -921,6 +921,7 @@ static void ForwardDlight( const shaderCommands_t *input,  VertexArraysPropertie
 	for ( int l = 0 ; l < backEnd.refdef.num_dlights ; l++ ) {
 		vec4_t texMatrix;
 		vec4_t texOffTurb;
+		TexturesBlock *data;
 
 		if ( !( tess.dlightBits & ( 1 << l ) ) ) {
 			continue;	// this surface definately doesn't have any of this light
@@ -981,34 +982,58 @@ static void ForwardDlight( const shaderCommands_t *input,  VertexArraysPropertie
 
 		uniformDataWriter.SetUniformMatrix4x4(UNIFORM_MODELMATRIX, backEnd.ori.modelMatrix);
 
-		if (pStage->bundle[TB_DIFFUSEMAP].image[0])
-			samplerBindingsWriter.AddAnimatedImage( &pStage->bundle[TB_DIFFUSEMAP], TB_DIFFUSEMAP);
+		if (glRefConfig.bindlessTextures) {
+			data = ojkAlloc<TexturesBlock>(*backEndData->perFrameMemory);
+			*data = {};
 
-		// bind textures that are sampled and used in the glsl shader, and
-		// bind whiteImage to textures that are sampled but zeroed in the glsl shader
-		//
-		// alternatives:
-		//  - use the last bound texture
-		//     -> costs more to sample a higher res texture then throw out the result
-		//  - disable texture sampling in glsl shader with #ifdefs, as before
-		//     -> increases the number of shaders that must be compiled
-		//
+			if (pStage->bundle[TB_DIFFUSEMAP].image[0])
+				data->diffuse = pStage->bundle[TB_DIFFUSEMAP].image[0]->handle;
+			else
+				data->diffuse = tr.whiteImage->handle;
+			if (pStage->bundle[TB_NORMALMAP].image[0])
+				data->normal = pStage->bundle[TB_NORMALMAP].image[0]->handle;
+			else
+				data->normal = tr.whiteImage->handle;
+			if (pStage->bundle[TB_SPECULARMAP].image[0])
+				data->specular = pStage->bundle[TB_SPECULARMAP].image[0]->handle;
+			else
+				data->specular = tr.whiteImage->handle;
 
-		if (pStage->bundle[TB_NORMALMAP].image[0])
-			samplerBindingsWriter.AddAnimatedImage( &pStage->bundle[TB_NORMALMAP], TB_NORMALMAP);
-		else if (r_normalMapping->integer)
-			samplerBindingsWriter.AddStaticImage( tr.whiteImage, TB_NORMALMAP );
+			data->shadowmap = tr.whiteImage->handle;
+			data->lightmap = tr.whiteImage->handle;
+			data->deluxemap = tr.whiteImage->handle;
+		}
+		else
+		{
+			if (pStage->bundle[TB_DIFFUSEMAP].image[0])
+				samplerBindingsWriter.AddAnimatedImage(&pStage->bundle[TB_DIFFUSEMAP], TB_DIFFUSEMAP);
 
-		if (pStage->bundle[TB_SPECULARMAP].image[0])
-			samplerBindingsWriter.AddAnimatedImage( &pStage->bundle[TB_SPECULARMAP], TB_SPECULARMAP);
-		else if (r_specularMapping->integer)
-			samplerBindingsWriter.AddStaticImage( tr.whiteImage, TB_SPECULARMAP );
+			// bind textures that are sampled and used in the glsl shader, and
+			// bind whiteImage to textures that are sampled but zeroed in the glsl shader
+			//
+			// alternatives:
+			//  - use the last bound texture
+			//     -> costs more to sample a higher res texture then throw out the result
+			//  - disable texture sampling in glsl shader with #ifdefs, as before
+			//     -> increases the number of shaders that must be compiled
+			//
+
+			if (pStage->bundle[TB_NORMALMAP].image[0])
+				samplerBindingsWriter.AddAnimatedImage(&pStage->bundle[TB_NORMALMAP], TB_NORMALMAP);
+			else if (r_normalMapping->integer)
+				samplerBindingsWriter.AddStaticImage(tr.whiteImage, TB_NORMALMAP);
+
+			if (pStage->bundle[TB_SPECULARMAP].image[0])
+				samplerBindingsWriter.AddAnimatedImage(&pStage->bundle[TB_SPECULARMAP], TB_SPECULARMAP);
+			else if (r_specularMapping->integer)
+				samplerBindingsWriter.AddStaticImage(tr.whiteImage, TB_SPECULARMAP);
+
+			if (r_dlightMode->integer >= 2)
+				samplerBindingsWriter.AddStaticImage(tr.shadowCubemaps[l], TB_SHADOWMAP);
+		}
 
 		vec4_t enableTextures = {};
 		uniformDataWriter.SetUniformVec4(UNIFORM_ENABLETEXTURES, enableTextures);
-
-		if (r_dlightMode->integer >= 2)
-			samplerBindingsWriter.AddStaticImage(tr.shadowCubemaps[l], TB_SHADOWMAP);
 
 		ComputeTexMods( pStage, TB_DIFFUSEMAP, texMatrix, texOffTurb );
 		uniformDataWriter.SetUniformVec4(UNIFORM_DIFFUSETEXMATRIX, texMatrix);
@@ -1033,6 +1058,14 @@ static void ForwardDlight( const shaderCommands_t *input,  VertexArraysPropertie
 		item.attributes = ojkAllocArray<vertexAttribute_t>(
 			*backEndData->perFrameMemory, vertexArrays->numVertexArrays);
 		memcpy(item.attributes, attribs, sizeof(*item.attributes)*vertexArrays->numVertexArrays);
+
+		if (glRefConfig.bindlessTextures)
+		{
+			item.numUniformBlockBindings = 1;
+			item.uniformBlockBindings = ojkAllocArray<UniformBlockBinding>(*backEndData->perFrameMemory, item.numUniformBlockBindings);
+			item.uniformBlockBindings[0].data = data;
+			item.uniformBlockBindings[0].block = UNIFORM_BLOCK_TEXTURES;
+		}
 
 		item.uniformData = uniformDataWriter.Finish(*backEndData->perFrameMemory);
 		// FIXME: This is a bit ugly with the casting
@@ -1597,6 +1630,8 @@ static void RB_IterateStagesGeneric( shaderCommands_t *input, const VertexArrays
 	{
 		shaderStage_t *pStage = input->xstages[stage];
 		shaderProgram_t *sp;
+		TexturesBlock *data;
+		qboolean textureBlockIsSet = qfalse;
 		vec4_t texMatrix;
 		vec4_t texOffTurb;
 		int stateBits;
@@ -1788,8 +1823,17 @@ static void RB_IterateStagesGeneric( shaderCommands_t *input, const VertexArrays
 		{
 			if (pStage->alphaTestCmp == ATEST_CMP_NONE)
 				samplerBindingsWriter.AddStaticImage(tr.whiteImage, 0);
-			else if ( pStage->bundle[TB_COLORMAP].image[0] != 0 )
-				samplerBindingsWriter.AddAnimatedImage(&pStage->bundle[TB_COLORMAP], TB_COLORMAP);
+			else if (pStage->bundle[TB_COLORMAP].image[0] != 0)
+			{
+				if (glRefConfig.bindlessTextures) {
+					data = ojkAlloc<TexturesBlock>(*backEndData->perFrameMemory);
+					*data = {};
+					data->diffuse = pStage->bundle[TB_COLORMAP].image[0]->handle;
+					textureBlockIsSet = qtrue;
+				}
+				else
+					samplerBindingsWriter.AddAnimatedImage(&pStage->bundle[TB_COLORMAP], TB_COLORMAP);
+			}
 		}
 		else if ( pStage->glslShaderGroup == tr.lightallShader )
 		{
@@ -1832,23 +1876,37 @@ static void RB_IterateStagesGeneric( shaderCommands_t *input, const VertexArrays
 				qboolean light = (qboolean)((pStage->glslShaderIndex & LIGHTDEF_LIGHTTYPE_MASK) != 0);
 				qboolean allowVertexLighting = (qboolean)!(r_normalMapping->integer || r_specularMapping->integer);
 
-				if (pStage->bundle[TB_DIFFUSEMAP].image[0])
-					samplerBindingsWriter.AddAnimatedImage(&pStage->bundle[TB_DIFFUSEMAP], TB_DIFFUSEMAP);
+				if (glRefConfig.bindlessTextures) {
+					data = ojkAlloc<TexturesBlock>(*backEndData->perFrameMemory);
+					*data = {};
 
-				if (pStage->bundle[TB_LIGHTMAP].image[0])
-					samplerBindingsWriter.AddAnimatedImage(&pStage->bundle[TB_LIGHTMAP], TB_LIGHTMAP);
+					if (pStage->bundle[TB_DIFFUSEMAP].image[0])
+						data->diffuse = pStage->bundle[TB_DIFFUSEMAP].image[0]->handle;
+					else
+						data->diffuse = tr.whiteImage->handle;
+					if (pStage->bundle[TB_NORMALMAP].image[0])
+						data->normal = pStage->bundle[TB_NORMALMAP].image[0]->handle;
+					else
+						data->normal = tr.whiteImage->handle;
+					if (pStage->bundle[TB_SPECULARMAP].image[0])
+						data->specular = pStage->bundle[TB_SPECULARMAP].image[0]->handle;
+					else
+						data->specular = tr.whiteImage->handle;
+					if (pStage->bundle[TB_LIGHTMAP].image[0])
+						data->lightmap = pStage->bundle[TB_LIGHTMAP].image[0]->handle;
+					else
+						data->lightmap = tr.whiteImage->handle;
+					if (pStage->bundle[TB_DELUXEMAP].image[0])
+						data->deluxemap = pStage->bundle[TB_DELUXEMAP].image[0]->handle;
+					else
+						data->deluxemap = tr.whiteImage->handle;
+					if (r_sunlightMode->integer &&
+						(backEnd.viewParms.flags & VPF_USESUNLIGHT) &&
+						(pStage->glslShaderIndex & LIGHTDEF_LIGHTTYPE_MASK))
+						data->shadowmap = tr.whiteImage->handle; //tr.screenShadowImage->handle;
+					else
+						data->shadowmap = tr.whiteImage->handle;
 
-				// bind textures that are sampled and used in the glsl shader, and
-				// bind whiteImage to textures that are sampled but zeroed in the glsl shader
-				//
-				// alternatives:
-				//  - use the last bound texture
-				//     -> costs more to sample a higher res texture then throw out the result
-				//  - disable texture sampling in glsl shader with #ifdefs, as before
-				//     -> increases the number of shaders that must be compiled
-				//
-				if (light && !allowVertexLighting)
-				{
 					vec2_t lightScales;
 					lightScales[0] = r_ambientScale->value;
 					lightScales[1] = r_directedScale->value;
@@ -1860,34 +1918,67 @@ static void RB_IterateStagesGeneric( shaderCommands_t *input, const VertexArrays
 						uniformDataWriter.SetUniformVec3(UNIFORM_LIGHTGRIDLIGHTSCALE, lightScales);
 					}
 
-					if (pStage->bundle[TB_NORMALMAP].image[0])
-					{
-						samplerBindingsWriter.AddAnimatedImage(&pStage->bundle[TB_NORMALMAP], TB_NORMALMAP);
-						enableTextures[0] = 1.0f;
-					}
-					else if (r_normalMapping->integer)
-					{
-						samplerBindingsWriter.AddStaticImage(tr.whiteImage, TB_NORMALMAP);
-					}
+					textureBlockIsSet = qtrue;
+				}
+				else
+				{
+					if (pStage->bundle[TB_DIFFUSEMAP].image[0])
+						samplerBindingsWriter.AddAnimatedImage(&pStage->bundle[TB_DIFFUSEMAP], TB_DIFFUSEMAP);
 
-					if (pStage->bundle[TB_DELUXEMAP].image[0])
-					{
-						samplerBindingsWriter.AddAnimatedImage(&pStage->bundle[TB_DELUXEMAP], TB_DELUXEMAP);
-						enableTextures[1] = 1.0f;
-					}
-					else if (r_deluxeMapping->integer)
-					{
-						samplerBindingsWriter.AddStaticImage(tr.whiteImage, TB_DELUXEMAP);
-					}
+					if (pStage->bundle[TB_LIGHTMAP].image[0])
+						samplerBindingsWriter.AddAnimatedImage(&pStage->bundle[TB_LIGHTMAP], TB_LIGHTMAP);
 
-					if (pStage->bundle[TB_SPECULARMAP].image[0])
+					// bind textures that are sampled and used in the glsl shader, and
+					// bind whiteImage to textures that are sampled but zeroed in the glsl shader
+					//
+					// alternatives:
+					//  - use the last bound texture
+					//     -> costs more to sample a higher res texture then throw out the result
+					//  - disable texture sampling in glsl shader with #ifdefs, as before
+					//     -> increases the number of shaders that must be compiled
+					//
+					if (light && !allowVertexLighting)
 					{
-						samplerBindingsWriter.AddAnimatedImage(&pStage->bundle[TB_SPECULARMAP], TB_SPECULARMAP);
-						enableTextures[2] = 1.0f;
-					}
-					else if (r_specularMapping->integer)
-					{
-						samplerBindingsWriter.AddStaticImage(tr.whiteImage, TB_SPECULARMAP);
+						vec2_t lightScales;
+						lightScales[0] = r_ambientScale->value;
+						lightScales[1] = r_directedScale->value;
+
+						if (tr.world)
+						{
+							uniformDataWriter.SetUniformVec3(UNIFORM_LIGHTGRIDORIGIN, tr.world->lightGridOrigin);
+							uniformDataWriter.SetUniformVec3(UNIFORM_LIGHTGRIDCELLINVERSESIZE, tr.world->lightGridInverseSize);
+							uniformDataWriter.SetUniformVec3(UNIFORM_LIGHTGRIDLIGHTSCALE, lightScales);
+						}
+
+						if (pStage->bundle[TB_NORMALMAP].image[0])
+						{
+							samplerBindingsWriter.AddAnimatedImage(&pStage->bundle[TB_NORMALMAP], TB_NORMALMAP);
+							enableTextures[0] = 1.0f;
+						}
+						else if (r_normalMapping->integer)
+						{
+							samplerBindingsWriter.AddStaticImage(tr.whiteImage, TB_NORMALMAP);
+						}
+
+						if (pStage->bundle[TB_DELUXEMAP].image[0])
+						{
+							samplerBindingsWriter.AddAnimatedImage(&pStage->bundle[TB_DELUXEMAP], TB_DELUXEMAP);
+							enableTextures[1] = 1.0f;
+						}
+						else if (r_deluxeMapping->integer)
+						{
+							samplerBindingsWriter.AddStaticImage(tr.whiteImage, TB_DELUXEMAP);
+						}
+
+						if (pStage->bundle[TB_SPECULARMAP].image[0])
+						{
+							samplerBindingsWriter.AddAnimatedImage(&pStage->bundle[TB_SPECULARMAP], TB_SPECULARMAP);
+							enableTextures[2] = 1.0f;
+						}
+						else if (r_specularMapping->integer)
+						{
+							samplerBindingsWriter.AddStaticImage(tr.whiteImage, TB_SPECULARMAP);
+						}
 					}
 				}
 
@@ -1943,6 +2034,14 @@ static void RB_IterateStagesGeneric( shaderCommands_t *input, const VertexArrays
 		item.attributes = ojkAllocArray<vertexAttribute_t>(
 			*backEndData->perFrameMemory, vertexArrays->numVertexArrays);
 		memcpy(item.attributes, attribs, sizeof(*item.attributes)*vertexArrays->numVertexArrays);
+
+		if (glRefConfig.bindlessTextures && textureBlockIsSet)
+		{
+			item.numUniformBlockBindings = 1;
+			item.uniformBlockBindings = ojkAllocArray<UniformBlockBinding>(*backEndData->perFrameMemory, item.numUniformBlockBindings);
+			item.uniformBlockBindings[0].data = data;
+			item.uniformBlockBindings[0].block = UNIFORM_BLOCK_TEXTURES;
+		}
 
 		item.uniformData = uniformDataWriter.Finish(*backEndData->perFrameMemory);
 		// FIXME: This is a bit ugly with the casting

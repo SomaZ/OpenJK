@@ -337,6 +337,7 @@ typedef struct image_s {
 	int			width, height, depth;				// source image
 	int			uploadWidth, uploadHeight;	// after power of two and picmip but not including clamp to MAX_TEXTURE_SIZE
 	GLuint		texnum;					// gl texture binding
+	GLuint64	handle;					// bindless texture handle
 
 	int			frameUsed;			// for texture usage in frame statistics
 
@@ -644,6 +645,16 @@ struct SurfaceSpriteBlock
 	float fadeScale;
 	float widthVariance;
 	float heightVariance;
+};
+
+struct TexturesBlock
+{
+	GLuint64 diffuse;
+	GLuint64 specular;
+	GLuint64 normal;
+	GLuint64 lightmap;
+	GLuint64 deluxemap;
+	GLuint64 shadowmap;
 };
 
 struct LiquidBlock
@@ -1152,6 +1163,7 @@ enum uniformBlock_t
 	UNIFORM_BLOCK_SURFACESPRITE,
 	UNIFORM_BLOCK_LIQUID,
 	UNIFORM_BLOCK_LIQUID2,
+	UNIFORM_BLOCK_TEXTURES,
 	UNIFORM_BLOCK_COUNT
 };
 
@@ -1530,7 +1542,7 @@ compared quickly during the qsorting process
 
 typedef struct drawSurf_s {
 	uint32_t sort; // bit combination for fast compares
-	uint32_t dlightBits;
+	int dlightBits;
 	surfaceType_t *surface; // any of surface*_t
 	int fogIndex;
 } drawSurf_t;
@@ -2146,6 +2158,7 @@ typedef struct {
 	qboolean timerQuery;
 
 	qboolean floatLightmap;
+	qboolean bindlessTextures;
 } glRefConfig_t;
 
 enum
@@ -2516,6 +2529,7 @@ void GL_CheckErrs( const char *file, int line );
 void GL_State( uint32_t stateVector );
 void GL_SetProjectionMatrix(matrix_t matrix);
 void GL_SetModelviewMatrix(matrix_t matrix);
+void GL_GetTextureHandleAndMakeResident(image_t *image);
 void GL_Cull( int cullType );
 void GL_DepthRange( float min, float max );
 void GL_VertexAttribPointers(size_t numAttributes, vertexAttribute_t *attributes);

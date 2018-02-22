@@ -221,6 +221,24 @@ PFNGLTEXSTORAGE3DPROC qglTexStorage3D;
 // GL_ARB_buffer_storage
 PFNGLBUFFERSTORAGEPROC qglBufferStorage;
 
+// GL_ARB_bindless_texture
+PFNGLGETTEXTUREHANDLEARBPROC qglGetTextureHandle;
+PFNGLGETTEXTURESAMPLERHANDLEARBPROC qglGetTextureSamplerHandle;
+PFNGLMAKETEXTUREHANDLERESIDENTARBPROC qglMakeTextureHandleResident;
+PFNGLMAKETEXTUREHANDLENONRESIDENTARBPROC qglMakeTextureHandleNonResident;
+PFNGLGETIMAGEHANDLEARBPROC qglGetImageHandle;
+PFNGLMAKEIMAGEHANDLERESIDENTARBPROC qglMakeImageHandleResident;
+PFNGLMAKEIMAGEHANDLENONRESIDENTARBPROC qglMakeImageHandleNonResident;
+PFNGLUNIFORMHANDLEUI64ARBPROC qglUniformHandleui64;
+PFNGLUNIFORMHANDLEUI64VARBPROC qglUniformHandleui64v;
+PFNGLPROGRAMUNIFORMHANDLEUI64ARBPROC qglProgramUniformHandleui64;
+PFNGLPROGRAMUNIFORMHANDLEUI64VARBPROC qglProgramUniformHandleui64v;
+PFNGLISTEXTUREHANDLERESIDENTARBPROC qglIsTextureHandleResident;
+PFNGLISIMAGEHANDLERESIDENTARBPROC qglIsImageHandleResident;
+PFNGLVERTEXATTRIBL1UI64ARBPROC qglVertexAttribL1ui64;
+PFNGLVERTEXATTRIBL1UI64VARBPROC qglVertexAttribL1ui64v;
+PFNGLGETVERTEXATTRIBLUI64VARBPROC qglGetVertexAttribLui64v;
+
 // GL_ARB_debug_output
 PFNGLDEBUGMESSAGECONTROLARBPROC qglDebugMessageControlARB;
 PFNGLDEBUGMESSAGEINSERTARBPROC qglDebugMessageInsertARB;
@@ -616,6 +634,44 @@ void GLimp_InitExtensions()
 		}
 
 		glRefConfig.immutableBuffers = loaded;
+		ri.Printf(PRINT_ALL, result[loaded], extension);
+	}
+	else
+	{
+		ri.Printf(PRINT_ALL, result[2], extension);
+	}
+
+	// GL_ARB_buffer_storage
+	extension = "GL_ARB_bindless_texture";
+	glRefConfig.bindlessTextures = qfalse;
+	if (GLimp_HaveExtension(extension))
+	{
+		qboolean loaded = qtrue;
+
+		loaded = (qboolean)(loaded && GetGLFunction(qglGetTextureHandle, "glGetTextureHandleARB", qfalse));
+		loaded = (qboolean)(loaded && GetGLFunction(qglGetTextureSamplerHandle, "glGetTextureSamplerHandleARB", qfalse));
+
+		loaded = (qboolean)(loaded && GetGLFunction(qglMakeTextureHandleResident, "glMakeTextureHandleResidentARB", qfalse));
+		loaded = (qboolean)(loaded && GetGLFunction(qglMakeTextureHandleNonResident, "glMakeTextureHandleNonResidentARB", qfalse));
+
+		loaded = (qboolean)(loaded && GetGLFunction(qglGetImageHandle, "glGetImageHandleARB", qfalse));
+
+		loaded = (qboolean)(loaded && GetGLFunction(qglMakeImageHandleResident, "glMakeImageHandleResidentARB", qfalse));
+		loaded = (qboolean)(loaded && GetGLFunction(qglMakeImageHandleNonResident, "glMakeImageHandleNonResidentARB", qfalse));
+
+		loaded = (qboolean)(loaded && GetGLFunction(qglUniformHandleui64, "glUniformHandleui64ARB", qfalse));
+		loaded = (qboolean)(loaded && GetGLFunction(qglUniformHandleui64v, "glUniformHandleui64vARB", qfalse));
+		loaded = (qboolean)(loaded && GetGLFunction(qglProgramUniformHandleui64, "glProgramUniformHandleui64ARB", qfalse));
+		loaded = (qboolean)(loaded && GetGLFunction(qglProgramUniformHandleui64v, "glProgramUniformHandleui64vARB", qfalse));
+
+		loaded = (qboolean)(loaded && GetGLFunction(qglIsTextureHandleResident, "glIsTextureHandleResidentARB", qfalse));
+		loaded = (qboolean)(loaded && GetGLFunction(qglIsImageHandleResident, "glIsImageHandleResidentARB", qfalse));
+
+		loaded = (qboolean)(loaded && GetGLFunction(qglVertexAttribL1ui64, "glVertexAttribL1ui64ARB", qfalse));
+		loaded = (qboolean)(loaded && GetGLFunction(qglVertexAttribL1ui64v, "glVertexAttribL1ui64vARB", qfalse));
+		loaded = (qboolean)(loaded && GetGLFunction(qglGetVertexAttribLui64v, "glGetVertexAttribLui64vARB", qfalse));
+
+		glRefConfig.bindlessTextures = loaded;
 		ri.Printf(PRINT_ALL, result[loaded], extension);
 	}
 	else

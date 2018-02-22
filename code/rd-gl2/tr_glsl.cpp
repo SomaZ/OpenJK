@@ -51,7 +51,8 @@ extern const GPUProgramDesc fallback_weatherProgram;
 const uniformBlockInfo_t uniformBlocksInfo[UNIFORM_BLOCK_COUNT] = {
 	{ 0, "SurfaceSprite", sizeof(SurfaceSpriteBlock) },
 	{ 1, "Liquid", sizeof(LiquidBlock) },
-	{ 2, "Liquid2", sizeof(LiquidBlock2) }
+	{ 2, "Liquid2", sizeof(LiquidBlock2) },
+	{ 3, "Textures", sizeof(TexturesBlock) }
 };
 
 typedef struct uniformInfo_s
@@ -290,6 +291,12 @@ static size_t GLSL_GetShaderHeader(
 
 	Q_strcat(dest, size, "#version 150 core\n");
 
+	if (glRefConfig.bindlessTextures)
+	{
+		Q_strcat(dest, size, "#define USE_BINDLESS_TEXTURES\n\n");
+		Q_strcat(dest, size, "#extension GL_ARB_bindless_texture : require\n");
+	}
+
 	Q_strcat(dest, size,
 		"#ifndef M_PI\n"
 		"#define M_PI 3.14159265358979323846\n"
@@ -407,9 +414,9 @@ static size_t GLSL_GetShaderHeader(
 			cubeMipSize >>= 1;
 			numRoughnessMips++;
 		}
-		numRoughnessMips = MAX(1, numRoughnessMips - 2);
-		if (r_pbrIBL->integer != 0 && r_pbr->integer)
-			numRoughnessMips = MAX(1, numRoughnessMips - 4);
+
+		numRoughnessMips = MAX(1, numRoughnessMips - 4);
+
 		Q_strcat(dest, size, va("#define ROUGHNESS_MIPS float(%d)\n", numRoughnessMips));
 	}
 

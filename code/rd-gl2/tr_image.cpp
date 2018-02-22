@@ -2395,6 +2395,9 @@ image_t *R_CreateImage(const char *name, byte *pic, int width, int height, imgTy
 		qglTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, glWrapClampMode);
 	}
 
+	if (glRefConfig.bindlessTextures)
+		GL_GetTextureHandleAndMakeResident(image);
+
 	GL_SelectTexture(0);
 
 	hash = generateHashValue(name);
