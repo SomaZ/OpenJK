@@ -153,9 +153,9 @@ void WPN_AltMissileHitSound(const char **holdBuf);
 void WPN_MuzzleEffect(const char **holdBuf);
 void WPN_AltMuzzleEffect(const char **holdBuf);
 //DT EDIT: Ghoul2 viewmodels - START
-void WPN_SkinFile(const char **holdBuf);
-void WPN_WorldModel(const char **holdBuf);
-void WPN_NoHandModel(const char **holdBuf);
+void WPN_G2_SkinFile(const char **holdBuf);
+void WPN_G2_WorldModel(const char **holdBuf);
+void WPN_G2_NoMD3Model(const char **holdBuf);
 //DT EDIT: Ghoul2 viewmodels - END
 
 // OPENJK ADD
@@ -470,17 +470,19 @@ wpnParms_t WpnParms[] =
 	{ "chargeforce",		WPN_FuncSkip },
 	{ "altchargeforce",	WPN_FuncSkip },
 	{ "selectforce",		WPN_FuncSkip },
+
 	//DT EDIT: Ghoul2 viewmodels - START
-	{ "skinfile", WPN_SkinFile },
-	{ "worldmodel", WPN_WorldModel },
-	{ "nohandmodel", WPN_NoHandModel },
+	// Ghoul2 viewmodels
+	{ "G2_skinfile",		WPN_G2_SkinFile },
+	{ "G2_worldmodel",		WPN_G2_WorldModel },
+	{ "G2_nomd3model",		WPN_G2_NoMD3Model },
 	//DT EDIT: Ghoul2 viewmodels - END
 };
 
 static const size_t numWpnParms = ARRAY_LEN(WpnParms);
 
 //DT EDIT: Ghoul2 viewmodels - START
-void WPN_SkinFile(const char **holdBuf)
+void WPN_G2_SkinFile(const char **holdBuf)
 {
 	int len;
 	const char	*tokenStr;
@@ -495,13 +497,13 @@ void WPN_SkinFile(const char **holdBuf)
 	if (len > 64)
 	{
 		len = 64;
-		gi.Printf(S_COLOR_YELLOW"WARNING: SkinPath too long in external WEAPONS.DAT '%s'\n", tokenStr);
+		gi.Printf(S_COLOR_YELLOW"WARNING: G2_VM_skinfile path too long in ext_data/weapons.dat '%s'\n", tokenStr);
 	}
 
-	Q_strncpyz(weaponData[wpnParms.weaponNum].skinPath, tokenStr, len);
+	Q_strncpyz(weaponData[wpnParms.weaponNum].G2_skinPath, tokenStr, len);
 }
 
-void WPN_WorldModel(const char **holdBuf)
+void WPN_G2_WorldModel(const char **holdBuf)
 {
 	int len;
 	const char	*tokenStr;
@@ -516,13 +518,13 @@ void WPN_WorldModel(const char **holdBuf)
 	if (len > 64)
 	{
 		len = 64;
-		gi.Printf(S_COLOR_YELLOW"WARNING: worldModel too long in external WEAPONS.DAT '%s'\n", tokenStr);
+		gi.Printf(S_COLOR_YELLOW"WARNING: G2_VM_worldmodel path too long in ext_data/weapons.dat '%s'\n", tokenStr);
 	}
 
-	Q_strncpyz(weaponData[wpnParms.weaponNum].worldModel, tokenStr, len);
+	Q_strncpyz(weaponData[wpnParms.weaponNum].G2_worldModel, tokenStr, len);
 }
 
-void WPN_NoHandModel(const char **holdBuf)
+void WPN_G2_NoMD3Model(const char **holdBuf)
 {
 	int		tokenInt;
 
@@ -532,7 +534,7 @@ void WPN_NoHandModel(const char **holdBuf)
 		return;
 	}
 
-	weaponData[wpnParms.weaponNum].bNoHandModel = tokenInt;
+	weaponData[wpnParms.weaponNum].bNoMD3Model = tokenInt;
 }
 //DT EDIT: Ghoul2 viewmodels - END
 

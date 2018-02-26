@@ -9068,10 +9068,10 @@ static void PM_FinishWeaponChange( void ) {
 				G_CreateG2AttachedWeaponModel(pm->gent, weaponData[weapon].weaponMdl, pm->gent->handRBolt, 0);
 			}
 
-			else if (weaponData[weapon].worldModel[0])
+			else if (weaponData[weapon].G2_worldModel[0])
 			{
 				//might be NONE, so check if it has a model
-				G_CreateG2AttachedWeaponModel(pm->gent, weaponData[weapon].worldModel, pm->gent->handRBolt, 0);
+				G_CreateG2AttachedWeaponModel(pm->gent, weaponData[weapon].G2_worldModel, pm->gent->handRBolt, 0);
 			}
 		}
 		//DT EDIT: Ghoul2 viewmodels - END

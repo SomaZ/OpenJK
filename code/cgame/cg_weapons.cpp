@@ -119,7 +119,7 @@ void CG_RegisterWeapon(int weaponNum) {
 		{//in case the weaponmodel isn't _w, precache the _w.glm
 			char weaponModel[64];
 
-			Q_strncpyz(weaponModel, weaponData[weaponNum].worldModel, sizeof(weaponModel));
+			Q_strncpyz(weaponModel, weaponData[weaponNum].G2_worldModel, sizeof(weaponModel));
 			gi.G2API_PrecacheGhoul2Model(weaponModel); // correct way is item->world_model
 		}
 
@@ -181,12 +181,12 @@ void CG_RegisterWeapon(int weaponNum) {
 	Q_strncpyz(path, weaponData[weaponNum].weaponMdl, sizeof(path));
 	if (weaponInfo->bUsesGhoul2) {
 		// Init the ghoul2 model
-		weaponInfo->g2_skin = gi.RE_RegisterSkin(weaponData[weaponNum].skinPath);
+		weaponInfo->g2_skin = gi.RE_RegisterSkin(weaponData[weaponNum].G2_skinPath);
 		weaponInfo->g2_index = gi.G2API_InitGhoul2Model(weaponInfo->ghoul2, path,
-			G_ModelIndex(path), G_SkinIndex(weaponData[weaponNum].skinPath), NULL, 0, 0);
+			G_ModelIndex(path), G_SkinIndex(weaponData[weaponNum].G2_skinPath), NULL, 0, 0);
 		// Add flash bolt
 		weaponInfo->g2_flashbolt = gi.G2API_AddBolt(&weaponInfo->ghoul2[weaponInfo->g2_index], "*flash");
-		if (!weaponData[weaponNum].bNoHandModel)
+		if (!weaponData[weaponNum].bNoMD3Model)
 			weaponInfo->handsModel = cgi_R_RegisterModel("models/weapons2/briar_pistol/briar_pistol_hand.md3");
 
 		// Load the animation.cfg
@@ -194,7 +194,7 @@ void CG_RegisterWeapon(int weaponNum) {
 	}
 	else {
 		// Normal -- MD3 viewmodels
-		if (!weaponData[weaponNum].bNoHandModel) {
+		if (!weaponData[weaponNum].bNoMD3Model) {
 			COM_StripExtension(path, path, sizeof(path));
 			Q_strcat(path, sizeof(path), "_hand.md3");
 			weaponInfo->handsModel = cgi_R_RegisterModel(path);
@@ -1170,7 +1170,6 @@ int CG_MapTorsoToG2VMAnimation(playerState_t *ps) {
 	case TORSO_WEAPONIDLE3:
 	case TORSO_WEAPONIDLE4:
 	case TORSO_WEAPONIDLE10:
-	default:
 		return VM_READY;
 	case BOTH_STAND1IDLE1:
 	case BOTH_STAND2IDLE1:
@@ -1186,41 +1185,84 @@ int CG_MapTorsoToG2VMAnimation(playerState_t *ps) {
 	case BOTH_ATTACK3:
 	case BOTH_ATTACK4:
 		return VM_FIRE;
-	case BOTH_RESISTPUSH:
-		return VM_FRESISTPUSH;
+
+	case BOTH_MELEE1:
+		return VM_MELEE1;
+	case BOTH_MELEE2:
+		return VM_MELEE2;
+
 	case BOTH_FORCEPUSH:
-		return VM_FPUSH;
+		return 	VM_FPUSH;
 	case BOTH_FORCEPULL:
-		return VM_FPULL;
-	case BOTH_MINDTRICK1:
-		return VM_FMINDTRICK1;
-	case BOTH_MINDTRICK2:
-		return VM_FMINDTRICK2;
-	case BOTH_FORCELIGHTNING:
-		return VM_FLIGHTNING;
-	case BOTH_FORCELIGHTNING_START:
-		return VM_FLIGHTNING_START;
-	case BOTH_FORCELIGHTNING_HOLD:
-		return VM_FLIGHTNING_HOLD;
-	case BOTH_FORCELIGHTNING_RELEASE:
-		return VM_FLIGHTNING_RELEASE;
-	case BOTH_FORCEHEAL_START:
-		return VM_FHEAL_START;
-	case BOTH_FORCEHEAL_STOP:
-		return VM_FHEAL_STOP;
-	case BOTH_FORCEHEAL_QUICK:
-		return VM_FHEAL_QUICK;
+		return 	VM_FPULL;
 	case BOTH_FORCEGRIP1:
 	case BOTH_FORCEGRIP3:
-		return VM_FGRIP;
-	case BOTH_FORCEGRIP3THROW:
-		return VM_FGRIP_THROW;
-	case BOTH_FORCEGRIP_RELEASE:
-		return VM_FGRIP_RELEASE;
+		return 	VM_FGRIP;
 	case BOTH_FORCEGRIP_HOLD:
-		return VM_FGRIP_HOLD;
-	}
+		return 	VM_FGRIP_HOLD;
+	case BOTH_FORCEGRIP_RELEASE:
+		return 	VM_FGRIP_RELEASE;
+	case BOTH_FORCEGRIP3THROW:
+		return 	VM_FGRIP_THROW;
+	case BOTH_FORCEHEAL_QUICK:
+		return 	VM_FHEAL_QUICK;
+	case BOTH_FORCEHEAL_START:
+		return 	VM_FHEAL_START;
+	case BOTH_FORCEHEAL_STOP:
+		return 	VM_FHEAL_STOP;
+	case BOTH_FORCELIGHTNING:
+		return 	VM_FLIGHTNING;
+	case BOTH_FORCELIGHTNING_START:
+		return 	VM_FLIGHTNING_START;
+	case BOTH_FORCELIGHTNING_HOLD:
+		return 	VM_FLIGHTNING_HOLD;	
+	case BOTH_FORCELIGHTNING_RELEASE:
+		return 	VM_FLIGHTNING_RELEASE;
+	case BOTH_RESISTPUSH:
+		return 	VM_FRESISTPUSH;
+	case BOTH_MINDTRICK1:
+	case BOTH_MINDTRICK2:
+		return 	VM_FMINDTRICK;
+	case BOTH_FORCE_RAGE:
+		return 	VM_FRAGE;
+	case BOTH_FORCE_2HANDEDLIGHTNING:
+		return 	VM_F2HANDEDLIGHTNING;
+	case BOTH_FORCE_2HANDEDLIGHTNING_START:
+		return 	VM_F2HANDEDLIGHTNING_START;
+	case BOTH_FORCE_2HANDEDLIGHTNING_HOLD:
+		return 	VM_F2HANDEDLIGHTNING_HOLD;
+	case BOTH_FORCE_2HANDEDLIGHTNING_RELEASE:
+		return 	VM_F2HANDEDLIGHTNING_RELEASE;
+	case BOTH_FORCE_DRAIN:
+		return 	VM_FDRAIN;
+	case BOTH_FORCE_DRAIN_START:
+		return 	VM_FDRAIN_START;
+	case BOTH_FORCE_DRAIN_HOLD:
+		return 	VM_FDRAIN_HOLD;
+	case BOTH_FORCE_DRAIN_RELEASE:
+		return 	VM_FDRAIN_RELEASE;
+	case BOTH_FORCE_DRAIN_GRAB_START:
+		return 	VM_FDRAIN_GRAB_START;
+	case BOTH_FORCE_DRAIN_GRAB_HOLD:
+		return 	VM_FDRAIN_GRAB_HOLD;
+	case BOTH_FORCE_DRAIN_GRAB_END:
+		return 	VM_FDRAIN_GRAB_END;
+	case BOTH_FORCE_DRAIN_GRABBED:
+		return 	VM_FDRAIN_GRABBED;
+	case BOTH_FORCE_ABSORB:
+		return 	VM_FORCE_ABSORB;
+	case BOTH_FORCE_ABSORB_START:
+		return 	VM_FORCE_ABSORB_START;
+	case BOTH_FORCE_ABSORB_END:
+		return 	VM_FORCE_ABSORB_END;
+	case BOTH_FORCE_PROTECT:
+		return 	VM_FORCE_PROTECT;
+	case BOTH_FORCE_PROTECT_FAST:
+		return 	VM_FORCE_PROTECT_FAST;
 
+	default:
+		return VM_READY;
+	}
 }
 
 void CG_AnimateViewmodel(centity_t* cent, playerState_t *ps) {
@@ -1509,7 +1551,7 @@ void CG_AddViewWeapon( playerState_t *ps )
 			gun.radius = 60;
 			gun.customSkin = weapon->g2_skin;
 		}
-		if (!wData->bNoHandModel)
+		if (!wData->bNoMD3Model)
 			CG_PositionEntityOnTag(&gun, &hand, weapon->handsModel, "tag_weapon");
 		else
 			VectorCopy(hand.origin, gun.origin);
