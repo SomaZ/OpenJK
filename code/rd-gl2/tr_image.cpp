@@ -2549,7 +2549,7 @@ done:
 		R_Free(resampledBuffer);
 }
 
-void R_CreateDiffuseAndSpecMapsFromBaseColorAndRMO(shaderStage_t *stage, const char *name, const char *rmoName, int flags)
+void R_CreateDiffuseAndSpecMapsFromBaseColorAndRMO(shaderStage_t *stage, const char *name, const char *rmoName, int flags, int type)
 {
 	image_t	*image;
 	char	diffuseName[MAX_QPATH];
@@ -2609,35 +2609,84 @@ void R_CreateDiffuseAndSpecMapsFromBaseColorAndRMO(shaderStage_t *stage, const c
 
 	const float gamma = 2.2f;
 	const float inverseGamma = 1.0f / 2.2f;
-	const int size = width * height * 4;
 
-	for (int i = 0; i < size; i += 4)
+	float baseSpecular;
+
+	switch (type)
 	{
-		const float aoStrength = 0.5f;
-		float roughness = ByteToFloat(rmoPic[i + 0]);
-		float gloss		= (1.0 - roughness) + (0.04 * roughness);
-		float metalness = ByteToFloat(rmoPic[i + 1]);
-		float ao		= ByteToFloat(rmoPic[i + 2]);
-		ao += (1.0 - ao) * (1.0 - aoStrength);
-		float specAo	= (1.0f * gloss * gloss) + (ao * (1.0f - gloss * gloss));
-		 
-		float color[3];
-		color[0] = ByteToFloat(baseColorPic[i + 0]);
-		color[1] = ByteToFloat(baseColorPic[i + 1]);
-		color[2] = ByteToFloat(baseColorPic[i + 2]);
+	case SPEC_RMOS:
+	case SPEC_MOSR:
+		baseSpecular = 0.08f;
+		break;
+	default:
+		baseSpecular = 0.04f;
+		break;
+	}
 
-		// diffuse Color = baseColor * (1.0 - metalness) * occlusion 
-		diffusePic[i + 0] = color[0] * (1.0f - metalness) * ao * 255.0f;
-		diffusePic[i + 1] = color[1] * (1.0f - metalness) * ao * 255.0f;
-		diffusePic[i + 2] = color[2] * (1.0f - metalness) * ao * 255.0f;
-		diffusePic[i + 3] = baseColorPic[i + 3];
+	for (int i = 0; i < width * height * 4; i += 4)
+	{
+		const float aoStrength	= 0.5f;
+		float roughness, gloss, metalness, specular_variance, ao;
+
+		switch (type)
+		{
+		case SPEC_RMO:
+		case SPEC_RMOS:
+		{
+			roughness = ByteToFloat(rmoPic[i + 0]);
+			gloss = (1.0 - roughness) + (0.04 * roughness);
+			metalness = ByteToFloat(rmoPic[i + 1]);
+			ao = ByteToFloat(rmoPic[i + 2]);
+			ao += (1.0 - ao) * (1.0 - aoStrength);
+			specular_variance = ByteToFloat(rmoPic[i + 3]);
+		}
+		break;
+		case SPEC_MOXR:
+		case SPEC_MOSR:
+		{
+			metalness = ByteToFloat(rmoPic[i + 0]);
+			ao = ByteToFloat(rmoPic[i + 1]);
+			ao += (1.0 - ao) * (1.0 - aoStrength);
+			specular_variance = ByteToFloat(rmoPic[i + 2]);
+			roughness = ByteToFloat(rmoPic[i + 3]);
+			gloss = (1.0 - roughness) + (0.04 * roughness);
+		}
+		break;
+		// should never reach this
+		default:
+		{
+			specular_variance = 1.0f;
+			metalness = 0.0f;
+			gloss = r_baseGloss->value;
+			ao = 1.0f;
+		}
+		break;
+		}
+		
+		float baseColor[4];
+		// remove gamma correction because we want to work in linear space
+		baseColor[0] = pow(ByteToFloat(baseColorPic[i + 0]), gamma);
+		baseColor[1] = pow(ByteToFloat(baseColorPic[i + 1]), gamma);
+		baseColor[2] = pow(ByteToFloat(baseColorPic[i + 2]), gamma);
+		// don't remove gamma correction in alpha because this is data, not color
+		baseColor[3] = ByteToFloat(baseColorPic[i + 3]);
+
+		baseSpecular *= specular_variance;
+
+		// diffuse Color = baseColor * (1.0 - metalness) 
+		// also gamma correct again
+		diffusePic[i + 0] = FloatToByte(pow(baseColor[0] * (1.0f - metalness) * ao, inverseGamma));
+		diffusePic[i + 1] = FloatToByte(pow(baseColor[1] * (1.0f - metalness) * ao, inverseGamma));
+		diffusePic[i + 2] = FloatToByte(pow(baseColor[2] * (1.0f - metalness) * ao, inverseGamma));
+		diffusePic[i + 3] = FloatToByte(baseColor[3]);
 
 		// specular Color = mix(baseSpecular, baseColor, metalness)
-		float baseSpecular  = 56.0f / 255.0f;
-		specGlossPic[i + 0] = (baseSpecular * (1.0f - metalness) + color[0] * metalness) * specAo * 255.0f;
-		specGlossPic[i + 1] = (baseSpecular * (1.0f - metalness) + color[1] * metalness) * specAo * 255.0f;
-		specGlossPic[i + 2] = (baseSpecular * (1.0f - metalness) + color[2] * metalness) * specAo * 255.0f;
-		specGlossPic[i + 3] = gloss * 255.0f;
+		// also gamma correct again
+		specGlossPic[i + 0] = FloatToByte(pow(baseSpecular * (1.0f - metalness) + baseColor[0] * metalness, inverseGamma));
+		specGlossPic[i + 1] = FloatToByte(pow(baseSpecular * (1.0f - metalness) + baseColor[1] * metalness, inverseGamma));
+		specGlossPic[i + 2] = FloatToByte(pow(baseSpecular * (1.0f - metalness) + baseColor[2] * metalness, inverseGamma));
+		// don't remove gamma correction in alpha because this is data, not color
+		specGlossPic[i + 3] = FloatToByte(gloss);
 	}
 
 	stage->bundle[TB_COLORMAP].image[0] = R_CreateImage(diffuseName, diffusePic, width, height, IMGTYPE_COLORALPHA, flags, 0);

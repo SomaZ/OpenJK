@@ -3894,7 +3894,13 @@ world_t *R_LoadBSP(const char *name, int *bspIndex)
 	// load cubemaps
 	if (r_cubeMapping->integer)
 	{
-		R_LoadCubemapEntities("misc_cubemap");
+		R_LoadEnvironmentJson(worldData->baseName);
+
+		if (!tr.numCubemaps)
+		{
+			// use cubemap entities as cubemaps
+			R_LoadCubemapEntities("misc_cubemap");
+		}
 		if (!tr.numCubemaps)
 		{
 			// use deathmatch spawn points as cubemaps

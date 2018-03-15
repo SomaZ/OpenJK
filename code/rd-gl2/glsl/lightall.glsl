@@ -701,16 +701,17 @@ void main()
   #endif
 	specular *= u_SpecularScale;
 
-  #if defined(USE_PBR)
+#if defined(USE_PBR)
 	diffuse.rgb *= diffuse.rgb;
 	specular.rgb *= specular.rgb;
-  #endif
+	// energy conservation
+	diffuse.rgb *= vec3(1.0) - specular.rgb;
+#endif
 
 	// diffuse rgb is diffuse
 	// specular rgb is specular reflectance at normal incidence
 	// specular alpha is gloss
 	float roughness = 1.0 - specular.a;
-	//roughness *= roughness;
 
     H  = normalize(L + E);
     EH = max(1e-8, dot(E, H));
