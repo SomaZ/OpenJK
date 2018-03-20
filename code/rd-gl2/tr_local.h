@@ -2540,6 +2540,7 @@ extern glconfigExt_t	glConfigExt;
 
 void RE_StretchRaw (int x, int y, int w, int h, int cols, int rows, const byte *data, int client, qboolean dirty);
 void RE_UploadCinematic (int cols, int rows, const byte *data, int client, qboolean dirty);
+void RE_GetScreenShot (byte *data, int w, int h);
 void RE_SetRangedFog ( float range );
 
 void RE_BeginFrame( stereoFrame_t stereoFrame );
@@ -2852,6 +2853,8 @@ void RE_AddAdditiveLightToScene( const vec3_t org, float intensity, float r, flo
 void RE_BeginScene( const refdef_t *fd );
 void RE_RenderScene( const refdef_t *fd );
 void RE_EndScene( void );
+
+qboolean RE_GetLighting(const vec3_t origin, vec3_t ambientLight, vec3_t directedLight, vec3_t lightDir);
 
 /*
 =============================================================

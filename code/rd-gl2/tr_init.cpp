@@ -1807,24 +1807,6 @@ void RE_SetLightStyle(int style, int color)
 	}
 }
 
-// STUBS, REPLACEME
-void stub_RE_GetBModelVerts(int bModel, vec3_t *vec, float *normal) {}
-void stub_RE_WorldEffectCommand(const char *cmd) {}
-void stub_RE_AddWeatherZone(vec3_t mins, vec3_t maxs) {}
-//static void RE_SetRefractionProperties(float distortionAlpha, float distortionStretch, qboolean distortionPrePost, qboolean distortionNegate) { }
-qboolean stub_RE_ProcessDissolve(void) { return qfalse; }
-qboolean stub_RE_InitDissolve(qboolean bForceCircularExtroWipe) { return qfalse; }
-bool stub_R_IsShaking(vec3_t pos) { return qfalse; }
-void stub_R_InitWorldEffects(void){}
-bool stub_R_GetWindVector(vec3_t windVector, vec3_t atpoint) { return qfalse; }
-bool stub_R_GetWindGusting(vec3_t atpoint){ return qfalse; }
-bool stub_R_IsOutside(vec3_t pos) { return qfalse; }
-float stub_R_IsOutsideCausingPain(vec3_t pos) { return qfalse; }
-float stub_R_GetChanceOfSaberFizz(){return qfalse;}
-qboolean stub_RE_GetLighting(const vec3_t origin, vec3_t ambientLight, vec3_t directedLight, vec3_t lightDir) { return qfalse; }
-bool stub_R_SetTempGlobalFogColor(vec3_t color) { return qfalse; }
-void stub_RE_GetScreenShot(byte *buffer, int w, int h){}
-
 void C_LevelLoadBegin(const char *psMapName, ForceReload_e eForceReload, qboolean bAllowScreenDissolve)
 {
 	static char sPrevMapName[MAX_QPATH] = { 0 };
@@ -1869,6 +1851,31 @@ void RE_SVModelInit(void)
 	//inServer = false;
 	R_ModelInit();
 }
+
+// STUBS, REPLACEME
+void stub_RE_GetBModelVerts(int bModel, vec3_t *vec, float *normal) {}
+void stub_RE_WorldEffectCommand(const char *cmd) {}
+void stub_RE_AddWeatherZone(vec3_t mins, vec3_t maxs) {}
+qboolean stub_RE_ProcessDissolve(void) { return qfalse; }
+qboolean stub_RE_InitDissolve(qboolean bForceCircularExtroWipe) { return qfalse; }
+bool stub_R_IsShaking(vec3_t pos) { return qfalse; }
+void stub_R_InitWorldEffects(void) {}
+bool stub_R_GetWindVector(vec3_t windVector, vec3_t atpoint) { return qfalse; }
+bool stub_R_GetWindGusting(vec3_t atpoint) { return qfalse; }
+bool stub_R_IsOutside(vec3_t pos) { return qfalse; }
+float stub_R_IsOutsideCausingPain(vec3_t pos) { return qfalse; }
+float stub_R_GetChanceOfSaberFizz() { return qfalse; }
+bool stub_R_SetTempGlobalFogColor(vec3_t color) { return qfalse; }
+void stub_RE_GetScreenShot(byte *buffer, int w, int h) {}
+
+float tr_distortionAlpha = 1.0f; //opaque
+float tr_distortionStretch = 0.0f; //no stretch override
+qboolean tr_distortionPrePost = qfalse; //capture before postrender phase?
+qboolean tr_distortionNegate = qfalse; //negative blend mode
+float *stub_get_tr_distortionAlpha(void) { return &tr_distortionAlpha; }
+float *stub_get_tr_distortionStretch(void) { return &tr_distortionStretch; }
+qboolean *stub_get_tr_distortionPrePost(void) { return &tr_distortionPrePost; }
+qboolean *stub_get_tr_distortionNegate(void) { return &tr_distortionNegate; }
 
 /*
 @@@@@@@@@@@@@@@@@@@@@
@@ -1930,14 +1937,14 @@ extern "C" Q_EXPORT refexport_t* QDECL GetRefAPI(int apiVersion, refimport_t *ri
 	REX(ClearScene);
 	REX(ClearDecals);
 	REX(AddRefEntityToScene);
-	re.GetLighting = stub_RE_GetLighting;
+	REX(GetLighting);
 	REX(AddPolyToScene);
 	re.LightForPoint = R_LightForPoint;
 	REX(AddDecalToScene);
 	REX(AddLightToScene);
 	REX(AddAdditiveLightToScene);
 	REX(RenderScene);
-	re.GetLighting = stub_RE_GetLighting;
+	REX(GetLighting);
 
 	REX(SetColor);
 	re.DrawStretchPic = RE_StretchPic;
@@ -1985,6 +1992,11 @@ extern "C" Q_EXPORT refexport_t* QDECL GetRefAPI(int apiVersion, refimport_t *ri
 	re.R_InitWorldEffects = stub_R_InitWorldEffects;
 	re.R_ClearStuffToStopGhoul2CrashingThings = R_ClearStuffToStopGhoul2CrashingThings;
 	re.R_inPVS = R_inPVS;
+
+	re.tr_distortionAlpha = stub_get_tr_distortionAlpha;
+	re.tr_distortionStretch = stub_get_tr_distortionStretch;
+	re.tr_distortionPrePost = stub_get_tr_distortionPrePost;
+	re.tr_distortionNegate = stub_get_tr_distortionNegate;
 
 	re.GetWindVector = stub_R_GetWindVector;
 	re.GetWindGusting = stub_R_GetWindGusting;
