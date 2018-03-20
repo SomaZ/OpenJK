@@ -609,7 +609,8 @@ void Jedi_CheckCloak( void )
 	if ( NPC
 		&& NPC->client
 		&& NPC->client->NPC_class == CLASS_SHADOWTROOPER
-		&& Q_stricmpn("shadowtrooper", NPC->NPC_type, 13 ) == 0 )
+		&& Q_stricmpn("shadowtrooper", NPC->NPC_type, 13 )
+		&& Q_stricmpn("gorc", NPC->NPC_type, 4 ) == 0 )
 	{
 		if ( NPC->client->ps.SaberActive() ||
 			NPC->health <= 0 ||

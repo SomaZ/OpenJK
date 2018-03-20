@@ -521,7 +521,8 @@ void NPC_SetMiscDefaultData( gentity_t *ent )
 		{
 			ent->NPC->defaultBehavior = BS_DEFAULT;
 			if ( ent->client->NPC_class == CLASS_SHADOWTROOPER
-				&& Q_stricmpn("shadowtrooper", ent->NPC_type, 13 ) == 0 )
+				&& Q_stricmpn("shadowtrooper", ent->NPC_type, 13 )
+				&& Q_stricmpn("gorc", ent->NPC_type, 4 ) == 0 )
 			{//FIXME: a spawnflag?
 				Jedi_Cloak( ent );
 			}
