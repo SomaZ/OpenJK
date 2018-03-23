@@ -1919,8 +1919,7 @@ static void PlayCinematic(const char *arg, const char *s, qboolean qbInGame)
 		//
 		////////////////////////////////////////////////////////////////////
 
-		//DT EDIT: Setting '80' for x position is pretty bad, but no choice - the usual way of using '*cls.ratioFix' doesn't work here.
-		CL_handle = CIN_PlayCinematic( arg, 80, 0, SCREEN_WIDTH *cls.ratioFix, SCREEN_HEIGHT, bits, psAudioFile );
+		CL_handle = CIN_PlayCinematic( arg, SCREEN_WIDTH / 2 - (SCREEN_WIDTH / 2) *cls.widthRatioCoef, 0, SCREEN_WIDTH *cls.widthRatioCoef, SCREEN_HEIGHT, bits, psAudioFile );
 		if (CL_handle >= 0)
 		{
 			cinTable[CL_handle].hCRAWLTEXT = hCrawl;
