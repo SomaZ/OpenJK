@@ -186,8 +186,8 @@ enum
 	MD_SINGLE_FAST,
 	MD_SINGLE_MEDIUM,
 	MD_SINGLE_STRONG,
-	MD_DUAL_SABERS,
-	MD_SABER_STAFF,
+	//MD_DUAL_SABERS,
+	//MD_SABER_STAFF,
 	MD_MOVE_TITLE_MAX
 };
 
@@ -199,18 +199,18 @@ const char *datapadMoveTitleData[MD_MOVE_TITLE_MAX] =
 "@MENUS_SINGLE_FAST",
 "@MENUS_SINGLE_MEDIUM",
 "@MENUS_SINGLE_STRONG",
-"@MENUS_DUAL_SABERS",
-"@MENUS_SABER_STAFF",
+//"@MENUS_DUAL_SABERS",
+//"@MENUS_SABER_STAFF",
 };
 
 const char *datapadMoveTitleBaseAnims[MD_MOVE_TITLE_MAX] =
 {
-"BOTH_RUN1",
+"BOTH_STAND1",
 "BOTH_SABERFAST_STANCE",
 "BOTH_STAND2",
 "BOTH_SABERSLOW_STANCE",
-"BOTH_SABERDUAL_STANCE",
-"BOTH_SABERSTAFF_STANCE",
+//"BOTH_SABERDUAL_STANCE",
+//"BOTH_SABERSTAFF_STANCE",
 };
 
 #define MAX_MOVES 16
@@ -303,7 +303,7 @@ static datpadmovedata_t datapadMoveData[MD_MOVE_TITLE_MAX][MAX_MOVES] =
 { NULL, NULL, 0,	MDS_NONE },
 { NULL, NULL, 0,	MDS_NONE },
 { NULL, NULL, 0,	MDS_NONE },
-},
+/*},
 
 {
 //Dual Sabers
@@ -342,7 +342,7 @@ static datpadmovedata_t datapadMoveData[MD_MOVE_TITLE_MAX][MAX_MOVES] =
 { NULL, NULL, 0,	MDS_NONE },
 { NULL, NULL, 0,	MDS_NONE },
 { NULL, NULL, 0,	MDS_NONE },
-{ NULL, NULL, 0,	MDS_NONE },
+{ NULL, NULL, 0,	MDS_NONE },*/
 }
 };
 
@@ -1220,12 +1220,13 @@ static qboolean UI_RunMenuScript ( const char **args )
 
 						uiInfo.moveAnimTime = 0 ;
 						DC->g2hilev_SetAnim(&item->ghoul2[0], "model_root", modelPtr->g2anim, qtrue);
-						Com_sprintf( skin, sizeof( skin ), "models/players/%s/|%s|%s|%s",
+						/*Com_sprintf( skin, sizeof( skin ), "models/players/%s/|%s|%s|%s",
 															Cvar_VariableString ( "g_char_model"),
 															Cvar_VariableString ( "g_char_skin_head"),
 															Cvar_VariableString ( "g_char_skin_torso"),
 															Cvar_VariableString ( "g_char_skin_legs")
-									);
+									);*/
+						Com_sprintf( skin, sizeof( skin ), "models/players/df2_kyle/model_datapad.skin" );
 
 						ItemParse_model_g2skin_go( item, skin );
 						UI_SaberAttachToChar( item );
@@ -1970,12 +1971,13 @@ static void UI_FeederSelection(float feederID, int index, itemDef_t *item)
 							Cvar_Set( "ui_move_desc", datapadMoveData[uiInfo.movesTitleIndex][index].desc);
 						}
 
-						Com_sprintf( skin, sizeof( skin ), "models/players/%s/|%s|%s|%s",
+						/*Com_sprintf( skin, sizeof( skin ), "models/players/%s/|%s|%s|%s",
 															Cvar_VariableString ( "g_char_model"),
 															Cvar_VariableString ( "g_char_skin_head"),
 															Cvar_VariableString ( "g_char_skin_torso"),
 															Cvar_VariableString ( "g_char_skin_legs")
-									);
+									);*/
+						Com_sprintf(skin, sizeof(skin), "models/players/df2_kyle/model_datapad.skin");
 
 						ItemParse_model_g2skin_go( item, skin );
 
@@ -6278,12 +6280,13 @@ static void UI_UpdateCharacterSkin( void )
 		Com_Error( ERR_FATAL, "UI_UpdateCharacterSkin: Could not find item (character) in menu (%s)", menu->window.name);
 	}
 
-	Com_sprintf( skin, sizeof( skin ), "models/players/%s/|%s|%s|%s",
+	/*Com_sprintf( skin, sizeof( skin ), "models/players/%s/|%s|%s|%s",
 										Cvar_VariableString ( "ui_char_model"),
 										Cvar_VariableString ( "ui_char_skin_head"),
 										Cvar_VariableString ( "ui_char_skin_torso"),
 										Cvar_VariableString ( "ui_char_skin_legs")
-				);
+				);*/
+	Com_sprintf(skin, sizeof(skin), "models/players/df2_kyle/model_datapad.skin");
 
 	ItemParse_model_g2skin_go( item, skin );
 }
