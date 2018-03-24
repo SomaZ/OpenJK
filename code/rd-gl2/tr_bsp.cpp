@@ -2956,7 +2956,7 @@ void R_LoadEnvironmentJson(const char *baseName)
 	} buffer;
 	char *bufferEnd;
 
-	const char *cubemapArrayJson;
+	const char *environmentArrayJson;
 	int filelen, i;
 
 	Com_sprintf(filename, MAX_QPATH, "cubemaps/%s/env.json", baseName);
@@ -2974,23 +2974,23 @@ void R_LoadEnvironmentJson(const char *baseName)
 		ri.FS_FreeFile(buffer.v);
 		return;
 	}
-
-	cubemapArrayJson = JSON_ObjectGetNamedValue(buffer.c, bufferEnd, "Cubemaps");
-	if (!cubemapArrayJson)
+	//-----------------------------CUBEMAPS------------------------------------
+	environmentArrayJson = JSON_ObjectGetNamedValue(buffer.c, bufferEnd, "Cubemaps");
+	if (!environmentArrayJson)
 	{
 		ri.Printf(PRINT_ALL, "Bad %s: no Cubemaps\n", filename);
 		ri.FS_FreeFile(buffer.v);
 		return;
 	}
 
-	if (JSON_ValueGetType(cubemapArrayJson, bufferEnd) != JSONTYPE_ARRAY)
+	if (JSON_ValueGetType(environmentArrayJson, bufferEnd) != JSONTYPE_ARRAY)
 	{
 		ri.Printf(PRINT_ALL, "Bad %s: Cubemaps not an array\n", filename);
 		ri.FS_FreeFile(buffer.v);
 		return;
 	}
 
-	tr.numCubemaps = JSON_ArrayGetIndex(cubemapArrayJson, bufferEnd, NULL, 0);
+	tr.numCubemaps = JSON_ArrayGetIndex(environmentArrayJson, bufferEnd, NULL, 0);
 	tr.cubemaps = (cubemap_t *)R_Hunk_Alloc(tr.numCubemaps * sizeof(*tr.cubemaps), qtrue);
 	memset(tr.cubemaps, 0, tr.numCubemaps * sizeof(*tr.cubemaps));
 
@@ -3000,7 +3000,7 @@ void R_LoadEnvironmentJson(const char *baseName)
 		const char *cubemapJson, *keyValueJson, *indexes[3];
 		int j;
 
-		cubemapJson = JSON_ArrayGetValue(cubemapArrayJson, bufferEnd, i);
+		cubemapJson = JSON_ArrayGetValue(environmentArrayJson, bufferEnd, i);
 
 		keyValueJson = JSON_ObjectGetNamedValue(cubemapJson, bufferEnd, "Name");
 		if (!JSON_ValueGetString(keyValueJson, bufferEnd, cubemap->name, MAX_QPATH))
@@ -3015,6 +3015,50 @@ void R_LoadEnvironmentJson(const char *baseName)
 		keyValueJson = JSON_ObjectGetNamedValue(cubemapJson, bufferEnd, "Radius");
 		if (keyValueJson)
 			cubemap->parallaxRadius = JSON_ValueGetFloat(keyValueJson, bufferEnd);
+	}
+
+	//-----------------------------LIGHTS------------------------------------
+	environmentArrayJson = JSON_ObjectGetNamedValue(buffer.c, bufferEnd, "Lights");
+	if (!environmentArrayJson)
+	{
+		ri.Printf(PRINT_ALL, "Bad %s: no Lights\n", filename);
+		ri.FS_FreeFile(buffer.v);
+		return;
+	}
+
+	if (JSON_ValueGetType(environmentArrayJson, bufferEnd) != JSONTYPE_ARRAY)
+	{
+		ri.Printf(PRINT_ALL, "Bad %s: Lights not an array\n", filename);
+		ri.FS_FreeFile(buffer.v);
+		return;
+	}
+
+	tr.numRealTimeLights = JSON_ArrayGetIndex(environmentArrayJson, bufferEnd, NULL, 0);
+	tr.realTimeLights = (realTimeLight_t *)R_Hunk_Alloc(tr.numRealTimeLights * sizeof(*tr.realTimeLights), qtrue);
+	memset(tr.realTimeLights, 0, tr.numRealTimeLights * sizeof(*tr.realTimeLights));
+
+	for (i = 0; i < tr.numRealTimeLights; i++)
+	{
+		realTimeLight_t *light = &tr.realTimeLights[i];
+		const char *lightJson, *keyValueJson, *indexes[3];
+		int j;
+
+		lightJson = JSON_ArrayGetValue(environmentArrayJson, bufferEnd, i);
+
+		keyValueJson = JSON_ObjectGetNamedValue(lightJson, bufferEnd, "Position");
+		JSON_ArrayGetIndex(keyValueJson, bufferEnd, indexes, 3);
+		for (j = 0; j < 3; j++)
+			light->position[j] = JSON_ValueGetFloat(indexes[j], bufferEnd);
+
+		keyValueJson = JSON_ObjectGetNamedValue(lightJson, bufferEnd, "Color");
+		JSON_ArrayGetIndex(keyValueJson, bufferEnd, indexes, 3);
+		for (j = 0; j < 3; j++)
+			light->color[j] = JSON_ValueGetFloat(indexes[j], bufferEnd);
+
+		light->strength = 100.0f;
+		keyValueJson = JSON_ObjectGetNamedValue(lightJson, bufferEnd, "Strength");
+		if (keyValueJson)
+			light->strength = JSON_ValueGetFloat(keyValueJson, bufferEnd);
 	}
 
 	ri.FS_FreeFile(buffer.v);
@@ -3138,6 +3182,11 @@ void R_LoadCubemaps(world_t *world)
 
 void R_RenderMissingCubemaps()
 {
+	if (tr.cubemaps[0].image)
+	{
+		return;
+	}
+
 	GLenum cubemapFormat = GL_RGBA8;
 
 	if (r_hdr->integer)
@@ -3145,24 +3194,30 @@ void R_RenderMissingCubemaps()
 		cubemapFormat = GL_RGBA16F;
 	}
 
-	for (int i = 0; i < tr.numCubemaps; i++)
+	int numberOfBounces = 2;
+	for (int k = 0; k <= numberOfBounces; k++)
 	{
-		if (!tr.cubemaps[i].image)
+		qboolean bounce = qboolean(k != 0);
+		for (int i = 0; i < tr.numCubemaps; i++)
 		{
-			tr.cubemaps[i].image = R_CreateImage(va("*cubeMap%d", i), NULL, r_cubemapSize->integer, r_cubemapSize->integer, IMGTYPE_COLORALPHA, IMGFLAG_NO_COMPRESSION | IMGFLAG_CLAMPTOEDGE | IMGFLAG_MIPMAP | IMGFLAG_CUBEMAP, cubemapFormat);
+			if (!bounce)
+				tr.cubemaps[i].image = R_CreateImage(va("*cubeMap%d", i), NULL, r_cubemapSize->integer, r_cubemapSize->integer, IMGTYPE_COLORALPHA, IMGFLAG_NO_COMPRESSION | IMGFLAG_CLAMPTOEDGE | IMGFLAG_MIPMAP | IMGFLAG_CUBEMAP, cubemapFormat);
+
 			for (int j = 0; j < 6; j++)
 			{
 				RE_ClearScene();
-				R_RenderCubemapSide(i, j, qfalse);
+				R_RenderCubemapSide(tr.cubemaps, i, j, qfalse, bounce);
 				R_IssuePendingRenderCommands();
 				R_InitNextFrame();
 			}
 
-			RE_ClearScene();
-			R_AddConvolveCubemapCmd(i);
-			R_IssuePendingRenderCommands();
-			R_InitNextFrame();
-
+			for (int j = 0; j < 6; j++)
+			{
+				RE_ClearScene();
+				R_AddConvolveCubemapCmd(i, j);
+				R_IssuePendingRenderCommands();
+				R_InitNextFrame();
+			}
 		}
 	}
 }
@@ -3728,69 +3783,146 @@ static void R_BuildLightGridTextures(world_t *world)
 	byte *directionalBase = (byte *)R_Malloc(world->numGridArrayElements * sizeof(byte) * 4, TAG_TEMP_WORKSPACE, qtrue);
 	byte *directionBase = (byte *)R_Malloc(world->numGridArrayElements * sizeof(byte) * 4, TAG_TEMP_WORKSPACE, qtrue);
 
-	byte *ambient = ambientBase;
-	byte *directional = directionalBase;
-	byte *direction = directionBase;
-	for (int i = 0; i < world->numGridArrayElements; i++)
+	if (1)
 	{
-		
-		float lat, lng;
-		float clat, slong, slat, clong;
-		mgrid_t *data = world->lightGridData + world->lightGridArray[i];
+		byte *ambient = ambientBase;
+		byte *directional = directionalBase;
+		byte *direction = directionBase;
+		for (int i = 0; i < world->numGridArrayElements; i++)
+		{
 
-		ambient[0] = data->ambientLight[0][0];
-		ambient[1] = data->ambientLight[0][1];
-		ambient[2] = data->ambientLight[0][2];
-		ambient[3] = 0;
+			float lat, lng;
+			float clat, slong, slat, clong;
+			mgrid_t *data = world->lightGridData + world->lightGridArray[i];
 
-		directional[0] = data->directLight[0][0];
-		directional[1] = data->directLight[0][1];
-		directional[2] = data->directLight[0][2];
-		directional[3] = 0;
+			ambient[0] = data->ambientLight[0][0];
+			ambient[1] = data->ambientLight[0][1];
+			ambient[2] = data->ambientLight[0][2];
+			ambient[3] = 0;
 
-		lat = (data->latLong[1] / 255.0f) * 2.0f * M_PI;
-		lng = (data->latLong[0] / 255.0f) * 2.0f * M_PI;
+			directional[0] = data->directLight[0][0];
+			directional[1] = data->directLight[0][1];
+			directional[2] = data->directLight[0][2];
+			directional[3] = 0;
 
-		// decode X as cos( lat ) * sin( long )
-		// decode Y as sin( lat ) * sin( long )
-		// decode Z as cos( long )
+			lat = (data->latLong[1] / 255.0f) * 2.0f * M_PI;
+			lng = (data->latLong[0] / 255.0f) * 2.0f * M_PI;
 
-		slat = sinf(lat);
-		clat = cosf(lat);
-		slong = sinf(lng);
-		clong = cosf(lng);
+			// decode X as cos( lat ) * sin( long )
+			// decode Y as sin( lat ) * sin( long )
+			// decode Z as cos( long )
 
-		direction[0] = (byte)floorf(clat * slong);
-		direction[1] = (byte)floorf(slat * slong);
-		direction[2] = (byte)floorf(clong);
-		direction[3] = 0;
+			slat = sinf(lat);
+			clat = cosf(lat);
+			slong = sinf(lng);
+			clong = cosf(lng);
 
-		ambient += 4;
-		directional += 4;
-		direction += 4;
+			direction[0] = (byte)floorf(clat * slong);
+			direction[1] = (byte)floorf(slat * slong);
+			direction[2] = (byte)floorf(clong);
+			direction[3] = 0;
+
+			ambient += 4;
+			directional += 4;
+			direction += 4;
+		}
+
+		world->ambientLightImages[0] = R_CreateImage3D(
+			"*bsp_ambientLightGrid", ambientBase,
+			world->lightGridBounds[0],
+			world->lightGridBounds[1],
+			world->lightGridBounds[2],
+			GL_RGB8);
+
+		world->directionalLightImages[0] = R_CreateImage3D(
+			"*bsp_directionalLightGrid", directionalBase,
+			world->lightGridBounds[0],
+			world->lightGridBounds[1],
+			world->lightGridBounds[2],
+			GL_RGB8);
+
+		world->directionImages = R_CreateImage3D(
+			"*bsp_directionsGrid", directionBase,
+			world->lightGridBounds[0],
+			world->lightGridBounds[1],
+			world->lightGridBounds[2],
+			GL_RGB8);
 	}
+	if (1)
+	{
+		const float stepSize = 10;
+		int numSphericalHarmonics = world->numGridArrayElements / stepSize;
 
-	world->ambientLightImages[0] = R_CreateImage3D(
-		"*bsp_ambientLightGrid", ambientBase,
-		world->lightGridBounds[0],
-		world->lightGridBounds[1],
-		world->lightGridBounds[2],
-		GL_RGB8);
+		if (!numSphericalHarmonics)
+			return;
 
-	world->directionalLightImages[0] = R_CreateImage3D(
-		"*bsp_directionalLightGrid", directionalBase,
-		world->lightGridBounds[0],
-		world->lightGridBounds[1],
-		world->lightGridBounds[2],
-		GL_RGB8);
+		// FIXME: Allocate better, allocates to much because the number of useful spherical harmonics is unknown
+		tr.numSphericalHarmonics = numSphericalHarmonics;
+		tr.sphericalHarmonics = (cubemap_t *)R_Hunk_Alloc(tr.numSphericalHarmonics * sizeof(*tr.sphericalHarmonics), qtrue);
+		memset(tr.sphericalHarmonics, 0, tr.numSphericalHarmonics * sizeof(*tr.sphericalHarmonics));
+		
+		numSphericalHarmonics = 0;
+		for (int x = 0; x < world->lightGridBounds[0] / stepSize; x++)
+		{
+			for (int y = 0; y < world->lightGridBounds[1] / stepSize; y++)
+			{
+				for (int z = 0; z < world->lightGridBounds[2] / stepSize; z++)
+				{
+					cubemap_t *sphericalHarmonic = &tr.sphericalHarmonics[numSphericalHarmonics];
+					mgrid_t	*data;
+					vec3_t	origin;
+					int		pos[3];
 
-	world->directionImages = R_CreateImage3D(
-		"*bsp_directionsGrid", directionBase,
-		world->lightGridBounds[0],
-		world->lightGridBounds[1],
-		world->lightGridBounds[2],
-		GL_RGB8);
+					float posX = world->lightGridOrigin[0] + (x * world->lightGridSize[0] * stepSize);
+					float posY = world->lightGridOrigin[1] + (y * world->lightGridSize[1] * stepSize);
+					float posZ = world->lightGridOrigin[2] + (z * world->lightGridSize[2] * stepSize);
 
+					VectorSet(origin, posX, posY, posZ);
+
+					int		gridStep[3];
+					gridStep[0] = 1;
+					gridStep[1] = 1 * world->lightGridBounds[0];
+					gridStep[2] = 1 * world->lightGridBounds[0] * world->lightGridBounds[1];
+
+					VectorSubtract(origin, world->lightGridOrigin, origin);
+					for (int i = 0; i < 3; i++) {
+						pos[i] = floor(origin[i] * world->lightGridInverseSize[i]);
+						if (pos[i] < 0) {
+							pos[i] = 0;
+						}
+						else if (pos[i] >= world->lightGridBounds[i] - 1) {
+							pos[i] = world->lightGridBounds[i] - 1;
+						}
+					}
+
+					unsigned short	*startGridPos = 
+						world->lightGridArray + 
+						(
+						pos[0] * gridStep[0] +
+						pos[1] * gridStep[1] +
+						pos[2] * gridStep[2]
+						);
+
+					data = world->lightGridData + *startGridPos;
+
+					if (data->styles[0] == LS_NONE)
+					{
+						continue;	// ignore samples in walls
+					}
+
+					Q_strncpyz(sphericalHarmonic->name, va("sphericalHarmonic%i", numSphericalHarmonics), MAX_QPATH);
+
+					ri.Printf(PRINT_DEVELOPER, "position sphericalHarmonic %i: %f, %f, %f\n", numSphericalHarmonics, posX, posY, posZ);
+					VectorSet(origin, posX, posY, posZ);
+					VectorCopy(origin, sphericalHarmonic->origin);
+					numSphericalHarmonics++;
+				}
+			}
+		}
+		tr.numSphericalHarmonics = numSphericalHarmonics;
+	}
+	
+	ri.Printf(PRINT_DEVELOPER, "Found %i positions for sphericalHarmonics\n", tr.numSphericalHarmonics);
 	return;
 }
 

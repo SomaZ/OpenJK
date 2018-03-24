@@ -534,7 +534,7 @@ void RB_BeginDrawingView (void) {
 		// FIXME: hack for cubemap testing
 		if (tr.renderCubeFbo != NULL && backEnd.viewParms.targetFbo == tr.renderCubeFbo)
 		{
-			cubemap_t *cubemap = &tr.cubemaps[backEnd.viewParms.targetFboCubemapIndex];
+			cubemap_t *cubemap = &backEnd.viewParms.cubemapSelection[backEnd.viewParms.targetFboCubemapIndex];
 			qglFramebufferTexture2D(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT, GL_TEXTURE_CUBE_MAP_POSITIVE_X + backEnd.viewParms.targetFboLayer, cubemap->image->texnum, 0);
 		}
 	}
@@ -1969,14 +1969,12 @@ static const void *RB_PrefilterEnvMap(const void *data) {
 		height = height / 2.0;
 		qglViewport(0, 0, width, height);
 		qglScissor(0, 0, width, height);
-		for (int cubemapSide = 0; cubemapSide < 6; cubemapSide++) 
-		{
-			vec4_t viewInfo;
-			VectorSet4(viewInfo, cubemapSide, level, numMips, 0.0);
-			GLSL_SetUniformVec4(&tr.prefilterEnvMapShader, UNIFORM_VIEWINFO, viewInfo);
-			RB_InstantQuad2(quadVerts, texCoords);
-			qglCopyTexSubImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + cubemapSide, level, 0, 0, 0, 0, width, height);
-		}
+
+		vec4_t viewInfo;
+		VectorSet4(viewInfo, cmd->cubeSide, level, numMips, 0.0);
+		GLSL_SetUniformVec4(&tr.prefilterEnvMapShader, UNIFORM_VIEWINFO, viewInfo);
+		RB_InstantQuad2(quadVerts, texCoords);
+		qglCopyTexSubImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + cmd->cubeSide, level, 0, 0, 0, 0, width, height);
 	}
 
 	GL_SelectTexture(0);
@@ -2906,6 +2904,56 @@ const void *RB_ExportCubemaps(const void *data)
 	return (const void *)(cmd + 1);
 }
 
+/*
+=============
+RB_BuildSphericalHarmonics
+
+=============
+*/
+const void *RB_BuildSphericalHarmonics(const void *data)
+{
+	const buildSphericalHarmonicsCommand_t *cmd = (buildSphericalHarmonicsCommand_t *)data;
+
+	// finish any 2D drawing if needed
+	if (tess.numIndexes)
+		RB_EndSurface();
+
+	if (!tr.world || tr.numSphericalHarmonics == 0 || !r_cubeMapping->integer)
+	{
+		// do nothing
+		ri.Printf(PRINT_ALL, "No world or no cubemapping enabled!\n");
+		return (const void *)(cmd + 1);
+	}
+
+	if (cmd)
+	{
+		ri.Printf(PRINT_ALL, "Building spherical harmonics!\n");
+		GLenum cubemapFormat = GL_RGBA8;
+
+		if (r_hdr->integer)
+		{
+			cubemapFormat = GL_RGBA16F;
+		}
+		for (int i = 0; i < (tr.numSphericalHarmonics); i++)
+		{
+			tr.sphericalHarmonics[i].image = R_CreateImage(va("*sphericalHarmonic%d", i + 1), NULL, 64, 64, IMGTYPE_COLORALPHA, IMGFLAG_NO_COMPRESSION | IMGFLAG_CLAMPTOEDGE | IMGFLAG_MIPMAP | IMGFLAG_CUBEMAP, cubemapFormat);
+
+			for (int j = 0; j < 6; j++)
+			{
+				RE_ClearScene();
+				R_RenderCubemapSide(tr.sphericalHarmonics, i, j, qfalse, qtrue);
+				R_IssuePendingRenderCommands();
+				R_InitNextFrame();
+			}
+			//TODO: Convolve the cubemaps & build SH Coefficients
+			//paper: http://www.graphics.stanford.edu/papers/envmap/envmap.pdf
+			
+		}
+		//TODO: Export them somehow. json file?
+	}
+
+	return (const void *)(cmd + 1);
+}
 
 /*
 ====================
@@ -2971,6 +3019,9 @@ void RB_ExecuteRenderCommands( const void *data ) {
 			break;
 		case RC_EXPORT_CUBEMAPS:
 			data = RB_ExportCubemaps(data);
+			break;
+		case RC_BUILD_SPHERICAL_HARMONICS:
+			data = RB_BuildSphericalHarmonics(data);
 			break;
 		case RC_BEGIN_TIMED_BLOCK:
 			data = RB_BeginTimedBlock(data);

@@ -2868,7 +2868,7 @@ void R_RenderSunShadowMaps(const refdef_t *fd, int level)
 	}
 }
 
-void R_RenderCubemapSide( int cubemapIndex, int cubemapSide, qboolean subscene )
+void R_RenderCubemapSide( cubemap_t *cubemaps, int cubemapIndex, int cubemapSide, qboolean subscene, qboolean bounce )
 {
 	refdef_t refdef;
 	viewParms_t	parms;
@@ -2876,7 +2876,7 @@ void R_RenderCubemapSide( int cubemapIndex, int cubemapSide, qboolean subscene )
 
 	memset( &refdef, 0, sizeof( refdef ) );
 	refdef.rdflags = 0;
-	VectorCopy(tr.cubemaps[cubemapIndex].origin, refdef.vieworg);
+	VectorCopy(cubemaps[cubemapIndex].origin, refdef.vieworg);
 
 	switch(cubemapSide)
 	{
@@ -2932,8 +2932,7 @@ void R_RenderCubemapSide( int cubemapIndex, int cubemapSide, qboolean subscene )
 	{
 		RE_BeginScene(&refdef);
 
-		// FIXME: sun shadows aren't rendered correctly in cubemaps
-		// fix involves changing r_FBufScale to fit smaller cubemap image size, or rendering cubemap to framebuffer first
+		// FIXME: sun shadows aren't rendered correctly in cubemaps, wrong sun angle
 		if (r_sunlightMode->integer && r_depthPrepass->value && ((r_forceSun->integer) || tr.sunShadows))
 		{
 			R_RenderSunShadowMaps(&refdef, 0);
@@ -2953,7 +2952,9 @@ void R_RenderCubemapSide( int cubemapIndex, int cubemapSide, qboolean subscene )
 	parms.viewportHeight = tr.renderCubeFbo->height;
 	parms.isPortal = qfalse;
 	parms.isMirror = qtrue;
-	parms.flags =  VPF_NOVIEWMODEL | VPF_NOCUBEMAPS | VPF_NOPOSTPROCESS;
+	parms.flags =  VPF_NOVIEWMODEL | VPF_NOPOSTPROCESS;
+	if (!bounce)
+		parms.flags |= VPF_NOCUBEMAPS;
 
 	parms.fovX = 90;
 	parms.fovY = 90;
@@ -2973,6 +2974,7 @@ void R_RenderCubemapSide( int cubemapIndex, int cubemapSide, qboolean subscene )
 	}
 
 	parms.targetFbo = tr.renderCubeFbo;
+	parms.cubemapSelection = cubemaps;
 	parms.targetFboLayer = cubemapSide;
 	parms.targetFboCubemapIndex = cubemapIndex;
 
