@@ -36,6 +36,7 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 #define ITEM_TYPE_MULTI				13		// multiple list setting, enumerated
 #define ITEM_TYPE_BIND				14		// multiple list setting, enumerated
 #define ITEM_TYPE_TEXTSCROLL		15		// scrolling text
+#define ITEM_TYPE_TEXTSCROLL_DP		16		// datapad scrolling text 
 
 
 #define ITEM_ALIGN_LEFT 0                 // left alignment
