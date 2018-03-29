@@ -1783,6 +1783,8 @@ static void RB_IterateStagesGeneric( shaderCommands_t *input, const VertexArrays
 		//
 		bool enableCubeMaps =
 			(r_cubeMapping->integer && !(tr.viewParms.flags & VPF_NOCUBEMAPS) && input->cubemapIndex);
+		bool enableShpericalHarmonics = 
+			(r_cubeMapping->integer && !(tr.viewParms.flags & VPF_NOCUBEMAPS) && input->cubemapIndex && tr.numfinishedSphericalHarmonics == tr.numSphericalHarmonics);
 
 		if ( backEnd.depthFill )
 		{
@@ -1863,7 +1865,6 @@ static void RB_IterateStagesGeneric( shaderCommands_t *input, const VertexArrays
 					if (pStage->bundle[TB_NORMALMAP].image[0])
 					{
 						samplerBindingsWriter.AddAnimatedImage(&pStage->bundle[TB_NORMALMAP], TB_NORMALMAP);
-						enableTextures[0] = 1.0f;
 					}
 					else if (r_normalMapping->integer)
 					{
@@ -1890,6 +1891,9 @@ static void RB_IterateStagesGeneric( shaderCommands_t *input, const VertexArrays
 						samplerBindingsWriter.AddStaticImage(tr.whiteImage, TB_SPECULARMAP);
 					}
 				}
+
+				if (enableShpericalHarmonics)
+					enableTextures[0] = 1.0f;
 
 				if ( enableCubeMaps )
 				{
@@ -1928,6 +1932,21 @@ static void RB_IterateStagesGeneric( shaderCommands_t *input, const VertexArrays
 			VectorScale4(vec, 1.0f / cubemap->parallaxRadius, vec);
 
 			uniformDataWriter.SetUniformVec4(UNIFORM_CUBEMAPINFO, vec);
+
+			int index = R_SHForPoint(backEnd.currentEntity->e.lightingOrigin);
+			
+			if (tr.numfinishedSphericalHarmonics == tr.numSphericalHarmonics) {
+				sphericalHarmonic_t *sh = &tr.sphericalHarmonicsCoefficients[
+					index
+				];
+				float coefficients[27];
+				for (int i = 0; i < 9; i++) {
+					coefficients[i * 3 + 0] = sh->coefficents[i][0];
+					coefficients[i * 3 + 1] = sh->coefficents[i][1];
+					coefficients[i * 3 + 2] = sh->coefficents[i][2];
+				}
+				uniformDataWriter.SetUniformVec3(UNIFORM_SPHERICAL_HARMONIC, coefficients, 9);
+			}
 		}
 
 		CaptureDrawData(input, pStage, index, stage);

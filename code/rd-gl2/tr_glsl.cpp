@@ -160,7 +160,8 @@ static uniformInfo_t uniformsInfo[] =
 	{ "u_PrimaryLightAmbient", GLSL_VEC3, 1 },
 	{ "u_PrimaryLightRadius",  GLSL_FLOAT, 1 },
 
-	{ "u_CubeMapInfo", GLSL_VEC4, 1 },
+	{ "u_CubeMapInfo",			GLSL_VEC4, 1 },
+	{ "u_SphericalHarmonic",	GLSL_VEC3, 9 },
 
 	{ "u_BoneMatrices",			GLSL_MAT4x3, 20 },
 	{ "u_AlphaTestValue",		GLSL_FLOAT, 1 },
@@ -921,9 +922,8 @@ void GLSL_SetUniforms(shaderProgram_t *program, UniformData *uniformData)
 
 		case GLSL_VEC3:
 		{
-			assert(data->numElements == 1);
 			GLfloat *value = (GLfloat *)(data + 1);
-			GLSL_SetUniformVec3(program, data->index, value);
+			GLSL_SetUniformVec3N(program, data->index, value, data->numElements);
 			data = reinterpret_cast<UniformData *>(value + data->numElements * 3);
 			break;
 		}
@@ -1057,6 +1057,39 @@ void GLSL_SetUniformVec3(shaderProgram_t *program, int uniformNum, const vec3_t 
 	VectorCopy(v, compare);
 
 	qglUniform3f(uniforms[uniformNum], v[0], v[1], v[2]);
+}
+
+void GLSL_SetUniformVec3N(shaderProgram_t *program, int uniformNum, const float *v, int numVec3s)
+{
+	GLint *uniforms = program->uniforms;
+	float *compare = (float *)(program->uniformBuffer + program->uniformBufferOffsets[uniformNum]);
+
+	if (uniforms[uniformNum] == -1)
+		return;
+
+	if (uniformsInfo[uniformNum].type != GLSL_VEC3)
+	{
+		ri.Printf(PRINT_WARNING, "GLSL_SetUniformVec3N: wrong type for uniform %i in program %s\n", uniformNum, program->name);
+		return;
+	}
+
+	if (uniformsInfo[uniformNum].size < numVec3s)
+	{
+		ri.Printf(PRINT_WARNING, "GLSL_SetUniformVec3N: uniform %i only has %d elements! Tried to set %d\n",
+			uniformNum,
+			uniformsInfo[uniformNum].size,
+			numVec3s);
+		return;
+	}
+
+	if (memcmp(compare, v, sizeof(vec3_t) * numVec3s) == 0)
+	{
+		return;
+	}
+
+	memcpy(compare, v, sizeof(vec3_t) * numVec3s);
+
+	qglUniform3fv(uniforms[uniformNum], numVec3s, (float *)v);
 }
 
 void GLSL_SetUniformVec4(shaderProgram_t *program, int uniformNum, const vec4_t v)

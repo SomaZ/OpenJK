@@ -257,3 +257,38 @@ float GSmithCorrelated(float roughness, float ndotv, float ndotl)
 	float visL = ndotv * sqrt(ndotl * (ndotl - ndotl * m2) + m2);
 	return 0.5f / (visV + visL);
 }
+
+void GetSHBasis(vec3_t normal, float out[9])
+{
+	out[0] = 0.282095f;														//Y00
+	out[1] = 0.488603f * normal[0];											//Y11
+	out[2] = 0.488603f * normal[2];											//Y10
+	out[3] = 0.488603f * normal[1];											//Y1_1
+	out[4] = 1.092548f * normal[0] * normal[2];								//Y21
+	out[5] = 1.092548f * normal[1] * normal[2];								//Y2_1
+	out[6] = 1.092548f * normal[1] * normal[1];								//Y2_2
+	out[7] = 0.946176f * normal[2] * normal[2] - 0.315392f;					//Y20
+	out[8] = 0.546274f * (normal[0] * normal[0] - normal[1] * normal[1]);	//Y22
+}
+
+void GetTextureAngle(vec2_t uv, int index, vec3_t normal)
+{
+	float tempUv[2];
+	tempUv[0] = (uv[0] - 0.5f) * 2.0;
+	tempUv[1] = (uv[1] - 0.5f) * 2.0;
+	// from http://www.codinglabs.net/article_physically_based_rendering.aspx
+
+	VectorSet(normal, tempUv[0], tempUv[1], 1.0f);
+	if (index == 2)
+		VectorSet(normal, tempUv[0], 1.0f ,-tempUv[1]);
+	else if (index == 3)
+		VectorSet(normal, tempUv[0], -1.0f, tempUv[1]);
+	else if (index == 0)
+		VectorSet(normal, 1.0f, tempUv[1], -tempUv[0]);
+	else if (index == 1)
+		VectorSet(normal, -1.0f, tempUv[1], tempUv[0]);
+	else if (index == 5)
+		VectorSet(normal, -tempUv[0], tempUv[1], -1.0f);
+	//VectorInverse(normal);
+	VectorNormalize(normal);
+}
