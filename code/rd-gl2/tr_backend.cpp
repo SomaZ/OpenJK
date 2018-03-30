@@ -2945,7 +2945,7 @@ const void *RB_BuildSphericalHarmonics(const void *data)
 	{
 		const int shSize = 32;
 		const int sideSize = shSize * shSize * 4;
-		const int batchSize = 5;
+		const int batchSize = 32;
 
 		GLenum cubemapFormat = GL_RGBA8;
 
@@ -2959,6 +2959,8 @@ const void *RB_BuildSphericalHarmonics(const void *data)
 		cubemap_t *currentSH = (cubemap_t *)R_Malloc(sizeof(*tr.cubemaps), TAG_TEMP_WORKSPACE);
 		currentSH[0].image = bufferImage;
 		int buildedSphericalHarmonics = 0;
+
+		float *cubemapPixels = (float *)R_Malloc(sideSize * sizeof(float), TAG_TEMP_WORKSPACE);
 
 		for (int i = tr.numfinishedSphericalHarmonics; i < (tr.numfinishedSphericalHarmonics + batchSize); i++)
 		{
@@ -2984,7 +2986,7 @@ const void *RB_BuildSphericalHarmonics(const void *data)
 			for (int j = 0; j < 6; j++)
 			{
 				//read pixels into byte buffer
-				float *p = (float *)R_Malloc(sideSize * sizeof(float), TAG_TEMP_WORKSPACE);
+				float *p = cubemapPixels;
 				qglFramebufferTexture2D(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT, GL_TEXTURE_CUBE_MAP_POSITIVE_X + j, sh[0].image->texnum, 0);
 				qglReadPixels(0, 0, shSize, shSize, GL_RGBA, GL_FLOAT, p);
 
@@ -3019,8 +3021,6 @@ const void *RB_BuildSphericalHarmonics(const void *data)
 						p += 4;
 					}
 				}
-				p = NULL;
-				free(p);
 			}
 			// scale spherical harmonics coefficients by number of samples
 			for (int i = 0; i < 9; i++)
@@ -3037,12 +3037,13 @@ const void *RB_BuildSphericalHarmonics(const void *data)
 			tr.buildingSphericalHarmonics = qfalse;
 		}
 		else
-			ri.Printf(PRINT_ALL, "Finished building %i of %i spherical harmonics for this level. (%f%)\n", 
+			ri.Printf(PRINT_ALL, "Finished building %i of %i spherical harmonics for this level. (%3.2f%%)\n", 
 				tr.numfinishedSphericalHarmonics, 
 				tr.numSphericalHarmonics, 
 				((float)tr.numfinishedSphericalHarmonics / (float)tr.numSphericalHarmonics) * 100.f);
-		currentSH = NULL;
-		free(currentSH);
+
+		R_Free(cubemapPixels);
+		R_Free(currentSH);
 	}
 
 	return (const void *)(cmd + 1);
