@@ -1933,9 +1933,9 @@ static void RB_IterateStagesGeneric( shaderCommands_t *input, const VertexArrays
 
 			uniformDataWriter.SetUniformVec4(UNIFORM_CUBEMAPINFO, vec);
 
-			int index = R_SHForPoint(backEnd.currentEntity->e.lightingOrigin);
-			
 			if (tr.numfinishedSphericalHarmonics == tr.numSphericalHarmonics) {
+				//TODO: speed up this process, maybe ambient pre pass
+				int index = R_SHForPoint(backEnd.currentEntity->e.lightingOrigin);
 				sphericalHarmonic_t *sh = &tr.sphericalHarmonicsCoefficients[
 					index
 				];

@@ -2943,9 +2943,9 @@ const void *RB_BuildSphericalHarmonics(const void *data)
 
 	if (cmd)
 	{
-		const int shSize = 64;
+		const int shSize = 32;
 		const int sideSize = shSize * shSize * 4;
-		const int batchSize = 30;
+		const int batchSize = 5;
 
 		GLenum cubemapFormat = GL_RGBA8;
 
@@ -2953,8 +2953,9 @@ const void *RB_BuildSphericalHarmonics(const void *data)
 		{
 			cubemapFormat = GL_RGBA16F;
 		}
-
-		image_t *bufferImage = R_CreateImage("*sphericalHarmonic_buffer_image", NULL, shSize, shSize, IMGTYPE_COLORALPHA, IMGFLAG_NO_COMPRESSION | IMGFLAG_CLAMPTOEDGE | IMGFLAG_MIPMAP | IMGFLAG_CUBEMAP, cubemapFormat);
+		image_t *bufferImage = R_FindImageFile("*sphericalHarmonic_buffer_image", IMGTYPE_COLORALPHA, IMGFLAG_NO_COMPRESSION | IMGFLAG_CLAMPTOEDGE | IMGFLAG_MIPMAP | IMGFLAG_CUBEMAP);
+		if (!bufferImage)
+			bufferImage = R_CreateImage("*sphericalHarmonic_buffer_image", NULL, shSize, shSize, IMGTYPE_COLORALPHA, IMGFLAG_NO_COMPRESSION | IMGFLAG_CLAMPTOEDGE | IMGFLAG_MIPMAP | IMGFLAG_CUBEMAP, cubemapFormat);
 		cubemap_t *currentSH = (cubemap_t *)R_Malloc(sizeof(*tr.cubemaps), TAG_TEMP_WORKSPACE);
 		currentSH[0].image = bufferImage;
 		int buildedSphericalHarmonics = 0;
@@ -3019,6 +3020,7 @@ const void *RB_BuildSphericalHarmonics(const void *data)
 					}
 				}
 				p = NULL;
+				free(p);
 			}
 			// scale spherical harmonics coefficients by number of samples
 			for (int i = 0; i < 9; i++)
@@ -3039,6 +3041,8 @@ const void *RB_BuildSphericalHarmonics(const void *data)
 				tr.numfinishedSphericalHarmonics, 
 				tr.numSphericalHarmonics, 
 				((float)tr.numfinishedSphericalHarmonics / (float)tr.numSphericalHarmonics) * 100.f);
+		currentSH = NULL;
+		free(currentSH);
 	}
 
 	return (const void *)(cmd + 1);
