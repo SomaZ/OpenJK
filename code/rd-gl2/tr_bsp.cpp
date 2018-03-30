@@ -3850,7 +3850,7 @@ static void R_BuildLightGridTextures(world_t *world)
 	}
 	if (1)
 	{
-		const float stepSize = 2;
+		const float stepSize = 1;
 		int numSphericalHarmonics = world->numGridArrayElements / stepSize;
 
 		if (!numSphericalHarmonics)
