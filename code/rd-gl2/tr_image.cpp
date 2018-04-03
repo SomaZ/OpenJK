@@ -2607,9 +2607,6 @@ void R_CreateDiffuseAndSpecMapsFromBaseColorAndRMO(shaderStage_t *stage, const c
 	specGlossPic = (byte *)R_Malloc(width * height * 4, TAG_GP2, qfalse);
 	diffusePic = (byte *)R_Malloc(width * height * 4, TAG_GP2, qfalse);
 
-	const float gamma = 2.2f;
-	const float inverseGamma = 1.0f / 2.2f;
-
 	float baseSpecular;
 
 	switch (type)
@@ -2665,9 +2662,9 @@ void R_CreateDiffuseAndSpecMapsFromBaseColorAndRMO(shaderStage_t *stage, const c
 		
 		float baseColor[4];
 		// remove gamma correction because we want to work in linear space
-		baseColor[0] = pow(ByteToFloat(baseColorPic[i + 0]), gamma);
-		baseColor[1] = pow(ByteToFloat(baseColorPic[i + 1]), gamma);
-		baseColor[2] = pow(ByteToFloat(baseColorPic[i + 2]), gamma);
+		baseColor[0] = pow(ByteToFloat(baseColorPic[i + 0]), GAMMA);
+		baseColor[1] = pow(ByteToFloat(baseColorPic[i + 1]), GAMMA);
+		baseColor[2] = pow(ByteToFloat(baseColorPic[i + 2]), GAMMA);
 		// don't remove gamma correction in alpha because this is data, not color
 		baseColor[3] = ByteToFloat(baseColorPic[i + 3]);
 
@@ -2675,16 +2672,16 @@ void R_CreateDiffuseAndSpecMapsFromBaseColorAndRMO(shaderStage_t *stage, const c
 
 		// diffuse Color = baseColor * (1.0 - metalness) 
 		// also gamma correct again
-		diffusePic[i + 0] = FloatToByte(pow(baseColor[0] * (1.0f - metalness) * ao, inverseGamma));
-		diffusePic[i + 1] = FloatToByte(pow(baseColor[1] * (1.0f - metalness) * ao, inverseGamma));
-		diffusePic[i + 2] = FloatToByte(pow(baseColor[2] * (1.0f - metalness) * ao, inverseGamma));
+		diffusePic[i + 0] = FloatToByte(pow(baseColor[0] * (1.0f - metalness) * ao, INV_GAMMA));
+		diffusePic[i + 1] = FloatToByte(pow(baseColor[1] * (1.0f - metalness) * ao, INV_GAMMA));
+		diffusePic[i + 2] = FloatToByte(pow(baseColor[2] * (1.0f - metalness) * ao, INV_GAMMA));
 		diffusePic[i + 3] = FloatToByte(baseColor[3]);
 
 		// specular Color = mix(baseSpecular, baseColor, metalness)
 		// also gamma correct again
-		specGlossPic[i + 0] = FloatToByte(pow(baseSpecular * (1.0f - metalness) + baseColor[0] * metalness, inverseGamma));
-		specGlossPic[i + 1] = FloatToByte(pow(baseSpecular * (1.0f - metalness) + baseColor[1] * metalness, inverseGamma));
-		specGlossPic[i + 2] = FloatToByte(pow(baseSpecular * (1.0f - metalness) + baseColor[2] * metalness, inverseGamma));
+		specGlossPic[i + 0] = FloatToByte(pow(baseSpecular * (1.0f - metalness) + baseColor[0] * metalness, INV_GAMMA));
+		specGlossPic[i + 1] = FloatToByte(pow(baseSpecular * (1.0f - metalness) + baseColor[1] * metalness, INV_GAMMA));
+		specGlossPic[i + 2] = FloatToByte(pow(baseSpecular * (1.0f - metalness) + baseColor[2] * metalness, INV_GAMMA));
 		// don't remove gamma correction in alpha because this is data, not color
 		specGlossPic[i + 3] = FloatToByte(gloss);
 	}

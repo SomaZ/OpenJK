@@ -3214,7 +3214,7 @@ void R_RenderMissingCubemaps()
 			for (int j = 0; j < 6; j++)
 			{
 				RE_ClearScene();
-				R_AddConvolveCubemapCmd(i, j);
+				R_AddConvolveCubemapCmd(tr.cubemaps, i, j);
 				R_IssuePendingRenderCommands();
 				R_InitNextFrame();
 			}
@@ -3850,16 +3850,13 @@ static void R_BuildLightGridTextures(world_t *world)
 	}
 	if (1)
 	{
-		const float stepSize = 10;
+		const float stepSize = 1;
 		int numSphericalHarmonics = world->numGridArrayElements / stepSize;
 
 		if (!numSphericalHarmonics)
 			return;
 
-		// FIXME: Allocate better, allocates to much because the number of useful spherical harmonics is unknown
-		tr.numSphericalHarmonics = numSphericalHarmonics;
-		tr.sphericalHarmonics = (cubemap_t *)R_Hunk_Alloc(tr.numSphericalHarmonics * sizeof(*tr.sphericalHarmonics), qtrue);
-		memset(tr.sphericalHarmonics, 0, tr.numSphericalHarmonics * sizeof(*tr.sphericalHarmonics));
+		vec3_t *positions = (vec3_t *)R_Malloc(numSphericalHarmonics * sizeof(vec3_t), TAG_TEMP_WORKSPACE, qtrue);
 		
 		numSphericalHarmonics = 0;
 		for (int x = 0; x < world->lightGridBounds[0] / stepSize; x++)
@@ -3868,7 +3865,6 @@ static void R_BuildLightGridTextures(world_t *world)
 			{
 				for (int z = 0; z < world->lightGridBounds[2] / stepSize; z++)
 				{
-					cubemap_t *sphericalHarmonic = &tr.sphericalHarmonics[numSphericalHarmonics];
 					mgrid_t	*data;
 					vec3_t	origin;
 					int		pos[3];
@@ -3910,16 +3906,22 @@ static void R_BuildLightGridTextures(world_t *world)
 						continue;	// ignore samples in walls
 					}
 
-					Q_strncpyz(sphericalHarmonic->name, va("sphericalHarmonic%i", numSphericalHarmonics), MAX_QPATH);
-
-					ri.Printf(PRINT_DEVELOPER, "position sphericalHarmonic %i: %f, %f, %f\n", numSphericalHarmonics, posX, posY, posZ);
 					VectorSet(origin, posX, posY, posZ);
-					VectorCopy(origin, sphericalHarmonic->origin);
+					VectorCopy(origin, positions[numSphericalHarmonics]);
 					numSphericalHarmonics++;
 				}
 			}
 		}
 		tr.numSphericalHarmonics = numSphericalHarmonics;
+
+		tr.sphericalHarmonicsCoefficients = (sphericalHarmonic_t *)R_Hunk_Alloc(numSphericalHarmonics * sizeof(*tr.sphericalHarmonicsCoefficients), qtrue);
+
+		for (int i = 0; i < numSphericalHarmonics; i++)
+		{
+			VectorCopy(positions[i], tr.sphericalHarmonicsCoefficients[i].origin);
+		}
+
+		tr.numfinishedSphericalHarmonics = 0;
 	}
 	
 	ri.Printf(PRINT_DEVELOPER, "Found %i positions for sphericalHarmonics\n", tr.numSphericalHarmonics);

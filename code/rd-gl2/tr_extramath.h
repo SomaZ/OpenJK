@@ -104,5 +104,7 @@ int NextPowerOfTwo(int in);
 unsigned short FloatToHalf(float in);
 uint32_t ReverseBits(uint32_t v);
 float GSmithCorrelated(float roughness, float ndotv, float ndotl);
+void GetTextureAngle(vec2_t uv, int index, vec3_t normal);
+void GetSHBasis(vec3_t normal, float out[9]);
 
 #endif

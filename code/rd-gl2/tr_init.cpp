@@ -1025,13 +1025,13 @@ R_BuildSphericalHarmonics
 */
 void R_BuildSphericalHarmonics(void)
 {
-	buildSphericalHarmonicsCommand_t	*cmd;
+	startBuildingSphericalHarmonicsCommand_t	*cmd;
 
-	cmd = (buildSphericalHarmonicsCommand_t	*)R_GetCommandBuffer(sizeof(*cmd));
+	cmd = (startBuildingSphericalHarmonicsCommand_t	*)R_GetCommandBuffer(sizeof(*cmd));
 	if (!cmd) {
 		return;
 	}
-	cmd->commandId = RC_BUILD_SPHERICAL_HARMONICS;
+	cmd->commandId = RC_START_BUILDING_SPHERICAL_HARMONICS;
 }
 
 

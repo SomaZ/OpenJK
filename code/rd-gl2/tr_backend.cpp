@@ -1927,9 +1927,9 @@ static const void *RB_PrefilterEnvMap(const void *data) {
 
 	RB_SetGL2D();
 
-	cubemap_t *cubemap = &tr.cubemaps[cmd->cubemap];
+	cubemap_t *cubemap = &cmd->cubemaps[cmd->cubemap];
 
-	if (!cubemap)
+	if (!cubemap || !cmd)
 		return (const void *)(cmd + 1);
 
 	int cubeMipSize = cubemap->image->width;
@@ -1956,7 +1956,7 @@ static const void *RB_PrefilterEnvMap(const void *data) {
 		cubeMipSize >>= 1;
 		numMips++;
 	}
-	numMips = MAX(1, numMips - 4);
+	numMips = MAX(1, numMips - 2);
 
 	FBO_Bind(tr.preFilterEnvMapFbo);
 	GL_BindToTMU(cubemap->image, TB_CUBEMAP);
@@ -1971,7 +1971,7 @@ static const void *RB_PrefilterEnvMap(const void *data) {
 		qglScissor(0, 0, width, height);
 
 		vec4_t viewInfo;
-		VectorSet4(viewInfo, cmd->cubeSide, level, numMips, 0.0);
+		VectorSet4(viewInfo, cmd->cubeSide, level, numMips - 2, 0.0f);
 		GLSL_SetUniformVec4(&tr.prefilterEnvMapShader, UNIFORM_VIEWINFO, viewInfo);
 		RB_InstantQuad2(quadVerts, texCoords);
 		qglCopyTexSubImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + cmd->cubeSide, level, 0, 0, 0, 0, width, height);
@@ -2906,6 +2906,22 @@ const void *RB_ExportCubemaps(const void *data)
 
 /*
 =============
+RB_StartBuildingSphericalHarmonics
+
+=============
+*/
+const void *RB_StartBuildingSphericalHarmonics(const void *data)
+{
+	const startBuildingSphericalHarmonicsCommand_t *cmd = (startBuildingSphericalHarmonicsCommand_t *)data;
+
+	tr.numfinishedSphericalHarmonics = 0;
+	tr.buildingSphericalHarmonics = qtrue;
+
+	return (const void *)(cmd + 1);
+}
+
+/*
+=============
 RB_BuildSphericalHarmonics
 
 =============
@@ -2927,29 +2943,107 @@ const void *RB_BuildSphericalHarmonics(const void *data)
 
 	if (cmd)
 	{
-		ri.Printf(PRINT_ALL, "Building spherical harmonics!\n");
+		const int shSize = 32;
+		const int sideSize = shSize * shSize * 4;
+		const int batchSize = 32;
+
 		GLenum cubemapFormat = GL_RGBA8;
 
 		if (r_hdr->integer)
 		{
 			cubemapFormat = GL_RGBA16F;
 		}
-		for (int i = 0; i < (tr.numSphericalHarmonics); i++)
-		{
-			tr.sphericalHarmonics[i].image = R_CreateImage(va("*sphericalHarmonic%d", i + 1), NULL, 64, 64, IMGTYPE_COLORALPHA, IMGFLAG_NO_COMPRESSION | IMGFLAG_CLAMPTOEDGE | IMGFLAG_MIPMAP | IMGFLAG_CUBEMAP, cubemapFormat);
+		image_t *bufferImage = R_FindImageFile("*sphericalHarmonic_buffer_image", IMGTYPE_COLORALPHA, IMGFLAG_NO_COMPRESSION | IMGFLAG_CLAMPTOEDGE | IMGFLAG_MIPMAP | IMGFLAG_CUBEMAP);
+		if (!bufferImage)
+			bufferImage = R_CreateImage("*sphericalHarmonic_buffer_image", NULL, shSize, shSize, IMGTYPE_COLORALPHA, IMGFLAG_NO_COMPRESSION | IMGFLAG_CLAMPTOEDGE | IMGFLAG_MIPMAP | IMGFLAG_CUBEMAP, cubemapFormat);
+		cubemap_t *currentSH = (cubemap_t *)R_Malloc(sizeof(*tr.cubemaps), TAG_TEMP_WORKSPACE);
+		currentSH[0].image = bufferImage;
+		int buildedSphericalHarmonics = 0;
 
+		float *cubemapPixels = (float *)R_Malloc(sideSize * sizeof(float), TAG_TEMP_WORKSPACE);
+
+		for (int i = tr.numfinishedSphericalHarmonics; i < (tr.numfinishedSphericalHarmonics + batchSize); i++)
+		{
+			if (i == tr.numSphericalHarmonics)
+				break;
+
+			VectorCopy(tr.sphericalHarmonicsCoefficients[i].origin, currentSH[0].origin);
+			
 			for (int j = 0; j < 6; j++)
 			{
 				RE_ClearScene();
-				R_RenderCubemapSide(tr.sphericalHarmonics, i, j, qfalse, qtrue);
+				R_RenderCubemapSide(currentSH, 0, j, qfalse, qtrue);
 				R_IssuePendingRenderCommands();
 				R_InitNextFrame();
 			}
-			//TODO: Convolve the cubemaps & build SH Coefficients
+
+			//Convolve the cubemaps & build SH Coefficients
 			//paper: http://www.graphics.stanford.edu/papers/envmap/envmap.pdf
-			
+			cubemap_t *sh = currentSH;
+			sphericalHarmonic_t *shC = &tr.sphericalHarmonicsCoefficients[i];
+
+			int numSamples = 0;
+			for (int j = 0; j < 6; j++)
+			{
+				//read pixels into byte buffer
+				float *p = cubemapPixels;
+				qglFramebufferTexture2D(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT, GL_TEXTURE_CUBE_MAP_POSITIVE_X + j, sh[0].image->texnum, 0);
+				qglReadPixels(0, 0, shSize, shSize, GL_RGBA, GL_FLOAT, p);
+
+				//build coefficients for current face
+				for (int u = 0; u < shSize; u++)
+				{
+					for (int v = 0; v < shSize; v++)
+					{
+						vec2_t uv;
+						vec3_t colorSample;
+						vec3_t normal;
+						float shBasis[9];
+
+						VectorSet2(uv, (float)u / (float)shSize, (float)v / (float)shSize);
+						VectorSet(colorSample,
+							pow((p[0]), 2.f),
+							pow((p[1]), 2.f),
+							pow((p[2]), 2.f)
+							);
+
+						//TODO: weight with solid angle!
+						GetTextureAngle(uv, j, normal);
+						GetSHBasis(normal, shBasis);
+
+						vec3_t sample;
+						for (int k = 0; k < 9; k++)
+						{
+							VectorScale(colorSample, shBasis[k], sample);
+							VectorAdd(shC->coefficents[k], sample, shC->coefficents[k]);
+						}
+						numSamples++;
+						p += 4;
+					}
+				}
+			}
+			// scale spherical harmonics coefficients by number of samples
+			for (int i = 0; i < 9; i++)
+			{
+				VectorScale(shC->coefficents[i], M_PI/(float)numSamples, shC->coefficents[i]);
+			}
+			buildedSphericalHarmonics++;
 		}
+		tr.numfinishedSphericalHarmonics += buildedSphericalHarmonics;
 		//TODO: Export them somehow. json file?
+		if (tr.numfinishedSphericalHarmonics == tr.numSphericalHarmonics)
+		{
+			ri.Printf(PRINT_ALL, "Finished building all spherical harmonics for this level.\n");
+			tr.buildingSphericalHarmonics = qfalse;
+		}
+		else
+			ri.Printf(PRINT_ALL, "Finished building %i of %i spherical harmonics for this level. (%3.2f%%)\n", 
+				tr.numfinishedSphericalHarmonics, 
+				tr.numSphericalHarmonics, 
+				((float)tr.numfinishedSphericalHarmonics / (float)tr.numSphericalHarmonics) * 100.f);
+
+		R_Free(cubemapPixels);
+		R_Free(currentSH);
 	}
 
 	return (const void *)(cmd + 1);
@@ -3022,6 +3116,9 @@ void RB_ExecuteRenderCommands( const void *data ) {
 			break;
 		case RC_BUILD_SPHERICAL_HARMONICS:
 			data = RB_BuildSphericalHarmonics(data);
+			break;
+		case RC_START_BUILDING_SPHERICAL_HARMONICS:
+			data = RB_StartBuildingSphericalHarmonics(data);
 			break;
 		case RC_BEGIN_TIMED_BLOCK:
 			data = RB_BeginTimedBlock(data);

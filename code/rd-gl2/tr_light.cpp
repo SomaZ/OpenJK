@@ -552,3 +552,31 @@ int R_CubemapForPoint( vec3_t point )
 
 	return cubemapIndex + 1;
 }
+
+int R_SHForPoint(vec3_t point)
+{
+	int cubemapIndex = -1;
+
+	if (r_cubeMapping->integer && tr.numSphericalHarmonics)
+	{
+		int i;
+		float shortest = (float)WORLD_SIZE * (float)WORLD_SIZE;
+
+		for (i = 0; i < tr.numSphericalHarmonics; i++)
+		{
+			vec3_t diff;
+			float length;
+
+			VectorSubtract(point, tr.sphericalHarmonicsCoefficients[i].origin, diff);
+			length = DotProduct(diff, diff);
+
+			if (shortest > length)
+			{
+				shortest = length;
+				cubemapIndex = i;
+			}
+		}
+	}
+
+	return cubemapIndex + 1;
+}

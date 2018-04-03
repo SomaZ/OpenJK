@@ -598,6 +598,9 @@ void RE_RenderScene( const refdef_t *fd ) {
 		R_EndTimedBlockCmd( timer );
 	}
 
+	if (tr.buildingSphericalHarmonics)
+		R_AddBuildSphericalHarmonicsCmd();
+
 	RE_EndScene();
 
 	tr.frontEndMsec += ri.Milliseconds() - startTime;

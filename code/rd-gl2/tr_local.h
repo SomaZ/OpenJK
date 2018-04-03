@@ -61,6 +61,9 @@ typedef unsigned int glIndex_t;
 #define MAX_DRAWN_PSHADOWS 16 // do not increase past 32, because bit flags are used on surfaces
 #define PSHADOW_MAP_SIZE 512
 
+#define GAMMA		2.2f		// base gamma value
+#define INV_GAMMA	1.0f/2.2f	// inverse gamma value
+
 #define FLARE_STDCOEFF "150" // coefficient for the flare intensity falloff function.
 
 /*
@@ -355,6 +358,11 @@ typedef struct cubemap_s {
 	float parallaxRadius;
 	image_t *image;
 } cubemap_t;
+
+typedef struct sphericalHarmonic_s {
+	vec3_t origin;
+	vec3_t coefficents[9];
+} sphericalHarmonic_t;
 
 typedef struct dlight_s {
 	vec3_t	origin;
@@ -1321,6 +1329,7 @@ typedef enum
 	UNIFORM_PRIMARYLIGHTRADIUS,
 
 	UNIFORM_CUBEMAPINFO,
+	UNIFORM_SPHERICAL_HARMONIC,
 
 	UNIFORM_BONE_MATRICES,
 	UNIFORM_ALPHA_TEST_VALUE,
@@ -1384,6 +1393,8 @@ typedef struct {
 	vec3_t		viewaxis[3];		// transformation matrix
 
 	stereoFrame_t	stereoFrame;
+
+	qboolean	renderSphericalHarmonics;
 
 	int			time;				// time in milliseconds for shader effects and other time dependent rendering issues
 	int			rdflags;			// RDF_NOWORLDMODEL, etc
@@ -2357,9 +2368,10 @@ typedef struct trGlobals_s {
 	vec3_t                  *cubemapOrigins;
 	cubemap_t               *cubemaps;
 
+	qboolean				buildingSphericalHarmonics;
 	int						numSphericalHarmonics;
-	vec3_t					*sphericalHarmonicsOrigins;
-	cubemap_t				*sphericalHarmonics;
+	int						numfinishedSphericalHarmonics;
+	sphericalHarmonic_t		*sphericalHarmonicsCoefficients;
 
 	int						numRealTimeLights;
 	vec3_t					*realTimeLightsOrigins;
@@ -2749,6 +2761,7 @@ void R_TransformDlights( int count, dlight_t *dl, orientationr_t *ori );
 int	R_LightForPoint( vec3_t point, vec3_t ambientLight, vec3_t directedLight, vec3_t lightDir );
 int	R_LightDirForPoint( vec3_t point, vec3_t lightDir, vec3_t normal, world_t *world );
 int	R_CubemapForPoint( vec3_t point );
+int	R_SHForPoint(vec3_t point);
 
 /*
 ============================================================
@@ -2854,6 +2867,7 @@ void GLSL_SetUniformFloat(shaderProgram_t *program, int uniformNum, GLfloat valu
 void GLSL_SetUniformFloatN(shaderProgram_t *program, int uniformNum, const float *v, int numFloats);
 void GLSL_SetUniformVec2(shaderProgram_t *program, int uniformNum, const vec2_t v);
 void GLSL_SetUniformVec3(shaderProgram_t *program, int uniformNum, const vec3_t v);
+void GLSL_SetUniformVec3N(shaderProgram_t *program, int uniformNum, const float *v, int numVec3s);
 void GLSL_SetUniformVec4(shaderProgram_t *program, int uniformNum, const vec4_t v);
 void GLSL_SetUniformMatrix4x3(shaderProgram_t *program, int uniformNum, const float *matrix, int numElements = 1);
 void GLSL_SetUniformMatrix4x4(shaderProgram_t *program, int uniformNum, const float *matrix, int numElements = 1);
@@ -3132,6 +3146,7 @@ typedef struct convolveCubemapCommand_s {
 	int commandId;
 	int cubemap;
 	int cubeSide;
+	cubemap_t *cubemaps;
 } convolveCubemapCommand_t;
 
 typedef struct postProcessCommand_s {
@@ -3143,6 +3158,10 @@ typedef struct postProcessCommand_s {
 typedef struct {
 	int commandId;
 } exportCubemapsCommand_t;
+
+typedef struct {
+	int commandId;
+} startBuildingSphericalHarmonicsCommand_t;
 
 typedef struct {
 	int commandId;
@@ -3179,6 +3198,7 @@ typedef enum {
 	RC_POSTPROCESS,
 	RC_EXPORT_CUBEMAPS,
 	RC_BUILD_SPHERICAL_HARMONICS,
+	RC_START_BUILDING_SPHERICAL_HARMONICS,
 	RC_BEGIN_TIMED_BLOCK,
 	RC_END_TIMED_BLOCK
 } renderCommand_t;
@@ -3250,7 +3270,8 @@ void RB_ExecuteRenderCommands( const void *data );
 void R_IssuePendingRenderCommands( void );
 
 void R_AddDrawSurfCmd( drawSurf_t *drawSurfs, int numDrawSurfs );
-void R_AddConvolveCubemapCmd(int cubemap, int cubeSide);
+void R_AddConvolveCubemapCmd(cubemap_t *cubemaps, int cubemap, int cubeSide);
+void R_AddBuildSphericalHarmonicsCmd();
 void R_AddCapShadowmapCmd( int dlight, int cubeSide );
 void R_AddPostProcessCmd (void);
 qhandle_t R_BeginTimedBlockCmd( const char *name );

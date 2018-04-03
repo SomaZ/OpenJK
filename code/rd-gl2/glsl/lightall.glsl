@@ -337,7 +337,7 @@ uniform samplerCube u_CubeMap;
 #endif
 
 #if defined(USE_NORMALMAP) || defined(USE_DELUXEMAP) || defined(USE_SPECULARMAP) || defined(USE_CUBEMAP)
-// x = normal, y = deluxe, z = specular, w = cube
+// x = sphericalHarmonics, y = deluxe, z = specular, w = cube
 uniform vec4      u_EnableTextures; 
 #endif
 
@@ -359,6 +359,7 @@ uniform vec4      u_SpecularScale;
 #if defined(PER_PIXEL_LIGHTING)
 #if defined(USE_CUBEMAP)
 uniform vec4      u_CubeMapInfo;
+uniform vec3      u_SphericalHarmonic[9];
 uniform sampler2D u_EnvBrdfMap;
 #endif
 #endif
@@ -582,6 +583,40 @@ vec3 CalcNormal( in vec3 vertexNormal, in vec2 texCoords, in mat3 tangentToWorld
 	return normalize(N);
 }
 
+#if defined(USE_CUBEMAP)
+vec3 CalcSHColor(in vec3 normal)
+{
+	float Y00	= 0.282095;
+	float Y11	= 0.488603 * normal.x;
+	float Y10	= 0.488603 * normal.z;
+	float Y1_1	= 0.488603 * normal.y;
+	float Y21	= 1.092548 * normal.x * normal.z;
+	float Y2_1	= 1.092548 * normal.y * normal.z;
+	float Y2_2	= 1.092548 * normal.y * normal.x;
+	float Y20	= 0.946176 * normal.z * normal.z - 0.315392;
+	float Y22	= 0.546274 * (normal.x * normal.x - normal.y * normal.y);
+
+	float A0 = M_PI;
+	float A1 = (2.0/3.0) * M_PI;
+	float A2 = M_PI / 4.0;
+
+	vec3 L00	= u_SphericalHarmonic[0];
+	vec3 L11	= u_SphericalHarmonic[1];
+	vec3 L10	= u_SphericalHarmonic[2];
+	vec3 L1_1	= u_SphericalHarmonic[3];
+	vec3 L21	= u_SphericalHarmonic[4];
+	vec3 L2_1	= u_SphericalHarmonic[5];
+	vec3 L2_2	= u_SphericalHarmonic[6];
+	vec3 L20	= u_SphericalHarmonic[7];
+	vec3 L22	= u_SphericalHarmonic[8];
+
+	vec3 color = A0*Y00*L00
+		+ A1*Y1_1*L1_1 + A1*Y10*L10 + A1*Y11*L11
+		+ A2*Y2_2*L2_2 + A2*Y2_1*L2_1 + A2*Y20*L20 + A2*Y21*L21 + A2*Y22*L22;
+
+	return color;
+}
+#endif
 
 void main()
 {
@@ -651,14 +686,16 @@ void main()
 	ambientLight *= ambientLight;
 	#if defined(USE_LIGHT_VECTOR)
 	  L -= normalize(texture(u_LightGridDirectionMap, gridCell).rgb * 2.0 - vec3(1.0)) * isLightgrid;
-	  vec3 directedLight = mix(u_DirectedLight, texture(u_LightGridDirectionalLightMap, gridCell).rgb, isLightgrid);
+	  vec3 directedLight = texture(u_LightGridDirectionalLightMap, gridCell).rgb * isLightgrid;
 	  directedLight *= directedLight;
+	  directedLight += u_DirectedLight * u_DirectedLight;
 	#endif
   #else
 	vertexColor = var_Color.rgb;
 	#if defined(USE_LIGHT_VECTOR)
 	  L -= normalize(texture(u_LightGridDirectionMap, gridCell).rgb * 2.0 - vec3(1.0)) * isLightgrid;
-	  vec3 directedLight = mix(u_DirectedLight, texture(u_LightGridDirectionalLightMap, gridCell).rgb, isLightgrid);
+	  vec3 directedLight = texture(u_LightGridDirectionalLightMap, gridCell).rgb * isLightgrid;
+	  directedLight += u_DirectedLight;
 	#endif
   #endif
 	ambientColor = ambientLight * vertexColor;
@@ -666,7 +703,7 @@ void main()
 	lightColor	 = lightmapColor.rgb * vertexColor;
 	attenuation  = 1.0;
   #elif defined(USE_LIGHT_VECTOR)
-	lightColor	 = directedLight * vertexColor * (var_LightDir.w + float(var_LightDir.w < 1.0));
+	lightColor = directedLight * vertexColor * (var_LightDir.w + float(var_LightDir.w < 1.0));
 	attenuation  = CalcLightAttenuation(lightDist, var_LightDir.w);
   #elif defined(USE_LIGHT_VERTEX)
 	lightColor	 = vertexColor;
@@ -728,7 +765,8 @@ void main()
   #endif
 
 	out_Color.rgb  = lightColor   * reflectance * (attenuation * NL);
-	out_Color.rgb += ambientColor * diffuse.rgb;
+	if (u_EnableTextures.x == 0.0)
+		out_Color.rgb += ambientColor * diffuse.rgb;
 
   #if defined(USE_CUBEMAP)
 	NE = clamp(dot(N, E), 0.0, 1.0);
@@ -741,6 +779,7 @@ void main()
 	vec3 parallax = u_CubeMapInfo.xyz + u_CubeMapInfo.w * viewDir;
 
 	vec3 cubeLightColor = textureLod(u_CubeMap, R + parallax, ROUGHNESS_MIPS * roughness).rgb * u_EnableTextures.w;
+	vec3 shColor = CalcSHColor(-N) * u_EnableTextures.x;
 
 	float horiz = 1.0;
 	// from http://marmosetco.tumblr.com/post/81245981087
@@ -753,7 +792,8 @@ void main()
     #if defined(USE_PBR)
 		cubeLightColor *= cubeLightColor;
     #endif
-
+	if (u_EnableTextures.x == 1.0)
+		out_Color.rgb += shColor * diffuse.rgb;
 	out_Color.rgb += cubeLightColor * (specular.rgb * EnvBRDF.x + EnvBRDF.y) * horiz;
   #endif
 

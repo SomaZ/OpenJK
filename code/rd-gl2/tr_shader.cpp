@@ -3354,7 +3354,7 @@ static qboolean CollapseStagesToGLSL(void)
 		{
 			shaderStage_t *pStage = &stages[i];
 			shaderStage_t *diffuse, *lightmap;
-			qboolean parallax, tcgen, diffuselit, vertexlit;
+			qboolean tcgen, diffuselit, vertexlit;
 
 			if (!pStage->active)
 				continue;
