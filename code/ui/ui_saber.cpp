@@ -551,7 +551,9 @@ void UI_SaberDrawBlade( itemDef_t *item, char *saberName, int saberModel, saberT
 
 	if ( (item->flags&ITF_ISSABER) && saberModel < 2 )
 	{
-		DC->getCVarString( "ui_saber_color", bladeColorString, sizeof(bladeColorString) );
+		//force "green" saber blade for datapad menu
+		//DC->getCVarString( "ui_saber_color", bladeColorString, sizeof(bladeColorString) );
+		Q_strncpyz(bladeColorString, "green", MAX_QPATH);
 	}
 	else//if ( item->flags&ITF_ISSABER2 ) - presumed
 	{
@@ -764,7 +766,9 @@ void UI_GetSaberForMenu( char *saber, int saberNum )
 
 	if ( saberNum == 0 )
 	{
-		DC->getCVarString( "g_saber", saber, MAX_QPATH );
+		//force the "datapad" saber, so the hilt is green
+		//DC->getCVarString( "g_saber", saber, MAX_QPATH );
+		Q_strncpyz(saber, "datapad", MAX_QPATH);
 	}
 	else
 	{

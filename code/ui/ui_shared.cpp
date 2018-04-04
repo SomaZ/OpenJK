@@ -177,6 +177,7 @@ const char *types [] = {
 "ITEM_TYPE_MULTI",
 "ITEM_TYPE_BIND",
 "ITEM_TYPE_TEXTSCROLL",
+"ITEM_TYPE_TEXTSCROLL_DP",
 NULL
 };
 
@@ -1829,7 +1830,7 @@ void Menu_SetItemText(const menuDef_t *menu,const char *itemName, const char *te
 			}
 			else
 			{
-				if (item->type == ITEM_TYPE_TEXTSCROLL )
+				if (item->type == ITEM_TYPE_TEXTSCROLL || item->type == ITEM_TYPE_TEXTSCROLL_DP )
 				{
 					char cvartext[1024];
 					textScrollDef_t *scrollPtr = (textScrollDef_t*)item->typeData;
@@ -4437,6 +4438,7 @@ qboolean ItemParse_cvar( itemDef_t *item)
 			case ITEM_TYPE_SLIDER:
 			case ITEM_TYPE_TEXT:
 			case ITEM_TYPE_TEXTSCROLL:
+			case ITEM_TYPE_TEXTSCROLL_DP:
 				editPtr = (editFieldDef_t*)item->typeData;
 				editPtr->minVal = -1;
 				editPtr->maxVal = -1;
@@ -4856,7 +4858,7 @@ void Item_ValidateTypeData(itemDef_t *item)
 		item->typeData = UI_Alloc(sizeof(modelDef_t));
 		memset(item->typeData, 0, sizeof(modelDef_t));
 	}
-	else if (item->type == ITEM_TYPE_TEXTSCROLL )
+	else if (item->type == ITEM_TYPE_TEXTSCROLL || item->type == ITEM_TYPE_TEXTSCROLL_DP)
 	{
 		item->typeData = UI_Alloc(sizeof(textScrollDef_t));
 	}
@@ -5668,6 +5670,7 @@ void Item_SetScreenCoords(itemDef_t *item, float x, float y)
 	switch ( item->type)
 	{
 		case ITEM_TYPE_TEXTSCROLL:
+		case ITEM_TYPE_TEXTSCROLL_DP:
 		{
 			textScrollDef_t *scrollPtr = (textScrollDef_t*)item->typeData;
 			if ( scrollPtr )
@@ -6613,6 +6616,80 @@ void Item_TextScroll_Paint(itemDef_t *item)
 	size = item->window.rect.h - 2;
 	x	 = item->window.rect.x + item->textalignx + 1;
 	y	 = item->window.rect.y + item->textaligny + 1;
+
+
+	for (i = scrollPtr->startPos; i < count; i++)
+	{
+		const char *text;
+
+		text = scrollPtr->pLines[i];
+		if (!text)
+		{
+			continue;
+		}
+
+		DC->drawText(x + 4, y, item->textscale, item->window.foreColor, text, 0, item->textStyle, item->font);
+
+		size -= scrollPtr->lineHeight;
+		if (size < scrollPtr->lineHeight)
+		{
+			scrollPtr->drawPadding = scrollPtr->lineHeight - size;
+			break;
+		}
+
+		scrollPtr->endPos++;
+		y += scrollPtr->lineHeight;
+	}
+}
+
+void Item_TextScroll_Paint_DP(itemDef_t *item)
+{
+	char cvartext[1024];
+	float x, y, size, count, thumb;
+	int	  i;
+	textScrollDef_t *scrollPtr = (textScrollDef_t*)item->typeData;
+
+	size = item->window.rect.h - 2;
+
+	// Re-arranged this function. Previous version had a plethora of bugs.
+	// Still a little iffy - BTO (VV)
+	if (item->cvar)
+	{
+		DC->getCVarString(item->cvar, cvartext, sizeof(cvartext));
+		item->text = cvartext;
+	}
+
+	Item_TextScroll_BuildLines(item);
+	count = scrollPtr->iLineCount;
+
+	// Draw scroll bar if text goes beyond bottom
+	if ((scrollPtr->iLineCount * scrollPtr->lineHeight) > size)
+	{
+		// draw scrollbar to right side of the window
+		x = item->window.rect.x + item->window.rect.w - SCROLLBAR_SIZE - 1;
+		y = item->window.rect.y + 1;
+		DC->drawHandlePic(x, y, SCROLLBAR_SIZE, SCROLLBAR_SIZE, DC->Assets.scrollBarArrowUp_dp);
+		y += SCROLLBAR_SIZE - 1;
+
+		scrollPtr->endPos = scrollPtr->startPos;
+		size = item->window.rect.h - (SCROLLBAR_SIZE * 2);
+		DC->drawHandlePic(x, y, SCROLLBAR_SIZE, size + 1, DC->Assets.scrollBar_dp);
+		y += size - 1;
+		DC->drawHandlePic(x, y, SCROLLBAR_SIZE, SCROLLBAR_SIZE, DC->Assets.scrollBarArrowDown_dp);
+
+		// thumb
+		thumb = Item_TextScroll_ThumbDrawPosition(item);
+		if (thumb > y - SCROLLBAR_SIZE - 1)
+		{
+			thumb = y - SCROLLBAR_SIZE - 1;
+		}
+		DC->drawHandlePic(x, thumb, SCROLLBAR_SIZE, SCROLLBAR_SIZE, DC->Assets.scrollBarThumb_dp);
+	}
+
+	// adjust size for item painting
+	size = item->window.rect.h - 2;
+	x = item->window.rect.x + item->textalignx + 1;
+	y = item->window.rect.y + item->textaligny + 1;
 
 
 	for (i = scrollPtr->startPos; i < count; i++)
@@ -7880,7 +7957,7 @@ int Item_TextScroll_OverLB ( itemDef_t *item, float x, float y )
 	scrollPtr = (textScrollDef_t*)item->typeData;
 
 	// Scroll bar isn't drawing so ignore this input
-	if ((( scrollPtr->iLineCount * scrollPtr->lineHeight ) <= (item->window.rect.h - 2)) && (item->type == ITEM_TYPE_TEXTSCROLL))
+	if ((( scrollPtr->iLineCount * scrollPtr->lineHeight ) <= (item->window.rect.h - 2)) && (item->type == ITEM_TYPE_TEXTSCROLL || item->type == ITEM_TYPE_TEXTSCROLL_DP))
 	{
 		return 0;
 	}
@@ -8650,6 +8727,9 @@ static qboolean Item_Paint(itemDef_t *item, qboolean bDraw)
 			break;
 		case ITEM_TYPE_TEXTSCROLL:
 			Item_TextScroll_Paint ( item );
+			break;
+		case ITEM_TYPE_TEXTSCROLL_DP:
+			Item_TextScroll_Paint_DP(item);
 			break;
 		case ITEM_TYPE_MODEL:
 			Item_Model_Paint(item);
@@ -9452,7 +9532,7 @@ void Item_MouseEnter(itemDef_t *item, float x, float y)
 			{
 				Item_ListBox_MouseEnter(item, x, y);
 			}
-			else if ( item->type == ITEM_TYPE_TEXTSCROLL )
+			else if ( item->type == ITEM_TYPE_TEXTSCROLL || item->type == ITEM_TYPE_TEXTSCROLL_DP )
 			{
 				Item_TextScroll_MouseEnter ( item, x, y );
 			}
@@ -10982,6 +11062,7 @@ void Item_StartCapture(itemDef_t *item, int key)
 		}
 
 		case ITEM_TYPE_TEXTSCROLL:
+		case ITEM_TYPE_TEXTSCROLL_DP:
 			flags = Item_TextScroll_OverLB (item, DC->cursorx, DC->cursory);
 			if (flags & (WINDOW_LB_LEFTARROW | WINDOW_LB_RIGHTARROW))
 			{
@@ -11356,6 +11437,7 @@ qboolean Item_HandleKey(itemDef_t *item, int key, qboolean down)
 			return Item_ListBox_HandleKey(item, key, down, qfalse);
 			break;
 		case ITEM_TYPE_TEXTSCROLL:
+		case ITEM_TYPE_TEXTSCROLL_DP:
 			return Item_TextScroll_HandleKey(item, key, down, qfalse);
 			break;
 		case ITEM_TYPE_YESNO:
