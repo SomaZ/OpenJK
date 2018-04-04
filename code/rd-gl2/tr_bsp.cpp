@@ -3071,6 +3071,43 @@ void R_LoadCubemapEntities(char *cubemapEntityName)
 	char *spawnVars[MAX_SPAWN_VARS][2];
 	int numCubemaps = 0;
 
+	if (!Q_strncmp(cubemapEntityName, "misc_skyportal", strlen("misc_skyportal")))
+	{
+		memset(&tr.skyboxCubemap, 0, sizeof(tr.skyboxCubemap));
+		while (R_ParseSpawnVars(spawnVarChars, sizeof(spawnVarChars), &numSpawnVars, spawnVars))
+		{
+			int i;
+			char name[MAX_QPATH];
+			qboolean isCubemap = qfalse;
+			qboolean originSet = qfalse;
+			vec3_t origin;
+			float parallaxRadius = 1000.0f;
+
+			name[0] = '\0';
+			for (i = 0; i < numSpawnVars; i++)
+			{
+				if (!Q_stricmp(spawnVars[i][0], "classname") && !Q_stricmp(spawnVars[i][1], cubemapEntityName))
+					isCubemap = qtrue;
+
+				if (!Q_stricmp(spawnVars[i][0], "origin"))
+				{
+					sscanf(spawnVars[i][1], "%f %f %f", &origin[0], &origin[1], &origin[2]);
+					originSet = qtrue;
+				}
+			}
+
+			if (isCubemap && originSet)
+			{
+				cubemap_t *cubemap = &tr.cubemaps[numCubemaps];
+				Q_strncpyz(cubemap->name, "SKYBOX_CUBEMAP", MAX_QPATH);
+				VectorCopy(origin, cubemap->origin);
+				cubemap->parallaxRadius = parallaxRadius;
+			}
+		}
+		return;
+	}
+
+
 	// count cubemaps
 	numCubemaps = 0;
 	while (R_ParseSpawnVars(spawnVarChars, sizeof(spawnVarChars), &numSpawnVars, spawnVars))
@@ -3182,16 +3219,31 @@ void R_LoadCubemaps(world_t *world)
 
 void R_RenderMissingCubemaps()
 {
-	if (tr.cubemaps[0].image)
-	{
-		return;
-	}
-
 	GLenum cubemapFormat = GL_RGBA8;
 
 	if (r_hdr->integer)
 	{
 		cubemapFormat = GL_RGBA16F;
+	}
+
+	tr.skyboxCubemapped = qfalse;
+
+	if (!tr.skyboxCubemap.image)
+	{
+		tr.skyboxCubemap.image = R_CreateImage("*skyboxCubemap", NULL, r_cubemapSize->integer, r_cubemapSize->integer, IMGTYPE_COLORALPHA, IMGFLAG_NO_COMPRESSION | IMGFLAG_CLAMPTOEDGE | IMGFLAG_MIPMAP | IMGFLAG_CUBEMAP, cubemapFormat);
+		for (int j = 0; j < 6; j++)
+		{
+			RE_ClearScene();
+			R_RenderCubemapSide(&tr.skyboxCubemap, 0, j, qfalse, qfalse);
+			R_IssuePendingRenderCommands();
+			R_InitNextFrame();
+		}
+		tr.skyboxCubemapped = qtrue;
+	}
+
+	if (tr.cubemaps[0].image)
+	{
+		return;
 	}
 
 	int numberOfBounces = 2;
@@ -4046,6 +4098,8 @@ world_t *R_LoadBSP(const char *name, int *bspIndex)
 			// use spawn points as cubemaps
 			R_LoadCubemapEntities("info_player_start");
 		}
+
+		R_LoadCubemapEntities("misc_skyportal");
 
 		if (tr.numCubemaps)
 		{

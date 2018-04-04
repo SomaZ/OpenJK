@@ -614,10 +614,18 @@ void RB_BeginDrawingView (void) {
 	if (tr.renderCubeFbo != NULL && backEnd.viewParms.targetFbo == tr.renderCubeFbo)
 	{
 		clearBits |= GL_COLOR_BUFFER_BIT;
-		qglClearColor( 0.0f, 0.0f, 0.0f, 1.0f );
+		if (tr.world && tr.world->globalFog)
+		{
+			const fog_t		*fog = tr.world->globalFog;
+			qglClearColor(fog->parms.color[0], fog->parms.color[1], fog->parms.color[2], 1.0f);
+		}
+		else
+		{
+			qglClearColor(0.3f, 0.3f, 0.3f, 1.0);
+		}
 	}
 
-	qglClear( clearBits );
+	qglClear(clearBits);
 
 	if (backEnd.viewParms.targetFbo == NULL)
 	{
