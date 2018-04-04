@@ -409,7 +409,7 @@ static size_t GLSL_GetShaderHeader(
 			numRoughnessMips++;
 		}
 		numRoughnessMips = MAX(1, numRoughnessMips - 2);
-		if (r_pbrIBL->integer != 0 && r_pbr->integer)
+		if (r_pbr->integer)
 			numRoughnessMips = MAX(1, numRoughnessMips - 4);
 		Q_strcat(dest, size, va("#define ROUGHNESS_MIPS float(%d)\n", numRoughnessMips));
 	}
