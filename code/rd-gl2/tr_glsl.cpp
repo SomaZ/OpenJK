@@ -2250,6 +2250,12 @@ static int GLSL_LoadGPUProgramSurfaceSprites(
 		}
 
 		GLSL_InitUniforms(program);
+
+		qglUseProgram(tr.spriteShader[i].program);
+		GLSL_SetUniformInt(&tr.spriteShader[i], UNIFORM_DIFFUSEMAP, TB_COLORMAP);
+		GLSL_SetUniformInt(&tr.spriteShader[i], UNIFORM_SHADOWMAP, TB_SHADOWMAP);
+		qglUseProgram(0);
+
 		GLSL_FinishGPUShader(program);
 		++numPrograms;
 	}

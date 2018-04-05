@@ -4,6 +4,8 @@ in vec3 attr_Normal;
 
 uniform mat4 u_ModelViewProjectionMatrix;
 uniform vec3 u_ViewOrigin;
+uniform vec4 u_PrimaryLightOrigin;
+uniform float u_PrimaryLightRadius;
 
 layout(std140) uniform SurfaceSprite
 {
@@ -17,6 +19,7 @@ layout(std140) uniform SurfaceSprite
 };
 
 out vec2 var_TexCoords;
+out vec4 var_PrimaryLightDir;
 out float var_Alpha;
 
 float random(vec2 n)
@@ -76,13 +79,18 @@ void main()
 	gl_Position = u_ModelViewProjectionMatrix * worldPos;
 	var_TexCoords = texcoords[gl_VertexID];
 	var_Alpha = 1.0 - fadeScale;
+
+	var_PrimaryLightDir.xyz = u_PrimaryLightOrigin.xyz - (worldPos.xyz * u_PrimaryLightOrigin.w);
+	var_PrimaryLightDir.w = u_PrimaryLightRadius * u_PrimaryLightRadius;
 }
 
 /*[Fragment]*/
 uniform sampler2D u_DiffuseMap;
+uniform sampler2D u_ShadowMap;
 
-in vec2 var_TexCoords;
-in float var_Alpha;
+in vec2		var_TexCoords;
+in vec4     var_PrimaryLightDir;
+in float	var_Alpha;
 
 #if defined(ALPHA_TEST)
 uniform float u_AlphaTestValue;
@@ -112,6 +120,11 @@ void main()
 	if ( out_Color.a < alphaTestValue )
 		discard;
 #endif
+
+	vec2 shadowTex = gl_FragCoord.xy * r_FBufScale;
+	float shadowValue = texture(u_ShadowMap, shadowTex).r;
+
+	out_Color.rgb *= clamp(shadowValue + .3, 0.0, 1.0);
 
 	out_Glow = vec4(0.0);
 }

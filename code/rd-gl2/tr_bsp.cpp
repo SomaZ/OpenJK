@@ -3757,6 +3757,7 @@ static void R_GenerateSurfaceSprites(const srfBspSurface_t *bspSurf, const shade
 	out->shader->cullType = shader->cullType;
 	out->shader->stages[0]->glslShaderGroup = tr.spriteShader;
 	out->shader->stages[0]->alphaTestCmp = stage->alphaTestCmp;
+	out->shader->sort = SS_OPAQUE;
 
 	out->numAttributes = 2;
 	out->attributes = (vertexAttribute_t *)R_Hunk_Alloc(
