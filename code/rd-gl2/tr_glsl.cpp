@@ -409,7 +409,7 @@ static size_t GLSL_GetShaderHeader(
 			numRoughnessMips++;
 		}
 		numRoughnessMips = MAX(1, numRoughnessMips - 2);
-		if (r_pbrIBL->integer != 0 && r_pbr->integer)
+		if (r_pbr->integer)
 			numRoughnessMips = MAX(1, numRoughnessMips - 4);
 		Q_strcat(dest, size, va("#define ROUGHNESS_MIPS float(%d)\n", numRoughnessMips));
 	}
@@ -2250,6 +2250,12 @@ static int GLSL_LoadGPUProgramSurfaceSprites(
 		}
 
 		GLSL_InitUniforms(program);
+
+		qglUseProgram(tr.spriteShader[i].program);
+		GLSL_SetUniformInt(&tr.spriteShader[i], UNIFORM_DIFFUSEMAP, TB_COLORMAP);
+		GLSL_SetUniformInt(&tr.spriteShader[i], UNIFORM_SHADOWMAP, TB_SHADOWMAP);
+		qglUseProgram(0);
+
 		GLSL_FinishGPUShader(program);
 		++numPrograms;
 	}

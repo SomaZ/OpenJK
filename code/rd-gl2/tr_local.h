@@ -247,7 +247,6 @@ extern cvar_t   *r_cubeMapping;
 extern cvar_t   *r_horizonFade;
 extern cvar_t   *r_cubemapSize;
 extern cvar_t   *r_pbr;
-extern cvar_t   *r_pbrIBL;
 extern cvar_t   *r_baseNormalX;
 extern cvar_t   *r_baseNormalY;
 extern cvar_t   *r_baseParallax;
@@ -2367,6 +2366,8 @@ typedef struct trGlobals_s {
 	int                     numCubemaps;
 	vec3_t                  *cubemapOrigins;
 	cubemap_t               *cubemaps;
+	cubemap_t				skyboxCubemap;
+	qboolean				skyboxCubemapped;
 
 	qboolean				buildingSphericalHarmonics;
 	int						numSphericalHarmonics;

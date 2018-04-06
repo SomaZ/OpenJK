@@ -2187,6 +2187,7 @@ static void RB_SurfaceSprites( srfSprites_t *surf )
 	
 	SamplerBindingsWriter samplerBindingsWriter;
 	samplerBindingsWriter.AddAnimatedImage(&firstStage->bundle[0], TB_COLORMAP);
+	samplerBindingsWriter.AddStaticImage(tr.screenShadowImage, TB_SHADOWMAP);
 	
 	DrawItem item = {};
 	item.stateBits = firstStage->stateBits;
@@ -2215,7 +2216,6 @@ static void RB_SurfaceSprites( srfSprites_t *surf )
 	item.draw.params.indexed.firstIndex = 0;
 	item.draw.params.indexed.numIndices = 6;
 	
-	uint32_t RB_CreateSortKey(const DrawItem& item, int stage, int layer);
 	uint32_t key = RB_CreateSortKey(item, 0, surf->shader->sort);
 	RB_AddDrawItem(backEndData->currentPass, key, item);
 }
