@@ -36,8 +36,12 @@ void railDet_stick(gentity_t *self, gentity_t *other, trace_t *trace)
 {
 	self->s.eType = ET_GENERAL;
 
-	gi.G2API_InitGhoul2Model(self->ghoul2, weaponData[WP_DET_PACK].missileMdl, G_ModelIndex(weaponData[WP_DET_PACK].missileMdl),
+	char sticky_proj[MAX_QPATH] = "models/weapons2/rail_detonator/projectile.glm";
+
+	gi.G2API_InitGhoul2Model(self->ghoul2, sticky_proj, G_ModelIndex(sticky_proj),
 		NULL_HANDLE, NULL_HANDLE, 0, 0);
+
+	G_PlayEffect("rail_detonator/proj_smoke", self->currentOrigin);
 
 	// make us so we can take damage
 	self->clipmask = MASK_SHOT;
