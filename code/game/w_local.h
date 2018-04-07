@@ -85,3 +85,8 @@ void touchLaserTrap( gentity_t *ent, gentity_t *other, trace_t *trace );
 void CreateLaserTrap( gentity_t *laserTrap, vec3_t start, gentity_t *owner );
 void WP_PlaceLaserTrap( gentity_t *ent, qboolean alt_fire );
 void WP_FireTuskenRifle( gentity_t *ent );
+void railDet_stick( gentity_t *self, gentity_t *other, trace_t *trace );
+void WP_FireRailDet(gentity_t *ent, qboolean alt_fire);
+void railDet_die(gentity_t *self, gentity_t *inflictor, gentity_t *attacker, int damage, int mod, int dFlags, int hitLoc);
+void railDetExplode(gentity_t *ent);
+void WP_RailDetThink(gentity_t *ent);

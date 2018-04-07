@@ -888,6 +888,7 @@ qboolean AI_RefreshGroup( AIGroupInfo_t *group )
 			group->morale -= 2;
 			break;
 		case WP_ROCKET_LAUNCHER:
+		case WP_RAIL_DETONATOR:
 			group->morale -= 10;
 			break;
 		case WP_CONCUSSION:

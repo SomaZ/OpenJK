@@ -46,6 +46,7 @@ typedef enum //# weapon_e
 	WP_DEMP2,			// NPC weapon - player can pick this up, but never starts with them
 	WP_FLECHETTE,		// NPC weapon - player can pick this up, but never starts with them
 	WP_ROCKET_LAUNCHER,	// NPC weapon - player can pick this up, but never starts with them
+	WP_RAIL_DETONATOR,  // player weapon
 	WP_THERMAL,			// player and NPC weapon
 	WP_TRIP_MINE,		// NPC weapon - player can pick this up, but never starts with them
 	WP_DET_PACK,		// NPC weapon - player can pick this up, but never starts with them
@@ -74,9 +75,9 @@ typedef enum //# weapon_e
 
 	WP_JAWA,
 	WP_TUSKEN_RIFLE,
-	//DT EDIT: DF2 - START - Added Gamorrean weapon
+
 	WP_GAMORREAN_AXE,
-	//DT EDIT: DF2 - END
+
 	WP_TUSKEN_STAFF,
 	WP_SCEPTER,
 	WP_NOGHRI_STICK,
@@ -383,6 +384,18 @@ typedef struct ammoData_s
 #define TD_ALT_VELOCITY		600
 #define TD_ALT_MIN_CHARGE	0.15f
 #define TD_ALT_TIME			3000
+
+// Rail Detonator
+//--------------
+#define RAILDET_TIME			3000
+#define RAILDET_THINK_TIME		300
+#define RAILDET_SPLASH_RAD		128
+#define RAILDET_RAD				(RAILDET_SPLASH_RAD * 0.8f) // no sense in auto-blowing up if exactly on the radius edge--it would hardly do any damage
+#define	RAILDET_VELOCITY		900
+#define RAILDET_NPC_DMG_EASY	20
+#define RAILDET_NPC_DMG_NORMAL	30
+#define RAILDET_NPC_DMG_HARD	40
+#define RAILDET_SIZE			3
 
 // Tusken Rifle Shot
 //--------------

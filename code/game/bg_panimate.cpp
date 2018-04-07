@@ -5970,7 +5970,6 @@ void PM_TorsoAnimation( void )
 						}
 					}
 					break;
-				//DT EDIT: DF2 - START - Added Gamorrean weapon
 				case WP_GAMORREAN_AXE:
 					if (PM_RunningAnim(pm->ps->legsAnim)
 						|| PM_WalkingAnim(pm->ps->legsAnim)
@@ -5984,7 +5983,6 @@ void PM_TorsoAnimation( void )
 						PM_SetAnim(pm, SETANIM_TORSO, BOTH_STAND9, SETANIM_FLAG_NORMAL);
 					}
 					break;
-				//DT EDIT: DF2 - END
 				case WP_TUSKEN_STAFF:
 					if ( PM_RunningAnim( pm->ps->legsAnim )
 						|| PM_WalkingAnim( pm->ps->legsAnim )
@@ -6186,6 +6184,7 @@ void PM_TorsoAnimation( void )
 				&& pm->ps->weapon != WP_REPEATER
 				&& pm->ps->weapon != WP_FLECHETTE
 				&& pm->ps->weapon != WP_ROCKET_LAUNCHER
+				&& pm->ps->weapon != WP_RAIL_DETONATOR
 				&& pm->ps->weapon != WP_CONCUSSION
 				&& ( PM_RunningAnim( pm->ps->legsAnim )
 					|| (PM_WalkingAnim( pm->ps->legsAnim ) && (pm->ps->clientNum < MAX_CLIENTS||PM_ControlledByPlayer()))
@@ -6288,7 +6287,6 @@ void PM_TorsoAnimation( void )
 						}
 					}
 					break;
-				//DT EDIT: DF2 - START - Added Gamorrean weapon
 				case WP_GAMORREAN_AXE:
 					if (PM_RunningAnim(pm->ps->legsAnim)
 						|| PM_WalkingAnim(pm->ps->legsAnim)
@@ -6302,7 +6300,6 @@ void PM_TorsoAnimation( void )
 						PM_SetAnim(pm, SETANIM_TORSO, BOTH_STAND9, SETANIM_FLAG_NORMAL);
 					}
 					break;
-				//DT EDIT: DF2 - END
 				case WP_TUSKEN_STAFF:
 					if ( PM_RunningAnim( pm->ps->legsAnim )
 						|| PM_WalkingAnim( pm->ps->legsAnim )

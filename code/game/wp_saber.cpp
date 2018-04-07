@@ -8828,6 +8828,7 @@ qboolean WP_ForceThrowable( gentity_t *ent, gentity_t *forwardEnt, gentity_t *se
 		case WP_SABER:
 		case WP_FLECHETTE:
 		case WP_ROCKET_LAUNCHER:
+		case WP_RAIL_DETONATOR:
 		case WP_CONCUSSION:
 		case WP_THERMAL:
 		case WP_TRIP_MINE:
@@ -9633,6 +9634,7 @@ void ForceThrow( gentity_t *self, qboolean pull, qboolean fake )
 					}
 					if ( push_list[x]->s.eType == ET_MISSILE
 						&& push_list[x]->s.weapon == WP_ROCKET_LAUNCHER
+						&& push_list[x]->s.weapon == WP_RAIL_DETONATOR
 						&& push_list[x]->damage < 60 )
 					{//pushing away a rocket raises it's damage to the max for NPCs
 						push_list[x]->damage = 60;

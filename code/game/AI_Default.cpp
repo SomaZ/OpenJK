@@ -544,9 +544,7 @@ void NPC_BSPointShoot (qboolean shoot)
 	{
 	case WP_NONE:
 	case WP_MELEE:
-	//DT EDIT: DF2 - START - Added Gamorrean weapon
 	case WP_GAMORREAN_AXE:
-	//DT EDIT: DF2 - END
 	case WP_TUSKEN_STAFF:
 	case WP_SABER:
 		//don't do any pitch change if not holding a firing weapon

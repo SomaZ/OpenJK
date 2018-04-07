@@ -146,6 +146,7 @@ void CG_ItemPickup( int itemNum, qboolean bHadItem ) {
 					!(nNewWpn == WP_TRIP_MINE) &&
 					!(nNewWpn == WP_THERMAL) &&
 					!(nNewWpn == WP_ROCKET_LAUNCHER) &&
+					!(nNewWpn == WP_RAIL_DETONATOR) &&
 					!(nNewWpn == WP_CONCUSSION) )
 			{
 				// switch to new wpn

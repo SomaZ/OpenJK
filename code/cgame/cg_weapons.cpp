@@ -532,6 +532,11 @@ void CG_RegisterWeapon(int weaponNum) {
 		cgi_S_RegisterSound( "sound/weapons/rocket/tick.wav" );
 		break;
 
+	case WP_RAIL_DETONATOR:
+		theFxScheduler.RegisterEffect("rocket/shot");
+		theFxScheduler.RegisterEffect("rocket/explosion");
+		break;
+
 	case WP_CONCUSSION:
 		//Primary
 		theFxScheduler.RegisterEffect( "concussion/shot" );
@@ -570,7 +575,7 @@ void CG_RegisterWeapon(int weaponNum) {
 		theFxScheduler.RegisterEffect( "detpack/explosion.efx" );
 
 		cgs.media.detPackStickSound = cgi_S_RegisterSound( "sound/weapons/detpack/stick.wav" );
-		cgi_R_RegisterModel( "models/weapons2/detpack/detpack.md3" );
+		//cgi_R_RegisterModel( "models/weapons2/detpack/detpack.md3" ); //Do we really need this here? - DT
 		cgi_S_RegisterSound( "sound/weapons/detpack/warning.wav" );
 		cgi_S_RegisterSound( "sound/weapons/explosions/explode5.wav" );
 		break;
@@ -594,9 +599,7 @@ void CG_RegisterWeapon(int weaponNum) {
 		break;
 
 	case WP_MELEE:
-	//DT EDIT: DF2 - START - Added Gamorrean weapon
 	case WP_GAMORREAN_AXE:
-	//DT EDIT: DF2 - END
 	case WP_TUSKEN_STAFF:
 		//TEMP
 		theFxScheduler.RegisterEffect( "melee/punch_impact" );
@@ -1444,9 +1447,6 @@ void CG_AddViewWeapon( playerState_t *ps )
 	vec3_t extraOffset;
 	extraOffset[0] = extraOffset[1] = extraOffset[2] = 0.0f;
 
-	//DT EDIT: DF2 - START - Added Gamorrean weapon
-	//if( ps->weapon == WP_TUSKEN_RIFLE || ps->weapon == WP_NOGHRI_STICK || ps->weapon == WP_TUSKEN_STAFF || ps->weapon == WP_GAMORREAN_AXE )
-	//DT EDIT: DF2 - END
 	if( ps->weapon == WP_TUSKEN_RIFLE || ps->weapon == WP_NOGHRI_STICK || ps->weapon == WP_TUSKEN_STAFF )
 	{
 		extraOffset[0] = 2;
@@ -3374,6 +3374,7 @@ void CG_MissileHitWall( centity_t *cent, int weapon, vec3_t origin, vec3_t dir, 
 		break;
 
 	case WP_ROCKET_LAUNCHER:
+	case WP_RAIL_DETONATOR:
 		FX_RocketHitWall( origin, dir );
 		break;
 
@@ -3515,6 +3516,7 @@ void CG_MissileHitPlayer( centity_t *cent, int weapon, vec3_t origin, vec3_t dir
 		break;
 
 	case WP_ROCKET_LAUNCHER:
+	case WP_RAIL_DETONATOR:
 		FX_RocketHitPlayer( origin, dir, humanoid );
 		break;
 
