@@ -136,6 +136,7 @@ void main()
 	}
 	else
 	{
+		biasPos.xyz -= var_ViewDir * (1.0 / u_ViewInfo.x);
 		shadowpos = u_ShadowMvp2 * biasPos;
 
 		if (all(lessThan(abs(shadowpos.xyz), vec3(abs(shadowpos.w)))))
@@ -145,6 +146,7 @@ void main()
 		}
 		else
 		{
+			biasPos.xyz -= var_ViewDir * (1.0 / u_ViewInfo.x);
 			shadowpos = u_ShadowMvp3 * biasPos;
 
 			if (all(lessThan(abs(shadowpos.xyz), vec3(abs(shadowpos.w)))))
@@ -154,6 +156,7 @@ void main()
 			}
 			else
 			{
+				biasPos.xyz -= var_ViewDir * (1.0 / u_ViewInfo.x);
 				shadowpos = u_ShadowMvp4 * biasPos;
 				shadowpos.xyz = shadowpos.xyz * (0.5 / shadowpos.w) + vec3(0.5);
 				result = PCF(u_ShadowMap4, shadowpos.xy, shadowpos.z);
