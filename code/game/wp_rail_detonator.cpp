@@ -34,16 +34,15 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 void railDet_stick(gentity_t *self, gentity_t *other, trace_t *trace)
 //---------------------------------------------------------
 {
-	self->s.eType = ET_GENERAL;
+	char sticky_proj[MAX_QPATH] = "models/weapons2/rail_detonator/ammo.glm";
 
-	char sticky_proj[MAX_QPATH] = "models/weapons2/rail_detonator/projectile.glm";
-
-	gi.G2API_InitGhoul2Model(self->ghoul2, sticky_proj, G_ModelIndex(sticky_proj),
-		NULL_HANDLE, NULL_HANDLE, 0, 0);
-
-	G_PlayEffect("rail_detonator/proj_smoke", self->currentOrigin);
+	gi.G2API_InitGhoul2Model(self->ghoul2, sticky_proj, self->s.modelindex, NULL_HANDLE, NULL_HANDLE, 0, 0);
+	//set the *flash tag as genericBolt1, so we can then use it over in cgame and play the FX there.
+	self->genericBolt1 = gi.G2API_AddBolt(&self->ghoul2[0], "*flash");
 
 	// make us so we can take damage
+	self->classname = "raildet_stick";
+	self->s.eType = ET_GENERAL;
 	self->clipmask = MASK_SHOT;
 	self->contents = CONTENTS_SHOTCLIP;
 	self->takedamage = qtrue;
@@ -122,27 +121,17 @@ void WP_RailDetThink( gentity_t *ent )
 void railDetExplode(gentity_t *ent)
 //---------------------------------------------------------
 {
-	if (!ent->count)
-	{
-		G_Sound(ent, G_SoundIndex("sound/weapons/thermal/warning.wav"));
-		ent->count = 1;
-		ent->nextthink = level.time + 800;
-		ent->svFlags |= SVF_BROADCAST;//so everyone hears/sees the explosion?
-	}
-	else
-	{
-		vec3_t	pos;
+	vec3_t	pos;
 
-		VectorSet(pos, ent->currentOrigin[0], ent->currentOrigin[1], ent->currentOrigin[2] + 8);
+	VectorSet(pos, ent->currentOrigin[0], ent->currentOrigin[1], ent->currentOrigin[2] + 8);
 
-		ent->takedamage = qfalse; // don't allow double deaths!
+	ent->takedamage = qfalse; // don't allow double deaths!
 
-		G_RadiusDamage(ent->currentOrigin, ent->owner, weaponData[WP_RAIL_DETONATOR].splashDamage, weaponData[WP_RAIL_DETONATOR].splashRadius, NULL, MOD_EXPLOSIVE_SPLASH);
+	G_RadiusDamage(ent->currentOrigin, ent->owner, weaponData[WP_RAIL_DETONATOR].splashDamage, weaponData[WP_RAIL_DETONATOR].splashRadius, NULL, MOD_EXPLOSIVE_SPLASH);
+	
+	G_PlayEffect("thermal/explosion", ent->currentOrigin);
 
-		G_PlayEffect("thermal/explosion", ent->currentOrigin);
-
-		G_FreeEntity(ent);
-	}
+	G_FreeEntity(ent);
 }
 
 //-------------------------------------------------------------------------------------------------------------

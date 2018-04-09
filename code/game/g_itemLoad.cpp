@@ -174,6 +174,8 @@ static void IT_Name(const char **holdBuf)
 		itemNum = ITM_AMMO_POWERCELL_PICKUP;
 	else if (!Q_stricmp(tokenStr,"ITM_AMMO_METAL_BOLTS_PICKUP"))
 		itemNum = ITM_AMMO_METAL_BOLTS_PICKUP;
+	else if (!Q_stricmp(tokenStr, "ITM_AMMO_RAIL_CHARGES_PICKUP"))
+		itemNum = ITM_AMMO_RAIL_CHARGES_PICKUP;
 	else if (!Q_stricmp(tokenStr,"ITM_AMMO_ROCKETS_PICKUP"))
 		itemNum = ITM_AMMO_ROCKETS_PICKUP;
 	else if (!Q_stricmp(tokenStr,"ITM_AMMO_EMPLACED_PICKUP"))
@@ -394,6 +396,8 @@ static void IT_Tag(const char **holdBuf)
 		tag = AMMO_POWERCELL;
 	else if (!Q_stricmp(tokenStr,"AMMO_METAL_BOLTS"))
 		tag = AMMO_METAL_BOLTS;
+	else if (!Q_stricmp(tokenStr, "AMMO_RAIL_CHARGES"))
+		tag = AMMO_RAIL_CHARGES;
 	else if (!Q_stricmp(tokenStr,"AMMO_ROCKETS"))
 		tag = AMMO_ROCKETS;
 	else if (!Q_stricmp(tokenStr,"AMMO_EMPLACED"))

@@ -821,6 +821,18 @@ Ghoul2 Insert End
 		cgi_R_AddLightToScene(org, cent->gent->startRGBA[3], cent->gent->startRGBA[0], cent->gent->startRGBA[1], cent->gent->startRGBA[2]);
 	}
 
+	if (!strcmp("raildet_stick", cent->gent->classname))
+	{
+		vec3_t org, axis;
+		mdxaBone_t	boltMatrix;
+
+		gi.G2API_GetBoltMatrix(cent->gent->ghoul2, cent->gent->playerModel, cent->gent->genericBolt1, &boltMatrix, cent->gent->currentAngles, cent->gent->currentOrigin, cg.time, cgs.model_draw, cent->currentState.modelScale);
+		gi.G2API_GiveMeVectorFromMatrix(boltMatrix, ORIGIN, org);
+		gi.G2API_GiveMeVectorFromMatrix(boltMatrix, NEGATIVE_Y, axis);
+
+		theFxScheduler.PlayEffect("rail_detonator/proj_smoke", org, axis);
+	}
+
 	//-----------------------------------------------------------
 	if ( cent->gent->flags & (FL_DMG_BY_HEAVY_WEAP_ONLY | FL_SHIELDED ))
 	{

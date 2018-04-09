@@ -533,8 +533,9 @@ void CG_RegisterWeapon(int weaponNum) {
 		break;
 
 	case WP_RAIL_DETONATOR:
-		theFxScheduler.RegisterEffect("rocket/shot");
-		theFxScheduler.RegisterEffect("rocket/explosion");
+		theFxScheduler.RegisterEffect("thermal/explosion");
+		theFxScheduler.RegisterEffect("rail_detonator/proj_smoke");
+		theFxScheduler.RegisterEffect("rail_detonator/shot");
 		break;
 
 	case WP_CONCUSSION:
@@ -3373,9 +3374,12 @@ void CG_MissileHitWall( centity_t *cent, int weapon, vec3_t origin, vec3_t dir, 
 		}
 		break;
 
-	case WP_ROCKET_LAUNCHER:
 	case WP_RAIL_DETONATOR:
-		FX_RocketHitWall( origin, dir );
+		FX_RailDetHitWall(origin, dir);
+		break;
+
+	case WP_ROCKET_LAUNCHER:
+		FX_RocketHitWall(origin, dir);
 		break;
 
 	case WP_CONCUSSION:
@@ -3515,8 +3519,11 @@ void CG_MissileHitPlayer( centity_t *cent, int weapon, vec3_t origin, vec3_t dir
 		}
 		break;
 
-	case WP_ROCKET_LAUNCHER:
 	case WP_RAIL_DETONATOR:
+		FX_RailDetHitPlayer(origin, dir, humanoid);
+		break;
+
+	case WP_ROCKET_LAUNCHER:
 		FX_RocketHitPlayer( origin, dir, humanoid );
 		break;
 

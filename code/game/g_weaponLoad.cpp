@@ -1025,6 +1025,8 @@ void WPN_Ammo(const char **holdBuf)
 		wpnParms.ammoNum = AMMO_POWERCELL;
 	else if (!Q_stricmp(tokenStr,"AMMO_METAL_BOLTS"))
 		wpnParms.ammoNum = AMMO_METAL_BOLTS;
+	else if (!Q_stricmp(tokenStr, "AMMO_RAIL_CHARGES"))
+		wpnParms.ammoNum = AMMO_RAIL_CHARGES;
 	else if (!Q_stricmp(tokenStr,"AMMO_ROCKETS"))
 		wpnParms.ammoNum = AMMO_ROCKETS;
 	else if (!Q_stricmp(tokenStr,"AMMO_EMPLACED"))

@@ -41,7 +41,29 @@ void FX_RailDetProjectileThink( centity_t *cent, const struct weaponInfo_s *weap
 		forward[2] = 1.0f;
 	}
 
-	theFxScheduler.PlayEffect( "rocket/shot", cent->lerpOrigin, forward );
+	theFxScheduler.PlayEffect( "rail_detonator/shot", cent->lerpOrigin, forward );
+}
+
+/*
+---------------------------
+FX_RailDetHitWall
+---------------------------
+*/
+
+void FX_RailDetHitWall(vec3_t origin, vec3_t normal)
+{
+	theFxScheduler.PlayEffect("thermal/explosion", origin, normal);
+}
+
+/*
+---------------------------
+FX_RailDetHitPlayer
+---------------------------
+*/
+
+void FX_RailDetHitPlayer(vec3_t origin, vec3_t normal, qboolean humanoid)
+{
+	theFxScheduler.PlayEffect("thermal/explosion", origin, normal);
 }
 
 /*
@@ -59,5 +81,5 @@ void FX_RailDetAltProjectileThink( centity_t *cent, const struct weaponInfo_s *w
 		forward[2] = 1.0f;
 	}
 
-	theFxScheduler.PlayEffect( "rocket/shot", cent->lerpOrigin, forward );
+	theFxScheduler.PlayEffect( "rail_detonator/shot", cent->lerpOrigin, forward );
 }
