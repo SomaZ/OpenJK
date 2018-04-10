@@ -821,7 +821,7 @@ Ghoul2 Insert End
 		cgi_R_AddLightToScene(org, cent->gent->startRGBA[3], cent->gent->startRGBA[0], cent->gent->startRGBA[1], cent->gent->startRGBA[2]);
 	}
 
-	if (!strcmp("raildet_stick", cent->gent->classname))
+	if ( s1->weapon == WP_RAIL_DETONATOR )
 	{
 		vec3_t org, axis;
 		mdxaBone_t	boltMatrix;
