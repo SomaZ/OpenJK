@@ -388,7 +388,7 @@ typedef struct ammoData_s
 
 // Rail Detonator
 //--------------
-#define RAILDET_TIME			3000
+#define RAILDET_TIME			2500
 #define RAILDET_THINK_TIME		300
 #define RAILDET_SPLASH_RAD		128
 #define RAILDET_RAD				(RAILDET_SPLASH_RAD * 0.8f) // no sense in auto-blowing up if exactly on the radius edge--it would hardly do any damage
