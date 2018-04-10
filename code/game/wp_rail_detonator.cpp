@@ -40,6 +40,8 @@ void railDet_stick(gentity_t *self, gentity_t *other, trace_t *trace)
 	//set the *flash tag as genericBolt1, so we can then use it over in cgame and play the FX there.
 	self->genericBolt1 = gi.G2API_AddBolt(&self->ghoul2[0], "*flash");
 
+	G_Sound(self, G_SoundIndex("sound/weapons/rail_detonator/chargeloop.wav"));
+
 	// make us so we can take damage
 	self->classname = "raildet_stick";
 	self->s.eType = ET_GENERAL;
@@ -61,7 +63,7 @@ void railDet_stick(gentity_t *self, gentity_t *other, trace_t *trace)
 	self->nextthink = level.time + RAILDET_THINK_TIME;
 	self->delay = level.time + RAILDET_TIME; // How long 'til she blows
 
-	WP_Stick(self, trace, 1.0f);
+	WP_Stick(self, trace, -3.0f);
 }
 
 //---------------------------------------------------------
