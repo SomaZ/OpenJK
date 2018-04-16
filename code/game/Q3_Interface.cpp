@@ -3272,7 +3272,14 @@ void G_SetWeapon( gentity_t *self, int wp )
 	}
 	else
 	{
-		G_CreateG2AttachedWeaponModel( self, weaponData[wp].weaponMdl, self->handRBolt, 0 );
+		//DT EDIT: Ghoul2 viewmodels - START
+		if (weaponData[wp].worldModel[0]) {
+			G_CreateG2AttachedWeaponModel(self, weaponData[wp].worldModel, self->handRBolt, 0);
+		}
+		else {
+			G_CreateG2AttachedWeaponModel(self, weaponData[wp].weaponMdl, self->handRBolt, 0);
+		}
+		//DT EDIT: Ghoul2 viewmodels - END
 	}
 }
 

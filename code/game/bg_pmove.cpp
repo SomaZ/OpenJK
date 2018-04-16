@@ -13523,6 +13523,16 @@ static void PM_Weapon( void )
 					PM_AddEvent( EV_CHANGE_WEAPON );
 				}
 			}
+			//DT EDIT: Ghoul2 viewmodels - START
+			if (weaponData[pm->ps->weapon].worldModel[0]) {
+				G_CreateG2AttachedWeaponModel( pm->gent, weaponData[pm->ps->weapon].worldModel, pm->gent->handRBolt, 0 );
+				//make it sound like we took another one out from... uh.. somewhere...
+				if ( cg.time > 0 )
+				{//this way we don't get that annoying change weapon sound every time a map starts
+					PM_AddEvent( EV_CHANGE_WEAPON );
+				}
+			}
+			//DT EDIT: Ghoul2 viewmodels - END
 		}
 	}
 
