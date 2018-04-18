@@ -939,6 +939,7 @@ int CG_MapTorsoToWeaponFrame( const clientInfo_t *ci, int frame, int animNum, in
 	case TORSO_WEAPONREADY3:
 	case TORSO_WEAPONREADY4:
 	case TORSO_WEAPONREADY10:
+	case TORSO_WEAPONREADY_RD:
 		ret = 0;
 		break;
 
@@ -971,6 +972,16 @@ int CG_MapTorsoToWeaponFrame( const clientInfo_t *ci, int frame, int animNum, in
 		if ( frame >= animations[animNum].firstFrame && frame < animations[animNum].firstFrame + 6 )
 		{
 			ret = 1 + ( frame - animations[animNum].firstFrame );
+		}
+		else
+		{
+//			assert(0);
+		}
+		break;
+	case BOTH_ATTACK_RD:
+		if (frame >= animations[animNum].firstFrame && frame < animations[animNum].firstFrame + 25)
+		{
+			ret = 1 + (frame - animations[animNum].firstFrame);
 		}
 		else
 		{
@@ -1160,10 +1171,12 @@ int CG_MapTorsoToG2VMAnimation(playerState_t *ps)
 		case TORSO_WEAPONREADY3:
 		case TORSO_WEAPONREADY4:
 		case TORSO_WEAPONREADY10:
+		case TORSO_WEAPONREADY_RD:
 		case TORSO_WEAPONIDLE2:
 		case TORSO_WEAPONIDLE3:
 		case TORSO_WEAPONIDLE4:
 		case TORSO_WEAPONIDLE10:
+		case TORSO_WEAPONIDLE_RD:
 			return VM_READY;
 		case BOTH_STAND1IDLE1:
 		case BOTH_STAND3IDLE1:
@@ -1181,6 +1194,8 @@ int CG_MapTorsoToG2VMAnimation(playerState_t *ps)
 		case BOTH_ATTACK10:
 		case BOTH_ATTACK11:
 			return VM_FIRE;
+		case BOTH_ATTACK_RD:
+			return VM_FIRE_RD;
 		case BOTH_THERMAL_READY:
 			return VM_THERMAL_PULLBACK;
 		case BOTH_THERMAL_THROW:
@@ -1272,6 +1287,7 @@ void CG_AnimateViewmodel(centity_t* cent, playerState_t *ps) {
 	int flags = BONE_ANIM_OVERRIDE;
 
 	switch (desiredAnim) {
+	case VM_FIRE_RD:
 	case VM_FIRE:
 		if (cent->muzzleFlashTime <= 0)
 			return;
