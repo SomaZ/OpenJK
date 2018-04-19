@@ -532,6 +532,12 @@ void CG_RegisterWeapon(int weaponNum) {
 		cgi_S_RegisterSound( "sound/weapons/rocket/tick.wav" );
 		break;
 
+	case WP_RAIL_DETONATOR:
+		theFxScheduler.RegisterEffect("thermal/explosion");
+		theFxScheduler.RegisterEffect("rail_detonator/proj_smoke");
+		theFxScheduler.RegisterEffect("rail_detonator/shot");
+		break;
+
 	case WP_CONCUSSION:
 		//Primary
 		theFxScheduler.RegisterEffect( "concussion/shot" );
@@ -570,7 +576,7 @@ void CG_RegisterWeapon(int weaponNum) {
 		theFxScheduler.RegisterEffect( "detpack/explosion.efx" );
 
 		cgs.media.detPackStickSound = cgi_S_RegisterSound( "sound/weapons/detpack/stick.wav" );
-		cgi_R_RegisterModel( "models/weapons2/detpack/detpack.md3" );
+		//cgi_R_RegisterModel( "models/weapons2/detpack/detpack.md3" ); //Do we really need this here? - DT
 		cgi_S_RegisterSound( "sound/weapons/detpack/warning.wav" );
 		cgi_S_RegisterSound( "sound/weapons/explosions/explode5.wav" );
 		break;
@@ -594,9 +600,7 @@ void CG_RegisterWeapon(int weaponNum) {
 		break;
 
 	case WP_MELEE:
-	//DT EDIT: DF2 - START - Added Gamorrean weapon
 	case WP_GAMORREAN_AXE:
-	//DT EDIT: DF2 - END
 	case WP_TUSKEN_STAFF:
 		//TEMP
 		theFxScheduler.RegisterEffect( "melee/punch_impact" );
@@ -1444,9 +1448,6 @@ void CG_AddViewWeapon( playerState_t *ps )
 	vec3_t extraOffset;
 	extraOffset[0] = extraOffset[1] = extraOffset[2] = 0.0f;
 
-	//DT EDIT: DF2 - START - Added Gamorrean weapon
-	//if( ps->weapon == WP_TUSKEN_RIFLE || ps->weapon == WP_NOGHRI_STICK || ps->weapon == WP_TUSKEN_STAFF || ps->weapon == WP_GAMORREAN_AXE )
-	//DT EDIT: DF2 - END
 	if( ps->weapon == WP_TUSKEN_RIFLE || ps->weapon == WP_NOGHRI_STICK || ps->weapon == WP_TUSKEN_STAFF )
 	{
 		extraOffset[0] = 2;
@@ -3373,8 +3374,12 @@ void CG_MissileHitWall( centity_t *cent, int weapon, vec3_t origin, vec3_t dir, 
 		}
 		break;
 
+	case WP_RAIL_DETONATOR:
+		FX_RailDetHitWall(origin, dir);
+		break;
+
 	case WP_ROCKET_LAUNCHER:
-		FX_RocketHitWall( origin, dir );
+		FX_RocketHitWall(origin, dir);
 		break;
 
 	case WP_CONCUSSION:
@@ -3512,6 +3517,10 @@ void CG_MissileHitPlayer( centity_t *cent, int weapon, vec3_t origin, vec3_t dir
 		{
 			FX_FlechetteWeaponHitPlayer( origin, dir, humanoid );
 		}
+		break;
+
+	case WP_RAIL_DETONATOR:
+		FX_RailDetHitPlayer(origin, dir, humanoid);
 		break;
 
 	case WP_ROCKET_LAUNCHER:

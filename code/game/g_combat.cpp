@@ -240,6 +240,7 @@ gentity_t *TossClientItems( gentity_t *self )
 					dropped->count = 30;
 					break;
 				case WP_ROCKET_LAUNCHER:
+				case WP_RAIL_DETONATOR:
 					dropped->count = 3;
 					break;
 				case WP_CONCUSSION:
@@ -3897,6 +3898,8 @@ extern void RunEmplacedWeapon( gentity_t *ent, usercmd_t **ucmd );
 					|| meansOfDeath == MOD_FLECHETTE_ALT
 					|| meansOfDeath == MOD_ROCKET
 					|| meansOfDeath == MOD_ROCKET_ALT
+					|| meansOfDeath == MOD_RAIL_DET
+					|| meansOfDeath == MOD_RAIL_DET_ALT
 					|| meansOfDeath == MOD_CONC
 					|| meansOfDeath == MOD_CONC_ALT
 					|| meansOfDeath == MOD_THERMAL
@@ -4550,6 +4553,8 @@ extern void RunEmplacedWeapon( gentity_t *ent, usercmd_t **ucmd );
 				&& meansOfDeath!=MOD_FLECHETTE_ALT
 				&& meansOfDeath!=MOD_ROCKET
 				&& meansOfDeath!=MOD_ROCKET_ALT
+				&& meansOfDeath!=MOD_RAIL_DET
+				&& meansOfDeath!=MOD_RAIL_DET_ALT
 				&& meansOfDeath!=MOD_CONC
 				&& meansOfDeath!=MOD_THERMAL
 				&& meansOfDeath!=MOD_THERMAL_ALT
@@ -5094,6 +5099,8 @@ void G_CheckKnockdown( gentity_t *targ, gentity_t *attacker, vec3_t newDir, int 
 			&&mod!=MOD_FLECHETTE_ALT
 			&&mod!=MOD_ROCKET
 			&&mod!=MOD_ROCKET_ALT
+			&&mod!=MOD_RAIL_DET
+			&&mod!=MOD_RAIL_DET_ALT
 			&&mod!=MOD_CONC
 			&&mod!=MOD_CONC_ALT
 			&&mod!=MOD_THERMAL
@@ -5358,6 +5365,10 @@ void G_TrackWeaponUsage( gentity_t *self, gentity_t *inflictor, int add, int mod
 		case MOD_FLECHETTE_ALT:
 			weapon = WP_FLECHETTE;
 			break;
+		case MOD_RAIL_DET:
+		case MOD_RAIL_DET_ALT:
+			weapon = WP_RAIL_DETONATOR;
+			break;
 		case MOD_ROCKET:
 		case MOD_ROCKET_ALT:
 			weapon = WP_ROCKET_LAUNCHER;
@@ -5402,6 +5413,8 @@ qboolean G_NonLocationSpecificDamage( int meansOfDeath )
 		|| meansOfDeath == MOD_FLECHETTE_ALT
 		|| meansOfDeath == MOD_ROCKET
 		|| meansOfDeath == MOD_ROCKET_ALT
+		|| meansOfDeath == MOD_RAIL_DET
+		|| meansOfDeath == MOD_RAIL_DET_ALT
 		|| meansOfDeath == MOD_CONC
 		|| meansOfDeath == MOD_THERMAL
 		|| meansOfDeath == MOD_THERMAL_ALT
@@ -5733,6 +5746,8 @@ void G_Damage( gentity_t *targ, gentity_t *inflictor, gentity_t *attacker, const
 				|| mod == MOD_FLECHETTE_ALT
 				|| mod == MOD_ROCKET
 				|| mod == MOD_ROCKET_ALT
+				|| mod == MOD_RAIL_DET
+				|| mod == MOD_RAIL_DET_ALT
 				|| mod == MOD_CONC
 				|| mod == MOD_THERMAL
 				|| mod == MOD_THERMAL_ALT
@@ -5871,6 +5886,8 @@ void G_Damage( gentity_t *targ, gentity_t *inflictor, gentity_t *attacker, const
 				case MOD_FLECHETTE_ALT:
 				case MOD_ROCKET:
 				case MOD_ROCKET_ALT:
+				case MOD_RAIL_DET:
+				case MOD_RAIL_DET_ALT:
 				case MOD_CONC:
 				case MOD_THERMAL:
 				case MOD_THERMAL_ALT:

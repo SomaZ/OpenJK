@@ -83,6 +83,8 @@ typedef enum
 	thinkF_trigger_teleporter_find_closest_portal,
 	thinkF_thermalDetonatorExplode,
 	thinkF_WP_ThermalThink,
+	thinkF_railDetExplode,
+	thinkF_WP_RailDetThink,
 	thinkF_trigger_hurt_reset,
 	thinkF_turret_base_think,
 	thinkF_turret_head_think,
@@ -190,6 +192,8 @@ extern void ammo_think				( gentity_t *ent );
 extern void trigger_teleporter_find_closest_portal ( gentity_t *self );
 extern void thermalDetonatorExplode	( gentity_t *ent );
 extern void WP_ThermalThink			( gentity_t *ent );
+extern void railDetExplode			( gentity_t *ent );
+extern void WP_RailDetThink			( gentity_t *ent );
 extern void trigger_hurt_reset		( gentity_t *self );
 extern void turret_base_think		( gentity_t *self );
 extern void turret_head_think		( gentity_t *self );
@@ -310,6 +314,7 @@ typedef enum
 	touchF_Touch_Item,
 	touchF_teleporter_touch,
 	touchF_charge_stick,
+	touchF_railDet_stick,
 	touchF_Touch_DoorTrigger,
 	touchF_Touch_PlatCenterTrigger,
 	touchF_Touch_Plat,
@@ -332,6 +337,7 @@ typedef enum
 extern void Touch_Item				(gentity_t *self, gentity_t *other, trace_t *trace);
 extern void teleporter_touch		(gentity_t *self, gentity_t *other, trace_t *trace);
 extern void charge_stick			(gentity_t *self, gentity_t *other, trace_t *trace);
+extern void railDet_stick			(gentity_t *self, gentity_t *other, trace_t *trace);
 extern void Touch_DoorTrigger		(gentity_t *self, gentity_t *other, trace_t *trace);
 extern void Touch_PlatCenterTrigger	(gentity_t *self, gentity_t *other, trace_t *trace);
 extern void Touch_Plat				(gentity_t *self, gentity_t *other, trace_t *trace);
@@ -609,6 +615,7 @@ typedef enum
 	dieF_misc_atst_die,
 	dieF_misc_panel_turret_die,
 	dieF_thermal_die,
+	dieF_railDet_die,
 	dieF_eweb_die,
 } dieFunc_t;
 
@@ -635,6 +642,7 @@ extern void Interrogator_die			(gentity_t *self, gentity_t *inflictor, gentity_t
 extern void misc_atst_die				(gentity_t *self, gentity_t *inflictor, gentity_t *attacker, int damage, int mod,int dFlags=0,int hitLoc=HL_NONE);
 extern void misc_panel_turret_die		(gentity_t *self, gentity_t *inflictor, gentity_t *attacker, int damage, int mod,int dFlags=0,int hitLoc=HL_NONE);
 extern void thermal_die					(gentity_t *self, gentity_t *inflictor, gentity_t *attacker, int damage, int mod,int dFlags=0,int hitLoc=HL_NONE);
+extern void railDet_die					(gentity_t *self, gentity_t *inflictor, gentity_t *attacker, int damage, int mod,int dFlags=0,int hitLoc=HL_NONE);
 extern void eweb_die					(gentity_t *self, gentity_t *inflictor, gentity_t *attacker, int damage, int mod,int dFlags=0,int hitLoc=HL_NONE);
 
 void GEntity_ThinkFunc(gentity_t *self);

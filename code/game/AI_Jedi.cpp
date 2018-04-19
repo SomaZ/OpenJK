@@ -5004,6 +5004,7 @@ static void Jedi_CombatTimersUpdate( int enemy_dist )
 			case WP_DEMP2:
 			case WP_FLECHETTE:
 			case WP_ROCKET_LAUNCHER:
+			case WP_RAIL_DETONATOR:
 			case WP_CONCUSSION:
 				//if he has a blaster, move in when:
 				//They're not shooting at me

@@ -141,6 +141,7 @@ stringID_table_t WPTable[] =
 	ENUM2STRING(WP_DEMP2),
 	ENUM2STRING(WP_FLECHETTE),
 	ENUM2STRING(WP_ROCKET_LAUNCHER),
+	ENUM2STRING(WP_RAIL_DETONATOR),
 	ENUM2STRING(WP_THERMAL),
 	ENUM2STRING(WP_TRIP_MINE),
 	ENUM2STRING(WP_DET_PACK),
@@ -158,9 +159,7 @@ stringID_table_t WPTable[] =
 	ENUM2STRING(WP_RAPID_FIRE_CONC),
 	ENUM2STRING(WP_JAWA),
 	ENUM2STRING(WP_TUSKEN_RIFLE),
-	//DT EDIT: DF2 - START - Added Gamorrean weapon
 	ENUM2STRING(WP_GAMORREAN_AXE),
-	//DT EDIT: DF2 - END
 	ENUM2STRING(WP_TUSKEN_STAFF),
 	ENUM2STRING(WP_SCEPTER),
 	ENUM2STRING(WP_NOGHRI_STICK),
@@ -3273,7 +3272,14 @@ void G_SetWeapon( gentity_t *self, int wp )
 	}
 	else
 	{
-		G_CreateG2AttachedWeaponModel( self, weaponData[wp].weaponMdl, self->handRBolt, 0 );
+		//DT EDIT: Ghoul2 viewmodels - START
+		if (weaponData[wp].worldModel[0]) {
+			G_CreateG2AttachedWeaponModel(self, weaponData[wp].worldModel, self->handRBolt, 0);
+		}
+		else {
+			G_CreateG2AttachedWeaponModel(self, weaponData[wp].weaponMdl, self->handRBolt, 0);
+		}
+		//DT EDIT: Ghoul2 viewmodels - END
 	}
 }
 

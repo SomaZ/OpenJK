@@ -451,7 +451,14 @@ void NPC_SetMiscDefaultData( gentity_t *ent )
 				&& ent->client->ps.weapon != WP_SABER //sabers done above
 				&& (!(ent->NPC->aiFlags&NPCAI_MATCHPLAYERWEAPON)||!ent->weaponModel[0]) )//they do this themselves
 			{
-				G_CreateG2AttachedWeaponModel( ent, weaponData[ent->client->ps.weapon].weaponMdl, ent->handRBolt, 0 );
+				//DT EDIT: Ghoul2 viewmodels - START
+				if (weaponData[ent->client->ps.weapon].worldModel[0]) {
+					G_CreateG2AttachedWeaponModel(ent, weaponData[ent->client->ps.weapon].worldModel, ent->handRBolt, 0);
+				}
+				else {
+					G_CreateG2AttachedWeaponModel(ent, weaponData[ent->client->ps.weapon].weaponMdl, ent->handRBolt, 0);
+				}
+				//DT EDIT: Ghoul2 viewmodels - END
 			}
 			switch ( ent->client->ps.weapon )
 			{
@@ -553,7 +560,14 @@ void NPC_SetMiscDefaultData( gentity_t *ent )
 					&& ent->client->ps.weapon != WP_SABER//sabers done above
 					&& (!(ent->NPC->aiFlags&NPCAI_MATCHPLAYERWEAPON)||!ent->weaponModel[0]) )//they do this themselves
 				{
-					G_CreateG2AttachedWeaponModel( ent, weaponData[ent->client->ps.weapon].weaponMdl, ent->handRBolt, 0 );
+					//DT EDIT: Ghoul2 viewmodels - START
+					if (weaponData[ent->client->ps.weapon].worldModel[0]) {
+						G_CreateG2AttachedWeaponModel(ent, weaponData[ent->client->ps.weapon].worldModel, ent->handRBolt, 0);
+					}
+					else {
+						G_CreateG2AttachedWeaponModel(ent, weaponData[ent->client->ps.weapon].weaponMdl, ent->handRBolt, 0);
+					}
+					//DT EDIT: Ghoul2 viewmodels - END
 				}
 				switch ( ent->client->ps.weapon )
 				{
@@ -565,7 +579,14 @@ void NPC_SetMiscDefaultData( gentity_t *ent )
 						&& ent->NPC->rank >= RANK_LT_COMM
 						&& (!(ent->NPC->aiFlags&NPCAI_MATCHPLAYERWEAPON)||!ent->weaponModel[0]) )//they do this themselves
 					{//dual blaster pistols, so add the left-hand one, too
-						G_CreateG2AttachedWeaponModel( ent, weaponData[ent->client->ps.weapon].weaponMdl, ent->handLBolt, 1 );
+						//DT EDIT: Ghoul2 viewmodels - START
+						if (weaponData[ent->client->ps.weapon].worldModel[0]) {
+							G_CreateG2AttachedWeaponModel(ent, weaponData[ent->client->ps.weapon].worldModel, ent->handRBolt, 1);
+						}
+						else {
+							G_CreateG2AttachedWeaponModel(ent, weaponData[ent->client->ps.weapon].weaponMdl, ent->handLBolt, 1);
+						}
+						//DT EDIT: Ghoul2 viewmodels - END
 					}
 					break;
 				case WP_DISRUPTOR:
@@ -629,7 +650,14 @@ void NPC_SetMiscDefaultData( gentity_t *ent )
 			&& ent->client->ps.weapon != WP_SABER//sabers done above
 			&& (!(ent->NPC->aiFlags&NPCAI_MATCHPLAYERWEAPON)||!ent->weaponModel[0]) )//they do this themselves
 		{
-			G_CreateG2AttachedWeaponModel( ent, weaponData[ent->client->ps.weapon].weaponMdl, ent->handRBolt, 0 );
+			//DT EDIT: Ghoul2 viewmodels - START
+			if (weaponData[ent->client->ps.weapon].worldModel[0]) {
+				G_CreateG2AttachedWeaponModel(ent, weaponData[ent->client->ps.weapon].worldModel, ent->handRBolt, 0);
+			}
+			else {
+				G_CreateG2AttachedWeaponModel(ent, weaponData[ent->client->ps.weapon].weaponMdl, ent->handRBolt, 0);
+			}
+			//DT EDIT: Ghoul2 viewmodels - END
 		}
 		break;
 	}
@@ -664,7 +692,14 @@ void NPC_SetMiscDefaultData( gentity_t *ent )
 	{
 		if ( !ent->weaponModel[1] )
 		{//we have the scepter, so put it in our left hand if we don't already have a second weapon
-			G_CreateG2AttachedWeaponModel( ent, weaponData[WP_SCEPTER].weaponMdl, ent->handLBolt, 1 );
+			//DT EDIT: Ghoul2 viewmodels - START
+			if (weaponData[WP_SCEPTER].worldModel[0]) {
+				G_CreateG2AttachedWeaponModel(ent, weaponData[WP_SCEPTER].worldModel, ent->handRBolt, 1);
+			}
+			else {
+				G_CreateG2AttachedWeaponModel(ent, weaponData[WP_SCEPTER].weaponMdl, ent->handLBolt, 1);
+			}
+			//DT EDIT: Ghoul2 viewmodels - END
 		}
 		ent->genericBolt1 = gi.G2API_AddBolt(&ent->ghoul2[ent->weaponModel[1]], "*flash");
 	}

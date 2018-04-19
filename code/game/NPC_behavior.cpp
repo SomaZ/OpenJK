@@ -1968,9 +1968,7 @@ void NPC_StartFlee( gentity_t *enemy, vec3_t dangerPoint, int dangerLevel, int f
 	if ( dangerLevel > AEL_DANGER//geat danger always makes people turn and run
 		|| NPC->s.weapon == WP_NONE	//melee/unarmed guys turn and run, others keep facing you and shooting
 		|| NPC->s.weapon == WP_MELEE
-		//DT EDIT: DF2 - START - Added Gamorrean weapon
 		|| NPC->s.weapon == WP_GAMORREAN_AXE
-		//DT EDIT: DF2 - END
 		|| NPC->s.weapon == WP_TUSKEN_STAFF )
 	{
 		NPCInfo->tempBehavior = BS_FLEE;//we don't want to do this forever!

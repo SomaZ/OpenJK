@@ -609,14 +609,28 @@ void G_SetEnemy( gentity_t *self, gentity_t *enemy )
 				ChangeWeapon( self, WP_BLASTER );
 				self->client->ps.weapon = WP_BLASTER;
 				self->client->ps.weaponstate = WEAPON_READY;
-				G_CreateG2AttachedWeaponModel( self, weaponData[WP_BLASTER].weaponMdl, self->handRBolt, 0 );
+				//DT EDIT: Ghoul2 viewmodels - START
+				if (weaponData[WP_BLASTER].worldModel[0]) {
+					G_CreateG2AttachedWeaponModel(self, weaponData[WP_BLASTER].worldModel, self->handRBolt, 0);
+				}
+				else {
+					G_CreateG2AttachedWeaponModel(self, weaponData[WP_BLASTER].weaponMdl, self->handRBolt, 0);
+				}
+				//DT EDIT: Ghoul2 viewmodels - END
 			}
 			else if ( self->client->ps.stats[STAT_WEAPONS] & ( 1 << WP_BLASTER_PISTOL ) )
 			{
 				ChangeWeapon( self, WP_BLASTER_PISTOL );
 				self->client->ps.weapon = WP_BLASTER_PISTOL;
 				self->client->ps.weaponstate = WEAPON_READY;
-				G_CreateG2AttachedWeaponModel( self, weaponData[WP_BLASTER_PISTOL].weaponMdl, self->handRBolt, 0 );
+				//DT EDIT: Ghoul2 viewmodels - START
+				if (weaponData[WP_BLASTER_PISTOL].worldModel[0]) {
+					G_CreateG2AttachedWeaponModel(self, weaponData[WP_BLASTER_PISTOL].worldModel, self->handRBolt, 0);
+				}
+				else {
+					G_CreateG2AttachedWeaponModel(self, weaponData[WP_BLASTER_PISTOL].weaponMdl, self->handRBolt, 0);
+				}
+				//DT EDIT: Ghoul2 viewmodels - END
 			}
 		}
 		return;
@@ -932,9 +946,7 @@ void ChangeWeapon( gentity_t *ent, int newWeapon )
 		break;
 
 	case WP_MELEE:
-	//DT EDIT: DF2 - START - Added Gamorrean weapon
 	case WP_GAMORREAN_AXE:
-	//DT EDIT: DF2 - END
 	case WP_TUSKEN_STAFF:
 		ent->NPC->aiFlags &= ~NPCAI_BURST_WEAPON;
 		ent->NPC->burstSpacing = 1000;//attackdebounce
@@ -1045,7 +1057,14 @@ void NPC_ChangeWeapon( int newWeapon )
 		}
 		else
 		{
-			G_CreateG2AttachedWeaponModel( NPC, weaponData[NPC->client->ps.weapon].weaponMdl, NPC->handRBolt, 0 );
+			//DT EDIT: Ghoul2 viewmodels - START
+			if (weaponData[NPC->client->ps.weapon].worldModel[0]) {
+				G_CreateG2AttachedWeaponModel(NPC, weaponData[NPC->client->ps.weapon].worldModel, NPC->handRBolt, 0);
+			}
+			else {
+				G_CreateG2AttachedWeaponModel(NPC, weaponData[NPC->client->ps.weapon].weaponMdl, NPC->handRBolt, 0);
+			}
+			// DT EDIT : Ghoul2 viewmodels - END
 		}
 	}
 }
@@ -1080,9 +1099,7 @@ void NPC_ApplyWeaponFireDelay(void)
 		break;
 
 	case WP_MELEE:
-	//DT EDIT: DF2 - START - Added Gamorrean weapon
 	case WP_GAMORREAN_AXE:
-	//DT EDIT: DF2 - END
 	case WP_TUSKEN_STAFF:
 		if ( !PM_DroidMelee( client->NPC_class ) )
 		{//FIXME: should be unique per melee anim

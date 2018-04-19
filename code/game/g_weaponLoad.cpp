@@ -58,6 +58,10 @@ void FX_FlechetteAltProjectileThink( centity_t *cent, const struct weaponInfo_s 
 void FX_RocketProjectileThink( centity_t *cent, const struct weaponInfo_s *weapon );
 void FX_RocketAltProjectileThink( centity_t *cent, const struct weaponInfo_s *weapon );
 
+// Rail Detonator
+void FX_RailDetProjectileThink(centity_t *cent, const struct weaponInfo_s *weapon);
+void FX_RailDetAltProjectileThink(centity_t *cent, const struct weaponInfo_s *weapon);
+
 // Concussion Rifle
 void FX_ConcProjectileThink( centity_t *cent, const struct weaponInfo_s *weapon );
 
@@ -95,6 +99,8 @@ func_t	funcs[] = {
 	{"flechette_alt_func",	FX_FlechetteAltProjectileThink},
 	{"rocket_func",			FX_RocketProjectileThink},
 	{"rocket_alt_func",		FX_RocketAltProjectileThink},
+	{"raildet_func",		FX_RailDetProjectileThink},
+	{"raildet_alt_func",	FX_RailDetAltProjectileThink},
 	{"conc_func",			FX_ConcProjectileThink},
 	{"emplaced_func",		FX_EmplacedProjectileThink},
 	{"turret_func",			FX_TurretProjectileThink},
@@ -189,6 +195,7 @@ const int defaultDamage[] = {
 	DEMP2_DAMAGE,				// WP_DEMP2
 	FLECHETTE_DAMAGE,			// WP_FLECHETTE
 	ROCKET_DAMAGE,				// WP_ROCKET_LAUNCHER
+	ROCKET_DAMAGE,				// WP_RAIL_DETONATOR
 	TD_DAMAGE,					// WP_THERMAL
 	LT_DAMAGE,					// WP_TRIP_MINE
 	FLECHETTE_MINE_DAMAGE,		// WP_DET_PACK			// HACK, this is what the code sez.
@@ -210,9 +217,7 @@ const int defaultDamage[] = {
 
 	BRYAR_PISTOL_DAMAGE,		// WP_JAWA
 	0,							// WP_TUSKEN_RIFLE
-	//DT EDIT: DF2 - START - Added Gamorrean weapon
 	0,							// WP_GAMORREAN_AXE
-	//DT EDIT: DF2 - END
 	0,							// WP_TUSKEN_STAFF
 	0,							// WP_SCEPTER
 	0,							// WP_NOGHRI_STICK
@@ -229,6 +234,7 @@ const int defaultAltDamage[] = {
 	DEMP2_ALT_DAMAGE,		// WP_DEMP2
 	FLECHETTE_ALT_DAMAGE,	// WP_FLECHETTE
 	ROCKET_DAMAGE,			// WP_ROCKET_LAUNCHER
+	ROCKET_DAMAGE,			// WP_RAIL_DETONATOR
 	TD_ALT_DAMAGE,			// WP_THERMAL
 	LT_DAMAGE,				// WP_TRIP_MINE
 	FLECHETTE_MINE_DAMAGE,	// WP_DET_PACK				// HACK, this is what the code sez.
@@ -250,9 +256,7 @@ const int defaultAltDamage[] = {
 
 	BRYAR_PISTOL_DAMAGE,	// WP_JAWA
 	0,						// WP_TUSKEN_RIFLE
-	//DT EDIT: DF2 - START - Added Gamorrean weapon
 	0,						// WP_GAMORREAN_AXE
-	//DT EDIT: DF2 - END
 	0,						// WP_TUSKEN_STAFF
 	0,						// WP_SCEPTER
 	0,						// WP_NOGHRI_STICK
@@ -269,6 +273,7 @@ const int defaultSplashDamage[] = {
 	0,								// WP_DEMP2
 	0,								// WP_FLECHETTE
 	ROCKET_SPLASH_DAMAGE,			// WP_ROCKET_LAUNCHER
+	ROCKET_SPLASH_DAMAGE,			// WP_RAIL_DETONATOR
 	TD_SPLASH_DAM,					// WP_THERMAL
 	LT_SPLASH_DAM,					// WP_TRIP_MINE
 	FLECHETTE_MINE_SPLASH_DAMAGE,	// WP_DET_PACK		// HACK, this is what the code sez.
@@ -290,9 +295,7 @@ const int defaultSplashDamage[] = {
 
 	0,								// WP_JAWA
 	0,								// WP_TUSKEN_RIFLE
-	//DT EDIT: DF2 - START - Added Gamorrean weapon
 	0,								// WP_GAMORREAN_AXE
-	//DT EDIT: DF2 - END
 	0,								// WP_TUSKEN_STAFF
 	0,								// WP_SCEPTER
 	0,								// WP_NOGHRI_STICK
@@ -309,6 +312,7 @@ const float defaultSplashRadius[] = {
 	0.0f,							// WP_DEMP2
 	0.0f,							// WP_FLECHETTE
 	ROCKET_SPLASH_RADIUS,			// WP_ROCKET_LAUNCHER
+	ROCKET_SPLASH_RADIUS,			// WP_RAIL_DETONATOR
 	TD_SPLASH_RAD,					// WP_THERMAL
 	LT_SPLASH_RAD,					// WP_TRIP_MINE
 	FLECHETTE_MINE_SPLASH_RADIUS,	// WP_DET_PACK		// HACK, this is what the code sez.
@@ -330,9 +334,7 @@ const float defaultSplashRadius[] = {
 
 	0.0f,							// WP_JAWA
 	0.0f,							// WP_TUSKEN_RIFLE
-	//DT EDIT: DF2 - START - Added Gamorrean weapon
 	0.0f,							// WP_GAMORREAN_AXE
-	//DT EDIT: DF2 - END
 	0.0f,							// WP_TUSKEN_STAFF
 	0.0f,							// WP_SCEPTER
 	0.0f,							// WP_NOGHRI_STICK
@@ -349,6 +351,7 @@ const int defaultAltSplashDamage[] = {
 	DEMP2_ALT_DAMAGE,				// WP_DEMP2
 	FLECHETTE_ALT_SPLASH_DAM,		// WP_FLECHETTE
 	ROCKET_SPLASH_DAMAGE,			// WP_ROCKET_LAUNCHER
+	ROCKET_SPLASH_DAMAGE,			// WP_RAIL_DETONATOR
 	TD_ALT_SPLASH_DAM,				// WP_THERMAL
 	TD_ALT_SPLASH_DAM,				// WP_TRIP_MINE
 	FLECHETTE_MINE_SPLASH_DAMAGE,	// WP_DET_PACK		// HACK, this is what the code sez.
@@ -370,9 +373,7 @@ const int defaultAltSplashDamage[] = {
 
 	0,								// WP_JAWA
 	0,								// WP_TUSKEN_RIFLE
-	//DT EDIT: DF2 - START - Added Gamorrean weapon
 	0,								// WP_GAMORREAN_AXE
-	//DT EDIT: DF2 - END
 	0,								// WP_TUSKEN_STAFF
 	0,								// WP_SCEPTER
 	0,								// WP_NOGHRI_STICK
@@ -390,6 +391,7 @@ const float defaultAltSplashRadius[] = {
 	DEMP2_ALT_SPLASHRADIUS,			// WP_DEMP2
 	FLECHETTE_ALT_SPLASH_RAD,		// WP_FLECHETTE
 	ROCKET_SPLASH_RADIUS,			// WP_ROCKET_LAUNCHER
+	ROCKET_SPLASH_RADIUS,			// WP_RAIL_DETONATOR
 	TD_ALT_SPLASH_RAD,				// WP_THERMAL
 	LT_SPLASH_RAD,					// WP_TRIP_MINE
 	FLECHETTE_ALT_SPLASH_RAD,		// WP_DET_PACK		// HACK, this is what the code sez.
@@ -410,9 +412,7 @@ const float defaultAltSplashRadius[] = {
 
 	0.0f,							// WP_JAWA
 	0.0f,							// WP_TUSKEN_RIFLE
-	//DT EDIT: DF2 - START - Added Gamorrean weapon
 	0.0f,							// WP_GAMORREAN_AXE
-	//DT EDIT: DF2 - END
 	0.0f,							// WP_TUSKEN_STAFF
 	0.0f,							// WP_SCEPTER
 	0.0f,							// WP_NOGHRI_STICK
@@ -578,6 +578,8 @@ void WPN_WeaponType( const char **holdBuf)
 		weaponNum = WP_FLECHETTE;
 	else if (!Q_stricmp(tokenStr,"WP_ROCKET_LAUNCHER"))
 		weaponNum = WP_ROCKET_LAUNCHER;
+	else if (!Q_stricmp(tokenStr, "WP_RAIL_DETONATOR"))
+		weaponNum = WP_RAIL_DETONATOR;
 	else if (!Q_stricmp(tokenStr,"WP_CONCUSSION"))
 		weaponNum = WP_CONCUSSION;
 	else if (!Q_stricmp(tokenStr,"WP_THERMAL"))
@@ -608,10 +610,8 @@ void WPN_WeaponType( const char **holdBuf)
 		weaponNum = WP_JAWA;
 	else if (!Q_stricmp(tokenStr,"WP_TUSKEN_RIFLE"))
 		weaponNum = WP_TUSKEN_RIFLE;
-	//DT EDIT: DF2 - START - Added Gamorrean weapon
 	else if (!Q_stricmp(tokenStr, "WP_GAMORREAN_AXE"))
 		weaponNum = WP_GAMORREAN_AXE;
-	//DT EDIT: DF2 - END
 	else if (!Q_stricmp(tokenStr,"WP_TUSKEN_STAFF"))
 		weaponNum = WP_TUSKEN_STAFF;
 	else if (!Q_stricmp(tokenStr,"WP_SCEPTER"))
@@ -1025,6 +1025,8 @@ void WPN_Ammo(const char **holdBuf)
 		wpnParms.ammoNum = AMMO_POWERCELL;
 	else if (!Q_stricmp(tokenStr,"AMMO_METAL_BOLTS"))
 		wpnParms.ammoNum = AMMO_METAL_BOLTS;
+	else if (!Q_stricmp(tokenStr, "AMMO_RAIL_CHARGES"))
+		wpnParms.ammoNum = AMMO_RAIL_CHARGES;
 	else if (!Q_stricmp(tokenStr,"AMMO_ROCKETS"))
 		wpnParms.ammoNum = AMMO_ROCKETS;
 	else if (!Q_stricmp(tokenStr,"AMMO_EMPLACED"))

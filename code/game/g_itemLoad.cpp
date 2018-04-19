@@ -127,6 +127,8 @@ static void IT_Name(const char **holdBuf)
 		itemNum = ITM_FLECHETTE_PICKUP;
 	else if (!Q_stricmp(tokenStr,"ITM_ROCKET_LAUNCHER_PICKUP"))
 		itemNum = ITM_ROCKET_LAUNCHER_PICKUP;
+	else if (!Q_stricmp(tokenStr, "ITM_RAIL_DETONATOR_PICKUP"))
+		itemNum = ITM_RAIL_DETONATOR_PICKUP;
 	else if (!Q_stricmp(tokenStr,"ITM_THERMAL_DET_PICKUP"))
 		itemNum = ITM_THERMAL_DET_PICKUP;
 	else if (!Q_stricmp(tokenStr,"ITM_TRIP_MINE_PICKUP"))
@@ -172,6 +174,8 @@ static void IT_Name(const char **holdBuf)
 		itemNum = ITM_AMMO_POWERCELL_PICKUP;
 	else if (!Q_stricmp(tokenStr,"ITM_AMMO_METAL_BOLTS_PICKUP"))
 		itemNum = ITM_AMMO_METAL_BOLTS_PICKUP;
+	else if (!Q_stricmp(tokenStr, "ITM_AMMO_RAIL_CHARGES_PICKUP"))
+		itemNum = ITM_AMMO_RAIL_CHARGES_PICKUP;
 	else if (!Q_stricmp(tokenStr,"ITM_AMMO_ROCKETS_PICKUP"))
 		itemNum = ITM_AMMO_ROCKETS_PICKUP;
 	else if (!Q_stricmp(tokenStr,"ITM_AMMO_EMPLACED_PICKUP"))
@@ -344,6 +348,8 @@ static void IT_Tag(const char **holdBuf)
 		tag = WP_FLECHETTE;
 	else if (!Q_stricmp(tokenStr,"WP_ROCKET_LAUNCHER"))
 		tag = WP_ROCKET_LAUNCHER;
+	else if (!Q_stricmp(tokenStr, "WP_RAIL_DETONATOR"))
+		tag = WP_RAIL_DETONATOR;
 	else if (!Q_stricmp(tokenStr,"WP_CONCUSSION"))
 		tag = WP_CONCUSSION;
 	else if (!Q_stricmp(tokenStr,"WP_THERMAL"))
@@ -374,10 +380,8 @@ static void IT_Tag(const char **holdBuf)
 		tag = WP_JAWA;
 	else if (!Q_stricmp(tokenStr,"WP_TUSKEN_RIFLE"))
 		tag = WP_TUSKEN_RIFLE;
-	//DT EDIT: DF2 - START - Added Gamorrean weapon
 	else if (!Q_stricmp(tokenStr, "WP_GAMORREAN_AXE"))
 		tag = WP_GAMORREAN_AXE;
-	//DT EDIT: DF2 - END
 	else if (!Q_stricmp(tokenStr,"WP_TUSKEN_STAFF"))
 		tag = WP_TUSKEN_STAFF;
 	else if (!Q_stricmp(tokenStr,"WP_SCEPTER"))
@@ -392,6 +396,8 @@ static void IT_Tag(const char **holdBuf)
 		tag = AMMO_POWERCELL;
 	else if (!Q_stricmp(tokenStr,"AMMO_METAL_BOLTS"))
 		tag = AMMO_METAL_BOLTS;
+	else if (!Q_stricmp(tokenStr, "AMMO_RAIL_CHARGES"))
+		tag = AMMO_RAIL_CHARGES;
 	else if (!Q_stricmp(tokenStr,"AMMO_ROCKETS"))
 		tag = AMMO_ROCKETS;
 	else if (!Q_stricmp(tokenStr,"AMMO_EMPLACED"))

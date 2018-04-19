@@ -57,6 +57,7 @@ float weaponSpeed[WP_NUM_WEAPONS][2] =
 	{ DEMP2_VELOCITY,DEMP2_ALT_RANGE },//WP_DEMP2,
 	{ FLECHETTE_VEL,FLECHETTE_MINE_VEL },//WP_FLECHETTE,
 	{ ROCKET_VELOCITY,ROCKET_ALT_VELOCITY },//WP_ROCKET_LAUNCHER,
+	{ ROCKET_VELOCITY,ROCKET_VELOCITY },//WP_RAIL_DETONATOR,
 	{ TD_VELOCITY,TD_ALT_VELOCITY },//WP_THERMAL,
 	{ 0,0 },//WP_TRIP_MINE,
 	{ 0,0 },//WP_DET_PACK,
@@ -73,9 +74,7 @@ float weaponSpeed[WP_NUM_WEAPONS][2] =
 	{ EMPLACED_VEL,REPEATER_ALT_VELOCITY },//WP_RAPID_FIRE_CONC,
 	{ 0,0 },//WP_JAWA,
 	{ TUSKEN_RIFLE_VEL,TUSKEN_RIFLE_VEL },//WP_TUSKEN_RIFLE,
-	//DT EDIT: DF2 - START - Added Gamorrean weapon
-	{ 0, 0 },//WP_GAMORREAN_AXE,
-	//DT EDIT: DF2 - END
+	{ 0,0 },//WP_GAMORREAN_AXE,
 	{ 0,0 },//WP_TUSKEN_STAFF,
 	{ 0,0 },//WP_SCEPTER,
 	{ 0,0 },//WP_NOGHRI_STICK,
@@ -389,6 +388,7 @@ qboolean W_AccuracyLoggableWeapon( int weapon, qboolean alt_fire, int mod )
 		case WP_DISRUPTOR:
 		case WP_BOWCASTER:
 		case WP_ROCKET_LAUNCHER:
+		case WP_RAIL_DETONATOR:
 		case WP_CONCUSSION:
 			return qtrue;
 			break;
@@ -481,6 +481,7 @@ void CalcMuzzlePoint( gentity_t *const ent, vec3_t forwardVec, vec3_t right, vec
 		break;
 
 	case WP_ROCKET_LAUNCHER:
+	case WP_RAIL_DETONATOR:
 	case WP_CONCUSSION:
 	case WP_THERMAL:
 		ViewHeightFix(ent);
@@ -1437,6 +1438,10 @@ void FireWeapon( gentity_t *ent, qboolean alt_fire )
 		WP_FireRocket( ent, alt_fire );
 		break;
 
+	case WP_RAIL_DETONATOR:
+		WP_FireRailDet(ent, alt_fire);
+		break;
+
 	case WP_CONCUSSION:
 		WP_Concussion( ent, alt_fire );
 		break;
@@ -1538,9 +1543,7 @@ void FireWeapon( gentity_t *ent, qboolean alt_fire )
 		//else does melee attack/damage/func
 		break;
 
-	//DT EDIT: DF2 - START - Added Gamorrean weapon
 	case WP_GAMORREAN_AXE:
-	//DT EDIT: DF2 - END
 	case WP_TUSKEN_STAFF:
 	default:
 		return;
@@ -1563,9 +1566,7 @@ void FireWeapon( gentity_t *ent, qboolean alt_fire )
 		if ( ent->client->ps.groundEntityNum == ENTITYNUM_WORLD//FIXME: check for sand contents type?
 			&& ent->s.weapon != WP_STUN_BATON
 			&& ent->s.weapon != WP_MELEE
-			//DT EDIT: DF2 - START - Added Gamorrean weapon
 			&& ent->s.weapon != WP_GAMORREAN_AXE
-			//DT EDIT: DF2 - END
 			&& ent->s.weapon != WP_TUSKEN_STAFF
 			&& ent->s.weapon != WP_THERMAL
 			&& ent->s.weapon != WP_TRIP_MINE

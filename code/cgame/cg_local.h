@@ -1139,6 +1139,9 @@ void FX_FlechetteProjectileThink( centity_t *cent, const struct weaponInfo_s *we
 void FX_FlechetteWeaponHitWall( vec3_t origin, vec3_t normal );
 void FX_FlechetteWeaponHitPlayer( vec3_t origin, vec3_t normal, qboolean humanoid );
 
+void FX_RailDetHitWall(vec3_t origin, vec3_t normal);
+void FX_RailDetHitPlayer(vec3_t origin, vec3_t normal, qboolean humanoid);
+
 void FX_RocketHitWall( vec3_t origin, vec3_t normal );
 void FX_RocketHitPlayer( vec3_t origin, vec3_t normal, qboolean humanoid );
 
