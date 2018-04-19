@@ -1615,10 +1615,13 @@ typedef enum //# animNumber_e
 	BOTH_TUSKENLUNGE1,
 	BOTH_TUSKENTAUNT1,
 
-	//DT EDIT: DF2 - START - Added Gamorrean weapon anims
-	BOTH_GAM_ATTACK1,
-	BOTH_GAM_ATTACK2,
-	//DT EDIT: DF2 - END
+	//DT EDIT: DF2 Anims - START 
+	BOTH_GAM_ATTACK1,			//# Gamorrean attack 1
+	BOTH_GAM_ATTACK2,			//# Gamorrean attack 2
+	BOTH_ATTACK_RAILDET,		//# rail detonator fire
+	TORSO_WEAPONREADY_RAILDET,	//# Ready to fire rail detonator
+	TORSO_WEAPONIDLE_RAILDET,	//# Holding rail detonator
+	//DT EDIT: DF2 Anims - END
 
 	BOTH_COWER1_START,		//# cower start
 	BOTH_COWER1,			//# cower loop
@@ -1835,6 +1838,9 @@ typedef enum {
 	VM_RAISE,						// Draw weapon
 	VM_LOWER,						// Put weapon away
 	VM_FIRE,						// Fire weapon
+	VM_FIRE_THERMAL,				// Fire Thermal - need this because anim is longer than usual
+	VM_FIRE_DETPACK,				// Fire Det Pack - need this because anim is longer than usual
+	VM_FIRE_RAILDET,				// Fire Rail Detonator - need this because anim is longer than usual
 
 	VM_THERMAL_PULLBACK,			// Thermal detonator pull back
 	VM_THERMAL_THROW,				// Thermal detonator throw
