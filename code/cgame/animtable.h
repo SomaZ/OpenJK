@@ -1615,11 +1615,11 @@ stringID_table_t animTable [MAX_ANIMATIONS+1] =
 	ENUM2STRING(BOTH_TUSKENTAUNT1),
 
 	//DT EDIT: DF2 Anims - START 
-	ENUM2STRING(BOTH_GAM_ATTACK1),		//# Gamorrean attack 1
-	ENUM2STRING(BOTH_GAM_ATTACK2),		//# Gamorrean attack 2
-	ENUM2STRING(BOTH_ATTACK_RD),		//# rail detonator fire
-	ENUM2STRING(TORSO_WEAPONREADY_RD),	//# Ready to fire rail detonator
-	ENUM2STRING(TORSO_WEAPONIDLE_RD),	//# Holding rail detonator
+	ENUM2STRING(BOTH_GAM_ATTACK1),			//# Gamorrean attack 1
+	ENUM2STRING(BOTH_GAM_ATTACK2),			//# Gamorrean attack 2
+	ENUM2STRING(BOTH_ATTACK_RAILDET),		//# rail detonator fire
+	ENUM2STRING(TORSO_WEAPONREADY_RAILDET),	//# Ready to fire rail detonator
+	ENUM2STRING(TORSO_WEAPONIDLE_RAILDET),	//# Holding rail detonator
 	//DT EDIT: DF2 Anims - END
 
 	ENUM2STRING(BOTH_COWER1_START),		//# cower start

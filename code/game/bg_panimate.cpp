@@ -6427,11 +6427,11 @@ void PM_TorsoAnimation( void )
 				case WP_RAIL_DETONATOR:
 					if (weaponBusy)
 					{
-						PM_SetAnim(pm, SETANIM_TORSO, TORSO_WEAPONREADY_RD, SETANIM_FLAG_NORMAL);
+						PM_SetAnim(pm, SETANIM_TORSO, TORSO_WEAPONREADY_RAILDET, SETANIM_FLAG_NORMAL);
 					}
 					else
 					{
-						PM_SetAnim(pm, SETANIM_TORSO, TORSO_WEAPONIDLE_RD, SETANIM_FLAG_NORMAL);
+						PM_SetAnim(pm, SETANIM_TORSO, TORSO_WEAPONIDLE_RAILDET, SETANIM_FLAG_NORMAL);
 					}
 					break;
 
@@ -6496,7 +6496,7 @@ int PM_GetTurnAnim( gentity_t *gent, int anim )
 	case BOTH_ATTACK2:			//# Attack with generic 2-handed weapon
 	case BOTH_ATTACK3:			//# Attack with heavy 2-handed weapon
 	case BOTH_ATTACK4:			//# Attack with ???
-	case BOTH_ATTACK_RD:		//# Attack with rail detonator
+	case BOTH_ATTACK_RAILDET:	//# Attack with rail detonator
 	case BOTH_MELEE1:			//# First melee attack
 	case BOTH_MELEE2:			//# Second melee attack
 	case BOTH_GUARD_LOOKAROUND1:	//# Cradling weapon and looking around
@@ -6829,7 +6829,7 @@ qboolean PM_StandingAnim( int anim )
 	case BOTH_STAND3:
 	case BOTH_STAND4:
 	case BOTH_ATTACK3:
-	case BOTH_ATTACK_RD:
+	case BOTH_ATTACK_RAILDET:
 		return qtrue;
 		break;
 	}

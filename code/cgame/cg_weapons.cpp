@@ -939,7 +939,7 @@ int CG_MapTorsoToWeaponFrame( const clientInfo_t *ci, int frame, int animNum, in
 	case TORSO_WEAPONREADY3:
 	case TORSO_WEAPONREADY4:
 	case TORSO_WEAPONREADY10:
-	case TORSO_WEAPONREADY_RD:
+	case TORSO_WEAPONREADY_RAILDET:
 		ret = 0;
 		break;
 
@@ -978,7 +978,7 @@ int CG_MapTorsoToWeaponFrame( const clientInfo_t *ci, int frame, int animNum, in
 //			assert(0);
 		}
 		break;
-	case BOTH_ATTACK_RD:
+	case BOTH_ATTACK_RAILDET:
 		if (frame >= animations[animNum].firstFrame && frame < animations[animNum].firstFrame + 25)
 		{
 			ret = 1 + (frame - animations[animNum].firstFrame);
@@ -1171,14 +1171,17 @@ int CG_MapTorsoToG2VMAnimation(playerState_t *ps)
 		case TORSO_WEAPONREADY3:
 		case TORSO_WEAPONREADY4:
 		case TORSO_WEAPONREADY10:
-		case TORSO_WEAPONREADY_RD:
+		case TORSO_WEAPONREADY_RAILDET:
 		case TORSO_WEAPONIDLE2:
 		case TORSO_WEAPONIDLE3:
 		case TORSO_WEAPONIDLE4:
 		case TORSO_WEAPONIDLE10:
-		case TORSO_WEAPONIDLE_RD:
+		case TORSO_WEAPONIDLE_RAILDET:
 			return VM_READY;
+		case BOTH_STAND1IDLE1:
 		case BOTH_STAND3IDLE1:
+		case BOTH_STAND5IDLE1:
+		case BOTH_STAND9IDLE1:
 			return VM_IDLE;
 		case TORSO_DROPWEAP1:
 			return VM_LOWER;
@@ -1192,7 +1195,7 @@ int CG_MapTorsoToG2VMAnimation(playerState_t *ps)
 			return VM_FIRE_THERMAL;
 		case BOTH_ATTACK11:
 			return VM_FIRE_DETPACK;
-		case BOTH_ATTACK_RD:
+		case BOTH_ATTACK_RAILDET:
 			return VM_FIRE_RAILDET;
 		case BOTH_THERMAL_READY:
 			return VM_THERMAL_PULLBACK;

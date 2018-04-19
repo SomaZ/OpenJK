@@ -1616,11 +1616,11 @@ typedef enum //# animNumber_e
 	BOTH_TUSKENTAUNT1,
 
 	//DT EDIT: DF2 Anims - START 
-	BOTH_GAM_ATTACK1,		//# Gamorrean attack 1
-	BOTH_GAM_ATTACK2,		//# Gamorrean attack 2
-	BOTH_ATTACK_RD,			//# rail detonator fire
-	TORSO_WEAPONREADY_RD,	//# Ready to fire rail detonator
-	TORSO_WEAPONIDLE_RD,	//# Holding rail detonator
+	BOTH_GAM_ATTACK1,			//# Gamorrean attack 1
+	BOTH_GAM_ATTACK2,			//# Gamorrean attack 2
+	BOTH_ATTACK_RAILDET,		//# rail detonator fire
+	TORSO_WEAPONREADY_RAILDET,	//# Ready to fire rail detonator
+	TORSO_WEAPONIDLE_RAILDET,	//# Holding rail detonator
 	//DT EDIT: DF2 Anims - END
 
 	BOTH_COWER1_START,		//# cower start
