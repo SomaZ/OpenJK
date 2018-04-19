@@ -1838,7 +1838,9 @@ typedef enum {
 	VM_RAISE,						// Draw weapon
 	VM_LOWER,						// Put weapon away
 	VM_FIRE,						// Fire weapon
-	VM_FIRE_RD,						// Fire Rail Detonator - need this because anim is longer than usual
+	VM_FIRE_THERMAL,				// Fire Thermal - need this because anim is longer than usual
+	VM_FIRE_DETPACK,				// Fire Det Pack - need this because anim is longer than usual
+	VM_FIRE_RAILDET,				// Fire Rail Detonator - need this because anim is longer than usual
 
 	VM_THERMAL_PULLBACK,			// Thermal detonator pull back
 	VM_THERMAL_THROW,				// Thermal detonator throw

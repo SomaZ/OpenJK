@@ -1178,24 +1178,22 @@ int CG_MapTorsoToG2VMAnimation(playerState_t *ps)
 		case TORSO_WEAPONIDLE10:
 		case TORSO_WEAPONIDLE_RD:
 			return VM_READY;
-		case BOTH_STAND1IDLE1:
 		case BOTH_STAND3IDLE1:
-		case BOTH_STAND5IDLE1:
-		case BOTH_STAND9IDLE1:
 			return VM_IDLE;
 		case TORSO_DROPWEAP1:
 			return VM_LOWER;
 		case TORSO_RAISEWEAP1:
 			return VM_RAISE;
-		case BOTH_ATTACK1:
 		case BOTH_ATTACK2:
 		case BOTH_ATTACK3:
 		case BOTH_ATTACK4:
-		case BOTH_ATTACK10:
-		case BOTH_ATTACK11:
 			return VM_FIRE;
+		case BOTH_ATTACK10:
+			return VM_FIRE_THERMAL;
+		case BOTH_ATTACK11:
+			return VM_FIRE_DETPACK;
 		case BOTH_ATTACK_RD:
-			return VM_FIRE_RD;
+			return VM_FIRE_RAILDET;
 		case BOTH_THERMAL_READY:
 			return VM_THERMAL_PULLBACK;
 		case BOTH_THERMAL_THROW:
@@ -1287,7 +1285,7 @@ void CG_AnimateViewmodel(centity_t* cent, playerState_t *ps) {
 	int flags = BONE_ANIM_OVERRIDE;
 
 	switch (desiredAnim) {
-	case VM_FIRE_RD:
+	case VM_FIRE_RAILDET:
 	case VM_FIRE:
 		if (cent->muzzleFlashTime <= 0)
 			return;
