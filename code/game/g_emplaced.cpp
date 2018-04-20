@@ -1036,14 +1036,14 @@ extern void CG_ChangeWeapon( int num );
 			}
 			else
 			{
-				//DT EDIT: Ghoul2 viewmodels - START
+				//Ghoul2 viewmodels - START
 				if (weaponData[ent->client->ps.weapon].worldModel[0]) {
 					G_CreateG2AttachedWeaponModel(ent, weaponData[ent->client->ps.weapon].worldModel, ent->handRBolt, 0);
 				}
 				else {
 					G_CreateG2AttachedWeaponModel(ent, weaponData[ent->client->ps.weapon].weaponMdl, ent->handRBolt, 0);
 				}
-				//DT EDIT: Ghoul2 viewmodels - END
+				//Ghoul2 viewmodels - END
 			}
 
 			if ( ent->s.number < MAX_CLIENTS )

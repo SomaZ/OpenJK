@@ -1523,7 +1523,7 @@ void NPC_BehaviorSet_Tusken( int bState )
 	}
 }
 
-//DT EDIT: DF2 - START - Added Gamorrean behaviour
+//DF2Mod - Added Gamorrean behaviour
 /*
 -------------------------
 NPC_BehaviorSet_Gamorrean
@@ -1546,7 +1546,6 @@ void NPC_BehaviorSet_Gamorrean(int bState)
 		break;
 	}
 }
-//DT EDIT: DF2 - END
 
 /*
 -------------------------

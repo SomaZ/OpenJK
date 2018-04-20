@@ -155,10 +155,9 @@ static void IT_Name(const char **holdBuf)
 		itemNum = ITM_JAWA_PICKUP;
 	else if (!Q_stricmp(tokenStr,"ITM_TUSKEN_RIFLE_PICKUP"))
 		itemNum = ITM_TUSKEN_RIFLE_PICKUP;
-	//DT EDIT: DF2 - START - Added Gamorrean weapon
+	//DF2Mod - Added Gamorrean weapon
 	else if (!Q_stricmp(tokenStr, "ITM_GAMORREAN_AXE_PICKUP"))
 		itemNum = ITM_GAMORREAN_AXE_PICKUP;
-	//DT EDIT: DF2 - END
 	else if (!Q_stricmp(tokenStr,"ITM_TUSKEN_STAFF_PICKUP"))
 		itemNum = ITM_TUSKEN_STAFF_PICKUP;
 	else if (!Q_stricmp(tokenStr,"ITM_SCEPTER_PICKUP"))

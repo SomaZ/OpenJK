@@ -1615,13 +1615,13 @@ typedef enum //# animNumber_e
 	BOTH_TUSKENLUNGE1,
 	BOTH_TUSKENTAUNT1,
 
-	//DT EDIT: DF2 Anims - START 
+	//DF2Mod - Anims
 	BOTH_GAM_ATTACK1,			//# Gamorrean attack 1
 	BOTH_GAM_ATTACK2,			//# Gamorrean attack 2
 	BOTH_ATTACK_RAILDET,		//# rail detonator fire
 	TORSO_WEAPONREADY_RAILDET,	//# Ready to fire rail detonator
 	TORSO_WEAPONIDLE_RAILDET,	//# Holding rail detonator
-	//DT EDIT: DF2 Anims - END
+
 
 	BOTH_COWER1_START,		//# cower start
 	BOTH_COWER1,			//# cower loop
@@ -1825,7 +1825,7 @@ typedef enum //# animNumber_e
 
 #define SABER_ANIM_GROUP_SIZE (BOTH_A2_T__B_ - BOTH_A1_T__B_)
 
-//DT EDIT: Ghoul2 viewmodels - START
+//Ghoul2 viewmodels - START
 /*
 ======================================
 Viewmodel Animations
@@ -1892,7 +1892,7 @@ typedef struct {
 } viewModelAnimSet_t;
 
 extern stringID_table_t vmAnimTable[MAX_VIEWMODEL_ANIMATIONS + 1];
-//DT EDIT: Ghoul2 viewmodels - END
+//Ghoul2 viewmodels - END
 
 #endif// #ifndef __ANIMS_H__
 

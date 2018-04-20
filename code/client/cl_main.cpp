@@ -1285,9 +1285,8 @@ void CL_Init( void ) {
 #ifdef JK2_MODE
 	Cvar_Get ("name", "Kyle", CVAR_USERINFO | CVAR_ARCHIVE_ND );
 #else
-	//DT EDIT: DF2 - START - Changed to kyle
+	//DF2Mod - Changed to kyle
 	Cvar_Get("name", "Kyle", CVAR_USERINFO | CVAR_ARCHIVE_ND );
-	//DT EDIT: DF2 - END
 #endif
 
 #ifdef JK2_MODE
@@ -1296,10 +1295,10 @@ void CL_Init( void ) {
 	Cvar_Get ("sex", "male", CVAR_USERINFO | CVAR_ARCHIVE );
 	Cvar_Get ("handicap", "100", CVAR_USERINFO | CVAR_SAVEGAME );
 #else
-	//DT EDIT: DF2 - START - Changed to kyle
+	//DF2Mod - Changed to kyle
 	Cvar_Get("sex", "m", CVAR_USERINFO | CVAR_ARCHIVE | CVAR_SAVEGAME | CVAR_NORESTART);
 	Cvar_Get("snd", "df2_kyle", CVAR_USERINFO | CVAR_ARCHIVE | CVAR_SAVEGAME | CVAR_NORESTART);//UI_SetSexandSoundForModel changes to match sounds.cfg for model
-	//DT EDIT: DF2 - END
+
 	Cvar_Get("handicap", "100", CVAR_USERINFO | CVAR_SAVEGAME | CVAR_NORESTART);
 #endif
 

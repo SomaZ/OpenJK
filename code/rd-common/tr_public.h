@@ -155,13 +155,13 @@ typedef struct {
 	int		  (*GetAnimationCFG)(const char *psCFGFilename, char *psDest, int iDestSize);
 	qhandle_t (*RegisterShader)( const char *name );
 	qhandle_t (*RegisterShaderNoMip)( const char *name );
-	//DT EDIT: Rend2 - START
+	//Rend2 - START
 	void(*ClearDecals)(void);
 	void(*AddDecalToScene)(qhandle_t shader, const vec3_t origin, const vec3_t dir, float orientation, float r, float g, float b, float a, qboolean alphaFade, float radius, qboolean temporary);
 	int(*LightForPoint)(vec3_t point, vec3_t ambientLight, vec3_t directedLight, vec3_t lightDir);
 	void(*AddAdditiveLightToScene)(const vec3_t org, float intensity, float r, float g, float b);
 	qboolean(*GetEntityToken)(char *buffer, int size);
-	//DT EDIT: Rend2 - END
+	//Rend2 - END
 	void	(*LoadWorld)( const char *name );
 	void	(*R_LoadImage)( const char *name, byte **pic, int *width, int *height );
 

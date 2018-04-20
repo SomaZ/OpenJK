@@ -411,7 +411,7 @@ void R_AddMD3Surfaces( trRefEntity_t *ent ) {
 		if ( !personalModel
 			&& r_shadows->integer == 2
 			&& fogNum == 0
-			//DT EDIT: DF2 - Allow shadows from any MD3
+			//DF2Mod - Allow shadows from any MD3
 			//&& (ent->e.renderfx & RF_SHADOW_PLANE )
 			&& !(ent->e.renderfx & ( /*RF_NOSHADOW |*/ RF_DEPTHHACK ) )
 			&& shader->sort == SS_OPAQUE ) {

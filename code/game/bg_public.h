@@ -463,9 +463,9 @@ public:
 	//initial lerp is abs(frameLerp)
 	signed char		loopFrames;			// 0 to numFrames, -1 = no loop
 	unsigned char	glaIndex;
-	//DT EDIT: Ghoul2 viewmodels - START
+	//Ghoul2 viewmodels - START
 	int		initialLerp;				// msec to get to first frame
-	//DT EDIT: Ghoul2 viewmodels - END
+	//Ghoul2 viewmodels - END
 
 
 	void sg_export(

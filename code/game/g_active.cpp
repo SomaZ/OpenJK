@@ -1664,9 +1664,9 @@ void G_MatchPlayerWeapon( gentity_t *ent )
 			}
 			else
 			{
-				//DT EDIT: Ghoul2 viewmodels - START
+				//Ghoul2 viewmodels - START
 				G_CreateG2AttachedWeaponModel(ent, weaponData[newWeap].worldModel, ent->handRBolt, 0);
-				//DT EDIT: Ghoul2 viewmodels - END
+				//Ghoul2 viewmodels - END
 			}
 		}
 	}

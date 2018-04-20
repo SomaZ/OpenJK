@@ -33,9 +33,9 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 #include "hitlocs.h"
 #include "bset.h"
 
-//DT EDIT: Ghoul2 viewmodels - START
+//Ghoul2 viewmodels - START
 #include "anims.h"
-//DT EDIT: Ghoul2 viewmodels - END
+//Ghoul2 viewmodels - END
 
 #define	FOFS(x) offsetof(gentity_t, x)
 
@@ -1717,7 +1717,7 @@ typedef struct weaponInfo_s {
 
 	sfxHandle_t		selectSound;	// sound played when weapon is selected
 
-	//DT EDIT: Ghoul2 viewmodels - START
+	//Ghoul2 viewmodels - START
 	bool			bUsesGhoul2;
 	CGhoul2Info_v	ghoul2;
 	qhandle_t		g2_flashbolt;
@@ -1725,7 +1725,7 @@ typedef struct weaponInfo_s {
 	short			g2_index;
 	int				g2_skin;
 	viewModelAnimSet_t g2_anims;
-	//DT EDIT: Ghoul2 viewmodels - END
+	//Ghoul2 viewmodels - END
 } weaponInfo_t;
 
 extern sfxHandle_t CAS_GetBModelSound( const char *name, int stage );

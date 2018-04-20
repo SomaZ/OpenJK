@@ -162,11 +162,11 @@ typedef struct weaponData_s
 	float	splashRadius;
 	float	altSplashRadius;
 
-	//DT EDIT: Ghoul2 viewmodels - START
+	//Ghoul2 viewmodels - START
 	char	worldModel[MAX_QPATH];
 	bool	bNoHandModel;
 	char	skinPath[MAX_QPATH];
-	//DT EDIT: Ghoul2 viewmodels - END
+	//Ghoul2 viewmodels - END
 
 } weaponData_t;
 

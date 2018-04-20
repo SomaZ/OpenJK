@@ -8054,9 +8054,8 @@ static void PM_Footsteps( void )
 			}
 			else if ( pm->ps->waterHeightLevel >= WHL_TORSO
 				&& ((pm->ps->clientNum < MAX_CLIENTS||PM_ControlledByPlayer())
-					//DT EDIT: DF2 - START - removed WP_MELEE as it normally accompanies WP_SABER and it probably shouldn't for it to act like normal 1P weapons
+					//DF2Mod - removed WP_MELEE as it normally accompanies WP_SABER and it probably shouldn't for it to act like normal 1P weapons
 					|| pm->ps->weapon == WP_SABER || pm->ps->weapon == WP_NONE))//pm->waterlevel > 1 )	//in deep water
-					//DT EDIT: DF2 - END
 			{
 				if ( !PM_ForceJumpingUp( pm->gent ) )
 				{
@@ -9063,7 +9062,7 @@ static void PM_FinishWeaponChange( void ) {
 		{
 			// remove the sabre if we had it.
 			G_RemoveWeaponModels(pm->gent);
-			//DT EDIT: Ghoul2 viewmodels - START
+			//Ghoul2 viewmodels - START
 			if (weaponData[weapon].worldModel[0])
 			{
 				//might be NONE, so check if it has a model
@@ -9074,7 +9073,7 @@ static void PM_FinishWeaponChange( void ) {
 				//might be NONE, so check if it has a model
 				G_CreateG2AttachedWeaponModel(pm->gent, weaponData[weapon].weaponMdl, pm->gent->handRBolt, 0);
 			}
-			//DT EDIT: Ghoul2 viewmodels - END
+			//Ghoul2 viewmodels - END
 		}
 
 		if ( !(pm->ps->eFlags&EF_HELD_BY_WAMPA) )
@@ -13523,7 +13522,7 @@ static void PM_Weapon( void )
 					PM_AddEvent( EV_CHANGE_WEAPON );
 				}
 			}
-			//DT EDIT: Ghoul2 viewmodels - START
+			//Ghoul2 viewmodels - START
 			if (weaponData[pm->ps->weapon].worldModel[0]) {
 				G_CreateG2AttachedWeaponModel( pm->gent, weaponData[pm->ps->weapon].worldModel, pm->gent->handRBolt, 0 );
 				//make it sound like we took another one out from... uh.. somewhere...
@@ -13532,7 +13531,7 @@ static void PM_Weapon( void )
 					PM_AddEvent( EV_CHANGE_WEAPON );
 				}
 			}
-			//DT EDIT: Ghoul2 viewmodels - END
+			//Ghoul2 viewmodels - END
 		}
 	}
 
