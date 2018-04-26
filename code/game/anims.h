@@ -1848,7 +1848,8 @@ typedef enum {
 	VM_MELEE1,						// Melee 1. WP_MELEE only!
 	VM_MELEE2,						// Melee 2. WP_MELEE only!
 
-	VM_FPUSH,						// Force Push
+	// Commented out all force powers for now, to avoid crashes due to missing anims.
+	/*VM_FPUSH,						// Force Push
 	VM_FPULL,						// Force Pull
 	VM_FGRIP,						// Force Grip
 	VM_FGRIP_HOLD,					// Force Grip hold
@@ -1863,7 +1864,8 @@ typedef enum {
 	VM_FLIGHTNING_HOLD,				// Force Lightning hold
 	VM_FLIGHTNING_RELEASE,			// Force Lightning release
 	VM_FRESISTPUSH,					// Force resist push
-	VM_FMINDTRICK,					// Force Mind Trick
+	VM_FMINDTRICK,					// Force Mind Trick*/
+
 	// Not sure about these yet. commented out for now.
 	/*VM_FRAGE,						// Force Rage
 	VM_F2HANDEDLIGHTNING,			// Force 2-Handed Lightning. (Puts gun away quickly, does the 2H lightning and then returns the gun)

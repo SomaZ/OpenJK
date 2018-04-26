@@ -99,8 +99,9 @@ void CG_RegisterWeapon(int weaponNum) {
 		weaponInfo->weaponModel = cgi_R_RegisterModel(weaponData[weaponNum].weaponMdl);
 	}
 
-	{//precache the _w.glm 
-		gi.G2API_PrecacheGhoul2Model(weaponData[weaponNum].worldModel); // correct way is item->world_model 
+	if (weaponInfo->bUsesGhoul2) {
+		//precache the _w.glm 
+		gi.G2API_PrecacheGhoul2Model(weaponData[weaponNum].worldModel);
 	}
 	//Ghoul2 viewmodels - END
 
@@ -133,35 +134,8 @@ void CG_RegisterWeapon(int weaponNum) {
 		weaponInfo->ammoModel = cgi_R_RegisterModel( ammo->world_model );
 	}
 
-	// set up the world model for the weapon
-	weaponInfo->weaponWorldModel = cgi_R_RegisterModel( item->world_model );
-	if ( !weaponInfo->weaponWorldModel) {
-		weaponInfo->weaponWorldModel = weaponInfo->weaponModel;
-	}
-
-	//Ghoul2 viewmodels - START
-	// Set up the viewmodel.
-	Q_strncpyz(path, weaponData[weaponNum].weaponMdl, sizeof(path));
-	if (weaponInfo->bUsesGhoul2) {
-		// Init the ghoul2 model
-		weaponInfo->g2_skin = gi.RE_RegisterSkin(weaponData[weaponNum].skinPath);
-		weaponInfo->g2_index = gi.G2API_InitGhoul2Model(weaponInfo->ghoul2, path,
-			G_ModelIndex(path), G_SkinIndex(weaponData[weaponNum].skinPath), NULL, 0, 0);
-
-		gi.G2API_SetSkin(&weaponInfo->ghoul2[weaponInfo->g2_index], 0, weaponInfo->g2_skin);
-
-		// Add flash bolt
-		weaponInfo->g2_flashbolt = gi.G2API_AddBolt(&weaponInfo->ghoul2[weaponInfo->g2_index], "*flash");
-		weaponInfo->g2_effectsbolt = gi.G2API_AddBolt(&weaponInfo->ghoul2[weaponInfo->g2_index], "*l_hand");
-
-		if (!weaponData[weaponNum].bNoHandModel)
-			weaponInfo->handsModel = cgi_R_RegisterModel("models/weapons2/briar_pistol/briar_pistol_hand.md3");
-
-		// Load the animation.cfg
-		CG_LoadViewmodelAnimations(&weaponInfo->ghoul2[weaponInfo->g2_index], path, &weaponInfo->g2_anims);
-	}
-	else {
-		// Normal -- MD3 viewmodels
+	
+	if (!weaponInfo->bUsesGhoul2) {
 		for (i = 0; i < weaponData[weaponNum].numBarrels; i++) {
 			Q_strncpyz(path, weaponData[weaponNum].weaponMdl, sizeof(path));
 			COM_StripExtension(path, path, sizeof(path));
@@ -173,7 +147,41 @@ void CG_RegisterWeapon(int weaponNum) {
 				Q_strcat(path, sizeof(path), "_barrel.md3");
 			weaponInfo->barrelModel[i] = cgi_R_RegisterModel(path);
 		}
+	}
 
+	// set up the world model for the weapon
+	weaponInfo->weaponWorldModel = cgi_R_RegisterModel( item->world_model );
+	if ( !weaponInfo->weaponWorldModel) {
+		weaponInfo->weaponWorldModel = weaponInfo->weaponModel;
+	}
+
+	//Ghoul2 viewmodels - START
+	// Set up the viewmodel.
+	Q_strncpyz(path, weaponData[weaponNum].weaponMdl, sizeof(path));
+	if (weaponInfo->bUsesGhoul2) {
+		// Precache the model
+		gi.G2API_PrecacheGhoul2Model(weaponData[weaponNum].weaponMdl);
+
+		// Init the ghoul2 model
+		weaponInfo->g2_skin = gi.RE_RegisterSkin(weaponData[weaponNum].skinPath);
+		weaponInfo->g2_index = gi.G2API_InitGhoul2Model(weaponInfo->ghoul2, path,
+			G_ModelIndex(path), G_SkinIndex(weaponData[weaponNum].skinPath), NULL, 0, 0);
+
+		// Set the skin
+		gi.G2API_SetSkin(&weaponInfo->ghoul2[weaponInfo->g2_index], 0, weaponInfo->g2_skin);
+
+		// Add flash bolt
+		weaponInfo->g2_flashbolt = gi.G2API_AddBolt(&weaponInfo->ghoul2[weaponInfo->g2_index], "*flash");
+		weaponInfo->g2_effectsbolt = gi.G2API_AddBolt(&weaponInfo->ghoul2[weaponInfo->g2_index], "*l_hand");
+
+		/*if (!weaponData[weaponNum].bNoHandModel)
+			weaponInfo->handsModel = cgi_R_RegisterModel("models/weapons2/briar_pistol/briar_pistol_hand.md3");*/
+
+		// Load the animation.cfg
+		CG_LoadViewmodelAnimations(&weaponInfo->ghoul2[weaponInfo->g2_index], path, &weaponInfo->g2_anims);
+	}
+	else {
+		// Normal -- MD3 viewmodels
 		if (!weaponData[weaponNum].bNoHandModel) {
 			COM_StripExtension(path, path, sizeof(path));
 			Q_strcat(path, sizeof(path), "_hand.md3");
@@ -1203,7 +1211,9 @@ int CG_MapTorsoToG2VMAnimation(playerState_t *ps)
 			return VM_MELEE1;
 		case BOTH_MELEE2:
 			return VM_MELEE2;
-		case BOTH_FORCEPUSH:
+
+		// Commented out all force powers for now, to avoid crashes due to missing anims.
+		/*case BOTH_FORCEPUSH:
 			return 	VM_FPUSH;
 		case BOTH_FORCEPULL:
 			return 	VM_FPULL;
@@ -1235,7 +1245,8 @@ int CG_MapTorsoToG2VMAnimation(playerState_t *ps)
 			return 	VM_FRESISTPUSH;
 		case BOTH_MINDTRICK1:
 		case BOTH_MINDTRICK2:
-			return 	VM_FMINDTRICK;
+			return 	VM_FMINDTRICK;*/
+
 		// Not sure about these yet. commented out for now.
 		/*case BOTH_FORCE_RAGE:
 			return 	VM_FRAGE;
