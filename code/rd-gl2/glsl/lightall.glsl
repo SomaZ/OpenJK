@@ -344,6 +344,7 @@ uniform vec4      u_EnableTextures;
 #if defined(USE_LIGHT_VECTOR) && !defined(USE_FAST_LIGHT)
 uniform vec3 u_DirectedLight;
 uniform vec3 u_AmbientLight;
+uniform samplerCubeShadow u_ShadowMap2;
 #endif
 
 #if defined(USE_PRIMARY_LIGHT) || defined(USE_SHADOWMAP)
@@ -583,6 +584,21 @@ vec3 CalcNormal( in vec3 vertexNormal, in vec2 texCoords, in mat3 tangentToWorld
 	return normalize(N);
 }
 
+#if defined(USE_LIGHT_VECTOR)
+#define DEPTH_MAX_ERROR 0.000000059604644775390625
+float getLightDepth(vec3 Vec, float f)
+{
+	vec3 AbsVec = abs(Vec);
+	float Z = max(AbsVec.x, max(AbsVec.y, AbsVec.z));
+
+	const float n = 1.0;
+
+	float NormZComp = (f + n) / (f - n) - 2 * f*n / (Z* (f - n));
+
+	return ((NormZComp + 1.0) * 0.5) - DEPTH_MAX_ERROR;
+}
+#endif
+
 #if defined(USE_CUBEMAP)
 vec3 CalcSHColor(in vec3 normal)
 {
@@ -646,26 +662,7 @@ void main()
 #endif
 
 	vec2 texCoords = var_TexCoords.xy;
-
-#if defined(USE_PARALLAXMAP)
-	vec3 offsetDir = viewDir * tangentToWorld;
-
-	offsetDir.xy *= -u_NormalScale.a / offsetDir.z;
-
-	texCoords += offsetDir.xy * RayIntersectDisplaceMap(texCoords, offsetDir.xy, u_NormalMap);
-#endif
-
-	vec4 diffuse = texture(u_DiffuseMap, texCoords);
-#if defined(USE_ATEST)
-#  if USE_ATEST == ATEST_CMP_LT
-	if (diffuse.a >= u_AlphaTestValue)
-#  elif USE_ATEST == ATEST_CMP_GT
-	if (diffuse.a <= u_AlphaTestValue)
-#  elif USE_ATEST == ATEST_CMP_GE
-	if (diffuse.a < u_AlphaTestValue)
-#  endif
-		discard;
-#endif
+	vec4 diffuse;
 
 #if defined(PER_PIXEL_LIGHTING)
 	float isLightgrid = float(var_LightDir.w < 1.0);
@@ -705,10 +702,36 @@ void main()
   #elif defined(USE_LIGHT_VECTOR)
 	lightColor = directedLight * vertexColor * (var_LightDir.w + float(var_LightDir.w < 1.0));
 	attenuation  = CalcLightAttenuation(lightDist, var_LightDir.w);
+
+	if (isLightgrid < 0.9) {
+		float distance = getLightDepth(var_LightDir.xyz, var_LightDir.w);
+		attenuation *= texture(u_ShadowMap2, vec4(var_LightDir.xyz, distance));
+	}
+	
   #elif defined(USE_LIGHT_VERTEX)
 	lightColor	 = vertexColor;
 	attenuation  = 1.0;
   #endif
+
+#if defined(USE_PARALLAXMAP)
+	vec3 offsetDir = viewDir * tangentToWorld;
+
+	offsetDir.xy *= -u_NormalScale.a / offsetDir.z;
+
+	texCoords += offsetDir.xy * RayIntersectDisplaceMap(texCoords, offsetDir.xy, u_NormalMap);
+#endif
+
+	diffuse = texture(u_DiffuseMap, texCoords);
+#if defined(USE_ATEST)
+#  if USE_ATEST == ATEST_CMP_LT
+	if (diffuse.a >= u_AlphaTestValue)
+#  elif USE_ATEST == ATEST_CMP_GT
+	if (diffuse.a <= u_AlphaTestValue)
+#  elif USE_ATEST == ATEST_CMP_GE
+	if (diffuse.a < u_AlphaTestValue)
+#  endif
+		discard;
+#endif
 
 	N = CalcNormal(var_Normal.xyz, texCoords, tangentToWorld);
 
@@ -839,6 +862,17 @@ void main()
   #endif
 
 #else
+	diffuse = texture(u_DiffuseMap, texCoords);
+#if defined(USE_ATEST)
+#  if USE_ATEST == ATEST_CMP_LT
+	if (diffuse.a >= u_AlphaTestValue)
+#  elif USE_ATEST == ATEST_CMP_GT
+	if (diffuse.a <= u_AlphaTestValue)
+#  elif USE_ATEST == ATEST_CMP_GE
+	if (diffuse.a < u_AlphaTestValue)
+#  endif
+		discard;
+#endif
 	lightColor = var_Color.rgb;
 	out_Color.rgb = diffuse.rgb * lightColor;
 #endif

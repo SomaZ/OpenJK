@@ -58,7 +58,7 @@ typedef unsigned int glIndex_t;
 #define MAX_IBOS 4096
 
 #define MAX_CALC_PSHADOWS 64
-#define MAX_DRAWN_PSHADOWS 16 // do not increase past 32, because bit flags are used on surfaces
+#define MAX_DRAWN_PSHADOWS 32 // do not increase past 32, because bit flags are used on surfaces
 #define PSHADOW_MAP_SIZE 512
 
 #define GAMMA		2.2f		// base gamma value
@@ -2302,8 +2302,7 @@ typedef struct trGlobals_s {
 	image_t					*whiteImage;			// full of 0xff
 	image_t					*identityLightImage;	// full of tr.identityLightByte
 
-	image_t                 *shadowCubemaps[MAX_DLIGHTS];
-	
+	cubemap_t               *shadowCubemaps;
 
 	image_t					*renderImage;
 	image_t					*glowImage;
@@ -2326,6 +2325,7 @@ typedef struct trGlobals_s {
 	image_t                 *envBrdfImage;
 	
 	image_t					*textureDepthImage;
+	image_t					*cubeDepthImage;
 
 	FBO_t					*renderFbo;
 	FBO_t					*refractiveFbo;
@@ -2343,6 +2343,7 @@ typedef struct trGlobals_s {
 	FBO_t					*screenSsaoFbo;
 	FBO_t					*hdrDepthFbo;
 	FBO_t                   *renderCubeFbo;
+	FBO_t					*shadowCubeFbo;
 	FBO_t					*preFilterEnvMapFbo;
 
 	shader_t				*defaultShader;

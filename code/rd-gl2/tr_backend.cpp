@@ -537,8 +537,14 @@ void RB_BeginDrawingView (void) {
 			cubemap_t *cubemap = &backEnd.viewParms.cubemapSelection[backEnd.viewParms.targetFboCubemapIndex];
 			qglFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_CUBE_MAP_POSITIVE_X + backEnd.viewParms.targetFboLayer, cubemap->image->texnum, 0);
 		}
-	}
 
+		if (tr.shadowCubeFbo != NULL && backEnd.viewParms.targetFbo == tr.shadowCubeFbo)
+		{
+			cubemap_t *cubemap = &backEnd.viewParms.cubemapSelection[backEnd.viewParms.targetFboCubemapIndex];
+			qglFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_CUBE_MAP_POSITIVE_X + backEnd.viewParms.targetFboLayer, cubemap->image->texnum, 0);
+		}
+	}
+	
 	//
 	// set the modelview matrix for the viewer
 	//
