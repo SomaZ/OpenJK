@@ -2597,9 +2597,9 @@ static const void *RB_CaptureShadowMap(const void *data)
 		GL_SelectTexture(0);
 		if (cmd->cubeSide != -1)
 		{
-			if (tr.shadowCubemaps[cmd->map] != NULL)
+			if (tr.shadowCubemaps[cmd->map].image != NULL)
 			{
-				GL_Bind(tr.shadowCubemaps[cmd->map]);
+				GL_Bind(tr.shadowCubemaps[cmd->map].image);
 				qglCopyTexSubImage2D( GL_TEXTURE_CUBE_MAP_POSITIVE_X + cmd->cubeSide, 0, 0, 0, backEnd.refdef.x, glConfig.vidHeight - ( backEnd.refdef.y + PSHADOW_MAP_SIZE ), PSHADOW_MAP_SIZE, PSHADOW_MAP_SIZE );
 			}
 		}
