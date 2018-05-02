@@ -38,9 +38,9 @@ const char *CG_DisplayBoxedText(int iBoxX, int iBoxY, int iBoxWidth, int iBoxHei
 								const char *psText, int iFontHandle, float fScale,
 								const vec4_t v4Color);
 
-//DT EDIT: Ghoul2 viewmodels - START
+//Ghoul2 viewmodels - START
 void CG_LoadViewmodelAnimations(CGhoul2Info* ghl2, const char *modelName, viewModelAnimSet_t* ptAnims);
-//DT EDIT: Ghoul2 viewmodels - END
+//Ghoul2 viewmodels - END
 
 /*
 =================
@@ -89,7 +89,7 @@ void CG_RegisterWeapon(int weaponNum) {
 	CG_RegisterItemVisuals(item - bg_itemlist);
 	Q_strncpyz(path, weaponData[weaponNum].weaponMdl, sizeof(path));
 
-	//DT EDIT: Ghoul2 viewmodels - START
+	//Ghoul2 viewmodels - START
 	// set up in view weapon model
 	if (Q_stristr(path, ".glm")) {
 		weaponInfo->bUsesGhoul2 = true;
@@ -99,10 +99,11 @@ void CG_RegisterWeapon(int weaponNum) {
 		weaponInfo->weaponModel = cgi_R_RegisterModel(weaponData[weaponNum].weaponMdl);
 	}
 
-	{//precache the _w.glm 
-		gi.G2API_PrecacheGhoul2Model(weaponData[weaponNum].worldModel); // correct way is item->world_model 
+	if (weaponInfo->bUsesGhoul2) {
+		//precache the _w.glm 
+		gi.G2API_PrecacheGhoul2Model(weaponData[weaponNum].worldModel);
 	}
-	//DT EDIT: Ghoul2 viewmodels - END
+	//Ghoul2 viewmodels - END
 
 	// calc midpoint for rotation
 	cgi_R_ModelBounds( weaponInfo->weaponModel, mins, maxs );
@@ -133,21 +134,20 @@ void CG_RegisterWeapon(int weaponNum) {
 		weaponInfo->ammoModel = cgi_R_RegisterModel( ammo->world_model );
 	}
 
-	for (i=0; i< weaponData[weaponNum].numBarrels; i++) {
-		Q_strncpyz( path, weaponData[weaponNum].weaponMdl, sizeof(path) );
-		COM_StripExtension( path, path, sizeof(path) );
-		if (i)
-		{
-			//char	crap[50];
-			//Com_sprintf(crap, sizeof(crap), "_barrel%d.md3", i+1 );
-			//strcat ( path, crap );
-			Q_strcat( path, sizeof(path), va("_barrel%d.md3", i+1) );
+	
+	if (!weaponInfo->bUsesGhoul2) {
+		for (i = 0; i < weaponData[weaponNum].numBarrels; i++) {
+			Q_strncpyz(path, weaponData[weaponNum].weaponMdl, sizeof(path));
+			COM_StripExtension(path, path, sizeof(path));
+			if (i)
+			{
+				Q_strcat(path, sizeof(path), va("_barrel%d.md3", i + 1));
+			}
+			else
+				Q_strcat(path, sizeof(path), "_barrel.md3");
+			weaponInfo->barrelModel[i] = cgi_R_RegisterModel(path);
 		}
-		else
-			Q_strcat( path, sizeof(path), "_barrel.md3" );
-		weaponInfo->barrelModel[i] = cgi_R_RegisterModel( path );
 	}
-
 
 	// set up the world model for the weapon
 	weaponInfo->weaponWorldModel = cgi_R_RegisterModel( item->world_model );
@@ -155,23 +155,27 @@ void CG_RegisterWeapon(int weaponNum) {
 		weaponInfo->weaponWorldModel = weaponInfo->weaponModel;
 	}
 
-	//DT EDIT: Ghoul2 viewmodels - START
+	//Ghoul2 viewmodels - START
 	// Set up the viewmodel.
 	Q_strncpyz(path, weaponData[weaponNum].weaponMdl, sizeof(path));
 	if (weaponInfo->bUsesGhoul2) {
+		// Precache the model
+		gi.G2API_PrecacheGhoul2Model(weaponData[weaponNum].weaponMdl);
+
 		// Init the ghoul2 model
 		weaponInfo->g2_skin = gi.RE_RegisterSkin(weaponData[weaponNum].skinPath);
 		weaponInfo->g2_index = gi.G2API_InitGhoul2Model(weaponInfo->ghoul2, path,
 			G_ModelIndex(path), G_SkinIndex(weaponData[weaponNum].skinPath), NULL, 0, 0);
 
+		// Set the skin
 		gi.G2API_SetSkin(&weaponInfo->ghoul2[weaponInfo->g2_index], 0, weaponInfo->g2_skin);
 
 		// Add flash bolt
 		weaponInfo->g2_flashbolt = gi.G2API_AddBolt(&weaponInfo->ghoul2[weaponInfo->g2_index], "*flash");
 		weaponInfo->g2_effectsbolt = gi.G2API_AddBolt(&weaponInfo->ghoul2[weaponInfo->g2_index], "*l_hand");
 
-		if (!weaponData[weaponNum].bNoHandModel)
-			weaponInfo->handsModel = cgi_R_RegisterModel("models/weapons2/briar_pistol/briar_pistol_hand.md3");
+		/*if (!weaponData[weaponNum].bNoHandModel)
+			weaponInfo->handsModel = cgi_R_RegisterModel("models/weapons2/briar_pistol/briar_pistol_hand.md3");*/
 
 		// Load the animation.cfg
 		CG_LoadViewmodelAnimations(&weaponInfo->ghoul2[weaponInfo->g2_index], path, &weaponInfo->g2_anims);
@@ -188,7 +192,7 @@ void CG_RegisterWeapon(int weaponNum) {
 			}
 		}
 	}
-	//DT EDIT: Ghoul2 viewmodels - END
+	//Ghoul2 viewmodels - END
 
 	// register the sounds for the weapon
 	if (weaponData[weaponNum].firingSnd[0]) {
@@ -661,7 +665,7 @@ void CG_RegisterWeapon(int weaponNum) {
 	}
 }
 
-//DT EDIT: Ghoul2 viewmodel - START
+//Ghoul2 viewmodels - START
 /*
 =================
 CG_DeregisterWeapon
@@ -754,9 +758,11 @@ void CG_LoadViewmodelAnimations(CGhoul2Info* ghl2, const char *modelName, viewMo
 
 		int animNum = GetIDForString(vmAnimTable, token);
 		if (animNum == -1) {
+#ifndef FINAL_BUILD
 			if (Q_stricmp(token, "ROOT")) {
 				Com_Printf(S_COLOR_RED"WARNING: Unknown token %s in %s\n", token, ptAnims->filename);
 			}
+#endif
 			continue;
 		}
 
@@ -794,7 +800,7 @@ void CG_LoadViewmodelAnimations(CGhoul2Info* ghl2, const char *modelName, viewMo
 	}
 	COM_EndParseSession();
 }
-//DT EDIT: Ghoul2 viewmodel - END
+//Ghoul2 viewmodels - END
 
 /*
 =================
@@ -1123,14 +1129,14 @@ static void CG_DoMuzzleFlash( centity_t *cent, vec3_t org, vec3_t dir, weaponDat
 
 		if (/*( cent->currentState.eFlags & EF_FIRING || cent->currentState.eFlags & EF_ALT_FIRING ) &&*/ effect )
 		{
-			//DT EDIT: Ghoul2 viewmodels - START
+			//Ghoul2 viewmodels - START
 			vec3_t up = { 0, 0, 1 }, ax[3];
 
 			VectorCopy(dir, ax[0]);
 
 			CrossProduct(up, ax[0], ax[1]);
 			CrossProduct(ax[0], ax[1], ax[2]);
-			//DT EDIT: Ghoul2 viewmodels - END
+			//Ghoul2 viewmodels - END
 
 			if (( cent->gent && cent->gent->NPC ) || cg.renderingThirdPerson )
 			{
@@ -1153,7 +1159,7 @@ static void CG_DoMuzzleFlash( centity_t *cent, vec3_t org, vec3_t dir, weaponDat
 Ghoul2 Insert End
 */
 
-//DT EDIT: Ghoul2 viewmodels - START
+//Ghoul2 viewmodels - START
 /*
 ==============
 CG_AnimateViewmodel
@@ -1205,7 +1211,9 @@ int CG_MapTorsoToG2VMAnimation(playerState_t *ps)
 			return VM_MELEE1;
 		case BOTH_MELEE2:
 			return VM_MELEE2;
-		case BOTH_FORCEPUSH:
+
+		// Commented out all force powers for now, to avoid crashes due to missing anims.
+		/*case BOTH_FORCEPUSH:
 			return 	VM_FPUSH;
 		case BOTH_FORCEPULL:
 			return 	VM_FPULL;
@@ -1237,7 +1245,8 @@ int CG_MapTorsoToG2VMAnimation(playerState_t *ps)
 			return 	VM_FRESISTPUSH;
 		case BOTH_MINDTRICK1:
 		case BOTH_MINDTRICK2:
-			return 	VM_FMINDTRICK;
+			return 	VM_FMINDTRICK;*/
+
 		// Not sure about these yet. commented out for now.
 		/*case BOTH_FORCE_RAGE:
 			return 	VM_FRAGE;
@@ -1312,7 +1321,7 @@ void CG_AnimateViewmodel(centity_t* cent, playerState_t *ps) {
 		flags, 100.0f / weapon->g2_anims.animations[desiredAnim].frameLerp,
 		cg.time, weapon->g2_anims.animations[desiredAnim].firstFrame, -1);
 }
-//DT EDIT: Ghoul2 viewmodels - END
+//Ghoul2 viewmodels - END
 
 /*
 ==============
@@ -1498,7 +1507,7 @@ void CG_AddViewWeapon( playerState_t *ps )
 	}
 	else
 #endif
-	//DT EDIT: Ghoul2 viewmodels - START
+	//Ghoul2 viewmodels - START
 	// map torso animations to weapon animations
 	if (!weapon->bUsesGhoul2) {
 		// get clientinfo for animation map
@@ -1529,7 +1538,7 @@ void CG_AddViewWeapon( playerState_t *ps )
 		// Using ghoul2 (question mark?)
 		CG_AnimateViewmodel(cent, ps);
 	}
-	//DT EDIT: Ghoul2 viewmodels - END
+	//Ghoul2 viewmodels - END
 
 	// add the weapon(s) - FIXME: allow for 2 weapons generically, not just 2 sabers?
 	int	numSabers = 1;
@@ -1539,7 +1548,7 @@ void CG_AddViewWeapon( playerState_t *ps )
 	}
 	for ( int saberNum = 0; saberNum < numSabers; saberNum++ )
 	{
-		//DT EDIT: Ghoul2 viewmodels - START
+		//Ghoul2 viewmodels - START
 		refEntity_t		gun;
 		memset(&gun, 0, sizeof(gun));
 		AnglesToAxis(angles, gun.axis);
@@ -1562,7 +1571,7 @@ void CG_AddViewWeapon( playerState_t *ps )
 			CG_PositionEntityOnTag(&gun, &hand, weapon->handsModel, "tag_weapon");
 		else
 			VectorCopy(hand.origin, gun.origin);
-		//DT EDIT: Ghoul2 viewmodels - END
+		//Ghoul2 viewmodels - END
 
 		gun.renderfx = RF_DEPTHHACK | RF_FIRST_PERSON;
 
@@ -1612,7 +1621,7 @@ void CG_AddViewWeapon( playerState_t *ps )
 			cgi_R_AddRefEntityToScene( &gun );
 		}
 	*/
-	//DT EDIT: Ghoul2 viewmodels - START
+	//Ghoul2 viewmodels - START
 			// add the spinning barrel[s]
 			if (!weapon->bUsesGhoul2) {
 				for (int i = 0; (i < wData->numBarrels); i++)
@@ -1697,7 +1706,7 @@ void CG_AddViewWeapon( playerState_t *ps )
 				cent->gent->client->renderInfo.mPCalcTime = cg.time;
 			}
 	}
-	//DT EDIT: Ghoul2 viewmodels - END
+	//Ghoul2 viewmodels - END
 
 	// Do special charge bits
 	//-----------------------

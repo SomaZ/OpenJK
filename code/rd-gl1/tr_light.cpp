@@ -419,14 +419,13 @@ void R_SetupEntityLighting( const trRefdef_t *refdef, trRefEntity_t *ent ) {
 		ent->ambientLight[1] += tr.identityLight * 96;
 		ent->ambientLight[2] += tr.identityLight * 96;
 	}
-	//DT EDIT: DF2 - START - Remove minimum lighting on all entities
+	//DF2Mod - Remove minimum lighting on all entities
 	/*else {
 		// give everything a minimum light add
 		ent->ambientLight[0] += tr.identityLight * 16;
 		ent->ambientLight[1] += tr.identityLight * 16;
 		ent->ambientLight[2] += tr.identityLight * 16;
 	}*/
-	//DT EDIT: DF2 - END
 
 	//
 	// modify the light by dynamic lights

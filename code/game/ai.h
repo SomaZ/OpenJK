@@ -70,10 +70,9 @@ void NPC_BSGrenadier_Default( void );
 //AI_TUSKEN
 void NPC_BSTusken_Default( void );
 
-//DT EDIT: DF2 - START - Added Gamorrean AI
+//DF2Mod - Added Gamorrean AI
 //AI_GAMORREAN
 void NPC_BSGamorrean_Default(void);
-//DT EDIT: DF2 - END
 
 //AI_SNIPER
 void NPC_BSSniper_Default( void );

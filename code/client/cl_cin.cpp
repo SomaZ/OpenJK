@@ -1480,7 +1480,7 @@ int CIN_PlayCinematic( const char *arg, int x, int y, int w, int h, int systemBi
 	char	name[MAX_OSPATH];
 	int		i;
 
-	//DT EDIT: Removes the stupid pink color from the video sides in favor of 'black', however the console still 'sticks' if pressed
+	//DF2Mod - Removes the stupid pink color from the video sides in favor of 'black', however the console still 'sticks' if pressed
 	SCR_FillRect(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, colorTable[CT_BLACK]);
 
 	if (strstr(arg, "/") == NULL && strstr(arg, "\\") == NULL) {

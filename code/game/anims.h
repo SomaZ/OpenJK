@@ -1615,13 +1615,13 @@ typedef enum //# animNumber_e
 	BOTH_TUSKENLUNGE1,
 	BOTH_TUSKENTAUNT1,
 
-	//DT EDIT: DF2 Anims - START 
+	//DF2Mod - Anims
 	BOTH_GAM_ATTACK1,			//# Gamorrean attack 1
 	BOTH_GAM_ATTACK2,			//# Gamorrean attack 2
 	BOTH_ATTACK_RAILDET,		//# rail detonator fire
 	TORSO_WEAPONREADY_RAILDET,	//# Ready to fire rail detonator
 	TORSO_WEAPONIDLE_RAILDET,	//# Holding rail detonator
-	//DT EDIT: DF2 Anims - END
+
 
 	BOTH_COWER1_START,		//# cower start
 	BOTH_COWER1,			//# cower loop
@@ -1825,7 +1825,7 @@ typedef enum //# animNumber_e
 
 #define SABER_ANIM_GROUP_SIZE (BOTH_A2_T__B_ - BOTH_A1_T__B_)
 
-//DT EDIT: Ghoul2 viewmodels - START
+//Ghoul2 viewmodels - START
 /*
 ======================================
 Viewmodel Animations
@@ -1848,7 +1848,8 @@ typedef enum {
 	VM_MELEE1,						// Melee 1. WP_MELEE only!
 	VM_MELEE2,						// Melee 2. WP_MELEE only!
 
-	VM_FPUSH,						// Force Push
+	// Commented out all force powers for now, to avoid crashes due to missing anims.
+	/*VM_FPUSH,						// Force Push
 	VM_FPULL,						// Force Pull
 	VM_FGRIP,						// Force Grip
 	VM_FGRIP_HOLD,					// Force Grip hold
@@ -1863,7 +1864,8 @@ typedef enum {
 	VM_FLIGHTNING_HOLD,				// Force Lightning hold
 	VM_FLIGHTNING_RELEASE,			// Force Lightning release
 	VM_FRESISTPUSH,					// Force resist push
-	VM_FMINDTRICK,					// Force Mind Trick
+	VM_FMINDTRICK,					// Force Mind Trick*/
+
 	// Not sure about these yet. commented out for now.
 	/*VM_FRAGE,						// Force Rage
 	VM_F2HANDEDLIGHTNING,			// Force 2-Handed Lightning. (Puts gun away quickly, does the 2H lightning and then returns the gun)
@@ -1892,7 +1894,7 @@ typedef struct {
 } viewModelAnimSet_t;
 
 extern stringID_table_t vmAnimTable[MAX_VIEWMODEL_ANIMATIONS + 1];
-//DT EDIT: Ghoul2 viewmodels - END
+//Ghoul2 viewmodels - END
 
 #endif// #ifndef __ANIMS_H__
 

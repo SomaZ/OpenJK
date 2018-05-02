@@ -34,7 +34,7 @@ typedef enum //# Objective_e
 	//
 	//=================================================
 
-	//DT EDIT: DF2 - START - Objectives
+	//DF2Mod - Objectives
 	LIGHTSIDE_OBJ = 0,
 	DF2_01NAR_OBJ,
 	DF2_02NAR_OBJ1,
@@ -144,7 +144,6 @@ typedef enum //# Objective_e
 	T1_SURPRISE_OBJ2,
 	T1_SURPRISE_OBJ3,
 	T1_SURPRISE_OBJ4,*/
-	//DT EDIT: DF2 - END
 
 	//# #eol
 	MAX_OBJECTIVES,
@@ -229,7 +228,7 @@ stringID_table_t objectiveTable [] =
 	//=================================================
 	//
 	//=================================================
-	//DT EDIT: DF2 - START - Objectives
+	//DF2Mod - Objectives
 	ENUM2STRING(LIGHTSIDE_OBJ),
 	ENUM2STRING(DF2_01NAR_OBJ),
 	ENUM2STRING(DF2_02NAR_OBJ1),
@@ -338,7 +337,6 @@ stringID_table_t objectiveTable [] =
 	ENUM2STRING(T1_SURPRISE_OBJ2),
 	ENUM2STRING(T1_SURPRISE_OBJ3),
 	ENUM2STRING(T1_SURPRISE_OBJ4),*/
-	//DT EDIT: DF2 - END
 
 	//stringID_table_t Must end with a null entry
 	{ "", 0 }

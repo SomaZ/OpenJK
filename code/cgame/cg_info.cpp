@@ -845,9 +845,8 @@ void CG_DrawInformation( void ) {
 		}
 	}
 
-	//DT EDIT: DF2 - START - Changed start up map
+	//DF2Mod - Changed start up map
 	if ( g_eSavedGameJustLoaded != eFULL && !strcmp(s,"01nar") )//special case for first map!
-	//DT EDIT: DF2 - END
 	{
 		char	text[1024]={0};
 

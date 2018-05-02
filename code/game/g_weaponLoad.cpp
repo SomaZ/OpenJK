@@ -159,11 +159,11 @@ void WPN_MissileHitSound(const char **holdBuf);
 void WPN_AltMissileHitSound(const char **holdBuf);
 void WPN_MuzzleEffect(const char **holdBuf);
 void WPN_AltMuzzleEffect(const char **holdBuf);
-//DT EDIT: Ghoul2 viewmodels - START
+//Ghoul2 viewmodels - START
 void WPN_SkinFile(const char **holdBuf);
 void WPN_WorldModel(const char **holdBuf);
 void WPN_NoHandModel(const char **holdBuf);
-//DT EDIT: Ghoul2 viewmodels - END
+//Ghoul2 viewmodels - END
 
 // OPENJK ADD
 
@@ -473,17 +473,17 @@ wpnParms_t WpnParms[] =
 	{ "altchargeforce",			WPN_FuncSkip },
 	{ "selectforce",			WPN_FuncSkip },
 
-	//DT EDIT: Ghoul2 viewmodels - START
+	//Ghoul2 viewmodels - START
 	// Ghoul2 viewmodels
 	{ "vm_skinfile",			WPN_SkinFile },
 	{ "worldmodel",				WPN_WorldModel },
 	{ "isghoul2model",			WPN_NoHandModel },
-	//DT EDIT: Ghoul2 viewmodels - END
+	//Ghoul2 viewmodels - END
 };
 
 static const size_t numWpnParms = ARRAY_LEN(WpnParms);
 
-//DT EDIT: Ghoul2 viewmodels - START
+//Ghoul2 viewmodels - START
 void WPN_SkinFile(const char **holdBuf)
 {
 	int len;
@@ -538,7 +538,7 @@ void WPN_NoHandModel(const char **holdBuf)
 
 	weaponData[wpnParms.weaponNum].bNoHandModel = tokenInt ? true : false;
 }
-//DT EDIT: Ghoul2 viewmodels - END
+//Ghoul2 viewmodels - END
 
 void WPN_FuncSkip( const char **holdBuf)
 {

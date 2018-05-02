@@ -251,7 +251,7 @@ void RB_DoShadowTessEnd( vec3_t lightPos )
 		//out the ground pos for the vert to project the shadow volume to
 		VectorAdd(tess.xyz[i], backEnd.ori.origin, worldxyz);
 		groundDist = worldxyz[2] - backEnd.currentEntity->e.shadowPlane;
-		//DT EDIT: DF2 - Allow any model to project shadows
+		//DF2Mod - Allow any model to project shadows
 		groundDist += 100.0f; //fudge factor
 		VectorMA( tess.xyz[i], -groundDist, lightDir, shadowXyz[i] );
 	}

@@ -1614,13 +1614,13 @@ stringID_table_t animTable [MAX_ANIMATIONS+1] =
 	ENUM2STRING(BOTH_TUSKENLUNGE1),
 	ENUM2STRING(BOTH_TUSKENTAUNT1),
 
-	//DT EDIT: DF2 Anims - START 
+	//DF2Mod - Anims
 	ENUM2STRING(BOTH_GAM_ATTACK1),			//# Gamorrean attack 1
 	ENUM2STRING(BOTH_GAM_ATTACK2),			//# Gamorrean attack 2
 	ENUM2STRING(BOTH_ATTACK_RAILDET),		//# rail detonator fire
 	ENUM2STRING(TORSO_WEAPONREADY_RAILDET),	//# Ready to fire rail detonator
 	ENUM2STRING(TORSO_WEAPONIDLE_RAILDET),	//# Holding rail detonator
-	//DT EDIT: DF2 Anims - END
+
 
 	ENUM2STRING(BOTH_COWER1_START),		//# cower start
 	ENUM2STRING(BOTH_COWER1),			//# cower loop
@@ -1821,7 +1821,7 @@ stringID_table_t animTable [MAX_ANIMATIONS+1] =
 	{ NULL,-1 }
 };
 
-//DT EDIT: Ghoul2 viewmodels - START
+//Ghoul2 viewmodels - START
 stringID_table_t vmAnimTable[MAX_VIEWMODEL_ANIMATIONS + 1] = {
 	ENUM2STRING(VM_READY),
 	ENUM2STRING(VM_IDLE),
@@ -1835,7 +1835,8 @@ stringID_table_t vmAnimTable[MAX_VIEWMODEL_ANIMATIONS + 1] = {
 	ENUM2STRING(VM_THERMAL_PULLBACK),
 	ENUM2STRING(VM_THERMAL_THROW),
 
-	ENUM2STRING(VM_FPUSH),
+	// Commented out all force powers for now, to avoid crashes due to missing anims.
+	/*ENUM2STRING(VM_FPUSH),
 	ENUM2STRING(VM_FPULL),
 	ENUM2STRING(VM_FGRIP),
 	ENUM2STRING(VM_FGRIP_HOLD),
@@ -1850,7 +1851,8 @@ stringID_table_t vmAnimTable[MAX_VIEWMODEL_ANIMATIONS + 1] = {
 	ENUM2STRING(VM_FLIGHTNING_HOLD),
 	ENUM2STRING(VM_FLIGHTNING_RELEASE),
 	ENUM2STRING(VM_FRESISTPUSH),
-	ENUM2STRING(VM_FMINDTRICK),
+	ENUM2STRING(VM_FMINDTRICK),*/
+	
 	// Not sure about these yet. commented out for now.
 	/*ENUM2STRING(VM_FRAGE),
 	ENUM2STRING(VM_F2HANDEDLIGHTNING),
@@ -1873,4 +1875,4 @@ stringID_table_t vmAnimTable[MAX_VIEWMODEL_ANIMATIONS + 1] = {
 
 	NULL, -1
 };
-//DT EDIT: Ghoul2 viewmodels - END
+//Ghoul2 viewmodels - END

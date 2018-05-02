@@ -538,10 +538,9 @@ void UI_SaberDrawBlade( itemDef_t *item, char *saberName, int saberModel, saberT
 	}
 	else
 	{
-		//DT EDIT: DF2 - START - Undo menu saber rotation hack
+		//DF2Mod - Undo menu saber rotation hack
 		angles[PITCH] = 0;
 		angles[ROLL] = 0;
-		//DT EDIT: DF2 - END
 	}
 
 	if ( saberModel >= item->ghoul2.size() )
