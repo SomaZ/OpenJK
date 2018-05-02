@@ -1659,6 +1659,9 @@ static int GLSL_LoadGPUProgramLightAll(
 			if (r_cubeMapping->integer)
 				Q_strcat(extradefines, sizeof(extradefines), "#define USE_CUBEMAP\n");
 
+			if (r_dlightMode->integer >= 2)
+				Q_strcat(extradefines, sizeof(extradefines), "#define USE_DSHADOWS\n");
+
 		}
 
 		if (i & LIGHTDEF_USE_SHADOWMAP)
@@ -1736,6 +1739,7 @@ static int GLSL_LoadGPUProgramLightAll(
 		GLSL_SetUniformInt(&tr.lightallShader[i], UNIFORM_DELUXEMAP, TB_DELUXEMAP);
 		GLSL_SetUniformInt(&tr.lightallShader[i], UNIFORM_SPECULARMAP, TB_SPECULARMAP);
 		GLSL_SetUniformInt(&tr.lightallShader[i], UNIFORM_SHADOWMAP, TB_SHADOWMAP);
+		GLSL_SetUniformInt(&tr.lightallShader[i], UNIFORM_SHADOWMAP2, TB_SHADOWMAP2);
 		GLSL_SetUniformInt(&tr.lightallShader[i], UNIFORM_CUBEMAP, TB_CUBEMAP);
 		GLSL_SetUniformInt(&tr.lightallShader[i], UNIFORM_ENVBRDFMAP, TB_ENVBRDFMAP);
 		GLSL_SetUniformInt(&tr.lightallShader[i], UNIFORM_LIGHTGRIDDIRECTIONMAP, TB_LGDIRECTION);

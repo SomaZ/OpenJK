@@ -537,8 +537,13 @@ void RB_BeginDrawingView (void) {
 			cubemap_t *cubemap = &backEnd.viewParms.cubemapSelection[backEnd.viewParms.targetFboCubemapIndex];
 			qglFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_CUBE_MAP_POSITIVE_X + backEnd.viewParms.targetFboLayer, cubemap->image->texnum, 0);
 		}
+		else if (tr.shadowCubeFbo != NULL && backEnd.viewParms.targetFbo == tr.shadowCubeFbo)
+		{
+			cubemap_t *cubemap = &backEnd.viewParms.cubemapSelection[backEnd.viewParms.targetFboCubemapIndex];
+			qglFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_CUBE_MAP_POSITIVE_X + backEnd.viewParms.targetFboLayer, cubemap->image->texnum, 0);
+		}
 	}
-
+	
 	//
 	// set the modelview matrix for the viewer
 	//
@@ -2591,9 +2596,9 @@ static const void *RB_CaptureShadowMap(const void *data)
 		GL_SelectTexture(0);
 		if (cmd->cubeSide != -1)
 		{
-			if (tr.shadowCubemaps[cmd->map] != NULL)
+			if (tr.shadowCubemaps[cmd->map].image != NULL)
 			{
-				GL_Bind(tr.shadowCubemaps[cmd->map]);
+				GL_Bind(tr.shadowCubemaps[cmd->map].image);
 				qglCopyTexSubImage2D( GL_TEXTURE_CUBE_MAP_POSITIVE_X + cmd->cubeSide, 0, 0, 0, backEnd.refdef.x, glConfig.vidHeight - ( backEnd.refdef.y + PSHADOW_MAP_SIZE ), PSHADOW_MAP_SIZE, PSHADOW_MAP_SIZE );
 			}
 		}

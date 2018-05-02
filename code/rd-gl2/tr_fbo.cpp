@@ -279,6 +279,19 @@ void R_AttachFBOTextureDepth(int texId)
 
 /*
 =================
+R_AttachFBOTextureDepth
+=================
+*/
+void R_AttachFBOTextureDepthCubemap(int texId)
+{
+	for (int i = 0; i < 6; i++)
+	{
+		qglFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, texId, 0);
+	}
+}
+
+/*
+=================
 R_AttachFBOTexturePackedDepthStencil
 =================
 */
@@ -505,6 +518,10 @@ void FBO_Init(void)
 			tr.pshadowFbos[i] = FBO_Create(va("_shadowmap%i", i), tr.pshadowMaps[i]->width, tr.pshadowMaps[i]->height);
 			FBO_Bind(tr.pshadowFbos[i]);
 			FBO_CreateBuffer(tr.pshadowFbos[i], GL_DEPTH_COMPONENT24, 0, 0);
+
+			qglDrawBuffer(GL_NONE);
+			qglReadBuffer(GL_NONE);
+
 			//FBO_AttachTextureImage(tr.pshadowMaps[i], 0);
 			//FBO_CreateBuffer(tr.pshadowFbos[i], GL_DEPTH_COMPONENT24, 0, 0);
 			R_AttachFBOTextureDepth(tr.pshadowMaps[i]->texnum);
@@ -515,6 +532,22 @@ void FBO_Init(void)
 		}
 	}
 #endif
+
+	if (r_dlightMode->integer >= 2)
+	{
+		tr.shadowCubeFbo = FBO_Create("_shadowCubeFbo", PSHADOW_MAP_SIZE, PSHADOW_MAP_SIZE);
+		FBO_Bind(tr.shadowCubeFbo);
+
+		//FBO_CreateBuffer(tr.shadowCubeFbo, GL_DEPTH_COMPONENT24, 0, 0);
+
+		qglDrawBuffer(GL_NONE);
+
+		R_AttachFBOTextureDepth(tr.cubeDepthImage->texnum);
+
+		FBO_SetupDrawBuffers();
+
+		R_CheckFBO(tr.shadowCubeFbo);
+	}
 
 	if (tr.sunShadowDepthImage[0] != NULL)
 	{
