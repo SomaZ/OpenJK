@@ -1659,6 +1659,9 @@ static int GLSL_LoadGPUProgramLightAll(
 			if (r_cubeMapping->integer)
 				Q_strcat(extradefines, sizeof(extradefines), "#define USE_CUBEMAP\n");
 
+			if (r_dlightMode->integer >= 2)
+				Q_strcat(extradefines, sizeof(extradefines), "#define USE_DSHADOWS\n");
+
 		}
 
 		if (i & LIGHTDEF_USE_SHADOWMAP)

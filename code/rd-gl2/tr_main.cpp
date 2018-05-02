@@ -2940,7 +2940,6 @@ void R_RenderCubemapSide( cubemap_t *cubemaps, int cubemapIndex, int cubemapSide
 	{
 		RE_BeginScene(&refdef);
 
-		// FIXME: sun shadows aren't rendered correctly in cubemaps, wrong sun angle
 		if (r_sunlightMode->integer && r_depthPrepass->value && ((r_forceSun->integer) || tr.sunShadows))
 		{
 			R_RenderSunShadowMaps(&refdef, 0);
@@ -2966,6 +2965,7 @@ void R_RenderCubemapSide( cubemap_t *cubemaps, int cubemapIndex, int cubemapSide
 
 	parms.fovX = 90;
 	parms.fovY = 90;
+	parms.zNear = 4.0;
 
 	VectorCopy( refdef.vieworg, parms.ori.origin );
 	VectorCopy( refdef.viewaxis[0], parms.ori.axis[0] );
@@ -2974,8 +2974,6 @@ void R_RenderCubemapSide( cubemap_t *cubemaps, int cubemapIndex, int cubemapSide
 
 	VectorCopy( refdef.vieworg, parms.pvsOrigin );
 
-	// FIXME: sun shadows aren't rendered correctly in cubemaps
-	// fix involves changing r_FBufScale to fit smaller cubemap image size, or rendering cubemap to framebuffer first
 	if (r_sunlightMode->integer && r_depthPrepass->value && ((r_forceSun->integer) || tr.sunShadows))
 	{
 		parms.flags |= VPF_USESUNLIGHT;

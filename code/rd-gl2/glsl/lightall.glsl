@@ -702,11 +702,12 @@ void main()
   #elif defined(USE_LIGHT_VECTOR)
 	lightColor = directedLight * vertexColor * (var_LightDir.w + float(var_LightDir.w < 1.0));
 	attenuation  = CalcLightAttenuation(lightDist, var_LightDir.w);
-
+	#if defined(USE_DSHADOWS)
 	if (isLightgrid < 0.9) {
 		float distance = getLightDepth(var_LightDir.xyz, var_LightDir.w);
 		attenuation *= texture(u_ShadowMap2, vec4(var_LightDir.xyz, distance));
 	}
+	#endif
 	
   #elif defined(USE_LIGHT_VERTEX)
 	lightColor	 = vertexColor;
