@@ -404,14 +404,12 @@ void R_SetupEntityLighting( const trRefdef_t *refdef, trRefEntity_t *ent ) {
 		
 		if (r_pbr->integer) {
 			d = VectorNormalize(dir);
-			float sqrd = d * d;
-			float sqrr = dl->radius * dl->radius;
-			float factor = sqrd / sqrr;
-			factor = Com_Clamp(0.0f, 1.0f, (1.0f - (factor*factor)));
+			float factor = pow(d / dl->radius, 4.0f);
+			factor = Com_Clamp(0.0f, 1.0f, (1.0f - factor));
 			factor *= factor;
 
-			d = factor / d;
-			d *= dl->radius;
+			d = factor / (d * d + 1.0f);
+			d *= dl->radius * DLIGHT_AT_RADIUS * DLIGHT_AT_RADIUS;
 		}
 		else 
 		{
