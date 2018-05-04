@@ -533,7 +533,7 @@ vec3 CalcDiffuse(vec3 diffuseAlbedo, float NH, float EH, float roughness)
 	burley *= burley;
 	return diffuseAlbedo * burley;
 #else
-	return diffuseAlbedo;
+	return diffuseAlbedo / M_PI;
 #endif
 }
 
@@ -586,6 +586,29 @@ vec3 CalcNormal( in vec3 vertexNormal, in vec2 texCoords, in mat3 tangentToWorld
 
 #if defined(USE_LIGHT_VECTOR)
 #define DEPTH_MAX_ERROR 0.000000059604644775390625
+
+vec3 sampleOffsetDirections[20] = vec3[]
+(
+	vec3(1, 1, 1), vec3(1, -1, 1), vec3(-1, -1, 1), vec3(-1, 1, 1),
+	vec3(1, 1, -1), vec3(1, -1, -1), vec3(-1, -1, -1), vec3(-1, 1, -1),
+	vec3(1, 1, 0), vec3(1, -1, 0), vec3(-1, -1, 0), vec3(-1, 1, 0),
+	vec3(1, 0, 1), vec3(-1, 0, 1), vec3(1, 0, -1), vec3(-1, 0, -1),
+	vec3(0, 1, 1), vec3(0, -1, 1), vec3(0, -1, -1), vec3(0, 1, -1)
+	);
+
+float pcfShadow(samplerCubeShadow depthMap, vec3 L, float distance)
+{
+	float shadow = 0.0;
+	int samples = 20;
+	float diskRadius = 128.0/512.0;
+	for (int i = 0; i < samples; ++i)
+	{
+		shadow += texture(depthMap, vec4(L + sampleOffsetDirections[i] * diskRadius, distance));
+	}
+	shadow /= float(samples);
+	return shadow;
+}
+
 float getLightDepth(vec3 Vec, float f)
 {
 	vec3 AbsVec = abs(Vec);
@@ -596,6 +619,12 @@ float getLightDepth(vec3 Vec, float f)
 	float NormZComp = (f + n) / (f - n) - 2 * f*n / (Z* (f - n));
 
 	return ((NormZComp + 1.0) * 0.5) - DEPTH_MAX_ERROR;
+}
+
+float getShadowValue(vec4 light)
+{
+	float distance = getLightDepth(light.xyz, light.w);
+	return pcfShadow(u_ShadowMap2, light.xyz, distance);
 }
 #endif
 
@@ -704,8 +733,7 @@ void main()
 	attenuation  = CalcLightAttenuation(lightDist, var_LightDir.w);
 	#if defined(USE_DSHADOWS)
 	if (isLightgrid < 0.9) {
-		float distance = getLightDepth(var_LightDir.xyz, var_LightDir.w);
-		attenuation *= texture(u_ShadowMap2, vec4(var_LightDir.xyz, distance));
+		attenuation *= getShadowValue(var_LightDir);
 	}
 	#endif
 	
