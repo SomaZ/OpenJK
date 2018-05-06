@@ -888,6 +888,14 @@ static void ForwardDlight( const shaderCommands_t *input,  VertexArraysPropertie
 
 	shaderStage_t *pStage = tess.xstages[0];
 
+	// FIXME: Should happen at stage generation instead
+	for (int i = 0; i < MAX_SHADER_STAGES; i++)
+	{
+		if (tess.xstages[i] && (tess.xstages[i]->bundle[TB_NORMALMAP].image[0] || tess.xstages[i]->bundle[TB_SPECULARMAP].image[0])) {
+			pStage = tess.xstages[i];
+		}
+	}
+
 	if (!pStage)
 		return;
 
