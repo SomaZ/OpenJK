@@ -3271,6 +3271,19 @@ void R_RenderMissingCubemaps()
 				R_InitNextFrame();
 			}
 		}
+
+		// Resets resources
+		int frameNumber = 0;
+		gpuFrame_t *thisFrame = &backEndData->frames[frameNumber % MAX_FRAMES];
+
+		qglBindBuffer(GL_UNIFORM_BUFFER, thisFrame->ubo);
+		thisFrame->uboWriteOffset = 0;
+
+		thisFrame->dynamicIboCommitOffset = 0;
+		thisFrame->dynamicIboWriteOffset = 0;
+
+		thisFrame->dynamicVboCommitOffset = 0;
+		thisFrame->dynamicVboWriteOffset = 0;
 	}
 }
 

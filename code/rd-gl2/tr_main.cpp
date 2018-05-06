@@ -2940,6 +2940,11 @@ void R_RenderCubemapSide( cubemap_t *cubemaps, int cubemapIndex, int cubemapSide
 	{
 		RE_BeginScene(&refdef);
 
+		if (!(refdef.rdflags & RDF_NOWORLDMODEL) && tr.refdef.num_dlights && r_dlightMode->integer >= 2)
+		{
+			R_RenderDlightCubemaps(&refdef);
+		}
+
 		if (r_sunlightMode->integer && r_depthPrepass->value && ((r_forceSun->integer) || tr.sunShadows))
 		{
 			R_RenderSunShadowMaps(&refdef, 0);

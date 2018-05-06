@@ -887,12 +887,17 @@ static void ForwardDlight( const shaderCommands_t *input,  VertexArraysPropertie
 	SamplerBindingsWriter samplerBindingsWriter;
 
 	shaderStage_t *pStage = tess.xstages[0];
+
+	if (!pStage)
+		return;
+
 	int index;
 	shaderProgram_t *shaderGroup;
 	uint32_t stateBits = 0;
-	if ( input->shader->numUnfoggedPasses == 1 &&
+	/*if ( input->shader->numUnfoggedPasses == 1 &&
 			pStage->glslShaderGroup == tr.lightallShader &&
-			(pStage->glslShaderIndex & LIGHTDEF_LIGHTTYPE_MASK) )
+			(pStage->glslShaderIndex & LIGHTDEF_LIGHTTYPE_MASK) )*/
+	if(1)
 	{
 		index = pStage->glslShaderIndex;
 
