@@ -2108,6 +2108,21 @@ struct vertexAttribute_t
 	int stepRate;
 };
 
+typedef struct gpuMesh_s
+{
+	VBO_t *vbo;
+	IBO_t *ibo;
+
+	// vertexFormat_t *vertexFormat;
+	// constants
+	// additional GL state
+
+	int numVerts;
+	int numIndexes;
+	int indexOffset;
+	int baseVertex;
+} gpuMesh_t;
+
 // the renderer front end should never modify glstate_t
 typedef struct glstate_s {
 	int			currenttextures[NUM_TEXTURE_BUNDLES];
@@ -2413,6 +2428,8 @@ typedef struct trGlobals_s {
 	shaderProgram_t spriteShader[SSDEF_COUNT];
 	shaderProgram_t weatherShader;
 
+	// Built-in meshes
+	gpuMesh_t screenQuad;
 	// -----------------------------------------
 
 	viewParms_t				viewParms;
@@ -2729,6 +2746,7 @@ void RB_AddQuadStamp( vec3_t origin, vec3_t left, vec3_t up, float color[4] );
 void RB_AddQuadStampExt( vec3_t origin, vec3_t left, vec3_t up, float color[4], float s1, float t1, float s2, float t2 );
 void RB_InstantQuad( vec4_t quadVerts[4] );
 void RB_InstantQuad2(vec4_t quadVerts[4], vec2_t texCoords[4]);
+void RB_InstantScreenQuad();
 void RB_ShowImages( void );
 
 /*
