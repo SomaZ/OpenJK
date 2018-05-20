@@ -533,7 +533,7 @@ vec3 CalcDiffuse(vec3 diffuseAlbedo, float NH, float EH, float roughness)
 	burley *= burley;
 	return diffuseAlbedo * burley;
 #else
-	return diffuseAlbedo / M_PI;
+	return diffuseAlbedo ;
 #endif
 }
 
@@ -550,7 +550,7 @@ vec3 CalcSpecular(
 	vec3 fresnel = spec_F(EH,specular);
 	float vis = spec_G(NL, NE, roughness);
 	float denominator = max((4.0 * max(NE,0.0) * max(NL,0.0)),0.001);
-	return (distrib * fresnel * vis) / denominator;
+	return (distrib * fresnel * vis * M_PI) / denominator;
 }
 
 float CalcLightAttenuation(float distance, float radius)
