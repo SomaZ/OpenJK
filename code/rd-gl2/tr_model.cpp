@@ -1256,6 +1256,27 @@ void RE_BeginRegistration(glconfig_t *glconfigOut) {
 
 //=============================================================================
 
+static void R_InitBuiltInModels()
+{
+	static const vec3_t positions[] = {
+		{-1.000000f,  1.000000f, 0.000000f },
+		{ 1.000000f,  1.000000f, 0.000000f },
+		{ 1.000000f, -1.000000f, 0.000000f },
+		{-1.000000f, -1.000000f, 0.000000f }
+	};
+	
+	static const glIndex_t indices[] = {
+		0, 1, 2, 0, 2, 3
+	};
+	
+	tr.screenQuad.ibo = R_CreateIBO((byte *)indices, sizeof(indices), VBO_USAGE_STATIC);
+	tr.screenQuad.vbo = R_CreateVBO((byte *)positions, sizeof(positions), VBO_USAGE_STATIC);
+	tr.screenQuad.numIndexes = ARRAY_LEN(indices);
+	tr.screenQuad.numVerts = ARRAY_LEN(positions);
+	tr.screenQuad.indexOffset = 0;
+	tr.screenQuad.baseVertex = 0;
+}
+
 /*
 ===============
 R_ModelInit
@@ -1271,6 +1292,8 @@ void R_ModelInit(void) {
 
 	mod = R_AllocModel();
 	mod->type = MOD_BAD;
+
+	R_InitBuiltInModels();
 }
 
 

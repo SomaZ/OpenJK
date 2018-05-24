@@ -1951,19 +1951,6 @@ static const void *RB_PrefilterEnvMap(const void *data) {
 	int width = cubemap->image->width;
 	int height = cubemap->image->height;
 
-	vec4_t quadVerts[4];
-	vec2_t texCoords[4];
-
-	VectorSet4(quadVerts[0], -1, 1, 0, 1);
-	VectorSet4(quadVerts[1], 1, 1, 0, 1);
-	VectorSet4(quadVerts[2], 1, -1, 0, 1);
-	VectorSet4(quadVerts[3], -1, -1, 0, 1);
-
-	texCoords[0][0] = 0; texCoords[0][1] = 0;
-	texCoords[1][0] = 1; texCoords[1][1] = 0;
-	texCoords[2][0] = 1; texCoords[2][1] = 1;
-	texCoords[3][0] = 0; texCoords[3][1] = 1;
-
 	while (cubeMipSize)
 	{
 		cubeMipSize >>= 1;
@@ -1986,7 +1973,7 @@ static const void *RB_PrefilterEnvMap(const void *data) {
 		vec4_t viewInfo;
 		VectorSet4(viewInfo, cmd->cubeSide, level, numMips - 2, 0.0f);
 		GLSL_SetUniformVec4(&tr.prefilterEnvMapShader, UNIFORM_VIEWINFO, viewInfo);
-		RB_InstantQuad2(quadVerts, texCoords);
+		RB_InstantScreenQuad();
 		qglCopyTexSubImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + cmd->cubeSide, level, 0, 0, 0, 0, width, height);
 	}
 
@@ -2342,7 +2329,7 @@ static const void	*RB_DrawSurfs( const void *data ) {
 	// clear the z buffer, set the modelview, etc
 	RB_BeginDrawingView();
 
-	RB_TransformAllAnimations(cmd->drawSurfs, cmd->numDrawSurfs);
+	//RB_TransformAllAnimations(cmd->drawSurfs, cmd->numDrawSurfs);
 
 	RB_RenderAllDepthRelatedPasses(cmd->drawSurfs, cmd->numDrawSurfs);
 

@@ -887,12 +887,25 @@ static void ForwardDlight( const shaderCommands_t *input,  VertexArraysPropertie
 	SamplerBindingsWriter samplerBindingsWriter;
 
 	shaderStage_t *pStage = tess.xstages[0];
+
+	// FIXME: Should happen at stage generation instead
+	for (int i = 0; i < MAX_SHADER_STAGES; i++)
+	{
+		if (tess.xstages[i] && (tess.xstages[i]->bundle[TB_NORMALMAP].image[0] || tess.xstages[i]->bundle[TB_SPECULARMAP].image[0])) {
+			pStage = tess.xstages[i];
+		}
+	}
+
+	if (!pStage)
+		return;
+
 	int index;
 	shaderProgram_t *shaderGroup;
 	uint32_t stateBits = 0;
-	if ( input->shader->numUnfoggedPasses == 1 &&
+	/*if ( input->shader->numUnfoggedPasses == 1 &&
 			pStage->glslShaderGroup == tr.lightallShader &&
-			(pStage->glslShaderIndex & LIGHTDEF_LIGHTTYPE_MASK) )
+			(pStage->glslShaderIndex & LIGHTDEF_LIGHTTYPE_MASK) )*/
+	if(1)
 	{
 		index = pStage->glslShaderIndex;
 
@@ -1933,7 +1946,7 @@ static void RB_IterateStagesGeneric( shaderCommands_t *input, const VertexArrays
 
 			uniformDataWriter.SetUniformVec4(UNIFORM_CUBEMAPINFO, vec);
 
-			if (tr.numfinishedSphericalHarmonics == tr.numSphericalHarmonics) {
+			if (tr.numfinishedSphericalHarmonics == tr.numSphericalHarmonics && tr.numSphericalHarmonics > 0) {
 				//TODO: speed up this process, maybe ambient pre pass
 				int index = R_SHForPoint(backEnd.currentEntity->e.lightingOrigin);
 				sphericalHarmonic_t *sh = &tr.sphericalHarmonicsCoefficients[

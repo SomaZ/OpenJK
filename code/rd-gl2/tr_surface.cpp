@@ -229,6 +229,12 @@ void RB_InstantQuad2(vec4_t quadVerts[4], vec2_t texCoords[4])
 	tess.useInternalVBO = qfalse;
 }
 
+void RB_InstantScreenQuad()
+{
+	RB_CheckVBOandIBO(tr.screenQuad.vbo, tr.screenQuad.ibo);
+	GLSL_VertexAttribsState(ATTR_POSITION, NULL);
+	qglDrawElementsInstanced(GL_TRIANGLES, tr.screenQuad.numIndexes, GL_UNSIGNED_INT, 0, 1);
+}
 
 void RB_InstantQuad(vec4_t quadVerts[4])
 {
