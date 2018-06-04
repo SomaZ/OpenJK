@@ -3902,6 +3902,11 @@ static void R_BuildLightGridTextures(world_t *world)
 			world->lightGridBounds[2],
 			GL_RGB8);
 	}
+
+	R_Free(ambientBase);
+	R_Free(directionalBase);
+	R_Free(directionBase);
+
 	if (world->numGridArrayElements && world->lightGridData)
 	{
 		const float stepSize = 1;
@@ -3975,6 +3980,7 @@ static void R_BuildLightGridTextures(world_t *world)
 			VectorCopy(positions[i], tr.sphericalHarmonicsCoefficients[i].origin);
 		}
 
+		R_Free(positions);
 		tr.numfinishedSphericalHarmonics = 0;
 	}
 	
