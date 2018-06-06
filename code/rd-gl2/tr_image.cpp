@@ -2838,7 +2838,6 @@ image_t	*R_FindImageFile(const char *name, imgType_t type, int flags)
 	image_t	*image;
 	int		width, height;
 	byte	*pic;
-	long	hash;
 
 	if (!name) {
 		return NULL;
