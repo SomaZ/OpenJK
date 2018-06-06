@@ -392,10 +392,6 @@ void SP_misc_model_iqm(gentity_t *ent)
 		ent->count = 0;
 	}
 
-	// Animation
-	//**************************
-	refEntity_t	refEnt;
-
 	if (ent->spawnflags & 2) //LOOP flag.
 	{
 		ent->s.eFlags |= EF_ANIM_ALLFAST;

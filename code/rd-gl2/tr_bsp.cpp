@@ -3836,7 +3836,7 @@ static void R_BuildLightGridTextures(world_t *world)
 	byte *directionalBase = (byte *)R_Malloc(world->numGridArrayElements * sizeof(byte) * 4, TAG_TEMP_WORKSPACE, qtrue);
 	byte *directionBase = (byte *)R_Malloc(world->numGridArrayElements * sizeof(byte) * 4, TAG_TEMP_WORKSPACE, qtrue);
 
-	if (1)
+	if (world->lightGridData)
 	{
 		byte *ambient = ambientBase;
 		byte *directional = directionalBase;
@@ -3846,6 +3846,7 @@ static void R_BuildLightGridTextures(world_t *world)
 
 			float lat, lng;
 			float clat, slong, slat, clong;
+
 			mgrid_t *data = world->lightGridData + world->lightGridArray[i];
 
 			ambient[0] = data->ambientLight[0][0];
@@ -3901,7 +3902,12 @@ static void R_BuildLightGridTextures(world_t *world)
 			world->lightGridBounds[2],
 			GL_RGB8);
 	}
-	if (1)
+
+	R_Free(ambientBase);
+	R_Free(directionalBase);
+	R_Free(directionBase);
+
+	if (world->numGridArrayElements && world->lightGridData)
 	{
 		const float stepSize = 1;
 		int numSphericalHarmonics = world->numGridArrayElements / stepSize;
@@ -3974,6 +3980,7 @@ static void R_BuildLightGridTextures(world_t *world)
 			VectorCopy(positions[i], tr.sphericalHarmonicsCoefficients[i].origin);
 		}
 
+		R_Free(positions);
 		tr.numfinishedSphericalHarmonics = 0;
 	}
 	

@@ -2558,40 +2558,57 @@ done:
 		R_Free(resampledBuffer);
 }
 
+image_t* R_GetLoadedImage(const char *name, int flags) {
+	long	hash;
+	image_t	*image;
+
+	hash = generateHashValue(name);
+	for (image = hashTable[hash]; image; image = image->next) {
+		if (!strcmp(name, image->imgName)) {
+			// the white image can be used with any set of parms, but other mismatches are errors
+			if (strcmp(name, "*white")) {
+				if (image->flags != flags) {
+					ri.Printf(PRINT_DEVELOPER, "WARNING: reused image %s with mixed flags (%i vs %i)\n", name, image->flags, flags);
+				}
+			}
+			return image;
+		}
+	}
+	return NULL;
+}
+
 void R_CreateDiffuseAndSpecMapsFromBaseColorAndRMO(shaderStage_t *stage, const char *name, const char *rmoName, int flags, int type)
 {
-	image_t	*image;
 	char	diffuseName[MAX_QPATH];
 	char	specularName[MAX_QPATH];
 	int		width, height, rmoWidth, rmoHeight;
-	byte	*rmoPic,*baseColorPic,*specGlossPic,*diffusePic;
-	long	hash;
+	byte	*rmoPic, *baseColorPic, *specGlossPic, *diffusePic;
+	image_t *image;
 
 	if (!name) {
 		return;
 	}
 
-	COM_StripExtension(name, diffuseName, MAX_QPATH);
-	Q_strcat(diffuseName, MAX_QPATH, "_diffuse");
+	COM_StripExtension(name, diffuseName, sizeof(diffuseName));
+	Q_strcat(diffuseName, sizeof(diffuseName), "_diffuse");
 
-	COM_StripExtension(name, specularName, MAX_QPATH);
-	Q_strcat(specularName, MAX_QPATH, "_spec");
+	COM_StripExtension(name, specularName, sizeof(specularName));
+	Q_strcat(specularName, sizeof(specularName), "_spec");
 
 	//
 	// see if the images are already loaded
 	//
-	hash = generateHashValue(diffuseName);
-	for (image = hashTable[hash]; image; image = image->next) {
-		if (!strcmp(diffuseName, image->imgName)) {
-			stage->bundle[TB_COLORMAP].image[0] = image;
-			// check for specular map
-			hash = generateHashValue(specularName);
-			for (image = hashTable[hash]; image; image = image->next) {
-				if (!strcmp(specularName, image->imgName)) {
-					stage->bundle[TB_SPECULARMAP].image[0] = image;
-					return;
-				}
-			}
+	image = R_GetLoadedImage(diffuseName, flags);
+	if (image != NULL)
+	{
+		stage->bundle[TB_COLORMAP].image[0] = image;
+
+		image = R_GetLoadedImage(specularName, flags);
+		if (image != NULL)
+		{
+			stage->bundle[TB_SPECULARMAP].image[0] = R_GetLoadedImage(specularName, flags);
+			ri.Printf(PRINT_DEVELOPER, "WARNING: reused Diffuse and Specular images for %s\n", name);
+			return;
 		}
 	}
 
@@ -2602,19 +2619,23 @@ void R_CreateDiffuseAndSpecMapsFromBaseColorAndRMO(shaderStage_t *stage, const c
 	if (baseColorPic == NULL) {
 		return;
 	}
+
 	R_LoadImage(rmoName, &rmoPic, &rmoWidth, &rmoHeight);
 	if (rmoPic == NULL) {
+		R_Free(baseColorPic);
 		return;
 	}
 
 	if (width != rmoWidth || height != rmoHeight)
 	{
 		ri.Printf(PRINT_ALL, "WARNING: Can't build Specular Map for %s (different texture sizes for baseColor and rmo)\n", name);
+		R_Free(baseColorPic);
+		R_Free(rmoPic);
 		return;
 	}
 
-	specGlossPic = (byte *)R_Malloc(width * height * 4, TAG_GP2, qfalse);
-	diffusePic = (byte *)R_Malloc(width * height * 4, TAG_GP2, qfalse);
+	specGlossPic = (byte *)R_Malloc(width * height * 4, TAG_TEMP_WORKSPACE, qfalse);
+	diffusePic = (byte *)R_Malloc(width * height * 4, TAG_TEMP_WORKSPACE, qfalse);
 
 	float baseSpecular;
 
@@ -2631,49 +2652,43 @@ void R_CreateDiffuseAndSpecMapsFromBaseColorAndRMO(shaderStage_t *stage, const c
 
 	for (int i = 0; i < width * height * 4; i += 4)
 	{
-		const float aoStrength	= 0.5f;
+		const float aoStrength = 0.5f;
 		float roughness, gloss, metalness, specular_variance, ao;
 
 		switch (type)
 		{
 		case SPEC_RMO:
 		case SPEC_RMOS:
-		{
 			roughness = ByteToFloat(rmoPic[i + 0]);
 			gloss = (1.0 - roughness) + (0.04 * roughness);
 			metalness = ByteToFloat(rmoPic[i + 1]);
 			ao = ByteToFloat(rmoPic[i + 2]);
 			ao += (1.0 - ao) * (1.0 - aoStrength);
 			specular_variance = ByteToFloat(rmoPic[i + 3]);
-		}
-		break;
+			break;
 		case SPEC_MOXR:
 		case SPEC_MOSR:
-		{
 			metalness = ByteToFloat(rmoPic[i + 0]);
 			ao = ByteToFloat(rmoPic[i + 1]);
 			ao += (1.0 - ao) * (1.0 - aoStrength);
 			specular_variance = ByteToFloat(rmoPic[i + 2]);
 			roughness = ByteToFloat(rmoPic[i + 3]);
 			gloss = (1.0 - roughness) + (0.04 * roughness);
-		}
-		break;
-		// should never reach this
+			break;
+			// should never reach this
 		default:
-		{
 			specular_variance = 1.0f;
 			metalness = 0.0f;
-			gloss = r_baseGloss->value;
+			gloss = 0.02f;
 			ao = 1.0f;
+			break;
 		}
-		break;
-		}
-		
-		float baseColor[4];
+
+		vec4_t baseColor;
 		// remove gamma correction because we want to work in linear space
-		baseColor[0] = pow(ByteToFloat(baseColorPic[i + 0]), GAMMA);
-		baseColor[1] = pow(ByteToFloat(baseColorPic[i + 1]), GAMMA);
-		baseColor[2] = pow(ByteToFloat(baseColorPic[i + 2]), GAMMA);
+		baseColor[0] = RGBtosRGB(ByteToFloat(baseColorPic[i + 0]));
+		baseColor[1] = RGBtosRGB(ByteToFloat(baseColorPic[i + 1]));
+		baseColor[2] = RGBtosRGB(ByteToFloat(baseColorPic[i + 2]));
 		// don't remove gamma correction in alpha because this is data, not color
 		baseColor[3] = ByteToFloat(baseColorPic[i + 3]);
 
@@ -2681,16 +2696,17 @@ void R_CreateDiffuseAndSpecMapsFromBaseColorAndRMO(shaderStage_t *stage, const c
 
 		// diffuse Color = baseColor * (1.0 - metalness) 
 		// also gamma correct again
-		diffusePic[i + 0] = FloatToByte(pow(baseColor[0] * (1.0f - metalness) * ao, INV_GAMMA));
-		diffusePic[i + 1] = FloatToByte(pow(baseColor[1] * (1.0f - metalness) * ao, INV_GAMMA));
-		diffusePic[i + 2] = FloatToByte(pow(baseColor[2] * (1.0f - metalness) * ao, INV_GAMMA));
+		// FIXME: AO should be handled in shader because it should only affect the ambient lighting
+		diffusePic[i + 0] = FloatToByte(sRGBtoRGB(baseColor[0] * (1.0f - metalness) * ao));
+		diffusePic[i + 1] = FloatToByte(sRGBtoRGB(baseColor[1] * (1.0f - metalness) * ao));
+		diffusePic[i + 2] = FloatToByte(sRGBtoRGB(baseColor[2] * (1.0f - metalness) * ao));
 		diffusePic[i + 3] = FloatToByte(baseColor[3]);
 
 		// specular Color = mix(baseSpecular, baseColor, metalness)
 		// also gamma correct again
-		specGlossPic[i + 0] = FloatToByte(pow(baseSpecular * (1.0f - metalness) + baseColor[0] * metalness, INV_GAMMA));
-		specGlossPic[i + 1] = FloatToByte(pow(baseSpecular * (1.0f - metalness) + baseColor[1] * metalness, INV_GAMMA));
-		specGlossPic[i + 2] = FloatToByte(pow(baseSpecular * (1.0f - metalness) + baseColor[2] * metalness, INV_GAMMA));
+		specGlossPic[i + 0] = FloatToByte(sRGBtoRGB(baseSpecular * (1.0f - metalness) + baseColor[0] * metalness));
+		specGlossPic[i + 1] = FloatToByte(sRGBtoRGB(baseSpecular * (1.0f - metalness) + baseColor[1] * metalness));
+		specGlossPic[i + 2] = FloatToByte(sRGBtoRGB(baseSpecular * (1.0f - metalness) + baseColor[2] * metalness));
 		// don't remove gamma correction in alpha because this is data, not color
 		specGlossPic[i + 3] = FloatToByte(gloss);
 	}
@@ -2714,8 +2730,8 @@ static void R_CreateNormalMap(const char *name, byte *pic, int width, int height
 
 	normalFlags = (flags & ~(IMGFLAG_GENNORMALMAP | IMGFLAG_SRGB)) | IMGFLAG_NOLIGHTSCALE;
 
-	COM_StripExtension(name, normalName, MAX_QPATH);
-	Q_strcat(normalName, MAX_QPATH, "_n");
+	COM_StripExtension(name, normalName, sizeof(normalName));
+	Q_strcat(normalName, sizeof(normalName), "_n");
 
 	// find normalmap in case it's there
 	normalImage = R_FindImageFile(normalName, IMGTYPE_NORMAL, normalFlags);
@@ -2822,28 +2838,13 @@ image_t	*R_FindImageFile(const char *name, imgType_t type, int flags)
 	image_t	*image;
 	int		width, height;
 	byte	*pic;
-	long	hash;
 
 	if (!name) {
 		return NULL;
 	}
 
-	hash = generateHashValue(name);
-
-	//
-	// see if the image is already loaded
-	//
-	for (image = hashTable[hash]; image; image = image->next) {
-		if (!strcmp(name, image->imgName)) {
-			// the white image can be used with any set of parms, but other mismatches are errors
-			if (strcmp(name, "*white")) {
-				if (image->flags != flags) {
-					ri.Printf(PRINT_DEVELOPER, "WARNING: reused image %s with mixed flags (%i vs %i)\n", name, image->flags, flags);
-				}
-			}
-			return image;
-		}
-	}
+	if ((image = R_GetLoadedImage(name, flags)) != NULL)
+		return image;
 
 	//
 	// load the pic from disk
