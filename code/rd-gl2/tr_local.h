@@ -2594,7 +2594,6 @@ extern glconfigExt_t	glConfigExt;
 
 void RE_StretchRaw (int x, int y, int w, int h, int cols, int rows, const byte *data, int client, qboolean dirty);
 void RE_UploadCinematic (int cols, int rows, const byte *data, int client, qboolean dirty);
-void RE_GetScreenShot (byte *data, int w, int h);
 void RE_SetRangedFog ( float range );
 
 void RE_BeginFrame( stereoFrame_t stereoFrame );
@@ -3213,7 +3212,6 @@ typedef enum {
 	RC_VIDEOFRAME,
 	RC_COLORMASK,
 	RC_CLEARDEPTH,
-	RC_CAPSHADOWMAP,
 	RC_CONVOLVECUBEMAP,
 	RC_POSTPROCESS,
 	RC_EXPORT_CUBEMAPS,
@@ -3292,7 +3290,6 @@ void R_IssuePendingRenderCommands( void );
 void R_AddDrawSurfCmd( drawSurf_t *drawSurfs, int numDrawSurfs );
 void R_AddConvolveCubemapCmd(cubemap_t *cubemaps, int cubemap, int cubeSide);
 void R_AddBuildSphericalHarmonicsCmd();
-void R_AddCapShadowmapCmd( int dlight, int cubeSide );
 void R_AddPostProcessCmd (void);
 qhandle_t R_BeginTimedBlockCmd( const char *name );
 void R_EndTimedBlockCmd( qhandle_t timerHandle );
@@ -3334,7 +3331,6 @@ image_t *R_CreateImage( const char *name, byte *pic, int width, int height, imgT
 image_t *R_CreateImage3D(const char *name, byte *data, int width, int height, int depth, int internalFormat);
 
 float ProjectRadius( float r, vec3_t location );
-void RE_RegisterModels_StoreShaderRequest(const char *psModelFileName, const char *psShaderName, int *piShaderIndexPoke);
 qboolean ShaderHashTableExists(void);
 void R_ImageLoader_Init(void);
 
