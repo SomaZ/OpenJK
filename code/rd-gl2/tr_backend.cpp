@@ -1406,7 +1406,7 @@ static void RB_RenderDrawSurfList(drawSurf_t *drawSurfs, int numDrawSurfs)
 	backEnd.currentEntity = &tr.worldEntity;
 	backEnd.pc.c_surfaces += numDrawSurfs;
 
-	if (backEnd.depthFill)
+	if (backEnd.renderPass != MAIN_PASS)
 	{
 		RB_SubmitDrawSurfsForDepthFill(drawSurfs, numDrawSurfs, originalTime);
 	}
@@ -2132,7 +2132,7 @@ static void RB_RenderSSAO()
 
 static void RB_RenderDepthOnly(drawSurf_t *drawSurfs, int numDrawSurfs)
 {
-	backEnd.depthFill = qtrue;
+	backEnd.renderPass = !(backEnd.viewParms.flags & VPF_DEPTHSHADOW) ? PRE_PASS : DEPTH_PASS;
 	qglColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
 	RB_RenderDrawSurfList(drawSurfs, numDrawSurfs);
 	qglColorMask(
@@ -2140,7 +2140,7 @@ static void RB_RenderDepthOnly(drawSurf_t *drawSurfs, int numDrawSurfs)
 		!backEnd.colorMask[1],
 		!backEnd.colorMask[2],
 		!backEnd.colorMask[3]);
-	backEnd.depthFill = qfalse;
+	backEnd.renderPass = MAIN_PASS;
 
 	if (backEnd.viewParms.targetFbo == tr.renderCubeFbo && tr.msaaResolveFbo)
 	{

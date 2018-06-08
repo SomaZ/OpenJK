@@ -1270,12 +1270,12 @@ static unsigned int RB_CalcShaderVertexAttribs( const shader_t *shader )
 	return vertexAttribs;
 }
 
-static shaderProgram_t *SelectShaderProgram( int stageIndex, shaderStage_t *stage, shaderProgram_t *glslShaderGroup, bool useAlphaTestGE192 )
+static shaderProgram_t *SelectShaderProgram( int stageIndex, shaderStage_t *stage, shaderProgram_t *glslShaderGroup )
 {
 	uint32_t index;
 	shaderProgram_t *result = nullptr;
 
-	if (backEnd.depthFill)
+	if (backEnd.renderPass == DEPTH_PASS)
 	{
 		if (glslShaderGroup == tr.lightallShader)
 		{
@@ -1291,32 +1291,6 @@ static shaderProgram_t *SelectShaderProgram( int stageIndex, shaderStage_t *stag
 				{
 					index |= LIGHTDEF_USE_SKELETAL_ANIMATION;
 				}
-			}
-
-			if ( !useAlphaTestGE192 )
-			{
-				if (stage->alphaTestCmp != ATEST_CMP_NONE)
-				{
-					index |= LIGHTDEF_USE_TCGEN_AND_TCMOD;
-					switch ( stage->alphaTestCmp )
-					{
-						case ATEST_CMP_LT:
-							index |= LIGHTDEF_USE_ATEST_LT;
-							break;
-						case ATEST_CMP_GT:
-							index |= LIGHTDEF_USE_ATEST_GT;
-							break;
-						case ATEST_CMP_GE:
-							index |= LIGHTDEF_USE_ATEST_GE;
-							break;
-						default:
-							break;
-					}
-				}
-			}
-			else
-			{
-				index |= LIGHTDEF_USE_ATEST_GE;
 			}
 
 			result = &stage->glslShaderGroup[index];
@@ -1338,32 +1312,6 @@ static shaderProgram_t *SelectShaderProgram( int stageIndex, shaderStage_t *stag
 			else if (glState.skeletalAnimation)
 			{
 				index |= GENERICDEF_USE_SKELETAL_ANIMATION;
-			}
-
-			if ( !useAlphaTestGE192 )
-			{
-				if (stage->alphaTestCmp != ATEST_CMP_NONE)
-				{
-					index |= GENERICDEF_USE_TCGEN_AND_TCMOD;
-					switch ( stage->alphaTestCmp )
-					{
-						case ATEST_CMP_LT:
-							index |= GENERICDEF_USE_ATEST_LT;
-							break;
-						case ATEST_CMP_GT:
-							index |= GENERICDEF_USE_ATEST_GT;
-							break;
-						case ATEST_CMP_GE:
-							index |= GENERICDEF_USE_ATEST_GE;
-							break;
-						default:
-							break;
-					}
-				}
-			}
-			else
-			{
-				index |= GENERICDEF_USE_ATEST_GE;
 			}
 
 			result = &tr.genericShader[index];
@@ -1398,32 +1346,6 @@ static shaderProgram_t *SelectShaderProgram( int stageIndex, shaderStage_t *stag
 					(index & LIGHTDEF_LIGHTTYPE_MASK))
 			{
 				index |= LIGHTDEF_USE_SHADOWMAP;
-			}
-
-			if ( !useAlphaTestGE192 )
-			{
-				if (stage->alphaTestCmp != ATEST_CMP_NONE)
-				{
-					index |= LIGHTDEF_USE_TCGEN_AND_TCMOD;
-					switch ( stage->alphaTestCmp )
-					{
-						case ATEST_CMP_LT:
-							index |= LIGHTDEF_USE_ATEST_LT;
-							break;
-						case ATEST_CMP_GT:
-							index |= LIGHTDEF_USE_ATEST_GT;
-							break;
-						case ATEST_CMP_GE:
-							index |= LIGHTDEF_USE_ATEST_GE;
-							break;
-						default:
-							break;
-					}
-				}
-			}
-			else
-			{
-				index |= LIGHTDEF_USE_ATEST_GE;
 			}
 		}
 
@@ -1672,10 +1594,14 @@ static void RB_IterateStagesGeneric( shaderCommands_t *input, const VertexArrays
 			}*/
 		}
 
-		sp = SelectShaderProgram(stage, pStage, pStage->glslShaderGroup, useAlphaTestGE192);
+		sp = SelectShaderProgram(stage, pStage, pStage->glslShaderGroup);
 		assert(sp);
 
 		uniformDataWriter.Start(sp);
+		
+		int alphaTestFunction = useAlphaTestGE192 ? ATEST_CMP_GE : pStage->alphaTestCmp;
+		uniformDataWriter.SetUniformInt(UNIFORM_ALPHA_TEST_FUNCTION, alphaTestFunction);
+
 		uniformDataWriter.SetUniformMatrix4x4( UNIFORM_MODELVIEWPROJECTIONMATRIX, glState.modelviewProjection);
 		uniformDataWriter.SetUniformVec3(UNIFORM_VIEWORIGIN, backEnd.viewParms.ori.origin);
 		uniformDataWriter.SetUniformVec3(UNIFORM_LOCALVIEWORIGIN, backEnd.ori.viewOrigin);
@@ -1799,7 +1725,7 @@ static void RB_IterateStagesGeneric( shaderCommands_t *input, const VertexArrays
 		bool enableShpericalHarmonics = 
 			(r_cubeMapping->integer && !(tr.viewParms.flags & VPF_NOCUBEMAPS) && input->cubemapIndex && tr.numfinishedSphericalHarmonics == tr.numSphericalHarmonics);
 
-		if ( backEnd.depthFill )
+		if (backEnd.renderPass == DEPTH_PASS)
 		{
 			if (pStage->alphaTestCmp == ATEST_CMP_NONE)
 				samplerBindingsWriter.AddStaticImage(tr.whiteImage, 0);
@@ -1992,7 +1918,7 @@ static void RB_IterateStagesGeneric( shaderCommands_t *input, const VertexArrays
 			break;
 		}
 
-		if (backEnd.depthFill)
+		if (backEnd.renderPass == DEPTH_PASS)
 			break;
 	}
 }
@@ -2095,7 +2021,7 @@ void RB_StageIteratorGeneric( void )
 		CalculateVertexArraysFromVBO(vertexAttribs, glState.currentVBO, &vertexArrays);
 	}
 
-	if ( backEnd.depthFill )
+	if (backEnd.renderPass == DEPTH_PASS)
 	{
 		RB_IterateStagesGeneric( input, &vertexArrays );
 	}

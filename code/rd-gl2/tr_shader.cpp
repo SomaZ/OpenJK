@@ -3159,21 +3159,6 @@ static void CollapseStagesToLightall(shaderStage_t *stage, shaderStage_t *lightm
 	if (stage->glow)
 		defs |= LIGHTDEF_USE_GLOW_BUFFER;
 
-	switch (stage->alphaTestCmp )
-	{
-		case ATEST_CMP_LT:
-			defs |= LIGHTDEF_USE_ATEST_LT;
-			break;
-		case ATEST_CMP_GT:
-			defs |= LIGHTDEF_USE_ATEST_GT;
-			break;
-		case ATEST_CMP_GE:
-			defs |= LIGHTDEF_USE_ATEST_GE;
-			break;
-		default:
-			break;
-	}
-
 	//ri.Printf(PRINT_ALL, ".\n");
 
 	stage->glslShaderGroup = tr.lightallShader;

@@ -410,7 +410,7 @@ void FBO_Init(void)
 	hdrFormat = GL_RGBA8;
 	if (r_hdr->integer)
 	{
-		hdrFormat = GL_RGB16F;
+		hdrFormat = GL_RGBA16F;
 	}
 
 	qglGetIntegerv(GL_MAX_SAMPLES, &multisample);
@@ -470,6 +470,18 @@ void FBO_Init(void)
 		R_CheckFBO(tr.renderFbo);
 	}
 
+	{
+		tr.preBuffersFbo = FBO_Create("_preBuffers", tr.renderDepthImage->width, tr.renderDepthImage->height);
+		FBO_Bind(tr.preBuffersFbo);
+
+		FBO_AttachTextureImage(tr.normalBufferImage, 0);
+		FBO_AttachTextureImage(tr.specBufferImage, 1);
+
+		R_AttachFBOTextureDepth(tr.renderDepthImage->texnum);
+		FBO_SetupDrawBuffers();
+
+		R_CheckFBO(tr.preBuffersFbo);
+	}
 	// clear render buffer
 	// this fixes the corrupt screen bug with r_hdr 1 on older hardware
 	if (tr.renderFbo)

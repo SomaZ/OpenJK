@@ -365,9 +365,8 @@ uniform sampler2D u_EnvBrdfMap;
 #endif
 #endif
 
-#if defined(USE_ATEST)
+uniform int u_AlphaTestFunction;
 uniform float u_AlphaTestValue;
-#endif
 
 in vec4      var_TexCoords;
 in vec4      var_Color;
@@ -751,16 +750,19 @@ void main()
 #endif
 
 	diffuse = texture(u_DiffuseMap, texCoords);
-#if defined(USE_ATEST)
-#  if USE_ATEST == ATEST_CMP_LT
-	if (diffuse.a >= u_AlphaTestValue)
-#  elif USE_ATEST == ATEST_CMP_GT
-	if (diffuse.a <= u_AlphaTestValue)
-#  elif USE_ATEST == ATEST_CMP_GE
-	if (diffuse.a < u_AlphaTestValue)
-#  endif
-		discard;
-#endif
+
+	if (u_AlphaTestFunction == ATEST_CMP_GE){
+		if (diffuse.a < u_AlphaTestValue)
+			discard;
+	}
+	else if (u_AlphaTestFunction == ATEST_CMP_LT){
+		if (diffuse.a >= u_AlphaTestValue)
+			discard;
+	}	
+	else if (u_AlphaTestFunction == ATEST_CMP_GT){
+		if (diffuse.a <= u_AlphaTestValue)
+			discard;
+	}
 
 	N = CalcNormal(var_Normal.xyz, texCoords, tangentToWorld);
 
@@ -892,16 +894,20 @@ void main()
 
 #else
 	diffuse = texture(u_DiffuseMap, texCoords);
-#if defined(USE_ATEST)
-#  if USE_ATEST == ATEST_CMP_LT
-	if (diffuse.a >= u_AlphaTestValue)
-#  elif USE_ATEST == ATEST_CMP_GT
-	if (diffuse.a <= u_AlphaTestValue)
-#  elif USE_ATEST == ATEST_CMP_GE
-	if (diffuse.a < u_AlphaTestValue)
-#  endif
-		discard;
-#endif
+
+	if (u_AlphaTestFunction == ATEST_CMP_GE){
+		if (diffuse.a < u_AlphaTestValue)
+			discard;
+	}
+	else if (u_AlphaTestFunction == ATEST_CMP_LT){
+		if (diffuse.a >= u_AlphaTestValue)
+			discard;
+	}	
+	else if (u_AlphaTestFunction == ATEST_CMP_GT){
+		if (diffuse.a <= u_AlphaTestValue)
+			discard;
+	}
+
 	lightColor = var_Color.rgb;
 	out_Color.rgb = diffuse.rgb * lightColor;
 #endif

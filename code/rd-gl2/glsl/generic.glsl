@@ -359,9 +359,9 @@ void main()
 
 /*[Fragment]*/
 uniform sampler2D u_DiffuseMap;
-#if defined(USE_ATEST)
+
+uniform int u_AlphaTestFunction;
 uniform float u_AlphaTestValue;
-#endif
 
 #if defined(USE_FOG)
 uniform vec4 u_FogPlane;
@@ -418,16 +418,18 @@ void main()
 {
 	vec4 color  = texture(u_DiffuseMap, var_DiffuseTex);
 
-#if defined(USE_ATEST)
-#  if USE_ATEST == ATEST_CMP_LT
-	if (color.a >= u_AlphaTestValue)
-#  elif USE_ATEST == ATEST_CMP_GT
-	if (color.a <= u_AlphaTestValue)
-#  elif USE_ATEST == ATEST_CMP_GE
+if (u_AlphaTestFunction == ATEST_CMP_GE){
 	if (color.a < u_AlphaTestValue)
-#  endif
 		discard;
-#endif
+}
+else if (u_AlphaTestFunction == ATEST_CMP_LT){
+	if (color.a >= u_AlphaTestValue)
+		discard;
+}	
+else if (u_AlphaTestFunction == ATEST_CMP_GT){
+	if (color.a <= u_AlphaTestValue)
+		discard;
+}
 
 #if defined(USE_FOG)
 	float fog = CalcFog(u_ViewOrigin, var_WSPosition, u_FogPlane, u_FogDepthToOpaque, u_FogHasPlane);
