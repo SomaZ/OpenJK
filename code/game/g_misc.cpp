@@ -1057,53 +1057,124 @@ void SP_object_cargo_barrel1(gentity_t *ent)
 }
 
 
-/*QUAKED misc_dlight (0.2 0.8 0.2) (-4 -4 -4) (4 4 4) STARTOFF FADEON FADEOFF PULSE
-Dynamic light, toggles on and off when used
+/*QUAKED misc_dlight (1 0 0) (-10 -10 0) (10 10 10) STARTOFF FADEON FADEOFF PULSE MODEL SOLID ANIMATE
+Dynamic light, toggles on and off when used. Can also set a ghoul2 model, and have the 
+light bolted to its "*flash" tag.
 
-STARTOFF - Starts off
+STARTOFF - Light starts off
 FADEON - Fades from 0 Radius to start Radius
 FADEOFF - Fades from current Radius to 0 Radius before turning off
 PULSE - This flag must be checked if you want it to fade/switch between start and final RGBA, otherwise it will just sit at startRGBA
+MODEL - Sets a model to display, and attaches light to its 'tag_flash'.
 
-ownername - Will display the light at the origin of the entity with this targetname
+These next flags are used only if you have set a model.
+SOLID - Model is solid.
+ANIMATE - Model will cylce its animation.
 
-startRGBA - Red Green Blue Radius to start with - This MUST be set or your light won't do anything
+"ownername" - Will display the light at the origin of the entity with this targetname
+"startRGBA" - Red Green Blue Radius to start with - This MUST be set or your light won't do anything
 
 These next values are used only if you want to fade/switch between 2 values (PULSE flag on)
-finalRGBA - Red Green Blue Radius to end with
-speed - how long to take to fade from start to final and final to start.  Also how long to fade on and off if appropriate flags are checked (seconds)
-finaltime - how long to hold at final (seconds)
-starttime - how long to hold at start (seconds)
+"finalRGBA" - Red Green Blue Radius to end with
+"speed" - How long to take to fade from start to final and final to start.  Also how long to fade on and off if appropriate flags are checked (seconds)
+"finaltime" - how long to hold at final (seconds)
+"starttime" - how long to hold at start (seconds)
 
-TODO: Add random to speed/radius?
+These next values are used only if you have set a model.
+"startFrame" - Default "0". animation start frame
+"endFrame" - Default "0". animation end frame
+"animSpeed" - Default "1.0". animation speed
+"skin" - Default "<model_dir>/model_default.skin". Skin file to load
 */
 void SP_misc_dlight(gentity_t *ent)
 {
 	G_SetOrigin( ent, ent->s.origin );
-	gi.linkentity( ent );
 
 	ent->speed *= 1000;
 	ent->wait *= 1000;
 	ent->radius *= 1000;
 
-	//FIXME: attach self to a train or something?
+	// FIXME: attach self to a train or something?
 	ent->e_UseFunc = useF_misc_dlight_ent_use;
 
 	ent->misc_dlight_active = qfalse;
 	ent->e_clThinkFunc = clThinkF_NULL;
-
 	ent->s.eType = ET_GENERAL;
-	//Delay first think so we can find owner
+
+	// Delay first think so we can find owner
 	if ( ent->ownername )
 	{
 		ent->e_ThinkFunc = thinkF_misc_dlight_think;
 		ent->nextthink = level.time + START_TIME_LINK_ENTS;
 	}
 
+	// Turn myself on now
 	if ( !(ent->spawnflags & 1) )
-	{//Turn myself on now
+	{
 		GEntity_UseFunc( ent, ent, ent );
 	}
+
+	// Model init
+	//**************************
+	if (ent->spawnflags & 16)
+	{
+		ent->s.modelindex = G_ModelIndex(ent->model);
+		gi.G2API_InitGhoul2Model(ent->ghoul2, ent->model, ent->s.modelindex, NULL_HANDLE, NULL_HANDLE, 0, 0);
+
+		if (ent->playerModel >= 0)
+		{
+			ent->rootBone = gi.G2API_GetBoneIndex(&ent->ghoul2[ent->playerModel], "model_root", qtrue);
+		}
+
+		G_SetAngles(ent, ent->s.angles);
+
+		ent->genericBolt1 = gi.G2API_AddBolt(&ent->ghoul2[0], "*flash");
+	}
+
+	if (ent->model)
+	{
+		// Solid
+		//**************************
+		if (ent->spawnflags & 32) //SOLID flag.
+		{
+			ent->contents = CONTENTS_BODY;
+			ent->clipmask = MASK_NPCSOLID;
+		}
+
+		// Animation
+		//**************************
+		if (ent->spawnflags & 64)
+		{
+			float animSpeed;
+
+			G_SpawnInt("startFrame", "0", &ent->startFrame);
+			G_SpawnInt("endFrame", "0", &ent->endFrame);
+			G_SpawnFloat("animSpeed", "1.0", &animSpeed);
+
+			gi.G2API_SetBoneAnim(&ent->ghoul2[0], "model_root", ent->startFrame, ent->endFrame, BONE_ANIM_OVERRIDE_LOOP, animSpeed + Q_flrand(-1.0f, 1.0f) * 0.1f, 0, -1, -1);
+			ent->endFrame = 0; // don't allow it to do anything with the animation function in G_main
+		}
+
+		// Skin
+		//**************************
+		char skinPath[MAX_QPATH];
+		char skinPath2[MAX_QPATH];
+		int skin = 0;
+
+		//example - output is currently "models/players/kyle/model.glm"
+		COM_StripExtension(ent->model, skinPath, sizeof(skinPath)); //example - stripped extension out, output is now "models/players/kyle/model"
+		Com_sprintf(skinPath2, sizeof(skinPath), "%s_", skinPath); //example - added "_" onto the end, output is now "models/players/kyle/model_"
+
+		G_SpawnString("skin", va("%sdefault.skin", skinPath2), &ent->skin);
+		gi.G2API_SetSkin(&ent->ghoul2[0], G_SkinIndex(ent->skin), skin);
+
+		// Register & precache
+		//**************************
+		cgi_R_RegisterModel(ent->model);
+		gi.G2API_PrecacheGhoul2Model(ent->model);
+	}
+
+	gi.linkentity(ent);
 }
 
 void misc_dlight_ent_use ( gentity_t *ent, gentity_t *other, gentity_t *activator )
