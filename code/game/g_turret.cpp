@@ -2234,16 +2234,20 @@ void spotlight_link( gentity_t *ent )
 	}
 }
 
-/*QUAKED misc_spotlight (1 0 0) (-10 -10 0) (10 10 10) START_OFF
-model="models/map_objects/imp_mine/spotlight.md3"
-Search spotlight that must be targeted at a func_train or other entity
-Uses its target2 when it detects the player
+/*QUAKED misc_spotlight (1 0 0) (-10 -10 0) (10 10 10) START_OFF HEALTH LIGHT_CONE SOLID
+Search spotlight that must be targeted at a func_train or other entity. Uses its target2 when it detects the player.
+Can also be used as just a targeted light.
 
-  START_OFF - Starts off
+  START_OFF - Starts off.
+  HEALTH - Enables health. Default = 300.
+  LIGHT_CONE - Enables the light cone effect.
+  SOLID - Is solid.
 
-  targetname - Toggles it on/off
-  target - What to point at
-  target2 - What to use when detects player
+  "startRGBA" - Red Green Blue Radius to start with - This MUST be set or your spotlight won't do anything  
+  "model" - Set the MD3 to use. Default = "models/map_objects/imp_mine/spotlight.md3"  
+  "targetname" - Toggles it on/off
+  "target" - What to point at
+  "target2" - What to use when detects player
 */
 
 //-----------------------------------------------------
@@ -2269,15 +2273,31 @@ void SP_misc_spotlight( gentity_t *base )
 		base->s.modelindex = G_ModelIndex("models/map_objects/imp_mine/spotlight.md3");
 	}
 
-	G_SpawnInt( "health", "300", &base->health );
+	if (base->spawnflags & 2)
+	{
+		G_SpawnInt("health", "300", &base->health);
+	}
 
 	// Set up our lightcone effect, though we will have it draw cgame side so it looks better
-	G_EffectIndex( "env/light_cone" );
+	if (base->spawnflags & 4)
+	{
+		G_EffectIndex("env/light_cone");
+	}
 
-	base->contents = CONTENTS_BODY;
+	// Block movement
+	if (base->spawnflags & 16)
+	{
+		base->contents = CONTENTS_SOLID | CONTENTS_OPAQUE | CONTENTS_BODY | CONTENTS_MONSTERCLIP | CONTENTS_BOTCLIP;//Was CONTENTS_SOLID, but only architecture should be this
+	}
+	else if (base->health)
+	{	
+		//Can only be shot
+		base->contents = CONTENTS_SHOTCLIP;
+	}
+
 	base->e_UseFunc = useF_spotlight_use;
 
-	// the thing we need to target may not have spawned yet, so try back in a bit
+	// The thing we need to target may not have spawned yet, so try back in a bit
 	base->e_ThinkFunc = thinkF_spotlight_link;
 	base->nextthink = level.time + 100;
 
