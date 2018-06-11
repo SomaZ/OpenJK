@@ -1057,19 +1057,13 @@ void SP_object_cargo_barrel1(gentity_t *ent)
 }
 
 
-/*QUAKED misc_dlight (1 0 0) (-10 -10 0) (10 10 10) STARTOFF FADEON FADEOFF PULSE MODEL SOLID ANIMATE
-Dynamic light, toggles on and off when used. Can also set a ghoul2 model, and have the 
-light bolted to its "*flash" tag.
+/*QUAKED misc_dlight (1 0 0) (-10 -10 -10) (10 10 10) STARTOFF FADEON FADEOFF PULSE MODEL SOLID ANIMATE
+Dynamic light, toggles on and off when used. Can also set a ghoul2 model, and have the light bolted to its "*flash" tag.
 
 STARTOFF - Light starts off
 FADEON - Fades from 0 Radius to start Radius
 FADEOFF - Fades from current Radius to 0 Radius before turning off
 PULSE - This flag must be checked if you want it to fade/switch between start and final RGBA, otherwise it will just sit at startRGBA
-MODEL - Sets a model to display, and attaches light to its 'tag_flash'.
-
-These next flags are used only if you have set a model.
-SOLID - Model is solid.
-ANIMATE - Model will cylce its animation.
 
 "ownername" - Will display the light at the origin of the entity with this targetname
 "startRGBA" - Red Green Blue Radius to start with - This MUST be set or your light won't do anything
@@ -1080,11 +1074,22 @@ These next values are used only if you want to fade/switch between 2 values (PUL
 "finaltime" - how long to hold at final (seconds)
 "starttime" - how long to hold at start (seconds)
 
-These next values are used only if you have set a model.
+=======================================
+
+Model-specific flags.
+MODEL - Sets a model to display, and attaches the light to its 'tag_flash'.
+SOLID - Model is solid.
+ANIMATE - Model will cylce its animation.
+
+Model-specific values.
+"model" - Ghoul2 .glm file to load
+"modelscale" - "x" uniform scale
+"modelscale_vec" - "x y z" scale model in each axis
+"skin" - Default "<model_dir>/model_default.skin". Skin file to load
+
 "startFrame" - Default "0". animation start frame
 "endFrame" - Default "0". animation end frame
 "animSpeed" - Default "1.0". animation speed
-"skin" - Default "<model_dir>/model_default.skin". Skin file to load
 */
 void SP_misc_dlight(gentity_t *ent)
 {
@@ -1114,7 +1119,7 @@ void SP_misc_dlight(gentity_t *ent)
 		GEntity_UseFunc( ent, ent, ent );
 	}
 
-	// Model init
+	// Model Init
 	//**************************
 	if (ent->spawnflags & 16)
 	{
@@ -1129,6 +1134,37 @@ void SP_misc_dlight(gentity_t *ent)
 		G_SetAngles(ent, ent->s.angles);
 
 		ent->genericBolt1 = gi.G2API_AddBolt(&ent->ghoul2[0], "*flash");
+	}
+
+	// Model Scale
+	//**************************
+	qboolean bHasScale = G_SpawnVector("modelscale_vec", "1 1 1", ent->s.modelScale);
+
+	if (!bHasScale) {
+		float temp;
+
+		G_SpawnFloat("modelscale", "0", &temp);
+		if (temp != 0.0f) {
+			ent->s.modelScale[0] = ent->s.modelScale[1] = ent->s.modelScale[2] = temp;
+			bHasScale = qtrue;
+		}
+	}
+
+	if (bHasScale) {
+		//scale the x axis of the bbox up.
+		ent->maxs[0] *= ent->s.modelScale[0];
+		ent->mins[0] *= ent->s.modelScale[0];
+
+		//scale the y axis of the bbox up.
+		ent->maxs[1] *= ent->s.modelScale[1];
+		ent->mins[1] *= ent->s.modelScale[1];
+
+		//scale the z axis of the bbox up and adjust origin accordingly
+		float oldMins2 = ent->mins[2];
+
+		ent->maxs[2] *= ent->s.modelScale[2];
+		ent->mins[2] *= ent->s.modelScale[2];
+		ent->s.origin[2] += (oldMins2 - ent->mins[2]);
 	}
 
 	if (ent->model)
@@ -1168,7 +1204,7 @@ void SP_misc_dlight(gentity_t *ent)
 		G_SpawnString("skin", va("%sdefault.skin", skinPath2), &ent->skin);
 		gi.G2API_SetSkin(&ent->ghoul2[0], G_SkinIndex(ent->skin), skin);
 
-		// Register & precache
+		// Register & Pre-cache Model
 		//**************************
 		cgi_R_RegisterModel(ent->model);
 		gi.G2API_PrecacheGhoul2Model(ent->model);

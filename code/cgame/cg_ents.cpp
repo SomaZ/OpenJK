@@ -804,7 +804,7 @@ Ghoul2 Insert End
 		theFxScheduler.PlayEffect( "tripMine/glowBit", beamOrg, ent.axis[0] );
 	}
 
-	// hack for the spotlight
+	// hack for misc_spotlight
 	if (s1->eFlags & EF_ALT_FIRING)
 	{
 		vec3_t	org, axis[3], dir;
@@ -820,19 +820,6 @@ Ghoul2 Insert End
 		}
 
 		VectorMA(cent->lerpOrigin, cent->gent->radius - 5, dir, org); // stay a bit back from the impact point...this may not be enough?
-
-		cgi_R_AddLightToScene(org, cent->gent->startRGBA[3], cent->gent->startRGBA[0], cent->gent->startRGBA[1], cent->gent->startRGBA[2]);
-	}
-
-	// Dlight attached to animated model
-	// FIXME: Find a better way to do this than string...
-	if ( (!strcmp( "misc_dlight", cent->gent->classname )) )
-	{
-		vec3_t org;
-		mdxaBone_t	boltMatrix;
-
-		gi.G2API_GetBoltMatrix(cent->gent->ghoul2, cent->gent->playerModel, cent->gent->genericBolt1, &boltMatrix, cent->gent->currentAngles, cent->gent->currentOrigin, cg.time, cgs.model_draw, cent->currentState.modelScale);
-		gi.G2API_GiveMeVectorFromMatrix(boltMatrix, ORIGIN, org);
 
 		cgi_R_AddLightToScene(org, cent->gent->startRGBA[3], cent->gent->startRGBA[0], cent->gent->startRGBA[1], cent->gent->startRGBA[2]);
 	}
@@ -2062,6 +2049,16 @@ void CG_DLightThink ( centity_t *cent )
 		if (!cent->gent->model)
 		{
 			cgi_R_AddLightToScene(org, currentRGBA[3], currentRGBA[0], currentRGBA[1], currentRGBA[2]);
+		}
+		else
+		{
+			vec3_t org;
+			mdxaBone_t boltMatrix;
+
+			gi.G2API_GetBoltMatrix(cent->gent->ghoul2, cent->gent->playerModel, cent->gent->genericBolt1, &boltMatrix, cent->gent->currentAngles, cent->gent->currentOrigin, cg.time, cgs.model_draw, cent->currentState.modelScale);
+			gi.G2API_GiveMeVectorFromMatrix(boltMatrix, ORIGIN, org);
+
+			cgi_R_AddLightToScene(org, cent->gent->startRGBA[3], cent->gent->startRGBA[0], cent->gent->startRGBA[1], cent->gent->startRGBA[2]);
 		}
 	}
 }
