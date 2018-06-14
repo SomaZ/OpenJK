@@ -1541,6 +1541,7 @@ typedef struct drawSurf_s {
 	uint32_t dlightBits;
 	surfaceType_t *surface; // any of surface*_t
 	int fogIndex;
+	int currentDistanceBucket;
 } drawSurf_t;
 
 #define	MAX_FACE_POINTS		64
@@ -2523,7 +2524,7 @@ void R_AddPolygonSurfaces(const trRefdef_t *refdef);
 
 void R_DecomposeSort(uint32_t sort, int *entityNum, shader_t **shader, int *cubemap, int *postRender);
 uint32_t R_CreateSortKey(int entityNum, int sortedShaderIndex, int cubemapIndex, int postRender);
-void R_AddDrawSurf( surfaceType_t *surface, int entityNum, shader_t *shader, int fogIndex, int dlightMap, int postRender, int cubemap );
+void R_AddDrawSurf( surfaceType_t *surface, int entityNum, shader_t *shader, int fogIndex, int dlightMap, int postRender, int cubemap, float distance);
 bool R_IsPostRenderEntity ( int refEntityNum, const trRefEntity_t *refEntity );
 
 void R_CalcTexDirs(vec3_t sdir, vec3_t tdir, const vec3_t v1, const vec3_t v2, const vec3_t v3, const vec2_t w1, const vec2_t w2, const vec2_t w3);
@@ -2679,6 +2680,7 @@ struct shaderCommands_s
 	float			shaderTime;
 	int				fogNum;
 	int				cubemapIndex;
+	int				currentDistanceBucket;
 
 	int				dlightBits;	// or together of all vertexDlightBits
 	int				pshadowBits;
@@ -2715,7 +2717,7 @@ struct drawState_t
 extern shaderCommands_t	tess;
 extern color4ub_t	styleColors[MAX_LIGHT_STYLES];
 
-void RB_BeginSurface(shader_t *shader, int fogNum, int cubemapIndex );
+void RB_BeginSurface(shader_t *shader, int fogNum, int cubemapIndex);
 void RB_EndSurface(void);
 void RB_CheckOverflow( int verts, int indexes );
 

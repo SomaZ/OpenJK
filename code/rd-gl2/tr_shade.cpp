@@ -1502,7 +1502,8 @@ void RB_StageIteratorLiquid( void )
 
 	RB_FillDrawCommand(item.draw, GL_TRIANGLES, 1, input);
 
-	uint32_t key = RB_CreateSortKey(item, 1, input->shader->sort);
+	int sortStage = backEnd.renderPass != MAIN_PASS ? input->currentDistanceBucket : 1;
+	uint32_t key = RB_CreateSortKey(item, sortStage, input->shader->sort);
 	RB_AddDrawItem(backEndData->currentPass, key, item);
 }
 
@@ -1909,7 +1910,8 @@ static void RB_IterateStagesGeneric( shaderCommands_t *input, const VertexArrays
 
 		RB_FillDrawCommand(item.draw, GL_TRIANGLES, 1, input);
 
-		uint32_t key = RB_CreateSortKey(item, stage, input->shader->sort);
+		int sortStage = backEnd.renderPass != MAIN_PASS ? input->currentDistanceBucket : stage;
+		uint32_t key = RB_CreateSortKey(item, sortStage, input->shader->sort);
 		RB_AddDrawItem(backEndData->currentPass, key, item);
 
 		// allow skipping out to show just lightmaps during development
@@ -1963,8 +1965,8 @@ static void RB_RenderShadowmap( shaderCommands_t *input, const VertexArraysPrope
 
 	RB_FillDrawCommand(item.draw, GL_TRIANGLES, 1, input);
 
-	// FIXME: Use depth to object
-	uint32_t key = 0;
+	int sortStage = backEnd.renderPass != MAIN_PASS ? input->currentDistanceBucket : 0;
+	uint32_t key = RB_CreateSortKey(item, sortStage, input->shader->sort);
 	RB_AddDrawItem(backEndData->currentPass, key, item);
 }
 

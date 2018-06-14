@@ -904,6 +904,10 @@ void R_AddIQMSurfaces( trRefEntity_t *ent, int entityNum ) {
 
 	cubemapIndex = R_CubemapForPoint(ent->e.origin);
 
+	vec3_t transformed;
+	VectorSubtract(ent->e.origin, tr.refdef.vieworg, transformed);
+	float distance = VectorLength(transformed);
+
 	for ( i = 0 ; i < data->num_surfaces ; i++ ) {
 		if(ent->e.customShader)
 			shader = R_GetShaderByHandle( ent->e.customShader );
@@ -932,7 +936,7 @@ void R_AddIQMSurfaces( trRefEntity_t *ent, int entityNum ) {
 			&& fogNum == 0
 			&& !(ent->e.renderfx & ( RF_NOSHADOW | RF_DEPTHHACK ) ) 
 			&& shader->sort == SS_OPAQUE ) {
-			R_AddDrawSurf( (surfaceType_t *)surface, entityNum, tr.shadowShader, 0, 0, R_IsPostRenderEntity (entityNum, ent), 0 );
+			R_AddDrawSurf( (surfaceType_t *)surface, entityNum, tr.shadowShader, 0, 0, R_IsPostRenderEntity (entityNum, ent), 0 , distance);
 		}
 
 		// projection shadows work fine with personal models
@@ -940,11 +944,11 @@ void R_AddIQMSurfaces( trRefEntity_t *ent, int entityNum ) {
 			&& fogNum == 0
 			&& (ent->e.renderfx & RF_SHADOW_PLANE )
 			&& shader->sort == SS_OPAQUE ) {
-			R_AddDrawSurf( (surfaceType_t *)surface, entityNum, tr.projectionShadowShader, 0, 0, R_IsPostRenderEntity (entityNum, ent), 0 );
+			R_AddDrawSurf( (surfaceType_t *)surface, entityNum, tr.projectionShadowShader, 0, 0, R_IsPostRenderEntity (entityNum, ent), 0 ,distance);
 		}
 
 		if( !personalModel ) {
-			R_AddDrawSurf( (surfaceType_t *)surface, entityNum, shader, fogNum, 0, R_IsPostRenderEntity (entityNum, ent), cubemapIndex );
+			R_AddDrawSurf( (surfaceType_t *)surface, entityNum, shader, fogNum, 0, R_IsPostRenderEntity (entityNum, ent), cubemapIndex, distance);
 		}
 
 		surface++;

@@ -99,7 +99,12 @@ void R_AddPolygonSurfaces(const trRefdef_t *refdef) {
 	int i;
 	for ( i = 0, poly = refdef->polys; i < tr.refdef.numPolys ; i++, poly++ ) {
 		shader_t *sh = R_GetShaderByHandle(poly->hShader);
-		R_AddDrawSurf( ( surfaceType_t * )poly, REFENTITYNUM_WORLD, sh, poly->fogIndex, qfalse, R_IsPostRenderEntity (REFENTITYNUM_WORLD, tr.currentEntity), 0 /* cubemapIndex */ );
+		
+		vec3_t transformed;
+		VectorSubtract(poly->verts[0].xyz, tr.refdef.vieworg, transformed);
+		float distance = VectorLength(transformed);
+
+		R_AddDrawSurf( ( surfaceType_t * )poly, REFENTITYNUM_WORLD, sh, poly->fogIndex, qfalse, R_IsPostRenderEntity (REFENTITYNUM_WORLD, tr.currentEntity), 0 /* cubemapIndex */ , distance);
 	}
 }
 

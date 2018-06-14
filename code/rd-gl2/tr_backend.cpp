@@ -1231,6 +1231,7 @@ static void RB_SubmitDrawSurfsForDepthFill(
 		}
 
 		// add the triangles for this surface
+		tess.currentDistanceBucket = drawSurf->currentDistanceBucket;
 		rb_surfaceTable[*drawSurf->surface](drawSurf->surface);
 	}
 
@@ -1326,6 +1327,7 @@ static void RB_SubmitDrawSurfs(
 		}
 
 		// add the triangles for this surface
+		tess.currentDistanceBucket = drawSurf->currentDistanceBucket;
 		rb_surfaceTable[*drawSurf->surface](drawSurf->surface);
 	}
 

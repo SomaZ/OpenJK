@@ -1775,7 +1775,7 @@ R_AddDrawSurf
 =================
 */
 void R_AddDrawSurf( surfaceType_t *surface, int entityNum, shader_t *shader,  int fogIndex,
-					int dlightMap, int postRender, int cubemap ) {
+					int dlightMap, int postRender, int cubemap, float distance ) {
 	int index;
 	drawSurf_t *surf;
 
@@ -1803,6 +1803,7 @@ void R_AddDrawSurf( surfaceType_t *surface, int entityNum, shader_t *shader,  in
 	surf->dlightBits = dlightMap;
 	surf->surface = surface;
 	surf->fogIndex = fogIndex;
+	surf->currentDistanceBucket = (int)(Q_min(distance / backEnd.viewParms.zFar, 1.0f) * 8);
 
 	tr.refdef.numDrawSurfs++;
 }
@@ -1883,6 +1884,10 @@ static void R_AddEntitySurface (const trRefdef_t *refdef, int entityNum)
 		return;
 	}
 
+	vec3_t transformed;
+	VectorSubtract(ent->e.origin, tr.refdef.vieworg, transformed);
+	float distance = VectorLength(transformed);
+
 	// simple generated models, like sprites and beams, are not culled
 	switch ( ent->e.reType ) {
 	case RT_PORTALSURFACE:
@@ -1902,7 +1907,7 @@ static void R_AddEntitySurface (const trRefdef_t *refdef, int entityNum)
 			return;
 		}
 		shader = R_GetShaderByHandle( ent->e.customShader );
-		R_AddDrawSurf( &entitySurface, entityNum, shader, R_SpriteFogNum( ent ), 0, R_IsPostRenderEntity (entityNum, ent), 0 /* cubeMap */ );
+		R_AddDrawSurf( &entitySurface, entityNum, shader, R_SpriteFogNum( ent ), 0, R_IsPostRenderEntity (entityNum, ent), 0 /* cubeMap */, distance);
 		break;
 
 	case RT_MODEL:
@@ -1911,7 +1916,7 @@ static void R_AddEntitySurface (const trRefdef_t *refdef, int entityNum)
 
 		tr.currentModel = R_GetModelByHandle( ent->e.hModel );
 		if (!tr.currentModel) {
-			R_AddDrawSurf( &entitySurface, entityNum, tr.defaultShader, 0, 0, R_IsPostRenderEntity (entityNum, ent), 0/* cubeMap */ );
+			R_AddDrawSurf( &entitySurface, entityNum, tr.defaultShader, 0, 0, R_IsPostRenderEntity (entityNum, ent), 0/* cubeMap */, distance);
 		} else {
 			switch ( tr.currentModel->type ) {
 			case MOD_MESH:
@@ -1941,7 +1946,7 @@ static void R_AddEntitySurface (const trRefdef_t *refdef, int entityNum)
 					break;
 				}
 
-				R_AddDrawSurf( &entitySurface, entityNum, tr.defaultShader, 0, 0, R_IsPostRenderEntity (entityNum, ent), 0 /* cubeMap */ );
+				R_AddDrawSurf( &entitySurface, entityNum, tr.defaultShader, 0, 0, R_IsPostRenderEntity (entityNum, ent), 0 /* cubeMap */, distance);
 				break;
 			default:
 				ri.Error( ERR_DROP, "R_AddEntitySurfaces: Bad modeltype" );

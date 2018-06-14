@@ -94,7 +94,8 @@ void R_AddWeatherSurfaces()
 		0, /* fogIndex */
 		qfalse, /* dlightMap */
 		qfalse, /* postRender */
-		0 /* cubemapIndex */
+		0, /* cubemapIndex */
+		0.f
 	);
 }
 

@@ -2282,6 +2282,10 @@ void RenderSurfaces(CRenderSurface &RS, int entityNum)
 
 		int cubemapIndex = R_CubemapForPoint(tr.currentEntity->e.origin);
 
+		vec3_t transformed;
+		VectorSubtract(tr.currentEntity->e.origin, tr.refdef.vieworg, transformed);
+		float distance = VectorLength(transformed);
+
 		// don't add third_person objects if not viewing through a portal
 		if (!RS.personalModel)
 		{		// set the surface info to point at the where the transformed bone list is going to be for when the surface gets rendered out
@@ -2290,7 +2294,7 @@ void RenderSurfaces(CRenderSurface &RS, int entityNum)
 			assert(newSurf->vboMesh != NULL && RS.surfaceNum == surface->thisSurfaceIndex);
 			newSurf->surfaceData = surface;
 			newSurf->boneCache = RS.boneCache;
-			R_AddDrawSurf((surfaceType_t *)newSurf, entityNum, (shader_t *)shader, RS.fogNum, qfalse, R_IsPostRenderEntity(entityNum, tr.currentEntity), cubemapIndex);
+			R_AddDrawSurf((surfaceType_t *)newSurf, entityNum, (shader_t *)shader, RS.fogNum, qfalse, R_IsPostRenderEntity(entityNum, tr.currentEntity), cubemapIndex, distance);
 
 #ifdef _G2_GORE
 			if (RS.gore_set && drawGore)
@@ -2370,7 +2374,7 @@ void RenderSurfaces(CRenderSurface &RS, int entityNum)
 
 						last->goreChain = newSurf2;
 						last = newSurf2;
-						R_AddDrawSurf((surfaceType_t *)newSurf2, entityNum, gshader, RS.fogNum, qfalse, R_IsPostRenderEntity(entityNum, tr.currentEntity), cubemapIndex);
+						R_AddDrawSurf((surfaceType_t *)newSurf2, entityNum, gshader, RS.fogNum, qfalse, R_IsPostRenderEntity(entityNum, tr.currentEntity), cubemapIndex, distance);
 					}
 				}
 			}
@@ -2389,7 +2393,7 @@ void RenderSurfaces(CRenderSurface &RS, int entityNum)
 			assert(newSurf->vboMesh != NULL && RS.surfaceNum == surface->thisSurfaceIndex);
 			newSurf->surfaceData = surface;
 			newSurf->boneCache = RS.boneCache;
-			R_AddDrawSurf((surfaceType_t *)newSurf, entityNum, tr.shadowShader, 0, qfalse, qfalse, 0);
+			R_AddDrawSurf((surfaceType_t *)newSurf, entityNum, tr.shadowShader, 0, qfalse, qfalse, 0, distance);
 		}
 
 		// projection shadows work fine with personal models
@@ -2403,7 +2407,7 @@ void RenderSurfaces(CRenderSurface &RS, int entityNum)
 			assert(newSurf->vboMesh != NULL && RS.surfaceNum == surface->thisSurfaceIndex);
 			newSurf->surfaceData = surface;
 			newSurf->boneCache = RS.boneCache;
-			R_AddDrawSurf((surfaceType_t *)newSurf, entityNum, tr.projectionShadowShader, 0, qfalse, qfalse, 0);
+			R_AddDrawSurf((surfaceType_t *)newSurf, entityNum, tr.projectionShadowShader, 0, qfalse, qfalse, 0, distance);
 		}
 
 	}
