@@ -1057,16 +1057,18 @@ void SP_object_cargo_barrel1(gentity_t *ent)
 }
 
 
-/*QUAKED misc_dlight (1 0 0) (-10 -10 -10) (10 10 10) STARTOFF FADEON FADEOFF PULSE MODEL SOLID ANIMATE
+/*QUAKED misc_dlight (1 0 0) (-10 -10 -10) (10 10 10) STARTOFF FADEON FADEOFF PULSE SOLID
 Dynamic light, toggles on and off when used. Can also set a ghoul2 model, and have the light bolted to its "*flash" tag.
 
 STARTOFF - Light starts off
 FADEON - Fades from 0 Radius to start Radius
 FADEOFF - Fades from current Radius to 0 Radius before turning off
 PULSE - This flag must be checked if you want it to fade/switch between start and final RGBA, otherwise it will just sit at startRGBA
+SOLID - If present, the model is solid.
 
 "ownername" - Will display the light at the origin of the entity with this targetname
 "startRGBA" - Red Green Blue Radius to start with - This MUST be set or your light won't do anything
+"noise"	- Sound to loop. Won't play unless this entity is active.
 
 These next values are used only if you want to fade/switch between 2 values (PULSE flag on)
 "finalRGBA" - Red Green Blue Radius to end with
@@ -1075,11 +1077,6 @@ These next values are used only if you want to fade/switch between 2 values (PUL
 "starttime" - how long to hold at start (seconds)
 
 =======================================
-
-Model-specific flags.
-MODEL - Sets a model to display, and attaches the light to its 'tag_flash'.
-SOLID - Model is solid.
-ANIMATE - Model will cylce its animation.
 
 Model-specific values.
 "model" - Ghoul2 .glm file to load
@@ -1090,6 +1087,8 @@ Model-specific values.
 "startFrame" - Default "0". animation start frame
 "endFrame" - Default "0". animation end frame
 "animSpeed" - Default "1.0". animation speed
+
+Animation won't play unless this entity is active.
 */
 void SP_misc_dlight(gentity_t *ent)
 {
@@ -1119,11 +1118,26 @@ void SP_misc_dlight(gentity_t *ent)
 		GEntity_UseFunc( ent, ent, ent );
 	}
 
-	// Model Init
+	// Sound
 	//**************************
-	if (ent->spawnflags & 16)
+	char *noise;
+
+	if (G_SpawnString("noise", "", &noise))
 	{
-		ent->s.modelindex = G_ModelIndex(ent->model);
+		if (VALIDSTRING(noise))
+		{
+			ent->noise_index = G_SoundIndex(noise);
+		}
+	}
+	
+	ent->s.loopSound = 0;
+
+	ent->s.modelindex = G_ModelIndex(ent->model);
+
+	if (ent->model)
+	{
+		// Model Init
+		//**************************
 		gi.G2API_InitGhoul2Model(ent->ghoul2, ent->model, ent->s.modelindex, NULL_HANDLE, NULL_HANDLE, 0, 0);
 
 		if (ent->playerModel >= 0)
@@ -1134,41 +1148,38 @@ void SP_misc_dlight(gentity_t *ent)
 		G_SetAngles(ent, ent->s.angles);
 
 		ent->genericBolt1 = gi.G2API_AddBolt(&ent->ghoul2[0], "*flash");
-	}
 
-	// Model Scale
-	//**************************
-	qboolean bHasScale = G_SpawnVector("modelscale_vec", "1 1 1", ent->s.modelScale);
+		// Model Scale
+		//**************************
+		qboolean bHasScale = G_SpawnVector("modelscale_vec", "1 1 1", ent->s.modelScale);
 
-	if (!bHasScale) {
-		float temp;
+		if (!bHasScale) {
+			float temp;
 
-		G_SpawnFloat("modelscale", "0", &temp);
-		if (temp != 0.0f) {
-			ent->s.modelScale[0] = ent->s.modelScale[1] = ent->s.modelScale[2] = temp;
-			bHasScale = qtrue;
+			G_SpawnFloat("modelscale", "0", &temp);
+			if (temp != 0.0f) {
+				ent->s.modelScale[0] = ent->s.modelScale[1] = ent->s.modelScale[2] = temp;
+				bHasScale = qtrue;
+			}
 		}
-	}
 
-	if (bHasScale) {
-		//scale the x axis of the bbox up.
-		ent->maxs[0] *= ent->s.modelScale[0];
-		ent->mins[0] *= ent->s.modelScale[0];
+		if (bHasScale) {
+			//scale the x axis of the bbox up.
+			ent->maxs[0] *= ent->s.modelScale[0];
+			ent->mins[0] *= ent->s.modelScale[0];
 
-		//scale the y axis of the bbox up.
-		ent->maxs[1] *= ent->s.modelScale[1];
-		ent->mins[1] *= ent->s.modelScale[1];
+			//scale the y axis of the bbox up.
+			ent->maxs[1] *= ent->s.modelScale[1];
+			ent->mins[1] *= ent->s.modelScale[1];
 
-		//scale the z axis of the bbox up and adjust origin accordingly
-		float oldMins2 = ent->mins[2];
+			//scale the z axis of the bbox up and adjust origin accordingly
+			float oldMins2 = ent->mins[2];
 
-		ent->maxs[2] *= ent->s.modelScale[2];
-		ent->mins[2] *= ent->s.modelScale[2];
-		ent->s.origin[2] += (oldMins2 - ent->mins[2]);
-	}
+			ent->maxs[2] *= ent->s.modelScale[2];
+			ent->mins[2] *= ent->s.modelScale[2];
+			ent->s.origin[2] += (oldMins2 - ent->mins[2]);
+		}
 
-	if (ent->model)
-	{
 		// Solid
 		//**************************
 		if (ent->spawnflags & 32) //SOLID flag.
@@ -1179,17 +1190,17 @@ void SP_misc_dlight(gentity_t *ent)
 
 		// Animation
 		//**************************
-		if (ent->spawnflags & 64)
-		{
-			float animSpeed;
+		float animSpeed;
 
-			G_SpawnInt("startFrame", "0", &ent->startFrame);
-			G_SpawnInt("endFrame", "0", &ent->endFrame);
-			G_SpawnFloat("animSpeed", "1.0", &animSpeed);
+		G_SpawnInt("startFrame", "0", &ent->startFrame);
+		G_SpawnInt("endFrame", "0", &ent->endFrame);
+		G_SpawnFloat("animSpeed", "1.0", &animSpeed);
+		
+		gi.G2API_SetBoneAnim(&ent->ghoul2[0], "model_root", ent->startFrame, ent->endFrame, BONE_ANIM_OVERRIDE_LOOP, animSpeed + Q_flrand(-1.0f, 1.0f) * 0.1f, 0, -1, -1);
+		//pause this now, so we only play when active.
+		gi.G2API_PauseBoneAnim(&ent->ghoul2[0], "model_root", cg.time);
 
-			gi.G2API_SetBoneAnim(&ent->ghoul2[0], "model_root", ent->startFrame, ent->endFrame, BONE_ANIM_OVERRIDE_LOOP, animSpeed + Q_flrand(-1.0f, 1.0f) * 0.1f, 0, -1, -1);
-			ent->endFrame = 0; // don't allow it to do anything with the animation function in G_main
-		}
+		ent->endFrame = 0; //don't allow it to do anything with the animation function in G_main
 
 		// Skin
 		//**************************
@@ -1230,6 +1241,12 @@ void misc_dlight_ent_use ( gentity_t *ent, gentity_t *other, gentity_t *activato
 
 			ent->s.eType = ET_GENERAL;
 			ent->svFlags &= ~SVF_BROADCAST;
+
+			//stop sound
+			ent->s.loopSound = 0;
+
+			//pause animation
+			gi.G2API_PauseBoneAnim(&ent->ghoul2[0], "model_root", cg.time);
 		}
 	}
 	else
@@ -1254,6 +1271,12 @@ void misc_dlight_ent_use ( gentity_t *ent, gentity_t *other, gentity_t *activato
 
 		ent->s.eType = ET_THINKER;
 		ent->svFlags |= SVF_BROADCAST;// Broadcast to all clients
+
+		//play sound
+		ent->s.loopSound = ent->noise_index;
+
+		//un-pause animation
+		gi.G2API_PauseBoneAnim(&ent->ghoul2[0], "model_root", cg.time);
 	}
 }
 
