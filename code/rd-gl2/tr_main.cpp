@@ -872,7 +872,19 @@ static void R_SetFarClip( viewParms_t *viewParms, const trRefdef_t *refdef )
 	// Bring in the zFar to the distanceCull distance
 	// The sky renders at zFar so need to move it out a little
 	// ...and make sure there is a minimum zfar to prevent problems
-	viewParms->zFar = Com_Clamp(2048.0f, tr.distanceCull * (1.732), sqrtf( farthestCornerDistance ));
+
+	int maxRadius = 256.0f;
+	for (int i = 0; i < refdef->num_dlights; i++) {
+		if (refdef->dlights[i].radius > maxRadius)
+			maxRadius = refdef->dlights[i].radius * 1.1f;
+	}
+
+	for (int i = 0; i < tr.numCubemaps; i++) {
+		if (tr.cubemaps[i].parallaxRadius > maxRadius)
+			maxRadius = tr.cubemaps[i].parallaxRadius * 1.1f;
+	}
+
+	viewParms->zFar = Com_Clamp(2048.0f, tr.distanceCull * (1.732f), sqrtf( farthestCornerDistance )) + maxRadius;
 }
 
 /*

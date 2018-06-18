@@ -1410,6 +1410,9 @@ static void RB_RenderDrawSurfList(drawSurf_t *drawSurfs, int numDrawSurfs)
 
 	if (backEnd.renderPass != MAIN_PASS)
 	{
+		if (backEnd.renderPass == PRE_PASS)
+			FBO_Bind(tr.preBuffersFbo);
+
 		RB_SubmitDrawSurfsForDepthFill(drawSurfs, numDrawSurfs, originalTime);
 	}
 	else
@@ -2135,13 +2138,19 @@ static void RB_RenderSSAO()
 static void RB_RenderDepthOnly(drawSurf_t *drawSurfs, int numDrawSurfs)
 {
 	backEnd.renderPass = !(backEnd.viewParms.flags & VPF_DEPTHSHADOW) ? PRE_PASS : DEPTH_PASS;
-	qglColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
+
+	if (backEnd.renderPass == DEPTH_PASS)
+		qglColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
+
 	RB_RenderDrawSurfList(drawSurfs, numDrawSurfs);
-	qglColorMask(
-		!backEnd.colorMask[0],
-		!backEnd.colorMask[1],
-		!backEnd.colorMask[2],
-		!backEnd.colorMask[3]);
+
+	if (backEnd.renderPass == DEPTH_PASS)
+		qglColorMask(
+			!backEnd.colorMask[0],
+			!backEnd.colorMask[1],
+			!backEnd.colorMask[2],
+			!backEnd.colorMask[3]);
+
 	backEnd.renderPass = MAIN_PASS;
 
 	if (backEnd.viewParms.targetFbo == tr.renderCubeFbo && tr.msaaResolveFbo)
@@ -2281,6 +2290,214 @@ static void RB_RenderAllDepthRelatedPasses(drawSurf_t *drawSurfs, int numDrawSur
 	}
 }
 
+void RB_RenderAllRealTimeLightTypes() 
+{	
+	const float zmax = backEnd.viewParms.zFar;
+	const float zmin = backEnd.viewParms.zNear;
+	vec4_t viewInfo = { zmax / zmin, zmax, zmin, 0.0f };
+	FBO_t *fbo = glState.currentFBO;
+
+	// clear all content of lighting buffers
+	FBO_Bind(tr.preLightFbo[PRELIGHT_DIFFUSE_SPECULAR_FBO]);
+	qglClearColor(0.f, 0.f, 0.f, 1.0f);
+	qglClear(GL_COLOR_BUFFER_BIT);
+
+	GL_DepthRange(0.0, 1.0);
+
+	const float ymax = zmax * tanf(backEnd.viewParms.fovY * M_PI / 360.0f);
+	const float xmax = zmax * tanf(backEnd.viewParms.fovX * M_PI / 360.0f);
+
+	vec3_t viewBasis[3];
+	VectorScale(backEnd.refdef.viewaxis[0], zmax, viewBasis[0]);
+	VectorScale(backEnd.refdef.viewaxis[1], xmax, viewBasis[1]);
+	VectorScale(backEnd.refdef.viewaxis[2], ymax, viewBasis[2]);
+
+	matrix_t viewProjectionMatrix;
+	Matrix16Multiply(
+		backEnd.viewParms.projectionMatrix,
+		backEnd.viewParms.world.modelViewMatrix,
+		viewProjectionMatrix);
+
+	GL_BindToTMU(tr.renderImage, 0);
+	GL_BindToTMU(tr.renderDepthImage, 1);
+	GL_BindToTMU(tr.normalBufferImage, 2);
+	GL_BindToTMU(tr.specBufferImage, 3);
+
+	//TODO: render SSR with stencil buffer (later)
+
+	//render cubemaps where SSR  didn't render
+	//buggy! don't enable for now
+	int numCubemaps = tr.numCubemaps;
+	if (0)//(r_cubeMapping->integer && !(tr.viewParms.flags & VPF_NOCUBEMAPS) && numCubemaps);
+	{
+		FBO_Bind(tr.preLightFbo[PRELIGHT_SPECULAR_FBO]);
+
+		vec4_t cubemapTransforms[MAX_DLIGHTS];
+
+		tess.useInternalVBO = qfalse;
+		R_BindVBO(tr.lightSphereVolume.vbo);
+		R_BindIBO(tr.lightSphereVolume.ibo);
+		GLSL_VertexAttribsState(ATTR_POSITION, NULL);
+		GL_State(GLS_SRCBLEND_ONE | GLS_DSTBLEND_ONE | GLS_DEPTHFUNC_GREATER);
+		GL_Cull(CT_BACK_SIDED);
+
+		for (int i = 0; i < numCubemaps; i++)
+		{
+			cubemap_t *cubemap = &tr.cubemaps[i];
+
+			cubemapTransforms[i][0] = cubemap->origin[0];
+			cubemapTransforms[i][1] = cubemap->origin[1];
+			cubemapTransforms[i][2] = cubemap->origin[2];
+			cubemapTransforms[i][3] = cubemap->parallaxRadius;
+		}
+
+		int index = PRELIGHT_CUBEMAP;
+		shaderProgram_t *sp = &tr.prelightShader[index];
+		GLSL_BindProgram(sp);
+
+		GLSL_SetUniformVec3(sp, UNIFORM_VIEWFORWARD, viewBasis[0]);
+		GLSL_SetUniformVec3(sp, UNIFORM_VIEWLEFT, viewBasis[1]);
+		GLSL_SetUniformVec3(sp, UNIFORM_VIEWUP, viewBasis[2]);
+		GLSL_SetUniformVec4(sp, UNIFORM_VIEWINFO, viewInfo);
+		GLSL_SetUniformVec3(sp, UNIFORM_VIEWORIGIN, backEnd.viewParms.ori.origin);
+		GLSL_SetUniformMatrix4x4(sp, UNIFORM_MODELVIEWPROJECTIONMATRIX, viewProjectionMatrix);
+
+		matrix_t invProjectionMatrix;
+		Matrix16MatrixInvert(viewProjectionMatrix, invProjectionMatrix);
+		GLSL_SetUniformMatrix4x4(sp, UNIFORM_INVVIEWPROJECTIONMATRIX, invProjectionMatrix);
+
+		GLSL_SetUniformInt(sp, UNIFORM_NUMCUBEMAPS, numCubemaps);
+		GLSL_SetUniformVec4N(sp, UNIFORM_CUBEMAPTRANSFORMS, (float*)cubemapTransforms, numCubemaps);
+
+		for (int i = 0; i < numCubemaps / 4.0f; i++) {
+
+			//offset
+			GLSL_SetUniformInt(sp, UNIFORM_VERTOFFSET, i * 4);
+
+			int rest = (numCubemaps - 4 * i > 3) ? 4 : (numCubemaps - 4 * i);
+
+			if (rest > 0)
+				GL_BindToTMU(tr.cubemaps[i * 4 + 0].image, 4);
+			if (rest > 1)
+				GL_BindToTMU(tr.cubemaps[i * 4 + 1].image, 5);
+			if (rest > 2)
+				GL_BindToTMU(tr.cubemaps[i * 4 + 2].image, 6);
+			if (rest > 3)
+				GL_BindToTMU(tr.cubemaps[i * 4 + 3].image, 8);
+
+			if (tr.envBrdfImage != NULL)
+				GL_BindToTMU(tr.envBrdfImage, 7);
+
+			qglDrawElementsInstanced(GL_TRIANGLES, tr.lightSphereVolume.numIndexes, GL_UNSIGNED_INT, 0, rest);
+		}
+	}
+	//render sun lights or maybe not, can also be rendered forward, shouldn't make a difference
+	if (0)//(r_sunlightMode->integer)
+	{
+		FBO_Bind(tr.preLightFbo[PRELIGHT_DIFFUSE_SPECULAR_FBO]);
+
+		tess.useInternalVBO = qfalse;
+		R_BindVBO(tr.screenQuad.vbo);
+		R_BindIBO(tr.screenQuad.ibo);
+		GLSL_VertexAttribsState(ATTR_POSITION, NULL);
+		GL_State(GLS_SRCBLEND_ONE | GLS_DSTBLEND_ONE | GLS_DEPTHTEST_DISABLE);
+		GL_Cull(CT_FRONT_SIDED);
+
+		int index = PRELIGHT_SUN_LIGHT;
+		shaderProgram_t *sp = &tr.prelightShader[index];
+		GLSL_BindProgram(sp);
+
+		GLSL_SetUniformVec3(sp, UNIFORM_VIEWFORWARD, viewBasis[0]);
+		GLSL_SetUniformVec3(sp, UNIFORM_VIEWLEFT, viewBasis[1]);
+		GLSL_SetUniformVec3(sp, UNIFORM_VIEWUP, viewBasis[2]);
+		GLSL_SetUniformVec4(sp, UNIFORM_VIEWINFO, viewInfo);
+		GLSL_SetUniformVec3(sp, UNIFORM_VIEWORIGIN, backEnd.viewParms.ori.origin);
+		GLSL_SetUniformMatrix4x4(sp, UNIFORM_MODELVIEWPROJECTIONMATRIX, viewProjectionMatrix);
+
+		GLSL_SetUniformVec3(sp, UNIFORM_PRIMARYLIGHTAMBIENT, backEnd.refdef.sunAmbCol);
+		GLSL_SetUniformVec3(sp, UNIFORM_PRIMARYLIGHTCOLOR, backEnd.refdef.sunCol);
+		GLSL_SetUniformVec4(sp, UNIFORM_PRIMARYLIGHTORIGIN, backEnd.refdef.sunDir);
+
+		GL_BindToTMU(tr.screenShadowImage, 4);
+
+		qglDrawElementsInstanced(GL_TRIANGLES, tr.screenQuad.numIndexes, GL_UNSIGNED_INT, 0, 1);
+	}
+
+	//render analytical lights
+	int numDlights = backEnd.refdef.num_dlights;
+	if (numDlights)
+	{
+		FBO_Bind(tr.preLightFbo[PRELIGHT_DIFFUSE_SPECULAR_FBO]);
+
+		vec4_t dlightTransforms[MAX_DLIGHTS];
+		vec3_t dlightColors[MAX_DLIGHTS];
+		
+		tess.useInternalVBO = qfalse;
+		R_BindVBO(tr.lightSphereVolume.vbo);
+		R_BindIBO(tr.lightSphereVolume.ibo);
+		GLSL_VertexAttribsState(ATTR_POSITION, NULL);
+		GL_State(GLS_SRCBLEND_ONE | GLS_DSTBLEND_ONE | GLS_DEPTHFUNC_GREATER);
+		GL_Cull(CT_BACK_SIDED);
+
+		for (int i = 0; i < numDlights; i++)
+		{
+			dlight_t *dlight = backEnd.refdef.dlights + i;
+
+			dlightTransforms[i][0] = dlight->origin[0];
+			dlightTransforms[i][1] = dlight->origin[1];
+			dlightTransforms[i][2] = dlight->origin[2];
+			dlightTransforms[i][3] = dlight->radius;
+
+			dlightColors[i][0] = dlight->color[0];
+			dlightColors[i][1] = dlight->color[1];
+			dlightColors[i][2] = dlight->color[2];
+		}
+
+		//TODO: write support for other light types like spot lights and tube lights
+		int index = PRELIGHT_POINT_LIGHT;
+		shaderProgram_t *sp = &tr.prelightShader[index];
+		GLSL_BindProgram(sp);
+
+		GLSL_SetUniformVec3(sp, UNIFORM_VIEWFORWARD, viewBasis[0]);
+		GLSL_SetUniformVec3(sp, UNIFORM_VIEWLEFT, viewBasis[1]);
+		GLSL_SetUniformVec3(sp, UNIFORM_VIEWUP, viewBasis[2]);
+		GLSL_SetUniformVec4(sp, UNIFORM_VIEWINFO, viewInfo);
+		GLSL_SetUniformVec3(sp, UNIFORM_VIEWORIGIN, backEnd.viewParms.ori.origin);
+		GLSL_SetUniformMatrix4x4(sp, UNIFORM_MODELVIEWPROJECTIONMATRIX, viewProjectionMatrix);
+
+		matrix_t invProjectionMatrix;
+		Matrix16MatrixInvert(viewProjectionMatrix, invProjectionMatrix);
+		GLSL_SetUniformMatrix4x4(sp, UNIFORM_INVVIEWPROJECTIONMATRIX, invProjectionMatrix);
+
+		GLSL_SetUniformVec3N(sp, UNIFORM_LIGHTCOLORS, (float*)dlightColors, numDlights);
+		GLSL_SetUniformVec4N(sp, UNIFORM_LIGHTTRANSFORMS, (float*)dlightTransforms, numDlights);
+
+		for (int i = 0; i < numDlights / 4.0f; i++) {
+
+			//offset
+			GLSL_SetUniformInt(sp, UNIFORM_VERTOFFSET, i * 4);
+
+			int rest = (numDlights - 4 * i > 3) ? 4 : (numDlights - 4 * i);
+
+			if (r_dlightMode->integer > 1) {
+				GL_BindToTMU(tr.shadowCubemaps[i * 4 + 0].image, 4);
+				GL_BindToTMU(tr.shadowCubemaps[i * 4 + 1].image, 5);
+				GL_BindToTMU(tr.shadowCubemaps[i * 4 + 2].image, 6);
+				GL_BindToTMU(tr.shadowCubemaps[i * 4 + 3].image, 7);
+			}
+			else {
+				GL_BindToTMU(tr.whiteImage, 4);
+				GL_BindToTMU(tr.whiteImage, 5);
+				GL_BindToTMU(tr.whiteImage, 6);
+				GL_BindToTMU(tr.whiteImage, 7);
+			}
+			qglDrawElementsInstanced(GL_TRIANGLES, tr.lightSphereVolume.numIndexes, GL_UNSIGNED_INT, 0, rest);
+		}
+	}
+
+	FBO_Bind(fbo);
+}
+
 /*
 =============
 RB_DrawSurfs
@@ -2304,6 +2521,8 @@ static const void	*RB_DrawSurfs( const void *data ) {
 	RB_BeginDrawingView();
 
 	RB_RenderAllDepthRelatedPasses(cmd->drawSurfs, cmd->numDrawSurfs);
+
+	RB_RenderAllRealTimeLightTypes();
 
 	RB_RenderMainPass(cmd->drawSurfs, cmd->numDrawSurfs);
 
@@ -2660,6 +2879,19 @@ const void *RB_PostProcess(const void *data)
 		FBO_BlitFromTexture(tr.renderDepthImage, NULL, NULL, NULL, dstBox, NULL, NULL, 0);
 		VectorSet4(dstBox, 512, glConfig.vidHeight - 256, 256, 256);
 		FBO_BlitFromTexture(tr.screenShadowImage, NULL, NULL, NULL, dstBox, NULL, NULL, 0);
+	}
+
+	if (0)
+	{
+		vec4i_t dstBox;
+		VectorSet4(dstBox, 256, glConfig.vidHeight - 256, 256, 256);
+		FBO_BlitFromTexture(tr.normalBufferImage, NULL, NULL, NULL, dstBox, NULL, NULL, 0);
+		VectorSet4(dstBox, 512, glConfig.vidHeight - 256, 256, 256);
+		FBO_BlitFromTexture(tr.specBufferImage, NULL, NULL, NULL, dstBox, NULL, NULL, 0);
+		VectorSet4(dstBox, 768, glConfig.vidHeight - 256, 256, 256);
+		FBO_BlitFromTexture(tr.diffuseLightingImage, NULL, NULL, NULL, dstBox, NULL, NULL, 0);
+		VectorSet4(dstBox, 1024, glConfig.vidHeight - 256, 256, 256);
+		FBO_BlitFromTexture(tr.specularLightingImage, NULL, NULL, NULL, dstBox, NULL, NULL, 0);
 	}
 
 	if (0)

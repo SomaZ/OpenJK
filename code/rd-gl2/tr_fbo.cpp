@@ -474,13 +474,32 @@ void FBO_Init(void)
 		tr.preBuffersFbo = FBO_Create("_preBuffers", tr.renderDepthImage->width, tr.renderDepthImage->height);
 		FBO_Bind(tr.preBuffersFbo);
 
-		FBO_AttachTextureImage(tr.normalBufferImage, 0);
-		FBO_AttachTextureImage(tr.specBufferImage, 1);
+		FBO_AttachTextureImage(tr.normalBufferImage, 0); // out_Color
+		FBO_AttachTextureImage(tr.specBufferImage, 1); // out_Glow
 
 		R_AttachFBOTextureDepth(tr.renderDepthImage->texnum);
 		FBO_SetupDrawBuffers();
 
 		R_CheckFBO(tr.preBuffersFbo);
+	}
+
+	{
+		for (int i = 0; i < PRELIGHT_FBO_COUNT; i++) {
+			tr.preLightFbo[i]= FBO_Create(va("_preLight_",i), tr.renderDepthImage->width, tr.renderDepthImage->height);
+			FBO_Bind(tr.preLightFbo[i]);
+
+			if (i == PRELIGHT_DIFFUSE_FBO || i == PRELIGHT_DIFFUSE_SPECULAR_FBO)
+				FBO_AttachTextureImage(tr.diffuseLightingImage, 0); //out_Color
+			if (i == PRELIGHT_SPECULAR_FBO)
+				FBO_AttachTextureImage(tr.specularLightingImage, 0); //out_Color
+			if (i == PRELIGHT_DIFFUSE_SPECULAR_FBO)
+				FBO_AttachTextureImage(tr.specularLightingImage, 1); //out_Glow
+
+			R_AttachFBOTextureDepth(tr.renderDepthImage->texnum);
+			FBO_SetupDrawBuffers();
+
+			R_CheckFBO(tr.preLightFbo[i]);
+		}
 	}
 	// clear render buffer
 	// this fixes the corrupt screen bug with r_hdr 1 on older hardware

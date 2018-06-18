@@ -734,7 +734,9 @@ enum
 	TB_LGDIRECTION = 8,
 	TB_LGLIGHTCOLOR= 9,
 	TB_LGAMBIENT   =10,
-	NUM_TEXTURE_BUNDLES = 11,
+	TB_DIFFUSELIGHTBUFFER = 11,
+	TB_SPECLIGHTBUFFER = 12,
+	NUM_TEXTURE_BUNDLES = 13,
 };
 
 typedef enum
@@ -1096,8 +1098,42 @@ enum
 	FOGDEF_USE_VERTEX_ANIMATION 		= 0x0002,
 	FOGDEF_USE_SKELETAL_ANIMATION 		= 0x0004,
 
-	FOGDEF_ALL                  		= 0x0005,
+	FOGDEF_ALL                  		= 0x0007,
 	FOGDEF_COUNT                		= FOGDEF_ALL + 1,
+};
+
+enum
+{
+	PREPASS_USE_DEFORM_VERTEXES		= 0x0001,
+	PREPASS_USE_VERTEX_ANIMATION	= 0x0002,
+	PREPASS_USE_SKELETAL_ANIMATION	= 0x0004,
+	PREPASS_USE_G_BUFFERS			= 0x0008,
+	PREPASS_USE_PARALLAX			= 0x0010,
+
+	PREPASS_ALL = 0x001F,
+	PREPASS_COUNT = PREPASS_ALL + 1,
+};
+
+enum
+{
+	PRELIGHT_SUN_LIGHT		= 0x0000,
+	PRELIGHT_POINT_LIGHT	= 0x0001,
+	PRELIGHT_SPOT_LIGHT		= 0x0002,
+	PRELIGHT_TUBE_LIGHT		= 0x0003,
+	PRELIGHT_CUBEMAP		= 0x0004,
+	PRELIGHT_SSR			= 0x0005,
+
+	PRELIGHT_ALL			= 0x0005,
+	PRELIGHT_COUNT			= PRELIGHT_ALL + 1,
+};
+
+enum
+{
+	PRELIGHT_DIFFUSE_FBO = 0x0000,
+	PRELIGHT_SPECULAR_FBO = 0x0001,
+	PRELIGHT_DIFFUSE_SPECULAR_FBO = 0x0002,
+	PRELIGHT_FBO_COUNT	= 0x0003
+
 };
 
 enum
@@ -1217,6 +1253,8 @@ typedef enum
 
 	UNIFORM_SCREENIMAGEMAP,
 	UNIFORM_SCREENDEPTHMAP,
+	UNIFORM_SCREENDIFFUSEMAP,
+	UNIFORM_SCREENSPECULARMAP,
 
 	UNIFORM_LIGHTGRIDDIRECTIONMAP,
 	UNIFORM_LIGHTGRIDDIRECTIONALLIGHTMAP,
@@ -1255,6 +1293,7 @@ typedef enum
 	UNIFORM_COLOR,
 	UNIFORM_BASECOLOR,
 	UNIFORM_VERTCOLOR,
+	UNIFORM_VERTOFFSET,
 
 	UNIFORM_DLIGHTINFO,
 	UNIFORM_LIGHTFORWARD,
@@ -1265,6 +1304,10 @@ typedef enum
 	UNIFORM_LIGHTRADIUS,
 	UNIFORM_AMBIENTLIGHT,
 	UNIFORM_DIRECTEDLIGHT,
+	UNIFORM_LIGHTTRANSFORMS,
+	UNIFORM_LIGHTCOLORS,
+	UNIFORM_CUBEMAPTRANSFORMS,
+	UNIFORM_NUMCUBEMAPS ,
 
 	UNIFORM_PORTALRANGE,
 
@@ -1278,6 +1321,7 @@ typedef enum
 
 	UNIFORM_MODELMATRIX,
 	UNIFORM_MODELVIEWPROJECTIONMATRIX,
+	UNIFORM_INVVIEWPROJECTIONMATRIX,
 
 	UNIFORM_TIME,
 	UNIFORM_VERTEXLERP,
@@ -2304,6 +2348,8 @@ typedef struct trGlobals_s {
 	image_t					*renderImage;
 	image_t					*normalBufferImage;
 	image_t					*specBufferImage;
+	image_t					*diffuseLightingImage;
+	image_t					*specularLightingImage;
 	image_t					*glowImage;
 	image_t					*glowImageScaled[6];
 	image_t					*refractiveImage;
@@ -2333,6 +2379,7 @@ typedef struct trGlobals_s {
 	FBO_t					*sunRaysFbo;
 	FBO_t					*depthFbo;
 	FBO_t					*preBuffersFbo;
+	FBO_t					*preLightFbo[PRELIGHT_FBO_COUNT];
 	FBO_t					*pshadowFbos[MAX_DRAWN_PSHADOWS];
 	FBO_t					*textureScratchFbo[2];
 	FBO_t                   *quarterFbo[2];
@@ -2391,6 +2438,8 @@ typedef struct trGlobals_s {
 	shaderProgram_t splashScreenShader;
 	shaderProgram_t genericShader[GENERICDEF_COUNT];
 	shaderProgram_t textureColorShader;
+	shaderProgram_t prepassShader[PREPASS_COUNT];
+	shaderProgram_t prelightShader[PRELIGHT_COUNT];
 	shaderProgram_t fogShader[FOGDEF_COUNT];
 	shaderProgram_t dlightShader[DLIGHTDEF_COUNT];
 	shaderProgram_t lightallShader[LIGHTDEF_COUNT];
@@ -2415,6 +2464,7 @@ typedef struct trGlobals_s {
 
 	// Built-in meshes
 	gpuMesh_t screenQuad;
+	gpuMesh_t lightSphereVolume;
 	// -----------------------------------------
 
 	viewParms_t				viewParms;
@@ -2514,6 +2564,7 @@ extern window_t		window;
 */
 
 void R_RenderView( viewParms_t *parms );
+void R_SetupProjectionZ(viewParms_t *dest);
 void R_RenderDlightCubemaps(const refdef_t *fd);
 void R_RenderPshadowMaps(const refdef_t *fd);
 void R_RenderSunShadowMaps(const refdef_t *fd, int level);
@@ -2871,9 +2922,11 @@ void GLSL_SetUniformInt(shaderProgram_t *program, int uniformNum, GLint value);
 void GLSL_SetUniformFloat(shaderProgram_t *program, int uniformNum, GLfloat value);
 void GLSL_SetUniformFloatN(shaderProgram_t *program, int uniformNum, const float *v, int numFloats);
 void GLSL_SetUniformVec2(shaderProgram_t *program, int uniformNum, const vec2_t v);
+void GLSL_SetUniformVec2N(shaderProgram_t *program, int uniformNum, const float *v, int numVec2s);
 void GLSL_SetUniformVec3(shaderProgram_t *program, int uniformNum, const vec3_t v);
 void GLSL_SetUniformVec3N(shaderProgram_t *program, int uniformNum, const float *v, int numVec3s);
 void GLSL_SetUniformVec4(shaderProgram_t *program, int uniformNum, const vec4_t v);
+void GLSL_SetUniformVec4N(shaderProgram_t *program, int uniformNum, const float *v, int numVec4s);
 void GLSL_SetUniformMatrix4x3(shaderProgram_t *program, int uniformNum, const float *matrix, int numElements = 1);
 void GLSL_SetUniformMatrix4x4(shaderProgram_t *program, int uniformNum, const float *matrix, int numElements = 1);
 void GLSL_SetUniforms( shaderProgram_t *program, UniformData *uniformData );

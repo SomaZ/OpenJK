@@ -362,6 +362,8 @@ uniform vec4      u_SpecularScale;
 uniform vec4      u_CubeMapInfo;
 uniform vec3      u_SphericalHarmonic[9];
 uniform sampler2D u_EnvBrdfMap;
+uniform sampler2D u_ScreenDiffuseMap;
+uniform sampler2D u_ScreenSpecularMap;
 #endif
 #endif
 
@@ -713,14 +715,12 @@ void main()
 	  L -= normalize(texture(u_LightGridDirectionMap, gridCell).rgb * 2.0 - vec3(1.0)) * isLightgrid;
 	  vec3 directedLight = texture(u_LightGridDirectionalLightMap, gridCell).rgb * isLightgrid;
 	  directedLight *= directedLight;
-	  directedLight += u_DirectedLight * u_DirectedLight;
 	#endif
   #else
 	vertexColor = var_Color.rgb;
 	#if defined(USE_LIGHT_VECTOR)
 	  L -= normalize(texture(u_LightGridDirectionMap, gridCell).rgb * 2.0 - vec3(1.0)) * isLightgrid;
 	  vec3 directedLight = texture(u_LightGridDirectionalLightMap, gridCell).rgb * isLightgrid;
-	  directedLight += u_DirectedLight;
 	#endif
   #endif
 	ambientColor = ambientLight * vertexColor;
@@ -849,6 +849,17 @@ void main()
 	if (u_EnableTextures.x == 1.0)
 		out_Color.rgb += shColor * diffuse.rgb;
 	out_Color.rgb += cubeLightColor * (specular.rgb * EnvBRDF.x + EnvBRDF.y) * horiz;
+
+	ivec2 windowCoord = ivec2(gl_FragCoord.xy);
+
+	vec3 diffuseBufferColor = texelFetch(u_ScreenDiffuseMap, windowCoord, 0).rgb;
+	diffuseBufferColor *= diffuseBufferColor;
+	out_Color.rgb += diffuse.rgb * diffuseBufferColor;
+
+	vec3 specBufferColor = texelFetch(u_ScreenSpecularMap, windowCoord, 0).rgb;
+	specBufferColor *= specBufferColor;
+	out_Color.rgb += specBufferColor;
+
   #endif
 
   #if defined(USE_PRIMARY_LIGHT) || defined(SHADOWMAP_MODULATE)

@@ -3226,7 +3226,7 @@ void R_RenderMissingCubemaps()
 		cubemapFormat = GL_RGBA16F;
 	}
 
-	tr.skyboxCubemapped = qfalse;
+	/*tr.skyboxCubemapped = qfalse;
 
 	if (!tr.skyboxCubemap.image)
 	{
@@ -3239,7 +3239,7 @@ void R_RenderMissingCubemaps()
 			R_InitNextFrame();
 		}
 		tr.skyboxCubemapped = qtrue;
-	}
+	}*/
 
 	if (tr.cubemaps[0].image)
 	{

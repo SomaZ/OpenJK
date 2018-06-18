@@ -1275,48 +1275,35 @@ static shaderProgram_t *SelectShaderProgram( int stageIndex, shaderStage_t *stag
 	uint32_t index;
 	shaderProgram_t *result = nullptr;
 
-	if (backEnd.renderPass == DEPTH_PASS)
+	if (backEnd.renderPass != MAIN_PASS)
 	{
-		if (glslShaderGroup == tr.lightallShader)
+		index = 0;
+		if (backEnd.currentEntity && backEnd.currentEntity != &tr.worldEntity)
 		{
-			index = 0;
-
-			if (backEnd.currentEntity && backEnd.currentEntity != &tr.worldEntity)
-			{
-				if (glState.vertexAnimation)
-				{
-					index |= LIGHTDEF_USE_VERTEX_ANIMATION;
-				}
-				else if (glState.skeletalAnimation)
-				{
-					index |= LIGHTDEF_USE_SKELETAL_ANIMATION;
-				}
-			}
-
-			result = &stage->glslShaderGroup[index];
-			backEnd.pc.c_lightallDraws++;
-		}
-		else
-		{
-			index = 0;
-
 			if (tess.shader->numDeforms && !ShaderRequiresCPUDeforms(tess.shader))
 			{
-				index |= GENERICDEF_USE_DEFORM_VERTEXES;
+				index |= PREPASS_USE_DEFORM_VERTEXES;
 			}
-
 			if (glState.vertexAnimation)
 			{
-				index |= GENERICDEF_USE_VERTEX_ANIMATION;
+				index |= PREPASS_USE_VERTEX_ANIMATION;
 			}
 			else if (glState.skeletalAnimation)
 			{
-				index |= GENERICDEF_USE_SKELETAL_ANIMATION;
+				index |= PREPASS_USE_SKELETAL_ANIMATION;
 			}
-
-			result = &tr.genericShader[index];
-			backEnd.pc.c_genericDraws++;
 		}
+
+		if (backEnd.renderPass == PRE_PASS)
+			index |= PREPASS_USE_G_BUFFERS;
+
+		//FIX ME: UGLY, find better way of handling this
+		if (stage->bundle[TB_NORMALMAP].image[0] != 0)
+			if (stage->bundle[TB_NORMALMAP].image[0]->type == IMGTYPE_NORMALHEIGHT)
+				index |= PREPASS_USE_PARALLAX;
+
+		result = &tr.prepassShader[index];
+		backEnd.pc.c_genericDraws++;
 	}
 	else if (stage->glslShaderGroup == tr.lightallShader)
 	{
@@ -1726,12 +1713,26 @@ static void RB_IterateStagesGeneric( shaderCommands_t *input, const VertexArrays
 		bool enableShpericalHarmonics = 
 			(r_cubeMapping->integer && !(tr.viewParms.flags & VPF_NOCUBEMAPS) && input->cubemapIndex && tr.numfinishedSphericalHarmonics == tr.numSphericalHarmonics);
 
-		if (backEnd.renderPass == DEPTH_PASS)
+		if (backEnd.renderPass != MAIN_PASS)
 		{
 			if (pStage->alphaTestCmp == ATEST_CMP_NONE)
 				samplerBindingsWriter.AddStaticImage(tr.whiteImage, 0);
 			else if ( pStage->bundle[TB_COLORMAP].image[0] != 0 )
 				samplerBindingsWriter.AddAnimatedImage(&pStage->bundle[TB_COLORMAP], TB_COLORMAP);
+
+			if (backEnd.renderPass == PRE_PASS) 
+			{
+				vec4_t enableTextures = {};
+				if (pStage->bundle[TB_NORMALMAP].image[0] != 0) {
+					samplerBindingsWriter.AddAnimatedImage(&pStage->bundle[TB_NORMALMAP], TB_NORMALMAP);
+					enableTextures[0] = 1.0f;
+				}
+				if (pStage->bundle[TB_SPECULARMAP].image[0] != 0) {
+					samplerBindingsWriter.AddAnimatedImage(&pStage->bundle[TB_SPECULARMAP], TB_SPECULARMAP);
+					enableTextures[2] = 1.0f;
+				}
+				uniformDataWriter.SetUniformVec4(UNIFORM_ENABLETEXTURES, enableTextures);
+			}
 		}
 		else if ( pStage->glslShaderGroup == tr.lightallShader )
 		{
@@ -1887,6 +1888,10 @@ static void RB_IterateStagesGeneric( shaderCommands_t *input, const VertexArrays
 				}
 				uniformDataWriter.SetUniformVec3(UNIFORM_SPHERICAL_HARMONIC, coefficients, 9);
 			}
+			if (backEnd.renderPass == MAIN_PASS) {
+				samplerBindingsWriter.AddStaticImage(tr.diffuseLightingImage, TB_DIFFUSELIGHTBUFFER);
+				samplerBindingsWriter.AddStaticImage(tr.specularLightingImage, TB_SPECLIGHTBUFFER);
+			}
 		}
 
 		CaptureDrawData(input, pStage, index, stage);
@@ -1920,7 +1925,7 @@ static void RB_IterateStagesGeneric( shaderCommands_t *input, const VertexArrays
 			break;
 		}
 
-		if (backEnd.renderPass == DEPTH_PASS)
+		if (backEnd.renderPass != MAIN_PASS)
 			break;
 	}
 }
@@ -2023,7 +2028,7 @@ void RB_StageIteratorGeneric( void )
 		CalculateVertexArraysFromVBO(vertexAttribs, glState.currentVBO, &vertexArrays);
 	}
 
-	if (backEnd.renderPass == DEPTH_PASS)
+	if (backEnd.renderPass != MAIN_PASS)
 	{
 		RB_IterateStagesGeneric( input, &vertexArrays );
 	}
@@ -2054,7 +2059,8 @@ void RB_StageIteratorGeneric( void )
 		//
 		if ( r_debugVisuals->integer == 0 &&
 			 tess.dlightBits &&
-			 r_dlightMode->integer)
+			 r_dlightMode->integer &&
+			 input->shader->sort != SS_OPAQUE)
 		{
 			ForwardDlight(input, &vertexArrays);
 		}
