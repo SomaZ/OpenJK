@@ -145,9 +145,10 @@ static uniformInfo_t uniformsInfo[] =
 	{ "u_FogHasPlane",	GLSL_INT, 1 },
 	{ "u_FogDepthToOpaque", GLSL_FLOAT, 1 },
 
-	{ "u_ModelMatrix",               GLSL_MAT4x4, 1 },
-	{ "u_ModelViewProjectionMatrix", GLSL_MAT4x4, 1 },
-	{ "u_InvViewProjectionMatrix", GLSL_MAT4x4, 1 },
+	{ "u_ModelMatrix",					GLSL_MAT4x4, 1 },
+	{ "u_ModelViewProjectionMatrix",	GLSL_MAT4x4, 1 },
+	{ "u_NormalMatrix",					GLSL_MAT4x4, 1 },
+	{ "u_InvViewProjectionMatrix",		GLSL_MAT4x4, 1 },
 
 	{ "u_Time",          GLSL_FLOAT, 1 },
 	{ "u_VertexLerp" ,   GLSL_FLOAT, 1 },

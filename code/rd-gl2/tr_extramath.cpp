@@ -155,8 +155,27 @@ void Matrix16SimpleInverse( const matrix_t in, matrix_t out)
 
 	out[ 3] = 0.0f; out[ 7] = 0.0f; out[11] = 0.0f; out[15] = 1.0f;
 }
+void Matrix16Transpose(const matrix_t m, matrix_t out)
+{
+	out[0] = m[0];
+	out[1] = m[4];
+	out[2] = m[8];
+	out[3] = m[12];
+	out[4] = m[1];
+	out[5] = m[5];
+	out[6] = m[9];
+	out[7] = m[13];
+	out[8] = m[2];
+	out[9] = m[6];
+	out[10] = m[10];
+	out[11] = m[14];
+	out[12] = m[3];
+	out[13] = m[7];
+	out[14] = m[11];
+	out[15] = m[15];
+}
 
-void Matrix16MatrixInvert(const matrix_t m, matrix_t out)
+void Matrix16Inverse(const matrix_t m, matrix_t out)
 {
 	float inv[16], det;
 	int i;

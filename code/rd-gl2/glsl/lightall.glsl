@@ -53,6 +53,7 @@ uniform mat4 u_ModelViewProjectionMatrix;
 uniform vec4 u_BaseColor;
 uniform vec4 u_VertColor;
 uniform mat4 u_ModelMatrix;
+uniform mat4 u_NormalMatrix;
 
 #if defined(USE_VERTEX_ANIMATION)
 uniform float u_VertexLerp;
@@ -236,9 +237,9 @@ void main()
 	gl_Position = u_ModelViewProjectionMatrix * vec4(position, 1.0);
 
 	position  = (u_ModelMatrix * vec4(position, 1.0)).xyz;
-	normal    = mat3(u_ModelMatrix) * normal;
+	normal    = mat3(u_NormalMatrix) * normal;
   #if defined(PER_PIXEL_LIGHTING)
-	tangent   = mat3(u_ModelMatrix) * tangent;
+	tangent   = mat3(u_NormalMatrix) * tangent;
 	vec3 bitangent = cross(normal, tangent) * (attr_Tangent.w * 2.0 - 1.0);
   #endif
 

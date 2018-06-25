@@ -40,6 +40,7 @@ uniform vec4 u_DiffuseTexOffTurb;
 uniform mat4 u_ModelViewProjectionMatrix;
 uniform mat4 u_InvViewProjectionMatrix;
 uniform mat4 u_ModelMatrix;
+uniform mat4 u_NormalMatrix;
 
 #if defined(USE_VERTEX_ANIMATION)
 uniform float u_VertexLerp;
@@ -143,13 +144,8 @@ void main()
 	gl_Position = u_ModelViewProjectionMatrix * vec4(position, 1.0);
 
 	position  = (u_ModelMatrix * vec4(position, 1.0)).xyz;
-
-	if (isLiquid == 1) 
-		normal    = mat3(u_ModelMatrix) * normal;
-	else
-		normal    = mat3(transpose(u_InvViewProjectionMatrix)) * normal;
-
-	tangent   = mat3(u_ModelMatrix) * tangent;
+	normal    = mat3(u_NormalMatrix) * normal;
+	tangent   = mat3(u_NormalMatrix) * tangent;
 	vec3 bitangent = cross(normal, tangent) * (attr_Tangent.w * 2.0 - 1.0);
 
 	var_Position = position;

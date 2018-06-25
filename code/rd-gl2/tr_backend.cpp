@@ -2462,7 +2462,7 @@ void RB_RenderAllRealTimeLightTypes()
 		GLSL_SetUniformMatrix4x4(sp, UNIFORM_MODELVIEWPROJECTIONMATRIX, viewProjectionMatrix);
 
 		matrix_t invProjectionMatrix;
-		Matrix16MatrixInvert(viewProjectionMatrix, invProjectionMatrix);
+		Matrix16Inverse(viewProjectionMatrix, invProjectionMatrix);
 		
 		GLSL_SetUniformMatrix4x4(sp, UNIFORM_INVVIEWPROJECTIONMATRIX, invProjectionMatrix);
 
@@ -2571,7 +2571,7 @@ void RB_RenderAllRealTimeLightTypes()
 		GLSL_SetUniformMatrix4x4(sp, UNIFORM_MODELVIEWPROJECTIONMATRIX, viewProjectionMatrix);
 
 		matrix_t invProjectionMatrix;
-		Matrix16MatrixInvert(viewProjectionMatrix, invProjectionMatrix);
+		Matrix16Inverse(viewProjectionMatrix, invProjectionMatrix);
 		GLSL_SetUniformMatrix4x4(sp, UNIFORM_INVVIEWPROJECTIONMATRIX, invProjectionMatrix);
 
 		GLSL_SetUniformVec3N(sp, UNIFORM_LIGHTCOLORS, (float*)dlightColors, numDlights);

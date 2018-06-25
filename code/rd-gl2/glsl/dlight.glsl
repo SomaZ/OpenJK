@@ -14,6 +14,7 @@ uniform vec4 u_LightOrigin;
 uniform float u_LightRadius;
 
 uniform mat4 u_ModelMatrix;
+uniform mat4 u_NormalMatrix;
 uniform mat4 u_ModelViewProjectionMatrix;
 
 out vec3 var_Normal;
@@ -173,7 +174,7 @@ void main()
 	vec3 L = u_LightOrigin.xyz - positionWS;
 	L = (u_ModelMatrix * vec4(L, 0.0)).xyz;
 
-	var_Normal = normalize((u_ModelMatrix * vec4(normal, 0.0)).xyz);
+	var_Normal = mat3(u_NormalMatrix) * normal;
 	var_LightDirAndRadiusSq = vec4(L, u_LightRadius * u_LightRadius);
 }
 

@@ -992,7 +992,13 @@ static void ForwardDlight( const shaderCommands_t *input,  VertexArraysPropertie
 		uniformDataWriter.SetUniformVec4(UNIFORM_NORMALSCALE, pStage->normalScale);
 		uniformDataWriter.SetUniformVec4(UNIFORM_SPECULARSCALE, pStage->specularScale);
 
+		matrix_t invModelMatrix;
+		matrix_t transInvModelMatrix;
+		Matrix16Inverse(backEnd.ori.modelMatrix, invModelMatrix);
+		Matrix16Transpose(invModelMatrix, transInvModelMatrix);
+
 		uniformDataWriter.SetUniformMatrix4x4(UNIFORM_MODELMATRIX, backEnd.ori.modelMatrix);
+		uniformDataWriter.SetUniformMatrix4x4(UNIFORM_NORMALMATRIX, transInvModelMatrix);
 
 		if (pStage->bundle[TB_DIFFUSEMAP].image[0])
 			samplerBindingsWriter.AddAnimatedImage( &pStage->bundle[TB_DIFFUSEMAP], TB_DIFFUSEMAP);
@@ -1203,7 +1209,14 @@ static void RB_FogPass( shaderCommands_t *input, const fog_t *fog, const VertexA
 	backEnd.pc.c_fogDraws++;
 
 	uniformDataWriter.SetUniformMatrix4x4(UNIFORM_MODELVIEWPROJECTIONMATRIX, glState.modelviewProjection);
+
+	matrix_t invModelMatrix;
+	matrix_t transInvModelMatrix;
+	Matrix16Inverse(backEnd.ori.modelMatrix, invModelMatrix);
+	Matrix16Transpose(invModelMatrix, transInvModelMatrix);
+
 	uniformDataWriter.SetUniformMatrix4x4(UNIFORM_MODELMATRIX, backEnd.ori.modelMatrix);
+	uniformDataWriter.SetUniformMatrix4x4(UNIFORM_NORMALMATRIX, transInvModelMatrix);
 
 	uniformDataWriter.SetUniformFloat(UNIFORM_VERTEXLERP, glState.vertexAttribsInterpolation);
 	uniformDataWriter.SetUniformMatrix4x3(UNIFORM_BONE_MATRICES, &glState.boneMatrices[0][0], glState.numBones);
@@ -1433,7 +1446,14 @@ void RB_StageIteratorLiquid( void )
 	uniformDataWriter.SetUniformMatrix4x4(UNIFORM_MODELVIEWPROJECTIONMATRIX, glState.modelviewProjection);
 	uniformDataWriter.SetUniformVec3(UNIFORM_VIEWORIGIN, backEnd.viewParms.ori.origin);
 	uniformDataWriter.SetUniformVec3(UNIFORM_LOCALVIEWORIGIN, backEnd.ori.viewOrigin);
+
+	matrix_t invModelMatrix;
+	matrix_t transInvModelMatrix;
+	Matrix16Inverse(backEnd.ori.modelMatrix, invModelMatrix);
+	Matrix16Transpose(invModelMatrix, transInvModelMatrix);
+
 	uniformDataWriter.SetUniformMatrix4x4(UNIFORM_MODELMATRIX, backEnd.ori.modelMatrix);
+	uniformDataWriter.SetUniformMatrix4x4(UNIFORM_NORMALMATRIX, transInvModelMatrix);
 
 	if (r_cubeMapping->integer)
 	{
@@ -1719,7 +1739,13 @@ static void RB_IterateStagesGeneric( shaderCommands_t *input, const VertexArrays
 			uniformDataWriter.SetUniformVec3(UNIFORM_TCGEN0VECTOR1, pStage->bundle[0].tcGenVectors[1]);
 		}
 
+		matrix_t invModelMatrix;
+		matrix_t transInvModelMatrix;
+		Matrix16Inverse(backEnd.ori.modelMatrix, invModelMatrix);
+		Matrix16Transpose(invModelMatrix, transInvModelMatrix);
+
 		uniformDataWriter.SetUniformMatrix4x4(UNIFORM_MODELMATRIX, backEnd.ori.modelMatrix);
+		uniformDataWriter.SetUniformMatrix4x4(UNIFORM_NORMALMATRIX, transInvModelMatrix);
 
 		uniformDataWriter.SetUniformVec4(UNIFORM_NORMALSCALE, pStage->normalScale);
 		{
@@ -1937,11 +1963,15 @@ static void RB_IterateStagesGeneric( shaderCommands_t *input, const VertexArrays
 			float x = tr.prevRenderImage->width;
 			float y = tr.prevRenderImage->height;
 			VectorSet4(viewInfo, zmax / zmin, zmax, x, alpha);
+
+			//we need the normal in projection space not in worldspace
 			matrix_t invModelViewProjectionMatrix;
-			Matrix16MatrixInvert(glState.modelviewProjection, invModelViewProjectionMatrix);
-		
+			matrix_t transInvModelViewProjectionMatrix;
+			Matrix16Inverse(glState.modelviewProjection, invModelViewProjectionMatrix);
+			Matrix16Transpose(invModelViewProjectionMatrix, transInvModelViewProjectionMatrix);
+
 			uniformDataWriter.SetUniformVec4(UNIFORM_VIEWINFO, viewInfo);
-			uniformDataWriter.SetUniformMatrix4x4(UNIFORM_INVVIEWPROJECTIONMATRIX, invModelViewProjectionMatrix);
+			uniformDataWriter.SetUniformMatrix4x4(UNIFORM_NORMALMATRIX, transInvModelViewProjectionMatrix);
 
 			data = ojkAlloc<LiquidBlock>(*backEndData->perFrameMemory);
 			*data = {};
