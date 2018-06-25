@@ -1957,6 +1957,10 @@ static void RawImage_UploadTexture(byte *data, int x, int y, int width, int heig
 		dataFormat = GL_DEPTH_COMPONENT;
 		dataType = GL_UNSIGNED_BYTE;
 		break;
+	case GL_DEPTH24_STENCIL8:
+		dataFormat = GL_DEPTH_STENCIL;
+		dataType = GL_UNSIGNED_INT_24_8;
+		break;
 	case GL_RG16F:
 		dataFormat = GL_RG;
 		dataType = GL_HALF_FLOAT;
@@ -3212,7 +3216,7 @@ void R_CreateBuiltinImages(void) {
 	if (r_drawSunRays->integer)
 		tr.sunRaysImage = R_CreateImage("*sunRays", NULL, width, height, IMGTYPE_COLORALPHA, IMGFLAG_NO_COMPRESSION | IMGFLAG_CLAMPTOEDGE, rgbFormat);
 
-	tr.renderDepthImage = R_CreateImage("*renderdepth", NULL, width, height, IMGTYPE_COLORALPHA, IMGFLAG_NO_COMPRESSION | IMGFLAG_CLAMPTOEDGE, GL_DEPTH_COMPONENT24);
+	tr.renderDepthImage = R_CreateImage("*renderdepth", NULL, width, height, IMGTYPE_COLORALPHA, IMGFLAG_NO_COMPRESSION | IMGFLAG_CLAMPTOEDGE, GL_DEPTH24_STENCIL8);
 
 	tr.cubeDepthImage = R_CreateImage("*cubedepth", NULL, PSHADOW_MAP_SIZE, PSHADOW_MAP_SIZE, IMGTYPE_COLORALPHA, IMGFLAG_NO_COMPRESSION | IMGFLAG_CLAMPTOEDGE | IMGFLAG_CUBEMAP, GL_DEPTH_COMPONENT24);
 
@@ -3257,12 +3261,12 @@ void R_CreateBuiltinImages(void) {
 		tr.hdrDepthImage = R_CreateImage("*hdrDepth", NULL, width, height, IMGTYPE_COLORALPHA, IMGFLAG_NO_COMPRESSION | IMGFLAG_CLAMPTOEDGE, GL_INTENSITY32F_ARB);
 	}
 
-	if (r_refraction->integer) 
+	if (r_refraction->integer || 1) 
 	{
-		tr.refractiveImage = R_CreateImage("*refractiveFbo", NULL, width, height, IMGTYPE_COLORALPHA, IMGFLAG_NO_COMPRESSION | IMGFLAG_CLAMPTOEDGE, hdrFormat);
+		tr.prevRenderImage = R_CreateImage("*prevRender", NULL, width / 2, height / 2, IMGTYPE_COLORALPHA, IMGFLAG_NO_COMPRESSION | IMGFLAG_CLAMPTOEDGE, hdrFormat);
 	}
 
-	tr.prefilterEnvMapImage = R_CreateImage("*prefilterEnvMapFbo", NULL, r_cubemapSize->integer / 2, r_cubemapSize->integer / 2, IMGTYPE_COLORALPHA, IMGFLAG_NO_COMPRESSION | IMGFLAG_CLAMPTOEDGE, hdrFormat);
+	tr.prefilterEnvMapImage = R_CreateImage("*prefilterEnvMap", NULL, r_cubemapSize->integer / 2, r_cubemapSize->integer / 2, IMGTYPE_COLORALPHA, IMGFLAG_NO_COMPRESSION | IMGFLAG_CLAMPTOEDGE, hdrFormat);
 
 	for (x = 0; x < MAX_DRAWN_PSHADOWS; x++)
 	{

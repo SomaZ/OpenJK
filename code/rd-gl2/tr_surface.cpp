@@ -2092,11 +2092,6 @@ void RB_SurfaceVBOMDVMesh(srfVBOMDVMesh_t * surface)
 
 	refEnt = &backEnd.currentEntity->e;
 
-	if (refEnt->renderfx & RF_DISTORTION) {
-		rb_surfaceTable[SF_REFRACTIVE](surface);
-		return;
-	}
-
 	if (refEnt->oldframe || refEnt->frame)
 	{
 		if (refEnt->oldframe == refEnt->frame)
@@ -2221,79 +2216,12 @@ static void RB_SurfaceSprites( srfSprites_t *surf )
 	item.draw.params.indexed.indexType = GL_UNSIGNED_SHORT;
 	item.draw.params.indexed.firstIndex = 0;
 	item.draw.params.indexed.numIndices = 6;
-	
-	uint32_t key = RB_CreateSortKey(item, 0, surf->shader->sort);
-	RB_AddDrawItem(backEndData->currentPass, key, item);
-}
 
-void RB_Refractive(srfVBOMDVMesh_t * surface)
-{
-	GLimp_LogComment("--- RB_Refractive ---\n");
-	
-	if (!r_refraction->integer || !surface->vbo || !surface->ibo)
+	if (surf->numSprites > 0)
 	{
-		return;
+		uint32_t key = RB_CreateSortKey(item, 0, surf->shader->sort);
+		RB_AddDrawItem(backEndData->currentPass, key, item);
 	}
-	
-	RB_EndSurface();
-	
-	R_BindVBO(surface->vbo);
-	R_BindIBO(surface->ibo);
-	
-	shader_t *shader = tess.shader;
-	shaderStage_t *firstStage = shader->stages[0];
-	
-	DrawItem newRefractiveItem;
-	newRefractiveItem.program = &tr.refractionShader;
-	newRefractiveItem.cullType = CT_TWO_SIDED;
-	newRefractiveItem.depthRange.minDepth = 0.0f;
-	newRefractiveItem.stateBits = GLS_SRCBLEND_SRC_ALPHA | GLS_DSTBLEND_ONE_MINUS_SRC_ALPHA;
-	newRefractiveItem.depthRange.maxDepth = 1.0f;
-	newRefractiveItem.numSamplerBindings = 1;
-	newRefractiveItem.ibo = surface->ibo;
-	
-	VertexArraysProperties vertexArrays;
-	vertexAttribute_t attribs[ATTR_INDEX_MAX] = {};
-	
-	CalculateVertexArraysFromVBO(shader->vertexAttribs, surface->vbo, &vertexArrays);
-	GL_VertexArraysToAttribs(attribs, ARRAY_LEN(attribs), &vertexArrays);
-	newRefractiveItem.numAttributes = vertexArrays.numVertexArrays;
-	newRefractiveItem.attributes = attribs;
-	
-	UniformDataWriter uniformDataWriter;
-	uniformDataWriter.Start(&tr.refractionShader);
-	uniformDataWriter.SetUniformMatrix4x4(UNIFORM_MODELVIEWPROJECTIONMATRIX, glState.modelviewProjection);
-	uniformDataWriter.SetUniformMatrix4x4(UNIFORM_MODELMATRIX, backEnd.ori.modelMatrix);
-	uniformDataWriter.SetUniformVec3(UNIFORM_VIEWORIGIN, backEnd.viewParms.ori.origin);
-	uniformDataWriter.SetUniformVec3(UNIFORM_LOCALVIEWORIGIN, backEnd.ori.viewOrigin);
-	
-	vec4_t shaderRGBA;
-	float r = backEnd.currentEntity->e.shaderRGBA[0];
-	float g = backEnd.currentEntity->e.shaderRGBA[1];
-	float b = backEnd.currentEntity->e.shaderRGBA[2];
-	float alpha = 0;
-	if (backEnd.currentEntity->e.shaderRGBA[3] > 10)
-		alpha = (backEnd.currentEntity->e.shaderRGBA[3]) / 255.0f;
-	float x = tr.refractiveImage->width;
-	float y = tr.refractiveImage->height;
-	VectorSet4(shaderRGBA, r, g, b, alpha);
-	uniformDataWriter.SetUniformVec4(UNIFORM_COLOR, shaderRGBA);
-	
-	newRefractiveItem.uniformData = uniformDataWriter.Finish(*backEndData->perFrameMemory);
-	
-	SamplerBindingsWriter samplerBindingsWriter;
-	samplerBindingsWriter.AddStaticImage(tr.refractiveImage, TB_DIFFUSEMAP);
-	newRefractiveItem.samplerBindings = samplerBindingsWriter.Finish(
-	*backEndData->perFrameMemory, (int *)&newRefractiveItem.numSamplerBindings);
-	
-	newRefractiveItem.draw.primitiveType = GL_TRIANGLES;
-	newRefractiveItem.draw.numInstances = 1;
-	
-	newRefractiveItem.draw.type = DRAW_COMMAND_INDEXED;
-	newRefractiveItem.draw.params.indexed.firstIndex = (glIndex_t)0;
-	newRefractiveItem.draw.params.indexed.numIndices = surface->numIndexes;
-	
-	RB_AddDrawItem(backEndData->currentPass, 0, newRefractiveItem);
 }
 
 void (*rb_surfaceTable[SF_NUM_SURFACE_TYPES])( void *) = {
@@ -2313,5 +2241,4 @@ void (*rb_surfaceTable[SF_NUM_SURFACE_TYPES])( void *) = {
 	(void(*)(void*))RB_SurfaceVBOMDVMesh,   // SF_VBO_MDVMESH
 	(void(*)(void*))RB_SurfaceSprites,      // SF_SPRITES
 	(void(*)(void*))RB_SurfaceWeather,      // SF_WEATHER
-	(void(*)(void*))RB_Refractive,			// SF_REFRACTIVE
 };

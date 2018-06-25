@@ -236,14 +236,11 @@ void main()
 	gl_Position = u_ModelViewProjectionMatrix * vec4(position, 1.0);
 
 	position  = (u_ModelMatrix * vec4(position, 1.0)).xyz;
-	normal    = (u_ModelMatrix * vec4(normal,   0.0)).xyz;
+	normal    = mat3(u_ModelMatrix) * normal;
   #if defined(PER_PIXEL_LIGHTING)
-	tangent   = (u_ModelMatrix * vec4(tangent,  0.0)).xyz;
-  #endif
-
-#if defined(PER_PIXEL_LIGHTING)
+	tangent   = mat3(u_ModelMatrix) * tangent;
 	vec3 bitangent = cross(normal, tangent) * (attr_Tangent.w * 2.0 - 1.0);
-#endif
+  #endif
 
 #if defined(USE_LIGHT_VECTOR)
 	vec3 L = u_LightOrigin.xyz - (position * u_LightOrigin.w);

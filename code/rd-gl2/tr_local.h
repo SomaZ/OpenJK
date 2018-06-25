@@ -1129,6 +1129,16 @@ enum
 
 enum
 {
+	REFRACTION_USE_DEFORM_VERTEXES = 0x0001,
+	REFRACTION_USE_VERTEX_ANIMATION = 0x0002,
+	REFRACTION_USE_SKELETAL_ANIMATION = 0x0004,
+
+	REFRACTION_ALL = 0x0007,
+	REFRACTION_COUNT = REFRACTION_ALL + 1,
+};
+
+enum
+{
 	PRELIGHT_DIFFUSE_FBO = 0x0000,
 	PRELIGHT_SPECULAR_FBO = 0x0001,
 	PRELIGHT_DIFFUSE_SPECULAR_FBO = 0x0002,
@@ -1550,7 +1560,6 @@ typedef enum surfaceType_e{
 	SF_VBO_MDVMESH,
 	SF_SPRITES,
 	SF_WEATHER,
-	SF_REFRACTIVE,
 
 	SF_NUM_SURFACE_TYPES,
 	SF_MAX = 0x7fffffff			// ensures that sizeof( surfaceType_t ) == sizeof( int )
@@ -2352,7 +2361,7 @@ typedef struct trGlobals_s {
 	image_t					*specularLightingImage;
 	image_t					*glowImage;
 	image_t					*glowImageScaled[6];
-	image_t					*refractiveImage;
+	image_t					*prevRenderImage;
 	image_t					*sunRaysImage;
 	image_t					*renderDepthImage;
 	image_t					*pshadowMaps[MAX_DRAWN_PSHADOWS];
@@ -2443,7 +2452,7 @@ typedef struct trGlobals_s {
 	shaderProgram_t fogShader[FOGDEF_COUNT];
 	shaderProgram_t dlightShader[DLIGHTDEF_COUNT];
 	shaderProgram_t lightallShader[LIGHTDEF_COUNT];
-	shaderProgram_t refractionShader;
+	shaderProgram_t refractionShader[REFRACTION_COUNT];
 	shaderProgram_t shadowmapShader;
 	shaderProgram_t pshadowShader;
 	shaderProgram_t down4xShader;
@@ -3309,6 +3318,7 @@ typedef struct backEndData_s {
 	gpuFrame_t *currentFrame;
 	Allocator *perFrameMemory;
 	Pass *currentPass;
+	Pass *currentPostPass;
 
 	drawSurf_t	drawSurfs[MAX_DRAWSURFS];
 	dlight_t	dlights[MAX_DLIGHTS];

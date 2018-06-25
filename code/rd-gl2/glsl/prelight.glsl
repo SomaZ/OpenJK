@@ -10,14 +10,14 @@ uniform vec3 u_ViewOrigin;
 #endif
 
 #if defined(POINT_LIGHT)
-uniform vec4 u_LightTransforms[16]; // xyz = position, w = scale
-uniform vec3 u_LightColors[16];
+uniform vec4 u_LightTransforms[32]; // xyz = position, w = scale
+uniform vec3 u_LightColors[32];
 flat out vec4 var_Position;
 flat out vec3 var_LightColor;
 #endif
 
 #if defined(CUBEMAP)
-uniform vec4 u_CubemapTransforms[16]; // xyz = position, w = scale
+uniform vec4 u_CubemapTransforms[32]; // xyz = position, w = scale
 flat out vec4 var_Position;
 flat out int  var_Index;
 #endif
@@ -47,8 +47,6 @@ void main()
 	vec3 worldSpacePosition = in_Position * var_Position.w * 1.1 + var_Position.xyz;
 	gl_Position				= u_ModelViewProjectionMatrix * vec4(worldSpacePosition, 1.0);
 	var_ViewDir				= normalize(worldSpacePosition - u_ViewOrigin);
-	//vec2 screenCoords		= gl_Position.xy / gl_Position.w;
-	//var_ViewDir				= (u_ViewForward + u_ViewLeft * -screenCoords.x) + u_ViewUp * screenCoords.y;
 #else
 	vec2 position			= vec2(2.0 * float(gl_VertexID & 2) - 1.0, 4.0 * float(gl_VertexID & 1) - 1.0);
 	gl_Position				= vec4(position, 0.0, 1.0);
@@ -57,6 +55,9 @@ void main()
 }
 
 /*[Fragment]*/
+#if defined(POINT_LIGHT) || defined(CUBEMAP) 
+#define USE_VOLUME_SPHERE
+#endif
 
 uniform vec3 u_ViewOrigin;
 uniform vec4 u_ViewInfo; // zfar / znear, zfar, znear
@@ -110,7 +111,7 @@ uniform samplerCube u_ShadowMap3;
 uniform samplerCube u_ShadowMap4;
 uniform sampler2D	u_EnvBrdfMap;
 uniform vec4		u_CubeMapInfo;
-uniform vec4		u_CubemapTransforms[16]; // xyz = position, w = scale
+uniform vec4		u_CubemapTransforms[32]; // xyz = position, w = scale
 uniform int			u_NumCubemaps;
 flat in int			var_Index;
 #endif
@@ -254,7 +255,7 @@ float getLightDepth(vec3 Vec, float f)
 
 	float NormZComp = (f + n) / (f - n) - 2 * f*n / (Z* (f - n));
 
-	return ((NormZComp + 1.0) * 0.5) - DEPTH_MAX_ERROR;
+	return ((NormZComp + 1.0) * 0.5) + DEPTH_MAX_ERROR;
 }
 
 float getShadowValue(vec4 light)
@@ -274,63 +275,111 @@ float getShadowValue(vec4 light)
 
 #if defined(CUBEMAP)
 
-float getCubemapWeight(in vec3 position)
+float getCubemapWeight(in vec3 position, in vec3 normal)
 {
-	float lengthMin = 10000000.0;
-	float lengthMin2 = 10000000.0;
-	float lengthMin3 = 10000000.0;
+	float length1, length2, length3 = 10000000.0;
+	float NDF1,NDF2,NDF3			= 10000000.0;
 	int closest, secondclosest, thirdclosest = -1;
 
-	for (int i = 0; i < 16; i++)
+	for (int i = 0; i < 32; i++)
 	{
 		vec3 dPosition = position - u_CubemapTransforms[i].xyz;
 		float length = length(dPosition);
-		if (length < lengthMin)
+		float NDF = clamp (length / u_CubemapTransforms[i].w, 0.0, 1.0);
+
+		if (length < length1)
 		{
-			lengthMin3 = lengthMin2;
+			length3 = length2;
+			length2 = length1;
+			length1 = length;
+			NDF3 = NDF2;
+			NDF2 = NDF1;
+			NDF1 = NDF;
+
 			thirdclosest = secondclosest;
-			lengthMin2 = lengthMin;
 			secondclosest = closest;
-			lengthMin = length;
 			closest = i;
 		}
-		else if (length < lengthMin2)
+		else if (length < length2)
 		{
-			lengthMin3 = lengthMin2;
+			length3 = length2;
+			length2 = length;
+
+			NDF3 = NDF2;
+			NDF2 = NDF;
+
 			thirdclosest = secondclosest;
-			lengthMin2 = length;
 			secondclosest = i;
 		}
-		else if (length < lengthMin3)
+		else if (length < length3)
 		{
-			lengthMin3 = length;
+			length3 = length;
+
+			NDF3 = NDF;
+
 			thirdclosest = i;
 		}
 	}
 
-	float factor = 0.0;
-	float sum = 0.0;
+	if (length1 > u_CubemapTransforms[closest].w && var_Index == closest)
+		return 1.0;
 
-	if ( var_Index == closest)
-		factor = 1.0 - pow(lengthMin / u_CubemapTransforms[closest].w, 4.0);
-	else if ( var_Index == secondclosest)
-		factor = 1.0 - pow(lengthMin2/ u_CubemapTransforms[secondclosest].w, 4.0);
-	else if ( var_Index == thirdclosest)
-		factor = 1.0 - pow(lengthMin3/ u_CubemapTransforms[thirdclosest].w, 4.0);
-	else
+	//cubemap is not under the closest ones, discard
+	if (var_Index != closest && var_Index != secondclosest && var_Index != thirdclosest)
 		return 0.0;
 
-	if (lengthMin < u_CubemapTransforms[closest].w && closest < u_NumCubemaps && closest != -1)
-		sum += 1.0 - pow(lengthMin / u_CubemapTransforms[closest].w, 4.0);
-	if (lengthMin2 < u_CubemapTransforms[secondclosest].w && secondclosest < u_NumCubemaps && secondclosest != -1)
-		sum += 1.0 - pow(lengthMin2 / u_CubemapTransforms[secondclosest].w, 4.0);
-	if (lengthMin3 < u_CubemapTransforms[thirdclosest].w && thirdclosest < u_NumCubemaps && thirdclosest != -1)
-		sum += 1.0 - pow(lengthMin3 / u_CubemapTransforms[thirdclosest].w, 4.0);
+	float num = 0.0;
 
-	if (sum == 0.0)
+	float SumNDF	= 0.0;
+	float InvSumNDF = 0.0;
+
+	float blendFactor1, blendFactor2, blendFactor3 = 0.0;
+	float sumBlendFactor;
+
+	if (closest != -1){
+		SumNDF		+= NDF1;
+		InvSumNDF	+= 1.0 - NDF1;
+		num += 1.0;
+	}
+	if (secondclosest != -1){
+		SumNDF		+= NDF2;
+		InvSumNDF	+= 1.0 - NDF2;
+		num += 1.0;
+	}
+	if (thirdclosest != -1){
+		SumNDF		+= NDF1;
+		InvSumNDF	+= 1.0 - NDF2;
+		num += 1.0;
+	}
+
+	if (num >= 2)
+	{
+		if (closest != -1){
+			blendFactor1  = (1.0 - (NDF1 / SumNDF)) / (num - 1.0);
+			blendFactor1 *= ((1.0 - NDF1) / InvSumNDF);
+			sumBlendFactor += blendFactor1;
+		}
+		if (secondclosest != -1){
+			blendFactor2  = (1.0 - (NDF2 / SumNDF)) / (num - 1.0);
+			blendFactor2 *= ((1.0 - NDF2) / InvSumNDF);
+			sumBlendFactor += blendFactor2;
+		}
+		if (thirdclosest != -1){
+			blendFactor3  = (1.0 - (NDF3 / SumNDF)) / (num - 1.0);
+			blendFactor3 *= ((1.0 - NDF3) / InvSumNDF);
+			sumBlendFactor += blendFactor3;
+		}
+
+		if (var_Index == closest)
+			return blendFactor1 / sumBlendFactor;
+		if (var_Index == secondclosest)
+			return blendFactor2 / sumBlendFactor;
+		if (var_Index == thirdclosest)
+			return blendFactor3 / sumBlendFactor;
 		return 0.0;
+	}
 	else
-		return clamp(factor/sum, 0.0, 1.0);
+		return -1.0;
 }
 
 #endif
@@ -351,7 +400,7 @@ void main()
 	vec3 normal = texelFetch(u_NormalMap, windowCoord, 0).rgb;
 	float depth = texelFetch(u_ScreenDepthMap, windowCoord, 0).r;
 	
-	#if defined(POINT_LIGHT) || defined(CUBEMAP)
+	#if defined(USE_VOLUME_SPHERE)
 		vec3 position = WorldPosFromDepth(depth, gl_FragCoord.xy * r_FBufScale);
 	#else
 		float linearDepth = LinearDepth(depth, u_ZFarDivZNear);
@@ -380,9 +429,6 @@ void main()
 		attenuation *= getShadowValue(lightVec);
 	#endif
 
-	if (attenuation < 0.000001)
-		discard;
-
 	H = normalize(L + E);
 	EH = max(1e-8, dot(E, H));
 	NH = max(1e-8, dot(N, H));
@@ -394,16 +440,15 @@ void main()
 	reflectance = CalcSpecular(specularAndGloss.rgb, NH, NL, NE, EH, roughness);
 	specularOut = sqrt(var_LightColor * reflectance * attenuation);
 #elif defined(CUBEMAP)
-
-	float weight = getCubemapWeight(position);
-
-	if (weight == 0.0)
-		discard;
-
 	NE = clamp(dot(N, E), 0.0, 1.0);
 	vec3 EnvBRDF = texture(u_EnvBrdfMap, vec2(roughness, NE)).rgb;
 
 	vec3 R = reflect(E, N);
+
+	float weight = clamp(-getCubemapWeight(position, R), 0.0, 1.0);
+
+	if (weight == 0.0)
+		discard;
 
 	// parallax corrected cubemap (cheaper trick)
 	// from http://seblagarde.wordpress.com/2012/09/29/image-based-lighting-approaches-and-parallax-corrected-cubemap/

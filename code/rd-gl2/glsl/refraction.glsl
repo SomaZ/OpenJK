@@ -1,34 +1,163 @@
 /*[Vertex]*/
+in vec2 attr_TexCoord0;
 in vec3 attr_Position;
 in vec3 attr_Normal;
-in vec4 attr_TexCoord0;
+in vec4 attr_Tangent;
+
+#if defined(USE_VERTEX_ANIMATION)
+in vec3 attr_Position2;
+in vec3 attr_Normal2;
+in vec4 attr_Tangent2;
+#elif defined(USE_SKELETAL_ANIMATION)
+in uvec4 attr_BoneIndexes;
+in vec4 attr_BoneWeights;
+#endif
+
+layout(std140) uniform Liquid
+{
+float		isLiquid;
+float		height;
+float		choppy;
+float		speed;
+float		freq;
+float		depth;
+float		time;
+};
+
+uniform vec3	u_ViewOrigin;
+uniform vec4	u_PrimaryLightOrigin;
+uniform float	u_PrimaryLightRadius;
+
+uniform int u_TCGen0;
+uniform vec3 u_TCGen0Vector0;
+uniform vec3 u_TCGen0Vector1;
+uniform vec3 u_LocalViewOrigin;
+uniform int u_TCGen1;
+
+uniform vec4 u_DiffuseTexMatrix;
+uniform vec4 u_DiffuseTexOffTurb;
 
 uniform mat4 u_ModelViewProjectionMatrix;
+uniform mat4 u_InvViewProjectionMatrix;
 uniform mat4 u_ModelMatrix;
-uniform vec3 u_ViewOrigin;
 
-uniform vec4 u_PrimaryLightOrigin;
-uniform float u_PrimaryLightRadius;
+#if defined(USE_VERTEX_ANIMATION)
+uniform float u_VertexLerp;
+#elif defined(USE_SKELETAL_ANIMATION)
+uniform mat4x3 u_BoneMatrices[20];
+#endif
 
+out vec4 var_TexCoords;
+out vec3 var_Position;
+out vec4 var_Normal;
+out vec4 var_Tangent;
+out vec4 var_Bitangent;
 out vec4 var_PrimaryLightDir;
 
-out vec2 var_Tex1;
-out vec2 fragpos;
-out vec3 normal;
-out vec3 position;
-out vec3 viewDir;
+vec2 GenTexCoords(int TCGen, vec3 position, vec3 normal, vec3 TCGenVector0, vec3 TCGenVector1)
+{
+	vec2 tex = attr_TexCoord0;
+
+	switch (TCGen)
+	{
+		case TCGEN_ENVIRONMENT_MAPPED:
+		{
+			vec3 viewer = normalize(u_LocalViewOrigin - position);
+			vec2 ref = reflect(viewer, normal).yz;
+			tex.s = ref.x * -0.5 + 0.5;
+			tex.t = ref.y *  0.5 + 0.5;
+		}
+		break;
+
+		case TCGEN_VECTOR:
+		{
+			tex = vec2(dot(position, TCGenVector0), dot(position, TCGenVector1));
+		}
+		break;
+	}
+
+	return tex;
+}
+
+vec2 ModTexCoords(vec2 st, vec3 position, vec4 texMatrix, vec4 offTurb)
+{
+	float amplitude = offTurb.z;
+	float phase = offTurb.w * 2.0 * M_PI;
+	vec2 st2;
+	st2.x = st.x * texMatrix.x + (st.y * texMatrix.z + offTurb.x);
+	st2.y = st.x * texMatrix.y + (st.y * texMatrix.w + offTurb.y);
+
+	vec2 offsetPos = vec2(position.x + position.z, position.y);
+
+	vec2 texOffset = sin(offsetPos * (2.0 * M_PI / 1024.0) + vec2(phase));
+
+	return st2 + texOffset * amplitude;	
+}
 
 void main()
 {
-	gl_Position 	= u_ModelViewProjectionMatrix * vec4(attr_Position, 1.0);
-	var_Tex1 		= attr_TexCoord0.st;
-	fragpos			= (gl_Position.xy / gl_Position.w) *0.5 + 0.5; //perspective divide/normalize
+#if defined(USE_VERTEX_ANIMATION)
+	vec3 position  = mix(attr_Position,    attr_Position2,    u_VertexLerp);
+	vec3 normal    = mix(attr_Normal,      attr_Normal2,      u_VertexLerp);
+	vec3 tangent   = mix(attr_Tangent.xyz, attr_Tangent2.xyz, u_VertexLerp);
+#elif defined(USE_SKELETAL_ANIMATION)
+	vec4 position4 = vec4(0.0);
+	vec4 originalPosition = vec4(attr_Position, 1.0);
+	vec4 normal4 = vec4(0.0);
+	vec4 originalNormal = vec4(attr_Normal - vec3 (0.5), 0.0);
+	vec4 tangent4 = vec4(0.0);
+	vec4 originalTangent = vec4(attr_Tangent.xyz - vec3(0.5), 0.0);
+	for (int i = 0; i < 4; i++)
+	{
+		uint boneIndex = attr_BoneIndexes[i];
 
-	position  		= (u_ModelMatrix * vec4(attr_Position , 1.0)).xyz;
-	normal    		= attr_Normal;
-	normal			= normal  * 2.0 - vec3(1.0);
-	//normal    		= ((u_ModelMatrix * vec4(normal , 0.0)).xyz);
-	viewDir			= u_ViewOrigin - position.xyz;
+		mat4 boneMatrix = mat4(
+			vec4(u_BoneMatrices[boneIndex][0], 0.0),
+			vec4(u_BoneMatrices[boneIndex][1], 0.0),
+			vec4(u_BoneMatrices[boneIndex][2], 0.0),
+			vec4(u_BoneMatrices[boneIndex][3], 1.0)
+		);
+
+		position4 += (boneMatrix * originalPosition) * attr_BoneWeights[i];
+		normal4 += (boneMatrix * originalNormal) * attr_BoneWeights[i];
+		tangent4 += (boneMatrix * originalTangent) * attr_BoneWeights[i];
+	}
+
+	vec3 position = position4.xyz;
+	vec3 normal = normalize (normal4.xyz);
+	vec3 tangent = normalize (tangent4.xyz);
+#else
+	vec3 position  = attr_Position;
+	vec3 normal    = attr_Normal;
+	vec3 tangent   = attr_Tangent.xyz;
+#endif
+
+#if !defined(USE_SKELETAL_ANIMATION)
+	normal  = normal  * 2.0 - vec3(1.0);
+	tangent = tangent * 2.0 - vec3(1.0);
+#endif
+
+	vec2 texCoords = GenTexCoords(u_TCGen0, position, normal, u_TCGen0Vector0, u_TCGen0Vector1);
+	var_TexCoords.xy = ModTexCoords(texCoords, position, u_DiffuseTexMatrix, u_DiffuseTexOffTurb);
+
+	gl_Position = u_ModelViewProjectionMatrix * vec4(position, 1.0);
+
+	position  = (u_ModelMatrix * vec4(position, 1.0)).xyz;
+
+	if (isLiquid == 1) 
+		normal    = mat3(u_ModelMatrix) * normal;
+	else
+		normal    = mat3(transpose(u_InvViewProjectionMatrix)) * normal;
+
+	tangent   = mat3(u_ModelMatrix) * tangent;
+	vec3 bitangent = cross(normal, tangent) * (attr_Tangent.w * 2.0 - 1.0);
+
+	var_Position = position;
+	// store view direction in tangent space to save on outs
+	vec3 viewDir  = u_ViewOrigin - position;
+	var_Normal    = vec4(normal,    viewDir.x);
+	var_Tangent   = vec4(tangent,   viewDir.y);
+	var_Bitangent = vec4(bitangent, viewDir.z);
 
 	var_PrimaryLightDir.xyz = u_PrimaryLightOrigin.xyz - (position * u_PrimaryLightOrigin.w);
 	var_PrimaryLightDir.w = u_PrimaryLightRadius * u_PrimaryLightRadius;
@@ -47,10 +176,12 @@ const float etaB = 0.69;
 const float fresnelPower = 2.0;
 const float F = ((1.0 - etaG) * (1.0 - etaG)) / ((1.0 + etaG) * (1.0 + etaG));
 
-uniform sampler2D	u_DiffuseMap;
+uniform sampler2D	u_ScreenImageMap;
+uniform sampler2D   u_ScreenDepthMap;
 uniform samplerCube u_CubeMap;
 uniform vec4		u_CubeMapInfo;
-uniform vec4 u_Color;
+uniform vec4		u_Color;
+uniform vec4		u_ViewInfo;
 
 uniform sampler2D u_ShadowMap;
 uniform vec3  u_PrimaryLightColor;
@@ -77,11 +208,10 @@ float		fog_color_g;
 float		fog_color_b;
 };
 
-in vec2 fragpos;
-in vec3 position;
-in vec3 normal;
-in vec3 viewDir;
-
+in vec3 var_Position;
+in vec4 var_Normal;
+in vec4 var_Tangent;
+in vec4 var_Bitangent;
 in vec4 var_PrimaryLightDir;
 
 out vec4 out_Color;
@@ -204,22 +334,22 @@ float heightMapTracing(vec3 ori, vec3 dir, out vec3 p) {
 }
 
 vec3 getSkyColor(vec3 n) {
-	vec3 i = normalize(viewDir);
+	vec3 i = normalize(vec3(var_Normal.w,var_Tangent.w,var_Bitangent.w));
 
-	vec3 parallax = u_CubeMapInfo.xyz + u_CubeMapInfo.w * viewDir;
+	vec3 parallax = u_CubeMapInfo.xyz + u_CubeMapInfo.w * vec3(var_Normal.w,var_Tangent.w,var_Bitangent.w);
 	vec3 cubeLightColor = texture(u_CubeMap, reflect(i, n) + parallax).rgb;
 	return cubeLightColor;
 }
 
 vec3 getGroundColor(vec3 n) {
-	vec3 i = normalize(viewDir);
+	vec3 i = normalize(vec3(var_Normal.w,var_Tangent.w,var_Bitangent.w));
 
 	vec3 cubeLightColor = vec3(texture(u_CubeMap, refract(i, n, 0.948)).r, texture(u_CubeMap, refract(i, n, 0.95)).g, texture(u_CubeMap, refract(i, n, 0.952)).b);
 	return cubeLightColor;
 }
 
 vec3 getSeaColor(vec3 p, vec3 n, vec3 l, vec3 eye, vec3 dist) {
-	vec3 i = normalize(viewDir);
+	vec3 i = normalize(vec3(var_Normal.w,var_Tangent.w,var_Bitangent.w));
 
 	float fresnel = clamp(1.0 - dot(n, -i), 0.0, 1.0);
 	fresnel = pow(fresnel, 3.0) * 0.65;
@@ -248,17 +378,18 @@ vec3 getSeaColor(vec3 p, vec3 n, vec3 l, vec3 eye, vec3 dist) {
 
 void main()
 {	
-	vec3 n = normalize(normal);
+	vec3 n = normalize(var_Normal.xyz);
 	vec3 refractColor;
 	
 	float alpha;
+	vec3 viewDir = vec3(var_Normal.w,var_Tangent.w,var_Bitangent.w);
 	vec3 eye = normalize(viewDir);
 
 	if (isLiquid == 1) 
 	{
 		// based on https://www.shadertoy.com/view/Ms2SD1
 		eye.z -= 2.0;
-		vec3 ori = position.xyz;
+		vec3 ori = var_Position.xyz;
 		
 		vec3 p;
 		heightMapTracing(ori, eye, p);
@@ -274,22 +405,13 @@ void main()
 	}
 	else
 	{
-		
-		float ratio = F + (1.0 - F) * pow(1.0 - dot(-eye, n), fresnelPower);
-		vec3	refractR = normalize(refract(eye, n, etaR));
-		vec3	refractG = normalize(refract(eye, n, etaG));
-		vec3	refractB = normalize(refract(eye, n, etaB));
+		vec2 windowCoord = gl_FragCoord.xy * r_FBufScale;
 
-		refractR = refractR - eye;
-		refractG = refractG - eye;
-		refractB = refractB - eye;
-		refractColor.r = texture(u_DiffuseMap, fragpos + (refractR.xy * 0.1)).r;
-		refractColor.g = texture(u_DiffuseMap, fragpos + (refractG.xy * 0.1)).g;
-		refractColor.b = texture(u_DiffuseMap, fragpos + (refractB.xy * 0.1)).b;
+		refractColor.r = texture(u_ScreenImageMap, windowCoord + n.xy * etaR).r;
+		refractColor.g = texture(u_ScreenImageMap, windowCoord + n.xy * etaG).g;
+		refractColor.b = texture(u_ScreenImageMap, windowCoord + n.xy * etaB).b;
 
-		vec3 combinedColor = mix(refractColor, u_Color.rgb, ratio);
-		refractColor = combinedColor;
-		alpha = 1.0;
+		alpha = u_ViewInfo.w;
 	}
 
 	out_Color = vec4((refractColor), alpha);

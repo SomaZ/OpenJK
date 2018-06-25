@@ -1097,6 +1097,51 @@ static Pass *RB_CreatePass( Allocator& allocator, int capacity )
 	return pass;
 }
 
+void RB_StoreFrameImage()
+{
+	//store image for use in next frame, used for ssr and refraction rendering
+	if (r_refraction->integer)
+	{
+		FBO_t *srcFbo;
+
+		srcFbo = glState.currentFBO;
+
+		if (srcFbo == tr.renderCubeFbo)
+			return;
+
+		if (tr.msaaResolveFbo)
+		{
+			// Resolve the MSAA before anything else
+			// Can't resolve just part of the MSAA FBO, so multiple views will suffer a performance hit here
+			FBO_FastBlit(tr.renderFbo, NULL, tr.msaaResolveFbo, NULL, GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT, GL_NEAREST);
+			srcFbo = tr.msaaResolveFbo;
+
+			if (r_dynamicGlow->integer)
+			{
+				FBO_FastBlitIndexed(tr.renderFbo, tr.msaaResolveFbo, 1, 1, GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT, GL_NEAREST);
+			}
+		}
+
+		vec4i_t srcBox, dstBox;
+		srcBox[0] = backEnd.viewParms.viewportX      *tr.prevRenderImage->width / (float)glConfig.vidWidth;
+		srcBox[1] = backEnd.viewParms.viewportY      *tr.prevRenderImage->height / (float)glConfig.vidHeight;
+		srcBox[2] = backEnd.viewParms.viewportWidth  *tr.prevRenderImage->width / (float)glConfig.vidWidth;
+		srcBox[3] = backEnd.viewParms.viewportHeight *tr.prevRenderImage->height / (float)glConfig.vidHeight;
+
+		dstBox[0] = backEnd.viewParms.viewportX;
+		dstBox[1] = backEnd.viewParms.viewportY;
+		dstBox[2] = backEnd.viewParms.viewportWidth;
+		dstBox[3] = backEnd.viewParms.viewportHeight;
+
+		FBO_Blit(srcFbo, dstBox, NULL, tr.refractiveFbo, srcBox, NULL, NULL, GLS_SRCBLEND_ONE | GLS_DSTBLEND_ZERO);
+
+		qglViewport(0, 0, srcFbo->width, srcFbo->height);
+		qglScissor(0, 0, srcFbo->width, srcFbo->height);
+
+		FBO_Bind(srcFbo);
+	}
+}
+
 static void RB_PrepareForEntity(int entityNum, int *oldDepthRange, float originalTime)
 {
 	int depthRange = 0;
@@ -1401,6 +1446,9 @@ static void RB_RenderDrawSurfList(drawSurf_t *drawSurfs, int numDrawSurfs)
 	backEndData->currentPass = RB_CreatePass(
 		*backEndData->perFrameMemory, numDrawSurfs * 5);
 
+	backEndData->currentPostPass = RB_CreatePass(
+		*backEndData->perFrameMemory, numDrawSurfs);
+
 	// save original time for entity shader offsets
 	float originalTime = backEnd.refdef.floatTime;
 	FBO_t *fbo = glState.currentFBO;
@@ -1424,6 +1472,14 @@ static void RB_RenderDrawSurfList(drawSurf_t *drawSurfs, int numDrawSurfs)
 	RB_SubmitRenderPass(
 		*backEndData->currentPass,
 		*backEndData->perFrameMemory);
+	
+	if (backEnd.renderPass == MAIN_PASS)
+	{
+		RB_StoreFrameImage();
+		RB_SubmitRenderPass(
+			*backEndData->currentPostPass,
+			*backEndData->perFrameMemory);
+	}
 
 	backEndData->perFrameMemory->ResetTo(allocMark);
 	backEndData->currentPass = nullptr;
@@ -1961,7 +2017,7 @@ static const void *RB_PrefilterEnvMap(const void *data) {
 		cubeMipSize >>= 1;
 		numMips++;
 	}
-	numMips = MAX(1, numMips - 2);
+	numMips = MAX(1, numMips);
 
 	FBO_Bind(tr.preFilterEnvMapFbo);
 	GL_BindToTMU(cubemap->image, TB_CUBEMAP);
@@ -1976,7 +2032,7 @@ static const void *RB_PrefilterEnvMap(const void *data) {
 		qglScissor(0, 0, width, height);
 
 		vec4_t viewInfo;
-		VectorSet4(viewInfo, cmd->cubeSide, level, numMips - 2, 0.0f);
+		VectorSet4(viewInfo, cmd->cubeSide, level, numMips - 4, 0.0f);
 		GLSL_SetUniformVec4(&tr.prefilterEnvMapShader, UNIFORM_VIEWINFO, viewInfo);
 		RB_InstantScreenQuad();
 		qglCopyTexSubImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + cmd->cubeSide, level, 0, 0, 0, 0, width, height);
@@ -2141,9 +2197,21 @@ static void RB_RenderDepthOnly(drawSurf_t *drawSurfs, int numDrawSurfs)
 
 	if (backEnd.renderPass == DEPTH_PASS)
 		qglColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
+	if (backEnd.renderPass == PRE_PASS) 
+	{
+		qglStencilMask(0xff);
+		qglClear(GL_STENCIL_BUFFER_BIT);
+
+		qglEnable(GL_STENCIL_TEST);
+		qglStencilFunc(GL_ALWAYS, 1, 0xff);
+		qglStencilMask(0xff);
+		qglStencilOp(GL_KEEP, GL_KEEP, GL_REPLACE);
+	}
 
 	RB_RenderDrawSurfList(drawSurfs, numDrawSurfs);
 
+	if (backEnd.renderPass == PRE_PASS)
+		qglDisable(GL_STENCIL_TEST);
 	if (backEnd.renderPass == DEPTH_PASS)
 		qglColorMask(
 			!backEnd.colorMask[0],
@@ -2324,9 +2392,40 @@ void RB_RenderAllRealTimeLightTypes()
 	GL_BindToTMU(tr.specBufferImage, 3);
 
 	//TODO: render SSR with stencil buffer (later)
+	if (0) 
+	{
+		FBO_Bind(tr.preLightFbo[PRELIGHT_DIFFUSE_SPECULAR_FBO]);
+
+		tess.useInternalVBO = qfalse;
+		R_BindVBO(tr.screenQuad.vbo);
+		R_BindIBO(tr.screenQuad.ibo);
+		GLSL_VertexAttribsState(ATTR_POSITION, NULL);
+		GL_State(GLS_SRCBLEND_ONE | GLS_DSTBLEND_ONE | GLS_DEPTHTEST_DISABLE);
+		GL_Cull(CT_FRONT_SIDED);
+
+		int index = PRELIGHT_SSR;
+		shaderProgram_t *sp = &tr.prelightShader[index];
+		GLSL_BindProgram(sp);
+
+		GLSL_SetUniformVec3(sp, UNIFORM_VIEWFORWARD, viewBasis[0]);
+		GLSL_SetUniformVec3(sp, UNIFORM_VIEWLEFT, viewBasis[1]);
+		GLSL_SetUniformVec3(sp, UNIFORM_VIEWUP, viewBasis[2]);
+		GLSL_SetUniformVec4(sp, UNIFORM_VIEWINFO, viewInfo);
+		GLSL_SetUniformVec3(sp, UNIFORM_VIEWORIGIN, backEnd.viewParms.ori.origin);
+		GLSL_SetUniformMatrix4x4(sp, UNIFORM_MODELVIEWPROJECTIONMATRIX, viewProjectionMatrix);
+
+		GL_BindToTMU(tr.screenShadowImage, 4);
+
+		//GLSL_SetUniformInt(&tr.prelightShader[i], UNIFORM_SCREENIMAGEMAP, 0);
+		//GLSL_SetUniformInt(&tr.prelightShader[i], UNIFORM_SCREENDEPTHMAP, 1);
+		//GLSL_SetUniformInt(&tr.prelightShader[i], UNIFORM_NORMALMAP, 2);
+		//GLSL_SetUniformInt(&tr.prelightShader[i], UNIFORM_SPECULARMAP, 3);
+
+		qglDrawElementsInstanced(GL_TRIANGLES, tr.screenQuad.numIndexes, GL_UNSIGNED_INT, 0, 1);
+	}
 
 	//render cubemaps where SSR  didn't render
-	//buggy! don't enable for now
+	//buggy! don't enable for now, finish when cubemap arrarys or bindless textures are available
 	int numCubemaps = tr.numCubemaps;
 	if (0)//(r_cubeMapping->integer && !(tr.viewParms.flags & VPF_NOCUBEMAPS) && numCubemaps);
 	{
@@ -2364,6 +2463,7 @@ void RB_RenderAllRealTimeLightTypes()
 
 		matrix_t invProjectionMatrix;
 		Matrix16MatrixInvert(viewProjectionMatrix, invProjectionMatrix);
+		
 		GLSL_SetUniformMatrix4x4(sp, UNIFORM_INVVIEWPROJECTIONMATRIX, invProjectionMatrix);
 
 		GLSL_SetUniformInt(sp, UNIFORM_NUMCUBEMAPS, numCubemaps);
@@ -2391,7 +2491,7 @@ void RB_RenderAllRealTimeLightTypes()
 			qglDrawElementsInstanced(GL_TRIANGLES, tr.lightSphereVolume.numIndexes, GL_UNSIGNED_INT, 0, rest);
 		}
 	}
-	//render sun lights or maybe not, can also be rendered forward, shouldn't make a difference
+	//render sun lights or maybe not, can also be rendered forward, shouldn't make a difference, only invest time when multiple suns are needed
 	if (0)//(r_sunlightMode->integer)
 	{
 		FBO_Bind(tr.preLightFbo[PRELIGHT_DIFFUSE_SPECULAR_FBO]);
@@ -2438,6 +2538,11 @@ void RB_RenderAllRealTimeLightTypes()
 		GLSL_VertexAttribsState(ATTR_POSITION, NULL);
 		GL_State(GLS_SRCBLEND_ONE | GLS_DSTBLEND_ONE | GLS_DEPTHFUNC_GREATER);
 		GL_Cull(CT_BACK_SIDED);
+
+		// TODO: Only affect non-sky surfaces
+		qglEnable(GL_STENCIL_TEST);
+		qglStencilFunc(GL_EQUAL, 1, 0xff);
+		qglStencilMask(0);
 
 		for (int i = 0; i < numDlights; i++)
 		{
@@ -2493,6 +2598,8 @@ void RB_RenderAllRealTimeLightTypes()
 			}
 			qglDrawElementsInstanced(GL_TRIANGLES, tr.lightSphereVolume.numIndexes, GL_UNSIGNED_INT, 0, rest);
 		}
+
+		qglDisable(GL_STENCIL_TEST);
 	}
 
 	FBO_Bind(fbo);
@@ -2884,6 +2991,8 @@ const void *RB_PostProcess(const void *data)
 	if (0)
 	{
 		vec4i_t dstBox;
+		VectorSet4(dstBox, 0, glConfig.vidHeight - 256, 256, 256);
+		FBO_BlitFromTexture(tr.prevRenderImage, NULL, NULL, NULL, dstBox, NULL, NULL, 0);
 		VectorSet4(dstBox, 256, glConfig.vidHeight - 256, 256, 256);
 		FBO_BlitFromTexture(tr.normalBufferImage, NULL, NULL, NULL, dstBox, NULL, NULL, 0);
 		VectorSet4(dstBox, 512, glConfig.vidHeight - 256, 256, 256);

@@ -295,10 +295,9 @@ void R_AttachFBOTextureDepthCubemap(int texId)
 R_AttachFBOTexturePackedDepthStencil
 =================
 */
-void R_AttachFBOTexturePackedDepthStencil(int texId)
+void FBO_AttachTexturePackedDepthStencil(int texId)
 {
-	qglFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, texId, 0);
-	qglFramebufferTexture2D(GL_FRAMEBUFFER, GL_STENCIL_ATTACHMENT, GL_TEXTURE_2D, texId, 0);
+	qglFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_TEXTURE_2D, texId, 0);
 }
 
 void FBO_AttachTextureImage(image_t *img, int index)
@@ -449,7 +448,7 @@ void FBO_Init(void)
 		FBO_AttachTextureImage(tr.renderImage, 0);
 		FBO_AttachTextureImage(tr.glowImage, 1);
 
-		R_AttachFBOTextureDepth(tr.renderDepthImage->texnum);
+		FBO_AttachTexturePackedDepthStencil(tr.renderDepthImage->texnum);
 
 		FBO_SetupDrawBuffers();
 
@@ -463,7 +462,7 @@ void FBO_Init(void)
 		FBO_AttachTextureImage(tr.renderImage, 0);
 		FBO_AttachTextureImage(tr.glowImage, 1);
 
-		R_AttachFBOTextureDepth(tr.renderDepthImage->texnum);
+		FBO_AttachTexturePackedDepthStencil(tr.renderDepthImage->texnum);
 
 		FBO_SetupDrawBuffers();
 
@@ -477,7 +476,7 @@ void FBO_Init(void)
 		FBO_AttachTextureImage(tr.normalBufferImage, 0); // out_Color
 		FBO_AttachTextureImage(tr.specBufferImage, 1); // out_Glow
 
-		R_AttachFBOTextureDepth(tr.renderDepthImage->texnum);
+		FBO_AttachTexturePackedDepthStencil(tr.renderDepthImage->texnum);
 		FBO_SetupDrawBuffers();
 
 		R_CheckFBO(tr.preBuffersFbo);
@@ -495,7 +494,7 @@ void FBO_Init(void)
 			if (i == PRELIGHT_DIFFUSE_SPECULAR_FBO)
 				FBO_AttachTextureImage(tr.specularLightingImage, 1); //out_Glow
 
-			R_AttachFBOTextureDepth(tr.renderDepthImage->texnum);
+			FBO_AttachTexturePackedDepthStencil(tr.renderDepthImage->texnum);
 			FBO_SetupDrawBuffers();
 
 			R_CheckFBO(tr.preLightFbo[i]);
@@ -534,7 +533,7 @@ void FBO_Init(void)
 
 		FBO_AttachTextureImage(tr.sunRaysImage, 0);
 
-		R_AttachFBOTextureDepth(tr.renderDepthImage->texnum);
+		FBO_AttachTexturePackedDepthStencil(tr.renderDepthImage->texnum);
 
 		FBO_SetupDrawBuffers();
 
@@ -683,10 +682,10 @@ void FBO_Init(void)
 
 	if (r_refraction->integer) 
 	{
-		tr.refractiveFbo = FBO_Create("_refractiveFbo", tr.refractiveImage->width, tr.refractiveImage->height);
+		tr.refractiveFbo = FBO_Create("_refractiveFbo", tr.prevRenderImage->width, tr.prevRenderImage->height);
 		FBO_Bind(tr.refractiveFbo);
 		
-		FBO_AttachTextureImage(tr.refractiveImage, 0);
+		FBO_AttachTextureImage(tr.prevRenderImage, 0);
 		
 		FBO_SetupDrawBuffers();
 		
@@ -702,7 +701,7 @@ void FBO_Init(void)
 		glState.currentFBO->colorImage[0] = tr.renderCubeImage;
 		glState.currentFBO->colorBuffers[0] = tr.renderCubeImage->texnum;
 
-		R_AttachFBOTextureDepth(tr.renderDepthImage->texnum);
+		FBO_AttachTexturePackedDepthStencil(tr.renderDepthImage->texnum);
 
 		FBO_SetupDrawBuffers();
 

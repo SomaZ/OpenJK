@@ -1270,12 +1270,30 @@ static unsigned int RB_CalcShaderVertexAttribs( const shader_t *shader )
 	return vertexAttribs;
 }
 
-static shaderProgram_t *SelectShaderProgram( int stageIndex, shaderStage_t *stage, shaderProgram_t *glslShaderGroup )
+static shaderProgram_t *SelectShaderProgram( int stageIndex, shaderStage_t *stage, shaderProgram_t *glslShaderGroup, bool forceRefraction)
 {
 	uint32_t index;
 	shaderProgram_t *result = nullptr;
 
-	if (backEnd.renderPass != MAIN_PASS)
+	if (forceRefraction)
+	{
+		index = 0;
+		if (tess.shader->numDeforms && !ShaderRequiresCPUDeforms(tess.shader))
+		{
+			index |= REFRACTION_USE_DEFORM_VERTEXES;
+		}
+		if (glState.vertexAnimation)
+		{
+			index |= REFRACTION_USE_VERTEX_ANIMATION;
+		}
+		else if (glState.skeletalAnimation)
+		{
+			index |= REFRACTION_USE_SKELETAL_ANIMATION;
+		}
+		result = &tr.refractionShader[index];
+		backEnd.pc.c_lightallDraws++;
+	}
+	else if (backEnd.renderPass != MAIN_PASS)
 	{
 		index = 0;
 		if (backEnd.currentEntity && backEnd.currentEntity != &tr.worldEntity)
@@ -1410,8 +1428,8 @@ void RB_StageIteratorLiquid( void )
 
 	UniformDataWriter uniformDataWriter;
 	SamplerBindingsWriter samplerBindingsWriter;
-
-	uniformDataWriter.Start(&tr.refractionShader);
+	shaderProgram_t *liquidShader = SelectShaderProgram(0, NULL, NULL, true);
+	uniformDataWriter.Start(liquidShader);
 	uniformDataWriter.SetUniformMatrix4x4(UNIFORM_MODELVIEWPROJECTIONMATRIX, glState.modelviewProjection);
 	uniformDataWriter.SetUniformVec3(UNIFORM_VIEWORIGIN, backEnd.viewParms.ori.origin);
 	uniformDataWriter.SetUniformVec3(UNIFORM_LOCALVIEWORIGIN, backEnd.ori.viewOrigin);
@@ -1466,7 +1484,7 @@ void RB_StageIteratorLiquid( void )
 	DrawItem item = {};
 	item.stateBits = GLS_SRCBLEND_SRC_ALPHA | GLS_DSTBLEND_ONE_MINUS_SRC_ALPHA;
 	item.cullType = cullType;
-	item.program = &tr.refractionShader;
+	item.program = liquidShader;
 	item.depthRange = RB_GetDepthRange(backEnd.currentEntity, input->shader);
 	item.ibo = input->externalIBO ? input->externalIBO : backEndData->currentFrame->dynamicIbo;
 
@@ -1499,10 +1517,12 @@ static void RB_IterateStagesGeneric( shaderCommands_t *input, const VertexArrays
 	deform_t deformType;
 	genFunc_t deformGen;
 	float deformParams[7];
+	Pass *renderPass = backEndData->currentPass;
 
 	ComputeDeformValues(&deformType, &deformGen, deformParams);
 
 	bool renderToCubemap = tr.renderCubeFbo && glState.currentFBO == tr.renderCubeFbo;
+	bool renderSolid = backEnd.renderPass == MAIN_PASS && input->shader->sort == SS_OPAQUE;
 	
 	cullType_t cullType = RB_GetCullType(&backEnd.viewParms, backEnd.currentEntity, input->shader->cullType);
 
@@ -1526,6 +1546,7 @@ static void RB_IterateStagesGeneric( shaderCommands_t *input, const VertexArrays
 		colorGen_t forceRGBGen = CGEN_BAD;
 		alphaGen_t forceAlphaGen = AGEN_IDENTITY;
 		int index = 0;
+		bool forceRefraction = false;
 		bool useAlphaTestGE192 = false;
 
 		if ( !pStage )
@@ -1568,6 +1589,11 @@ static void RB_IterateStagesGeneric( shaderCommands_t *input, const VertexArrays
 				forceRGBGen = CGEN_ENTITY;
 			}
 
+			if ((input->shader == tr.distortionShader) || backEnd.currentEntity->e.renderfx & RF_DISTORTION)
+			{
+				forceRefraction = true;
+				renderPass = backEndData->currentPostPass;
+			}
 			/*if ( backEnd.currentEntity->e.renderfx & RF_FORCE_ENT_ALPHA )
 			{
 				stateBits = GLS_SRCBLEND_SRC_ALPHA | GLS_DSTBLEND_ONE_MINUS_SRC_ALPHA;
@@ -1582,7 +1608,7 @@ static void RB_IterateStagesGeneric( shaderCommands_t *input, const VertexArrays
 			}*/
 		}
 
-		sp = SelectShaderProgram(stage, pStage, pStage->glslShaderGroup);
+		sp = SelectShaderProgram(stage, pStage, pStage->glslShaderGroup, forceRefraction);
 		assert(sp);
 
 		uniformDataWriter.Start(sp);
@@ -1894,6 +1920,41 @@ static void RB_IterateStagesGeneric( shaderCommands_t *input, const VertexArrays
 			}
 		}
 
+		LiquidBlock *data;
+		if (forceRefraction)
+		{
+			samplerBindingsWriter.AddStaticImage(tr.prevRenderImage, TB_COLORMAP);
+			samplerBindingsWriter.AddStaticImage(tr.renderDepthImage, TB_COLORMAP2);
+
+			stateBits = GLS_SRCBLEND_SRC_ALPHA | GLS_DSTBLEND_ONE_MINUS_SRC_ALPHA;
+			cullType = CT_TWO_SIDED;
+			vec4_t viewInfo;
+			float alpha = 0;
+			if (backEnd.currentEntity->e.shaderRGBA[3] > 10)
+				alpha = (backEnd.currentEntity->e.shaderRGBA[3]) / 255.0f;
+			float zmax = backEnd.viewParms.zFar;
+			float zmin = r_znear->value;
+			float x = tr.prevRenderImage->width;
+			float y = tr.prevRenderImage->height;
+			VectorSet4(viewInfo, zmax / zmin, zmax, x, alpha);
+			matrix_t invModelViewProjectionMatrix;
+			Matrix16MatrixInvert(glState.modelviewProjection, invModelViewProjectionMatrix);
+		
+			uniformDataWriter.SetUniformVec4(UNIFORM_VIEWINFO, viewInfo);
+			uniformDataWriter.SetUniformMatrix4x4(UNIFORM_INVVIEWPROJECTIONMATRIX, invModelViewProjectionMatrix);
+
+			data = ojkAlloc<LiquidBlock>(*backEndData->perFrameMemory);
+			*data = {};
+
+			data->isLiquid = 0.0;
+			data->height = tess.shader->liquid.height;
+			data->choppy = tess.shader->liquid.choppy;
+			data->speed = tess.shader->liquid.speed;
+			data->freq = tess.shader->liquid.freq;
+			data->depth = tess.shader->liquid.depth;
+			data->time = tess.shaderTime;
+		}
+
 		CaptureDrawData(input, pStage, index, stage);
 
 		DrawItem item = {};
@@ -1908,6 +1969,14 @@ static void RB_IterateStagesGeneric( shaderCommands_t *input, const VertexArrays
 			*backEndData->perFrameMemory, vertexArrays->numVertexArrays);
 		memcpy(item.attributes, attribs, sizeof(*item.attributes)*vertexArrays->numVertexArrays);
 
+		if (forceRefraction)
+		{
+			item.numUniformBlockBindings = 1;
+			item.uniformBlockBindings = ojkAllocArray<UniformBlockBinding>(*backEndData->perFrameMemory, item.numUniformBlockBindings);
+			item.uniformBlockBindings[0].data = data;
+			item.uniformBlockBindings[0].block = UNIFORM_BLOCK_LIQUID;
+		}
+
 		item.uniformData = uniformDataWriter.Finish(*backEndData->perFrameMemory);
 		// FIXME: This is a bit ugly with the casting
 		item.samplerBindings = samplerBindingsWriter.Finish(
@@ -1917,7 +1986,7 @@ static void RB_IterateStagesGeneric( shaderCommands_t *input, const VertexArrays
 
 		int sortStage = backEnd.renderPass != MAIN_PASS ? input->currentDistanceBucket : stage;
 		uint32_t key = RB_CreateSortKey(item, sortStage, input->shader->sort);
-		RB_AddDrawItem(backEndData->currentPass, key, item);
+		RB_AddDrawItem(renderPass, key, item);
 
 		// allow skipping out to show just lightmaps during development
 		if ( r_lightmap->integer && ( pStage->bundle[0].isLightmap || pStage->bundle[1].isLightmap ) )

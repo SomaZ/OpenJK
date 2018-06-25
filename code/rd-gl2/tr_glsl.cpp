@@ -419,10 +419,9 @@ static size_t GLSL_GetShaderHeader(
 			cubeMipSize >>= 1;
 			numRoughnessMips++;
 		}
-		numRoughnessMips = MAX(1, numRoughnessMips - 2);
-		if (r_pbr->integer)
-			numRoughnessMips = MAX(1, numRoughnessMips - 2);
-		Q_strcat(dest, size, va("#define ROUGHNESS_MIPS float(%d)\n", numRoughnessMips));
+		numRoughnessMips = MAX(1, numRoughnessMips - 4);
+
+		Q_strcat(dest, size, va("#define ROUGHNESS_MIPS float(%i)\n", numRoughnessMips));
 	}
 
 	if (r_horizonFade->integer)
@@ -1509,11 +1508,14 @@ static int GLSL_LoadGPUProgramPrepass(
 			continue;
 		}
 
-		uint32_t attribs = ATTR_POSITION;
+		uint32_t attribs = ATTR_POSITION | ATTR_NORMAL;
 		extradefines[0] = '\0';
 
 		if (i & PREPASS_USE_DEFORM_VERTEXES)
+		{
 			Q_strcat(extradefines, sizeof(extradefines), "#define USE_DEFORM_VERTEXES\n");
+			attribs |= ATTR_TEXCOORD0;
+		}
 
 		if (i & PREPASS_USE_VERTEX_ANIMATION)
 		{
@@ -1532,7 +1534,8 @@ static int GLSL_LoadGPUProgramPrepass(
 		if (i & PREPASS_USE_G_BUFFERS)
 		{
 			Q_strcat(extradefines, sizeof(extradefines), "#define USE_G_BUFFERS\n");
-			attribs |= ATTR_TEXCOORD0 | ATTR_NORMAL | ATTR_COLOR | ATTR_TANGENT;
+			attribs &= ~ATTR_TEXCOORD0;
+			attribs |= ATTR_TEXCOORD0 | ATTR_COLOR | ATTR_TANGENT;
 		}
 
 		if (i & PREPASS_USE_PARALLAX)
@@ -1593,30 +1596,14 @@ static int GLSL_LoadGPUProgramPrelight(
 		if (i == PRELIGHT_TUBE_LIGHT)
 			Q_strcat(extradefines, sizeof(extradefines), "#define TUBE_LIGHT\n");
 
-		if (i == PRELIGHT_CUBEMAP) {
-			Q_strcat(extradefines, sizeof(extradefines), "#define CUBEMAP\n");
+		if (i == PRELIGHT_CUBEMAP) 
+		{
 			if (r_cubeMapping->integer)
 			{
-				//copy in tr_backend for prefiltering the mipmaps
-				int cubeMipSize = r_cubemapSize->integer;
-				int numRoughnessMips = 0;
-
-				while (cubeMipSize)
-				{
-					cubeMipSize >>= 1;
-					numRoughnessMips++;
-				}
-				numRoughnessMips = MAX(1, numRoughnessMips - 2);
-				if (r_pbr->integer)
-					numRoughnessMips = MAX(1, numRoughnessMips - 2);
-				Q_strcat(extradefines, sizeof(extradefines), va("#define ROUGHNESS_MIPS float(%d)\n", numRoughnessMips));
+				Q_strcat(extradefines, sizeof(extradefines), "#define CUBEMAP\n");
 			}
-
-			if (r_horizonFade->integer)
-			{
-				float fade = 1 + (0.1*r_horizonFade->integer);
-				Q_strcat(extradefines, sizeof(extradefines), va("#define HORIZON_FADE float(%f)\n", fade));
-			}
+			else
+				continue;
 		}
 			
 		if (i == PRELIGHT_SSR)
@@ -1636,7 +1623,8 @@ static int GLSL_LoadGPUProgramPrelight(
 		GLSL_SetUniformInt(&tr.prelightShader[i], UNIFORM_NORMALMAP, 2);
 		GLSL_SetUniformInt(&tr.prelightShader[i], UNIFORM_SPECULARMAP, 3);
 
-		if (i == PRELIGHT_CUBEMAP) {
+		if (i == PRELIGHT_CUBEMAP) 
+		{
 			GLSL_SetUniformInt(&tr.prelightShader[i], UNIFORM_SHADOWMAP, 4);
 			GLSL_SetUniformInt(&tr.prelightShader[i], UNIFORM_SHADOWMAP2, 5);
 			GLSL_SetUniformInt(&tr.prelightShader[i], UNIFORM_SHADOWMAP3, 6);
@@ -1645,7 +1633,8 @@ static int GLSL_LoadGPUProgramPrelight(
 
 			GLSL_SetUniformInt(&tr.prelightShader[i], UNIFORM_SHADOWMAP4, 8);
 		}
-		else {
+		else 
+		{
 			GLSL_SetUniformInt(&tr.prelightShader[i], UNIFORM_SHADOWMAP, 4);
 			GLSL_SetUniformInt(&tr.prelightShader[i], UNIFORM_SHADOWMAP2, 5);
 			GLSL_SetUniformInt(&tr.prelightShader[i], UNIFORM_SHADOWMAP3, 6);
@@ -2233,30 +2222,51 @@ static int GLSL_LoadGPUProgramRefraction(
 	ShaderProgramBuilder& builder,
 	Allocator& scratchAlloc)
 {
+	int numPrograms = 0;
 	Allocator allocator(scratchAlloc.Base(), scratchAlloc.GetSize());
-
+	
 	char extradefines[1200];
 	const GPUProgramDesc *programDesc =
 		LoadProgramSource("refraction", allocator, fallback_refractionProgram);
-	const uint32_t attribs = ATTR_POSITION | ATTR_NORMAL | ATTR_TEXCOORD0;
-	extradefines[0] = '\0';
-
-	if (!GLSL_LoadGPUShader(builder, &tr.refractionShader, "refraction", attribs,
-		extradefines, *programDesc))
+	for (int i = 0; i < REFRACTION_COUNT; i++)
 	{
-		ri.Error(ERR_FATAL, "Could not load refraction shader!");
+		uint32_t attribs = ATTR_POSITION | ATTR_TEXCOORD0 | ATTR_NORMAL | ATTR_COLOR | ATTR_TANGENT;
+		extradefines[0] = '\0';
+
+		if (i & REFRACTION_USE_DEFORM_VERTEXES)
+			Q_strcat(extradefines, sizeof(extradefines), "#define USE_DEFORM_VERTEXES\n");
+
+		if (i & REFRACTION_USE_VERTEX_ANIMATION)
+		{
+			Q_strcat(extradefines, sizeof(extradefines), "#define USE_VERTEX_ANIMATION\n");
+			attribs |= ATTR_POSITION2 | ATTR_NORMAL2 | ATTR_TANGENT2;
+		}
+
+		if (i & REFRACTION_USE_SKELETAL_ANIMATION)
+		{
+			Q_strcat(extradefines, sizeof(extradefines), "#define USE_SKELETAL_ANIMATION\n");
+			attribs |= ATTR_BONE_INDEXES | ATTR_BONE_WEIGHTS;
+		}
+
+		if (!GLSL_LoadGPUShader(builder, &tr.refractionShader[i], "refraction", attribs,
+			extradefines, *programDesc))
+		{
+			ri.Error(ERR_FATAL, "Could not load refraction shader!");
+		}
+
+		GLSL_InitUniforms(&tr.refractionShader[i]);
+
+		qglUseProgram(tr.refractionShader[i].program);
+		GLSL_SetUniformInt(&tr.refractionShader[i], UNIFORM_SCREENIMAGEMAP, TB_COLORMAP);
+		GLSL_SetUniformInt(&tr.refractionShader[i], UNIFORM_SCREENDEPTHMAP, TB_COLORMAP2);
+		GLSL_SetUniformInt(&tr.refractionShader[i], UNIFORM_CUBEMAP, TB_CUBEMAP);
+		GLSL_SetUniformInt(&tr.refractionShader[i], UNIFORM_SHADOWMAP, TB_SHADOWMAP);
+		qglUseProgram(0);
+
+		GLSL_FinishGPUShader(&tr.refractionShader[i]);
+		++numPrograms;
 	}
-
-	GLSL_InitUniforms(&tr.refractionShader);
-
-	qglUseProgram(tr.refractionShader.program);
-	GLSL_SetUniformInt(&tr.refractionShader, UNIFORM_CUBEMAP, TB_CUBEMAP);
-	GLSL_SetUniformInt(&tr.refractionShader, UNIFORM_SHADOWMAP, TB_SHADOWMAP);
-	qglUseProgram(0);
-
-	GLSL_FinishGPUShader(&tr.refractionShader);
-
-	return 1;
+	return numPrograms;
 }
 
 static int GLSL_LoadGPUProgramDepthBlur(
@@ -2580,7 +2590,10 @@ void GLSL_ShutdownGPUShaders(void)
 
 	GLSL_DeleteGPUShader(&tr.shadowmaskShader);
 	GLSL_DeleteGPUShader(&tr.ssaoShader);
-	GLSL_DeleteGPUShader(&tr.refractionShader);
+
+	for (i = 0; i < REFRACTION_COUNT; i++)
+		GLSL_DeleteGPUShader(&tr.refractionShader[i]);
+
 	GLSL_DeleteGPUShader(&tr.prefilterEnvMapShader);
 
 	for (i = 0; i < 2; i++)

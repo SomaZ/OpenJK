@@ -1,9 +1,8 @@
 /*[Vertex]*/
 in vec2 attr_TexCoord0;
 in vec3 attr_Position;
-
-#if defined(USE_G_BUFFERS)
 in vec3 attr_Normal;
+#if defined(USE_G_BUFFERS)
 in vec4 attr_Tangent;
 #endif
 
@@ -31,6 +30,13 @@ uniform int u_TCGen1;
 uniform vec4 u_DiffuseTexMatrix;
 uniform vec4 u_DiffuseTexOffTurb;
 
+#if defined(USE_DEFORM_VERTEXES)
+uniform int u_DeformType;
+uniform int u_DeformFunc;
+uniform float u_DeformParams[7];
+uniform float u_Time;
+#endif
+
 uniform mat4 u_ModelViewProjectionMatrix;
 uniform mat4 u_ModelMatrix;
 
@@ -49,12 +55,157 @@ out vec4 var_Tangent;
 out vec4 var_Bitangent;
 #endif
 
+#if defined(USE_DEFORM_VERTEXES)
+float GetNoiseValue( float x, float y, float z, float t )
+{
+	// Variation on the 'one-liner random function'.
+	// Not sure if this is still 'correctly' random
+	return fract( sin( dot(
+		vec4( x, y, z, t ),
+		vec4( 12.9898, 78.233, 12.9898, 78.233 )
+	)) * 43758.5453 );
+}
+
+float CalculateDeformScale( in int func, in float time, in float phase, in float frequency )
+{
+	float value = phase + time * frequency;
+
+	switch ( func )
+	{
+		case WF_SIN:
+			return sin(value * 2.0 * M_PI);
+		case WF_SQUARE:
+			return sign(0.5 - fract(value));
+		case WF_TRIANGLE:
+			return abs(fract(value + 0.75) - 0.5) * 4.0 - 1.0;
+		case WF_SAWTOOTH:
+			return fract(value);
+		case WF_INVERSE_SAWTOOTH:
+			return 1.0 - fract(value);
+		default:
+			return 0.0;
+	}
+}
+
+vec3 DeformPosition(const vec3 pos, const vec3 normal, const vec2 st)
+{
+	switch ( u_DeformType )
+	{
+		default:
+		{
+			return pos;
+		}
+
+		case DEFORM_BULGE:
+		{
+			float bulgeHeight = u_DeformParams[1]; // amplitude
+			float bulgeWidth = u_DeformParams[2]; // phase
+			float bulgeSpeed = u_DeformParams[3]; // frequency
+
+			float scale = CalculateDeformScale( WF_SIN, u_Time, bulgeWidth * st.x, bulgeSpeed );
+
+			return pos + normal * scale * bulgeHeight;
+		}
+
+		case DEFORM_WAVE:
+		{
+			float base = u_DeformParams[0];
+			float amplitude = u_DeformParams[1];
+			float phase = u_DeformParams[2];
+			float frequency = u_DeformParams[3];
+			float spread = u_DeformParams[4];
+
+			float offset = dot( pos.xyz, vec3( spread ) );
+			float scale = CalculateDeformScale( u_DeformFunc, u_Time, phase + offset, frequency );
+
+			return pos + normal * (base + scale * amplitude);
+		}
+
+		case DEFORM_MOVE:
+		{
+			float base = u_DeformParams[0];
+			float amplitude = u_DeformParams[1];
+			float phase = u_DeformParams[2];
+			float frequency = u_DeformParams[3];
+			vec3 direction = vec3( u_DeformParams[4], u_DeformParams[5], u_DeformParams[6] );
+
+			float scale = CalculateDeformScale( u_DeformFunc, u_Time, phase, frequency );
+
+			return pos + direction * (base + scale * amplitude);
+		}
+
+		case DEFORM_PROJECTION_SHADOW:
+		{
+			vec3 ground = vec3(
+				u_DeformParams[0],
+				u_DeformParams[1],
+				u_DeformParams[2]);
+			float groundDist = u_DeformParams[3];
+			vec3 lightDir = vec3(
+				u_DeformParams[4],
+				u_DeformParams[5],
+				u_DeformParams[6]);
+
+			float d = dot( lightDir, ground );
+
+			if (d < 0.5)
+				lightDir = lightDir + (max( 0.5 - d, 0.0 ) * ground);
+
+			d = 1.0 / dot( lightDir, ground );
+
+			vec3 lightPos = lightDir * d;
+
+			return pos - (lightPos * (dot( pos, ground ) + groundDist));
+		}
+	}
+}
+
+vec3 DeformNormal( const in vec3 position, const in vec3 normal )
+{
+	if ( u_DeformType != DEFORM_NORMALS )
+	{
+		return normal;
+	}
+
+	float amplitude = u_DeformParams[1];
+	float frequency = u_DeformParams[3];
+
+	vec3 outNormal = normal;
+	const float scale = 0.98;
+	
+	outNormal.x += amplitude * GetNoiseValue(
+		position.x * scale,
+		position.y * scale,
+		position.z * scale,
+		u_Time * frequency );
+
+	outNormal.y += amplitude * GetNoiseValue(
+		100.0 * position.x * scale,
+		position.y * scale,
+		position.z * scale,
+		u_Time * frequency );
+
+	outNormal.z += amplitude * GetNoiseValue(
+		200.0 * position.x * scale,
+		position.y * scale,
+		position.z * scale,
+		u_Time * frequency );
+
+	return outNormal;
+}
+#endif
+
 vec2 GenTexCoords(int TCGen, vec3 position, vec3 normal, vec3 TCGenVector0, vec3 TCGenVector1)
 {
 	vec2 tex = attr_TexCoord0;
 
 	switch (TCGen)
 	{
+		case 0:
+		{
+			return tex;
+		}
+		break;
 		case TCGEN_ENVIRONMENT_MAPPED:
 		{
 			vec3 viewer = normalize(u_LocalViewOrigin - position);
@@ -93,16 +244,16 @@ void main()
 {
 #if defined(USE_VERTEX_ANIMATION)
 	vec3 position  = mix(attr_Position,    attr_Position2,    u_VertexLerp);
+	vec3 normal    = mix(attr_Normal,      attr_Normal2,      u_VertexLerp);
 	#if defined(USE_G_BUFFERS)
-		vec3 normal    = mix(attr_Normal,      attr_Normal2,      u_VertexLerp);
 		vec3 tangent   = mix(attr_Tangent.xyz, attr_Tangent2.xyz, u_VertexLerp);
 	#endif
 #elif defined(USE_SKELETAL_ANIMATION)
 	vec4 position4 = vec4(0.0);
 	vec4 originalPosition = vec4(attr_Position, 1.0);
+	vec4 normal4 = vec4(0.0);
+	vec4 originalNormal = vec4(attr_Normal - vec3 (0.5), 0.0);
 	#if defined(USE_G_BUFFERS)
-		vec4 normal4 = vec4(0.0);
-		vec4 originalNormal = vec4(attr_Normal - vec3 (0.5), 0.0);
 		vec4 tangent4 = vec4(0.0);
 		vec4 originalTangent = vec4(attr_Tangent.xyz - vec3(0.5), 0.0);
 	#endif
@@ -118,40 +269,38 @@ void main()
 		);
 
 		position4 += (boneMatrix * originalPosition) * attr_BoneWeights[i];
+		normal4 += (boneMatrix * originalNormal) * attr_BoneWeights[i];
 		#if defined(USE_G_BUFFERS)
-			normal4 += (boneMatrix * originalNormal) * attr_BoneWeights[i];
 			tangent4 += (boneMatrix * originalTangent) * attr_BoneWeights[i];
 		#endif
 	}
 
 	vec3 position = position4.xyz;
+	vec3 normal = normalize (normal4.xyz);
 	#if defined(USE_G_BUFFERS)
-		vec3 normal = normalize (normal4.xyz);
 		vec3 tangent = normalize (tangent4.xyz);
 	#endif
 #else
 	vec3 position  = attr_Position;
+	vec3 normal    = attr_Normal;
 	#if defined(USE_G_BUFFERS)
-		vec3 normal    = attr_Normal;
 		vec3 tangent   = attr_Tangent.xyz;
 	#endif
 #endif
-
+	
 #if !defined(USE_SKELETAL_ANIMATION) && defined(USE_G_BUFFERS)
 	normal  = normal  * 2.0 - vec3(1.0);
-	tangent = tangent * 2.0 - vec3(1.0);
+	#if defined(USE_G_BUFFERS)
+		tangent = tangent * 2.0 - vec3(1.0);
+	#endif
 #endif
 
-#if defined(USE_TCGEN)
 	vec2 texCoords = GenTexCoords(u_TCGen0, position, normal, u_TCGen0Vector0, u_TCGen0Vector1);
-#else
-	vec2 texCoords = attr_TexCoord0.st;
-#endif
-
-#if defined(USE_TCMOD)
 	var_TexCoords.xy = ModTexCoords(texCoords, position, u_DiffuseTexMatrix, u_DiffuseTexOffTurb);
-#else
-	var_TexCoords.xy = texCoords;
+
+#if defined(USE_DEFORM_VERTEXES)
+	position = DeformPosition(position, normal, attr_TexCoord0.st);
+	normal = DeformNormal( position, normal );
 #endif
 
 	gl_Position = u_ModelViewProjectionMatrix * vec4(position, 1.0);
@@ -159,8 +308,8 @@ void main()
 	position  = (u_ModelMatrix * vec4(position, 1.0)).xyz;
 
 	#if defined(USE_G_BUFFERS)
-		normal    = (u_ModelMatrix * vec4(normal,   0.0)).xyz;
-		tangent   = (u_ModelMatrix * vec4(tangent,  0.0)).xyz;
+		normal    = mat3(u_ModelMatrix) * normal;
+		tangent   = mat3(u_ModelMatrix) * tangent;
 		vec3 bitangent = cross(normal, tangent) * (attr_Tangent.w * 2.0 - 1.0);
 	#endif
 
@@ -274,7 +423,7 @@ vec3 CalcNormal( in vec3 vertexNormal, in vec2 texCoords, in mat3 tangentToWorld
 {
 	vec3 N = vertexNormal;
 
-	if (u_EnableTextures.x > 0.0) {
+	if (u_EnableTextures.x > 0.5) {
 		N.xy = texture(u_NormalMap, texCoords).ag - vec2(0.5);
 		N.xy *= u_NormalScale.xy;
 		N.z = sqrt(clamp((0.25 - N.x * N.x) - N.y * N.y, 0.0, 1.0));
