@@ -173,8 +173,14 @@ if(BuildSPRdGL2)
 	set(SPRDGL2RendererIncludeDirectories ${SPRDGL2RendererIncludeDirectories} ${OPENGL_INCLUDE_DIR})
 	set(SPRDGL2RendererLibraries ${SPRDGL2RendererLibraries} ${OPENGL_LIBRARIES})
 
-	source_group("renderer" FILES ${CMAKE_CURRENT_BINARY_DIR}/glsl_shaders.cpp)
-	set(SPRDGL2Files ${SPRDGL2Files} ${CMAKE_CURRENT_BINARY_DIR}/glsl_shaders.cpp)
+	source_group("renderer" 
+		FILES
+		${CMAKE_CURRENT_BINARY_DIR}/glsl_shaders.h
+		${CMAKE_CURRENT_BINARY_DIR}/glsl_shaders.cpp)
+	set(SPRDGL2Files
+		${SPRDGL2Files}
+		${CMAKE_CURRENT_BINARY_DIR}/glsl_shaders.h
+		${CMAKE_CURRENT_BINARY_DIR}/glsl_shaders.cpp)
 	
 	set(SPRDGL2RendererIncludeDirectories ${SPRDGL2RendererIncludeDirectories} ${OpenJKLibDir})
 
@@ -213,6 +219,8 @@ if(BuildSPRdGL2)
 		set_target_properties(${ProjectName} PROPERTIES PROJECT_LABEL ${Label})
 
 		target_link_libraries(${ProjectName} ${SPRDGL2RendererLibraries})
+		target_include_directories(${ProjectName} PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
+
 	endfunction(add_sp_renderer_project)
 
 	if(BuildSPRdGL2)
@@ -230,8 +238,15 @@ if(BuildSPRdGL2)
 	target_compile_definitions(compact_glsl PRIVATE "GLSL_BUILDTOOL" ${SharedDefines})
 	set_target_properties(compact_glsl PROPERTIES INCLUDE_DIRECTORIES "${SPRDGL2RendererIncludeDirectories}")
 	add_custom_command(
-		OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/glsl_shaders.cpp
-		COMMAND compact_glsl ${CMAKE_CURRENT_BINARY_DIR}/glsl_shaders.cpp ${SPRDGL2GLSLFiles}
-		DEPENDS compact_glsl ${SPRDGL2GLSLFiles})
+		OUTPUT
+			${CMAKE_CURRENT_BINARY_DIR}/glsl_shaders.cpp
+			${CMAKE_CURRENT_BINARY_DIR}/glsl_shaders.h
+		COMMAND
+			compact_glsl
+				${CMAKE_CURRENT_BINARY_DIR}/glsl_shaders.cpp
+				${CMAKE_CURRENT_BINARY_DIR}/glsl_shaders.h
+				${SPRDGL2GLSLFiles}
+		DEPENDS
+			compact_glsl ${SPRDGL2GLSLFiles})
 
 endif(BuildSPRdGL2)
