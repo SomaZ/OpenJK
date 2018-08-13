@@ -301,6 +301,7 @@ typedef enum
 	IMGFLAG_GENNORMALMAP   = 0x0100,
 	IMGFLAG_MUTABLE        = 0x0200,
 	IMGFLAG_3D             = 0x0400,
+	IMGFLAG_NPOT_MIP	   = 0x0800,
 } imgFlags_t;
 
 typedef enum
