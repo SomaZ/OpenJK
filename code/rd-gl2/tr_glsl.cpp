@@ -1630,8 +1630,13 @@ static int GLSL_LoadGPUProgramPrelight(
 		if (i == PRELIGHT_SSR)
 			Q_strcat(extradefines, sizeof(extradefines), "#define SSR\n");
 
-		if (!GLSL_LoadGPUShader(builder, &tr.prelightShader[i], "prelight", attribs,
-			extradefines, *programDesc))
+		uint32_t shaderTypes = GPUSHADER_VERTEX | GPUSHADER_FRAGMENT;
+
+		//TODO: use culling or cubemapping layering
+		//shaderTypes |= GPUSHADER_GEOMETRY;
+
+		if (!GLSL_LoadGPUShader(builder, &tr.prelightShader[i], "prelight", attribs, NO_XFB_VARS,
+			extradefines, *programDesc, shaderTypes))
 		{
 			ri.Error(ERR_FATAL, "Could not load prelight shader!");
 		}
