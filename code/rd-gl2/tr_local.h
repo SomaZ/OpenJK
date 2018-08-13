@@ -334,6 +334,14 @@ enum
 	ATTR_INDEX_MAX
 };
 
+enum
+{
+	XFB_VAR_POSITION,
+	XFB_VAR_VELOCITY,
+	XFB_VAR_COUNT
+};
+static const int NO_XFB_VARS = 0;
+
 typedef struct image_s {
 	char		imgName[MAX_QPATH];		// game path, including extension
 	int			width, height, depth;				// source image
@@ -401,7 +409,8 @@ typedef struct {
 typedef enum
 {
 	VBO_USAGE_STATIC,
-	VBO_USAGE_DYNAMIC
+	VBO_USAGE_DYNAMIC,
+	VBO_USAGE_XFB
 } vboUsage_t;
 
 typedef struct VBO_s
@@ -1383,8 +1392,10 @@ typedef struct shaderProgram_s
 {
 	char *name;
 
-	GLuint     program;
-	uint32_t        attribs;	// vertex array attributes
+	GLuint		program;
+	uint32_t	attribs;		// vertex array attributes
+	uint32_t	xfbVariables;	// transform feedback variables
+
 
 	// uniform parameters
 	GLint *uniforms;
@@ -2175,6 +2186,7 @@ typedef struct glstate_s {
 	FBO_t          *currentFBO;
 	VBO_t          *currentVBO;
 	IBO_t          *currentIBO;
+	VBO_t		   *currentXFBBO;
 	matrix_t        modelview;
 	matrix_t        projection;
 	matrix_t		modelviewProjection;
@@ -3445,11 +3457,16 @@ struct DrawCommand
 	} params;
 };
 
-struct DrawItem
+struct RenderState
 {
+	DepthRange depthRange;
 	uint32_t stateBits;
 	uint32_t cullType; // this is stupid
-	DepthRange depthRange;
+	bool transformFeedback;
+};
+struct DrawItem
+{
+	RenderState renderState;
 
 	IBO_t *ibo;
 	shaderProgram_t *program;
@@ -3462,6 +3479,9 @@ struct DrawItem
 
 	uint32_t numUniformBlockBindings;
 	UniformBlockBinding *uniformBlockBindings;
+
+	VBO_t *transformFeedbackBuffer;
+
 
 	UniformData *uniformData;
 

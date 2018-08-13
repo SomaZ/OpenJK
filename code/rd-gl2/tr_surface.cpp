@@ -2191,10 +2191,10 @@ static void RB_SurfaceSprites( srfSprites_t *surf )
 	samplerBindingsWriter.AddStaticImage(tr.screenShadowImage, TB_SHADOWMAP);
 	
 	DrawItem item = {};
-	item.stateBits = firstStage->stateBits;
-	item.cullType = CT_TWO_SIDED;
+	item.renderState.stateBits = firstStage->stateBits;
+	item.renderState.cullType = CT_TWO_SIDED;
+	item.renderState.depthRange = DepthRange{ 0.0f, 1.0f };
 	item.program = program;
-	item.depthRange = DepthRange{ 0.0f, 1.0f };
 	item.ibo = surf->ibo;
 	tess.externalIBO = surf->ibo;
 

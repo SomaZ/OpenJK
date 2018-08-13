@@ -549,7 +549,7 @@ vec3 CalcSpecular(
 	vec3 fresnel = spec_F(EH,specular);
 	float vis = spec_G(NL, NE, roughness);
 	float denominator = max((4.0 * max(NE,0.0) * max(NL,0.0)),0.001);
-	return (distrib * fresnel * vis * M_PI) / denominator;
+	return (distrib * fresnel * vis) / denominator;
 }
 
 float CalcLightAttenuation(float distance, float radius)
@@ -599,7 +599,7 @@ float pcfShadow(samplerCubeShadow depthMap, vec3 L, float distance)
 {
 	float shadow = 0.0;
 	int samples = 20;
-	float diskRadius = 128.0/512.0;
+	float diskRadius = 1.0;
 	for (int i = 0; i < samples; ++i)
 	{
 		shadow += texture(depthMap, vec4(L + sampleOffsetDirections[i] * diskRadius, distance));
@@ -807,7 +807,7 @@ void main()
 	
 	reflectance = CalcDiffuse(diffuse.rgb, NH, EH, roughness);
 
-  #if defined(USE_LIGHTMAP) || defined(USE_LIGHT_VERTEX)
+  #if (defined(USE_LIGHTMAP) || defined(USE_LIGHT_VERTEX)) && defined(USE_DELUXEMAP)
 	NE = abs(dot(N, E)) + 1e-5;
 	reflectance += CalcSpecular(specular.rgb, NH, NL, NE, EH, roughness) * 1.0;
   #endif

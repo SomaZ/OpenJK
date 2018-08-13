@@ -198,32 +198,24 @@ vec3 DeformNormal( const in vec3 position, const in vec3 normal )
 
 vec2 GenTexCoords(int TCGen, vec3 position, vec3 normal, vec3 TCGenVector0, vec3 TCGenVector1)
 {
-	vec2 tex = attr_TexCoord0;
-
-	switch (TCGen)
-	{
-		case 0:
-		{
-			return tex;
-		}
-		break;
-		case TCGEN_ENVIRONMENT_MAPPED:
-		{
-			vec3 viewer = normalize(u_LocalViewOrigin - position);
-			vec2 ref = reflect(viewer, normal).yz;
-			tex.s = ref.x * -0.5 + 0.5;
-			tex.t = ref.y *  0.5 + 0.5;
-		}
-		break;
-
-		case TCGEN_VECTOR:
-		{
-			tex = vec2(dot(position, TCGenVector0), dot(position, TCGenVector1));
-		}
-		break;
-	}
-
-	return tex;
+       vec2 tex = attr_TexCoord0;
+ 
+       switch (TCGen)
+       {
+             case TCGEN_ENVIRONMENT_MAPPED:
+                    vec3 viewer = normalize(u_LocalViewOrigin - position);
+                    vec2 ref = reflect(viewer, normal).yz;
+                    tex.s = ref.x * -0.5 + 0.5;
+                    tex.t = ref.y *  0.5 + 0.5;
+                    break;
+             case TCGEN_VECTOR:
+                    tex = vec2(dot(position, TCGenVector0), dot(position, TCGenVector1));
+                    break;
+             default:
+                    break;
+       }
+ 
+       return tex;
 }
 
 vec2 ModTexCoords(vec2 st, vec3 position, vec4 texMatrix, vec4 offTurb)
@@ -306,7 +298,7 @@ void main()
 
 	gl_Position = u_ModelViewProjectionMatrix * vec4(position, 1.0);
 
-	position  = (u_ModelMatrix * vec4(position, 1.0)).xyz;
+	position  = mat3(u_ModelMatrix) * position;
 
 	#if defined(USE_G_BUFFERS)
 		normal    = mat3(u_NormalMatrix) * normal;

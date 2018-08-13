@@ -146,7 +146,7 @@ Draws triangle outlines for debugging
 ================
 */
 static void DrawTris (shaderCommands_t *input) {
-#if 0
+#if 1
 	GL_Bind( tr.whiteImage );
 
 	GL_State( GLS_POLYMODE_LINE | GLS_DEPTHMASK_TRUE );
@@ -1042,10 +1042,10 @@ static void ForwardDlight( const shaderCommands_t *input,  VertexArraysPropertie
 
 		// include GLS_DEPTHFUNC_EQUAL so alpha tested surfaces don't add light
 		// where they aren't rendered
-		item.stateBits = stateBits;
-		item.cullType = cullType;
+		item.renderState.stateBits = stateBits;
+		item.renderState.cullType = cullType;
+		item.renderState.depthRange = RB_GetDepthRange(backEnd.currentEntity, input->shader);
 		item.program = sp;
-		item.depthRange = RB_GetDepthRange(backEnd.currentEntity, input->shader);
 		item.ibo = input->externalIBO ? input->externalIBO : backEndData->currentFrame->dynamicIbo;
 
 		item.numAttributes = vertexArrays->numVertexArrays;
@@ -1139,10 +1139,10 @@ static void ProjectPshadowVBOGLSL( const shaderCommands_t *input, const VertexAr
 
 		// include GLS_DEPTHFUNC_EQUAL so alpha tested surfaces don't add light
 		// where they aren't rendered
-		item.stateBits = stateBits;
-		item.cullType = cullType;
+		item.renderState.stateBits = stateBits;
+		item.renderState.cullType = cullType;
+		item.renderState.depthRange = RB_GetDepthRange(backEnd.currentEntity, input->shader);
 		item.program = sp;
-		item.depthRange = RB_GetDepthRange(backEnd.currentEntity, input->shader);
 		item.ibo = input->externalIBO ? input->externalIBO : backEndData->currentFrame->dynamicIbo;
 
 		item.numAttributes = vertexArrays->numVertexArrays;
@@ -1240,10 +1240,10 @@ static void RB_FogPass( shaderCommands_t *input, const fog_t *fog, const VertexA
 		stateBits |= GLS_DEPTHFUNC_EQUAL;
 
 	DrawItem item = {};
-	item.stateBits = stateBits;
-	item.cullType = cullType;
+	item.renderState.stateBits = stateBits;
+	item.renderState.cullType = cullType;
+	item.renderState.depthRange = RB_GetDepthRange(backEnd.currentEntity, input->shader);
 	item.program = sp;
-	item.depthRange = RB_GetDepthRange(backEnd.currentEntity, input->shader);
 	item.ibo = input->externalIBO ? input->externalIBO : backEndData->currentFrame->dynamicIbo;
 
 	item.numAttributes = vertexArrays->numVertexArrays;
@@ -1502,10 +1502,10 @@ void RB_StageIteratorLiquid( void )
 	//ri.Printf(PRINT_ALL, "water_color is: %f %f %f\n", data2.water_color_r, data2.water_color_g, data2.water_color_b);
 
 	DrawItem item = {};
-	item.stateBits = GLS_SRCBLEND_SRC_ALPHA | GLS_DSTBLEND_ONE_MINUS_SRC_ALPHA;
-	item.cullType = cullType;
+	item.renderState.stateBits = GLS_SRCBLEND_SRC_ALPHA | GLS_DSTBLEND_ONE_MINUS_SRC_ALPHA;
+	item.renderState.cullType = cullType;
+	item.renderState.depthRange = RB_GetDepthRange(backEnd.currentEntity, input->shader);
 	item.program = liquidShader;
-	item.depthRange = RB_GetDepthRange(backEnd.currentEntity, input->shader);
 	item.ibo = input->externalIBO ? input->externalIBO : backEndData->currentFrame->dynamicIbo;
 
 	item.numAttributes = vertexArrays.numVertexArrays;
@@ -1988,10 +1988,10 @@ static void RB_IterateStagesGeneric( shaderCommands_t *input, const VertexArrays
 		CaptureDrawData(input, pStage, index, stage);
 
 		DrawItem item = {};
-		item.stateBits = stateBits;
-		item.cullType = cullType;
+		item.renderState.stateBits = stateBits;
+		item.renderState.cullType = cullType;
+		item.renderState.depthRange = RB_GetDepthRange(backEnd.currentEntity, input->shader);
 		item.program = sp;
-		item.depthRange = RB_GetDepthRange(backEnd.currentEntity, input->shader);
 		item.ibo = input->externalIBO ? input->externalIBO : backEndData->currentFrame->dynamicIbo;
 
 		item.numAttributes = vertexArrays->numVertexArrays;
@@ -2055,9 +2055,10 @@ static void RB_RenderShadowmap( shaderCommands_t *input, const VertexArraysPrope
 	uniformDataWriter.SetUniformFloat(UNIFORM_TIME, tess.shaderTime);
 
 	DrawItem item = {};
-	item.cullType = cullType;
+	//item.renderState.stateBits = stateBits;
+	item.renderState.cullType = cullType;
+	item.renderState.depthRange = RB_GetDepthRange(backEnd.currentEntity, input->shader);
 	item.program = sp;
-	item.depthRange = RB_GetDepthRange(backEnd.currentEntity, input->shader);
 	item.ibo = input->externalIBO ? input->externalIBO : backEndData->currentFrame->dynamicIbo;
 
 	item.numAttributes = vertexArrays->numVertexArrays;

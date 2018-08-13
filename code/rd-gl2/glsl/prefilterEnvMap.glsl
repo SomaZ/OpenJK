@@ -35,16 +35,17 @@ vec2 hammersley2D(uint i, uint N) {
 vec3 ImportanceSampleGGX(vec2 Xi, float Roughness, vec3 N)
 {
 	float a = Roughness * Roughness;
-	float Phi = 2 * M_PI * Xi.x;
-	float CosTheta = sqrt((1-Xi.y) / (1+(a*a -1) * Xi.y));
-	float SinTheta = sqrt( 1 - CosTheta * CosTheta);
+
+	float Phi = 2.0 * M_PI * Xi.x;
+	float CosTheta = sqrt((1.0 - Xi.y) / (1.0 + (a*a - 1.0) * Xi.y));
+	float SinTheta = sqrt( 1.0 - CosTheta * CosTheta );
 
 	vec3 H;
 	H.x = SinTheta * cos( Phi );
 	H.y = SinTheta * sin( Phi );
 	H.z = CosTheta;
 
-	vec3 UpVector = abs(N.z) < 0.999 ? vec3(0,0,1) : vec3(1,0,0);
+	vec3 UpVector = abs(N.z) < 0.999 ? vec3(0.0,0.0,1.0) : vec3(1.0,0.0,0.0);
 	vec3 TangentX = normalize(cross(UpVector , N));
 	vec3 TangentY = cross(N , TangentX);
 
@@ -57,12 +58,12 @@ vec3 PrefilterEnvMap( float Roughness, vec3 R )
 	vec3 V = R;
 	vec3 PrefilteredColor = vec3(0.0);
 	float TotalWeight = 0.0;
-	uint NumSamples = uint(1024);
-	for ( uint i = uint(0); i < NumSamples; i++ )
+	uint NumSamples = 1024u;
+	for ( uint i = 0u; i < NumSamples; i++ )
 	{
 		vec2 Xi = hammersley2D( i, NumSamples );
 		vec3 H = ImportanceSampleGGX( Xi, Roughness, N );
-		vec3 L = 2 * dot( V, H ) * H - V;
+		vec3 L = 2.0 * dot( V, H ) * H - V;
 		float NoL = clamp((dot( N, L )),0.0,1.0);
 		if ( NoL > 0 )
 		{
@@ -81,17 +82,17 @@ void main()
 	vector.y = (var_ScreenTex.y - 0.5) * 2.0;
 	// from http://www.codinglabs.net/article_physically_based_rendering.aspx
 
-	vec3 normal = normalize(	vec3(vector.x, -vector.y,	1) );
+	vec3 normal = normalize(	vec3(vector.x, -vector.y,	1.0) );
     if(cubeFace==2)
-        normal = normalize(		vec3(vector.x,		 1,		vector.y) );
+        normal = normalize(		vec3(vector.x,		 1.0,		vector.y) );
     else if(cubeFace==3)
-        normal = normalize(		vec3(vector.x,		-1,		-vector.y) );
+        normal = normalize(		vec3(vector.x,		-1.0,		-vector.y) );
     else if(cubeFace==0)
-        normal = normalize(		vec3(  1,		-vector.y,	-vector.x) );
+        normal = normalize(		vec3(  1.0,		-vector.y,	-vector.x) );
     else if(cubeFace==1)
-        normal = normalize(		vec3( -1,		-vector.y,	vector.x) );
+        normal = normalize(		vec3( -1.0,		-vector.y,	vector.x) );
     else if(cubeFace==5)
-        normal = normalize(		vec3(-vector.x, -vector.y,	-1) );
+        normal = normalize(		vec3(-vector.x, -vector.y,	-1.0) );
 
 	float roughness = u_ViewInfo.y / u_ViewInfo.z;
 	vec3 result = PrefilterEnvMap(roughness, normal);

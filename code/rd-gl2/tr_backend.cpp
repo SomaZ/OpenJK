@@ -1006,15 +1006,38 @@ static void RB_BindAndUpdateUniformBlocks( size_t numBindings, const UniformBloc
 	}
 }
 
+static void RB_SetRenderState(const RenderState& renderState)
+{
+	GL_Cull(renderState.cullType);
+	GL_State(renderState.stateBits);
+	GL_DepthRange(
+		renderState.depthRange.minDepth,
+		renderState.depthRange.maxDepth);
+	if (renderState.transformFeedback)
+	{
+		qglEnable(GL_RASTERIZER_DISCARD);
+		qglBeginTransformFeedback(GL_POINTS);
+	}
+}
+
+static void RB_BindTransformFeedbackBuffer(VBO_t *buffer)
+{
+	if (glState.currentXFBBO != buffer)
+	{
+		if (buffer != nullptr)
+			qglBindBufferBase(GL_TRANSFORM_FEEDBACK_BUFFER, 0, buffer->vertexesVBO);
+		else
+			qglBindBufferBase(GL_TRANSFORM_FEEDBACK_BUFFER, 0, 0);
+		glState.currentXFBBO = buffer;
+	}
+}
+
 static void RB_DrawItems( int numDrawItems, const DrawItem *drawItems, uint32_t *drawOrder )
 {
 	for ( int i = 0; i < numDrawItems; ++i )
 	{
 		const DrawItem& drawItem = drawItems[drawOrder[i]];
 
-		GL_Cull(drawItem.cullType);
-		GL_State(drawItem.stateBits);
-		GL_DepthRange(drawItem.depthRange.minDepth, drawItem.depthRange.maxDepth);
 		if (drawItem.ibo != nullptr)
 			R_BindIBO(drawItem.ibo);
 
@@ -1023,8 +1046,11 @@ static void RB_DrawItems( int numDrawItems, const DrawItem *drawItems, uint32_t 
 		GL_VertexAttribPointers(drawItem.numAttributes, drawItem.attributes);
 		RB_BindTextures(drawItem.numSamplerBindings, drawItem.samplerBindings);
 		RB_BindAndUpdateUniformBlocks(drawItem.numUniformBlockBindings, drawItem.uniformBlockBindings);
+		RB_BindTransformFeedbackBuffer(drawItem.transformFeedbackBuffer);
 
 		GLSL_SetUniforms(drawItem.program, drawItem.uniformData);
+
+		RB_SetRenderState(drawItem.renderState);
 
 		switch ( drawItem.draw.type )
 		{
@@ -1062,6 +1088,12 @@ static void RB_DrawItems( int numDrawItems, const DrawItem *drawItems, uint32_t 
 				assert(!"Invalid or unhandled draw type");
 				break;
 			}
+		}
+
+		if (drawItem.renderState.transformFeedback)
+		{
+			qglEndTransformFeedback();
+			qglDisable(GL_RASTERIZER_DISCARD);
 		}
 	}
 }
@@ -2193,7 +2225,7 @@ static void RB_RenderSSAO()
 
 static void RB_RenderDepthOnly(drawSurf_t *drawSurfs, int numDrawSurfs)
 {
-	backEnd.renderPass = !(backEnd.viewParms.flags & VPF_DEPTHSHADOW) ? PRE_PASS : DEPTH_PASS;
+	backEnd.renderPass = (backEnd.viewParms.flags & VPF_DEPTHSHADOW) ? DEPTH_PASS : PRE_PASS;
 
 	if (backEnd.renderPass == DEPTH_PASS)
 		qglColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
