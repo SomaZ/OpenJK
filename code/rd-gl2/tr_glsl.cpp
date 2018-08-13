@@ -378,9 +378,6 @@ static size_t GLSL_GetShaderHeader(
 			fbufWidthScale,
 			fbufHeightScale));
 
-	if (r_pbr->integer)
-		Q_strcat(dest, size, "#define USE_PBR\n");
-
 	if (r_debugVisuals->integer)
 		Q_strcat(dest, size, 
 			va("#define USE_DEBUG %d\n", r_debugVisuals->integer));

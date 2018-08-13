@@ -684,9 +684,7 @@ void main()
   #if defined(RGBM_LIGHTMAP)
 	lightmapColor.rgb *= lightmapColor.a;
   #endif
-  #if defined(USE_PBR) && !defined(USE_FAST_LIGHT)
 	lightmapColor.rgb *= lightmapColor.rgb;
-  #endif
 #endif
 
 	vec2 texCoords = var_TexCoords.xy;
@@ -706,21 +704,15 @@ void main()
 	L /= lightDist;
 
 	vec3 ambientLight = texture(u_LightGridAmbientLightMap, gridCell).rgb * isLightgrid;
-  #if defined(USE_PBR)
-	vertexColor = var_Color.rgb * var_Color.rgb;
 	ambientLight *= ambientLight;
+
+	vertexColor = var_Color.rgb * var_Color.rgb;
 	#if defined(USE_LIGHT_VECTOR)
 	  L -= normalize(texture(u_LightGridDirectionMap, gridCell).rgb * 2.0 - vec3(1.0)) * isLightgrid;
 	  vec3 directedLight = texture(u_LightGridDirectionalLightMap, gridCell).rgb * isLightgrid;
 	  directedLight *= directedLight;
 	#endif
-  #else
-	vertexColor = var_Color.rgb;
-	#if defined(USE_LIGHT_VECTOR)
-	  L -= normalize(texture(u_LightGridDirectionMap, gridCell).rgb * 2.0 - vec3(1.0)) * isLightgrid;
-	  vec3 directedLight = texture(u_LightGridDirectionalLightMap, gridCell).rgb * isLightgrid;
-	#endif
-  #endif
+
 	ambientColor = ambientLight * vertexColor;
   #if defined(USE_LIGHTMAP)
 	lightColor	 = lightmapColor.rgb * vertexColor;
@@ -788,12 +780,12 @@ void main()
   #endif
 	specular *= u_SpecularScale;
 
-#if defined(USE_PBR)
+
 	diffuse.rgb *= diffuse.rgb;
 	specular.rgb *= specular.rgb;
-	// energy conservation, requires specular workflow to use an albedo texture too
+	// energy conservation
 	diffuse.rgb *= vec3(1.0) - specular.rgb;
-#endif
+
 
 	// diffuse rgb is diffuse
 	// specular rgb is specular reflectance at normal incidence
@@ -831,6 +823,7 @@ void main()
 	vec3 parallax = u_CubeMapInfo.xyz + u_CubeMapInfo.w * viewDir;
 
 	vec3 cubeLightColor = textureLod(u_CubeMap, R + parallax, ROUGHNESS_MIPS * roughness).rgb * u_EnableTextures.w;
+	cubeLightColor *= cubeLightColor;
 	vec3 shColor = CalcSHColor(-N) * u_EnableTextures.x;
 
 	float horiz = 1.0;
@@ -841,9 +834,6 @@ void main()
 		horiz *= horiz;
 	#endif
 
-    #if defined(USE_PBR)
-		cubeLightColor *= cubeLightColor;
-    #endif
 	if (u_EnableTextures.x == 1.0)
 		out_Color.rgb += shColor * diffuse.rgb;
 	out_Color.rgb += cubeLightColor * (specular.rgb * EnvBRDF.x + EnvBRDF.y) * horiz;
@@ -897,9 +887,7 @@ void main()
 		out_Color.rgb = N.rgb * 0.5 + 0.5;
   #endif
 
-  #if defined(USE_PBR)
 	out_Color.rgb = sqrt(out_Color.rgb);
-  #endif
 
 #else
 	diffuse = texture(u_DiffuseMap, texCoords);

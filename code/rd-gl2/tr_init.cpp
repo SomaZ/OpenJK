@@ -213,7 +213,7 @@ cvar_t  *r_parallaxMapping;
 cvar_t  *r_cubeMapping;
 cvar_t  *r_horizonFade;
 cvar_t  *r_cubemapSize;
-cvar_t  *r_pbr;
+cvar_t  *r_dlightScale;
 cvar_t  *r_baseNormalX;
 cvar_t  *r_baseNormalY;
 cvar_t  *r_baseParallax;
@@ -1363,7 +1363,7 @@ void R_Register(void)
 	r_cubeMapping = ri.Cvar_Get("r_cubeMapping", "1", CVAR_ARCHIVE | CVAR_LATCH);
 	r_horizonFade = ri.Cvar_Get("r_horizonFade", "3", CVAR_ARCHIVE | CVAR_LATCH);
 	r_cubemapSize = ri.Cvar_Get("r_cubemapSize", "256", CVAR_ARCHIVE | CVAR_LATCH);
-	r_pbr = ri.Cvar_Get("r_pbr", "1", CVAR_ARCHIVE | CVAR_LATCH);
+	r_dlightScale = ri.Cvar_Get("r_dlightScale", "3.14", CVAR_ARCHIVE);
 	r_baseNormalX = ri.Cvar_Get("r_baseNormalX", "1.0", CVAR_ARCHIVE | CVAR_LATCH);
 	r_baseNormalY = ri.Cvar_Get("r_baseNormalY", "1.0", CVAR_ARCHIVE | CVAR_LATCH);
 	r_baseParallax = ri.Cvar_Get("r_baseParallax", "0.05", CVAR_ARCHIVE | CVAR_LATCH);
