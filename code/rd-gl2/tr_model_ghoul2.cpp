@@ -2223,7 +2223,7 @@ void G2API_SetSurfaceOnOffFromSkin(CGhoul2Info *ghlInfo, qhandle_t renderSkin)
 }
 
 // set up each surface ready for rendering in the back end
-void RenderSurfaces(CRenderSurface &RS, int entityNum)
+void RenderSurfaces(CRenderSurface &RS, const trRefEntity_t *ent, int entityNum)
 {
 	int			i;
 	const shader_t	*shader = 0;
@@ -2280,10 +2280,10 @@ void RenderSurfaces(CRenderSurface &RS, int entityNum)
 			shader = R_GetShaderByHandle(surfInfo->shaderIndex);
 		}
 
-		int cubemapIndex = R_CubemapForPoint(tr.currentEntity->e.origin);
-
+		int cubemapIndex = R_CubemapForPoint(ent->e.origin);
+		
 		vec3_t transformed;
-		VectorSubtract(tr.currentEntity->e.origin, tr.refdef.vieworg, transformed);
+		VectorSubtract(ent->e.origin, tr.refdef.vieworg, transformed);
 		float distance = VectorLength(transformed);
 
 		// don't add third_person objects if not viewing through a portal
@@ -2294,7 +2294,7 @@ void RenderSurfaces(CRenderSurface &RS, int entityNum)
 			assert(newSurf->vboMesh != NULL && RS.surfaceNum == surface->thisSurfaceIndex);
 			newSurf->surfaceData = surface;
 			newSurf->boneCache = RS.boneCache;
-			R_AddDrawSurf((surfaceType_t *)newSurf, entityNum, (shader_t *)shader, RS.fogNum, qfalse, R_IsPostRenderEntity(entityNum, tr.currentEntity), cubemapIndex, distance);
+			R_AddDrawSurf((surfaceType_t *)newSurf, entityNum, (shader_t *)shader, RS.fogNum, qfalse, R_IsPostRenderEntity(ent), cubemapIndex, distance);
 
 #ifdef _G2_GORE
 			if (RS.gore_set && drawGore)
@@ -2374,7 +2374,7 @@ void RenderSurfaces(CRenderSurface &RS, int entityNum)
 
 						last->goreChain = newSurf2;
 						last = newSurf2;
-						R_AddDrawSurf((surfaceType_t *)newSurf2, entityNum, gshader, RS.fogNum, qfalse, R_IsPostRenderEntity(entityNum, tr.currentEntity), cubemapIndex, distance);
+						R_AddDrawSurf((surfaceType_t *)newSurf2, entityNum, gshader, RS.fogNum, qfalse, R_IsPostRenderEntity(tr.currentEntity), cubemapIndex, distance);
 					}
 				}
 			}
@@ -2422,7 +2422,7 @@ void RenderSurfaces(CRenderSurface &RS, int entityNum)
 	for (i = 0; i< surfInfo->numChildren; i++)
 	{
 		RS.surfaceNum = surfInfo->childIndexes[i];
-		RenderSurfaces(RS, entityNum);
+		RenderSurfaces(RS, ent, entityNum);
 	}
 }
 
@@ -2678,7 +2678,7 @@ void R_AddGhoulSurfaces(trRefEntity_t *ent, int entityNum) {
 			{
 				RS.renderfx |= RF_NOSHADOW;
 			}
-			RenderSurfaces(RS, entityNum);
+			RenderSurfaces(RS, ent, entityNum);
 		}
 	}
 	HackadelicOnClient = false;

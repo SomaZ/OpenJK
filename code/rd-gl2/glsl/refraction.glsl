@@ -15,13 +15,15 @@ in vec4 attr_BoneWeights;
 
 layout(std140) uniform Liquid
 {
+vec3		water_color;
+float		time;
+vec3		fog_color;
+float		depth;
 float		isLiquid;
 float		height;
 float		choppy;
 float		speed;
 float		freq;
-float		depth;
-float		time;
 };
 
 uniform vec3	u_ViewOrigin;
@@ -185,23 +187,15 @@ uniform vec3  u_PrimaryLightAmbient;
 
 layout(std140) uniform Liquid
 {
+vec3		water_color;
+float		time;
+vec3		fog_color;
+float		depth;
 float		isLiquid;
 float		height;
 float		choppy;
 float		speed;
 float		freq;
-float		depth;
-float		time;
-};
-
-layout(std140) uniform Liquid2
-{
-float		water_color_r;
-float		water_color_g;
-float		water_color_b;
-float		fog_color_r;
-float		fog_color_g;
-float		fog_color_b;
 };
 
 in vec3 var_Position;
@@ -349,9 +343,6 @@ vec3 getSeaColor(vec3 p, vec3 n, vec3 l, vec3 eye, vec3 dist) {
 
 	float fresnel = clamp(1.0 - dot(n, -i), 0.0, 1.0);
 	fresnel = pow(fresnel, 3.0) * 0.65;
-
-	vec3 water_color = vec3(water_color_r, water_color_g, water_color_b);
-	vec3 fog_color = vec3(fog_color_r, fog_color_g, fog_color_b);
 
 	vec3 groundColor = vec3(.4, .3, .2);
 

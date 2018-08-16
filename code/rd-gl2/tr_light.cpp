@@ -58,29 +58,29 @@ R_DlightBmodel
 Determine which dynamic lights may effect this bmodel
 =============
 */
-void R_DlightBmodel( bmodel_t *bmodel ) {
+void R_DlightBmodel(bmodel_t *bmodel, trRefEntity_t *ent) {
 	int			i, j;
 	dlight_t	*dl;
 	int			mask;
 	msurface_t	*surf;
 
 	// transform all the lights
-	R_TransformDlights( tr.refdef.num_dlights, tr.refdef.dlights, &tr.ori );
+	R_TransformDlights(tr.refdef.num_dlights, tr.refdef.dlights, &tr.ori);
 
 	mask = 0;
-	for ( i=0 ; i<tr.refdef.num_dlights ; i++ ) {
+	for (i = 0; i<tr.refdef.num_dlights; i++) {
 		dl = &tr.refdef.dlights[i];
 
 		// see if the point is close enough to the bounds to matter
-		for ( j = 0 ; j < 3 ; j++ ) {
-			if ( dl->transformed[j] - bmodel->bounds[1][j] > dl->radius ) {
+		for (j = 0; j < 3; j++) {
+			if (dl->transformed[j] - bmodel->bounds[1][j] > dl->radius) {
 				break;
 			}
-			if ( bmodel->bounds[0][j] - dl->transformed[j] > dl->radius ) {
+			if (bmodel->bounds[0][j] - dl->transformed[j] > dl->radius) {
 				break;
 			}
 		}
-		if ( j < 3 ) {
+		if (j < 3) {
 			continue;
 		}
 
@@ -88,23 +88,23 @@ void R_DlightBmodel( bmodel_t *bmodel ) {
 		mask |= 1 << i;
 	}
 
-	tr.currentEntity->needDlights = (qboolean)(mask != 0);
+	ent->needDlights = (qboolean)(mask != 0);
 
 	// set the dlight bits in all the surfaces
-	for ( i = 0 ; i < bmodel->numSurfaces ; i++ ) {
+	for (i = 0; i < bmodel->numSurfaces; i++) {
 		surf = tr.world->surfaces + bmodel->firstSurface + i;
 
-		switch(*surf->data)
+		switch (*surf->data)
 		{
-			case SF_FACE:
-			case SF_GRID:
-			case SF_TRIANGLES:
-			case SF_VBO_MESH:
-				((srfBspSurface_t *)surf->data)->dlightBits = mask;
-				break;
+		case SF_FACE:
+		case SF_GRID:
+		case SF_TRIANGLES:
+		case SF_VBO_MESH:
+			((srfBspSurface_t *)surf->data)->dlightBits = mask;
+			break;
 
-			default:
-				break;
+		default:
+			break;
 		}
 	}
 }
@@ -510,7 +510,7 @@ int R_LightDirForPoint( vec3_t point, vec3_t lightDir, vec3_t normal, world_t *w
 	return qtrue;
 }
 
-int R_CubemapForPoint( vec3_t point )
+int R_CubemapForPoint(const vec3_t point )
 {
 	int cubemapIndex = -1;
 

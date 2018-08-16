@@ -540,7 +540,10 @@ void RB_BeginDrawingView (void) {
 		else if (tr.shadowCubeFbo != NULL && backEnd.viewParms.targetFbo == tr.shadowCubeFbo)
 		{
 			cubemap_t *cubemap = &backEnd.viewParms.cubemapSelection[backEnd.viewParms.targetFboCubemapIndex];
-			qglFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_CUBE_MAP_POSITIVE_X + backEnd.viewParms.targetFboLayer, cubemap->image->texnum, 0);
+			//qglFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_CUBE_MAP_POSITIVE_X + backEnd.viewParms.targetFboLayer, cubemap->image->texnum, 0);
+			qglFramebufferTexture(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, cubemap->image->texnum, 0);
+
+
 		}
 	}
 	
@@ -1020,15 +1023,21 @@ static void RB_SetRenderState(const RenderState& renderState)
 	}
 }
 
-static void RB_BindTransformFeedbackBuffer(VBO_t *buffer)
+static void RB_BindTransformFeedbackBuffer(const bufferBinding_t& binding)
 {
-	if (glState.currentXFBBO != buffer)
+	if (memcmp(&glState.currentXFBBO, &binding, sizeof(binding)) != 0)
 	{
-		if (buffer != nullptr)
-			qglBindBufferBase(GL_TRANSFORM_FEEDBACK_BUFFER, 0, buffer->vertexesVBO);
+		if (binding.vbo != nullptr)
+			qglBindBufferRange(
+				GL_TRANSFORM_FEEDBACK_BUFFER,
+				0,
+				binding.vbo->vertexesVBO,
+				binding.offset,
+				binding.size);
 		else
 			qglBindBufferBase(GL_TRANSFORM_FEEDBACK_BUFFER, 0, 0);
-		glState.currentXFBBO = buffer;
+
+		glState.currentXFBBO = binding;
 	}
 }
 
@@ -1132,45 +1141,76 @@ static Pass *RB_CreatePass( Allocator& allocator, int capacity )
 void RB_StoreFrameImage()
 {
 	//store image for use in next frame, used for ssr and refraction rendering
-	if (r_refraction->integer)
+	if (!(backEnd.refdef.rdflags & RDF_SKYBOXPORTAL))
 	{
-		FBO_t *srcFbo;
-
-		srcFbo = glState.currentFBO;
-
-		if (srcFbo == tr.renderCubeFbo)
-			return;
-
-		if (tr.msaaResolveFbo)
+		if (r_refraction->integer)
 		{
-			// Resolve the MSAA before anything else
-			// Can't resolve just part of the MSAA FBO, so multiple views will suffer a performance hit here
-			FBO_FastBlit(tr.renderFbo, NULL, tr.msaaResolveFbo, NULL, GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT, GL_NEAREST);
-			srcFbo = tr.msaaResolveFbo;
+			FBO_t *srcFbo;
 
-			if (r_dynamicGlow->integer)
+			srcFbo = glState.currentFBO;
+
+			if (srcFbo == tr.renderCubeFbo)
+				return;
+
+			if (tr.msaaResolveFbo)
 			{
-				FBO_FastBlitIndexed(tr.renderFbo, tr.msaaResolveFbo, 1, 1, GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT, GL_NEAREST);
+				// Resolve the MSAA before anything else
+				// Can't resolve just part of the MSAA FBO, so multiple views will suffer a performance hit here
+				FBO_FastBlit(tr.renderFbo, NULL, tr.msaaResolveFbo, NULL, GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT, GL_NEAREST);
+				srcFbo = tr.msaaResolveFbo;
+
+				if (r_dynamicGlow->integer)
+				{
+					FBO_FastBlitIndexed(tr.renderFbo, tr.msaaResolveFbo, 1, 1, GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT, GL_NEAREST);
+				}
 			}
+			FBO_FastBlit(tr.renderFbo, NULL, tr.refractiveFbo, NULL, GL_COLOR_BUFFER_BIT, GL_LINEAR);
+			
+			FBO_Bind(NULL);
+			GL_SelectTexture(TB_COLORMAP);
+			GL_BindToTMU(tr.prevRenderImage, TB_COLORMAP);
+			qglGenerateMipmap(GL_TEXTURE_2D);
+
+			//FBO_Bind(tr.refractiveFbo);
+			//qglDepthFunc(GL_ALWAYS);
+			//
+			//const float zmax = backEnd.viewParms.zFar;
+			//const float zmin = backEnd.viewParms.zNear;
+			//vec4_t quadVerts[4];
+			//vec2_t texCoords[4];
+			//VectorSet4(quadVerts[0], -1, 1, 0, 1);
+			//VectorSet4(quadVerts[1], 1, 1, 0, 1);
+			//VectorSet4(quadVerts[2], 1, -1, 0, 1);
+			//VectorSet4(quadVerts[3], -1, -1, 0, 1);
+			//texCoords[0][0] = 0; texCoords[0][1] = 1;
+			//texCoords[1][0] = 1; texCoords[1][1] = 1;
+			//texCoords[2][0] = 1; texCoords[2][1] = 0;
+			//texCoords[3][0] = 0; texCoords[3][1] = 0;
+			//const vec4_t viewInfo = { zmax / zmin, zmax, 0.0f, 0.0f };
+			//
+			//for (int i = 1; i < 12; i++)
+			//{
+			//	GLSL_BindProgram(&tr.dglowDownsample);
+			//	GL_BindToTMU(tr.prevRenderImage, TB_COLORMAP);
+			//	GL_BindToTMU(tr.renderDepthImage, TB_LIGHTMAP);
+			//	GLSL_SetUniformVec4(&tr.dglowDownsample, UNIFORM_VIEWINFO, viewInfo);
+			//	qglViewport(0, 0, tr.prevRenderImage->width / i * 2, tr.prevRenderImage->height / i * 2);
+			//	qglFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, tr.prevRenderImage->texnum, i);
+			//	glDrawArrays(GL_TRIANGLES, 0, 3);
+			//}
+			//
+			//qglDepthFunc(GL_LEQUAL);
+
+			
+			GL_BindToTMU(tr.renderDepthImage, TB_COLORMAP);
+			qglGenerateMipmap(GL_TEXTURE_2D);
+			GL_BindToTMU(tr.normalBufferImage, TB_COLORMAP);
+			qglGenerateMipmap(GL_TEXTURE_2D);
+			GL_SelectTexture(0);
+
+			FBO_Bind(srcFbo);
 		}
-
-		vec4i_t srcBox, dstBox;
-		srcBox[0] = backEnd.viewParms.viewportX      *tr.prevRenderImage->width / (float)glConfig.vidWidth;
-		srcBox[1] = backEnd.viewParms.viewportY      *tr.prevRenderImage->height / (float)glConfig.vidHeight;
-		srcBox[2] = backEnd.viewParms.viewportWidth  *tr.prevRenderImage->width / (float)glConfig.vidWidth;
-		srcBox[3] = backEnd.viewParms.viewportHeight *tr.prevRenderImage->height / (float)glConfig.vidHeight;
-
-		dstBox[0] = backEnd.viewParms.viewportX;
-		dstBox[1] = backEnd.viewParms.viewportY;
-		dstBox[2] = backEnd.viewParms.viewportWidth;
-		dstBox[3] = backEnd.viewParms.viewportHeight;
-
-		FBO_Blit(srcFbo, dstBox, NULL, tr.refractiveFbo, srcBox, NULL, NULL, GLS_SRCBLEND_ONE | GLS_DSTBLEND_ZERO);
-
-		qglViewport(0, 0, srcFbo->width, srcFbo->height);
-		qglScissor(0, 0, srcFbo->width, srcFbo->height);
-
-		FBO_Bind(srcFbo);
+		//FBO_FastBlit(tr.renderFbo, NULL, tr.prevRenderFbo, NULL, GL_COLOR_BUFFER_BIT, GL_NEAREST);
 	}
 }
 
@@ -2390,8 +2430,14 @@ static void RB_RenderAllDepthRelatedPasses(drawSurf_t *drawSurfs, int numDrawSur
 	}
 }
 
-void RB_RenderAllRealTimeLightTypes() 
-{	
+void RB_RenderAllRealTimeLightTypes()
+{
+
+	if ((backEnd.viewParms.flags & VPF_DEPTHSHADOW) || 
+		(backEnd.refdef.rdflags & RDF_NOWORLDMODEL) ||
+		(tr.shadowCubeFbo != NULL && backEnd.viewParms.targetFbo == tr.shadowCubeFbo))
+		return;
+
 	const float zmax = backEnd.viewParms.zFar;
 	const float zmin = backEnd.viewParms.zNear;
 	vec4_t viewInfo = { zmax / zmin, zmax, zmin, 0.0f };
@@ -2455,6 +2501,11 @@ void RB_RenderAllRealTimeLightTypes()
 
 		qglDrawElementsInstanced(GL_TRIANGLES, tr.screenQuad.numIndexes, GL_UNSIGNED_INT, 0, 1);
 	}
+
+	// only compute lighting for non sky pixels
+	qglEnable(GL_STENCIL_TEST);
+	qglStencilFunc(GL_EQUAL, 1, 0xff);
+	qglStencilMask(0);
 
 	//render cubemaps where SSR  didn't render
 	//buggy! don't enable for now, finish when cubemap arrarys or bindless textures are available
@@ -2571,11 +2622,6 @@ void RB_RenderAllRealTimeLightTypes()
 		GL_State(GLS_SRCBLEND_ONE | GLS_DSTBLEND_ONE | GLS_DEPTHFUNC_GREATER);
 		GL_Cull(CT_BACK_SIDED);
 
-		// TODO: Only affect non-sky surfaces
-		qglEnable(GL_STENCIL_TEST);
-		qglStencilFunc(GL_EQUAL, 1, 0xff);
-		qglStencilMask(0);
-
 		for (int i = 0; i < numDlights; i++)
 		{
 			dlight_t *dlight = backEnd.refdef.dlights + i;
@@ -2617,23 +2663,22 @@ void RB_RenderAllRealTimeLightTypes()
 			int rest = (numDlights - 4 * i > 3) ? 4 : (numDlights - 4 * i);
 
 			if (r_dlightMode->integer > 1) {
-				GL_BindToTMU(tr.shadowCubemaps[i * 4 + 0].image, 4);
-				GL_BindToTMU(tr.shadowCubemaps[i * 4 + 1].image, 5);
-				GL_BindToTMU(tr.shadowCubemaps[i * 4 + 2].image, 6);
-				GL_BindToTMU(tr.shadowCubemaps[i * 4 + 3].image, 7);
+				GL_BindToTMU(tr.shadowCubemaps[i * 4 + 0].image, 6);
+				GL_BindToTMU(tr.shadowCubemaps[i * 4 + 1].image, 8);
+				GL_BindToTMU(tr.shadowCubemaps[i * 4 + 2].image, 9);
+				GL_BindToTMU(tr.shadowCubemaps[i * 4 + 3].image, 10);
 			}
 			else {
-				GL_BindToTMU(tr.whiteImage, 4);
-				GL_BindToTMU(tr.whiteImage, 5);
 				GL_BindToTMU(tr.whiteImage, 6);
-				GL_BindToTMU(tr.whiteImage, 7);
+				GL_BindToTMU(tr.whiteImage, 8);
+				GL_BindToTMU(tr.whiteImage, 9);
+				GL_BindToTMU(tr.whiteImage, 10);
 			}
 			qglDrawElementsInstanced(GL_TRIANGLES, tr.lightSphereVolume.numIndexes, GL_UNSIGNED_INT, 0, rest);
 		}
-
-		qglDisable(GL_STENCIL_TEST);
 	}
 
+	qglDisable(GL_STENCIL_TEST);
 	FBO_Bind(fbo);
 }
 
@@ -2908,6 +2953,12 @@ const void *RB_PostProcess(const void *data)
 	// finish any 2D drawing if needed
 	if(tess.numIndexes)
 		RB_EndSurface();
+
+	//store image for use in next frame, used for ssr and refraction rendering
+	if (!(backEnd.refdef.rdflags & RDF_SKYBOXPORTAL))
+	{
+		FBO_FastBlitIndexed(tr.preLightFbo[PRELIGHT_TEMP_FBO], tr.preLightFbo[PRELIGHT_SWAP_TEMP_FBO], 1, 0, GL_COLOR_BUFFER_BIT, GL_NEAREST);
+	}
 
 	if (tr.viewParms.flags & VPF_NOPOSTPROCESS)
 	{

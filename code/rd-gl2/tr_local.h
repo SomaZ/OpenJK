@@ -172,6 +172,7 @@ extern cvar_t	*r_dynamicGlowSoft;
 extern cvar_t	*r_dynamicGlowWidth;
 extern cvar_t	*r_dynamicGlowHeight;
 
+extern cvar_t	*r_debugWeather;
 /*
 Ghoul2 Insert Start
 */
@@ -406,6 +407,17 @@ typedef struct {
 	float		modelViewMatrix[16];
 	float		modelMatrix[16];
 } orientationr_t;
+
+void R_SetOrientationOriginAndAxis(
+	orientationr_t& orientation,
+	const vec3_t origin,
+	const vec3_t left,
+	const vec3_t forward,
+	const vec3_t up);
+void R_SetOrientationOriginAndAxis(
+	orientationr_t& orientation,
+	const vec3_t origin,
+	const matrix3_t axis);
 
 typedef enum
 {
@@ -665,23 +677,25 @@ struct SurfaceSpriteBlock
 
 struct LiquidBlock
 {
+	vec3_t		water_color;
+	float		time;
+	vec3_t		fog_color;
+	float		depth;
 	float		isLiquid;
 	float		height;
 	float		choppy;
 	float		speed;
 	float		freq;
-	float		depth;
-	float		time;
 };
 
-struct LiquidBlock2
+struct CubemapTransforms
 {
-	float		water_color_r;
-	float		water_color_g;
-	float		water_color_b;
-	float		fog_color_r;
-	float		fog_color_g;
-	float		fog_color_b;
+	matrix_t XM;
+	matrix_t XP;
+	matrix_t YM;
+	matrix_t YP;
+	matrix_t ZM;
+	matrix_t ZP;
 };
 
 struct surfaceSprite_t
@@ -1119,8 +1133,9 @@ enum
 	PREPASS_USE_SKELETAL_ANIMATION	= 0x0004,
 	PREPASS_USE_G_BUFFERS			= 0x0008,
 	PREPASS_USE_PARALLAX			= 0x0010,
+	PREPASS_USE_CUBEMAP_TRANSFORMS	= 0x0020,
 
-	PREPASS_ALL = 0x001F,
+	PREPASS_ALL = 0x003F,
 	PREPASS_COUNT = PREPASS_ALL + 1,
 };
 
@@ -1132,8 +1147,10 @@ enum
 	PRELIGHT_TUBE_LIGHT		= 0x0003,
 	PRELIGHT_CUBEMAP		= 0x0004,
 	PRELIGHT_SSR			= 0x0005,
+	PRELIGHT_SSR_RESOLVE	= 0x0006,
+	PRELIGHT_TEMPORAL_FILTER= 0x0007,
 
-	PRELIGHT_ALL			= 0x0005,
+	PRELIGHT_ALL			= 0x0007,
 	PRELIGHT_COUNT			= PRELIGHT_ALL + 1,
 };
 
@@ -1152,7 +1169,10 @@ enum
 	PRELIGHT_DIFFUSE_FBO = 0x0000,
 	PRELIGHT_SPECULAR_FBO = 0x0001,
 	PRELIGHT_DIFFUSE_SPECULAR_FBO = 0x0002,
-	PRELIGHT_FBO_COUNT	= 0x0003
+	PRELIGHT_PRE_SSR_FBO = 0x0003,
+	PRELIGHT_TEMP_FBO = 0x0004,
+	PRELIGHT_SWAP_TEMP_FBO = 0x0005,
+	PRELIGHT_FBO_COUNT	= 0x0006
 
 };
 
@@ -1210,7 +1230,7 @@ enum uniformBlock_t
 {
 	UNIFORM_BLOCK_SURFACESPRITE,
 	UNIFORM_BLOCK_LIQUID,
-	UNIFORM_BLOCK_LIQUID2,
+	UNIFORM_BLOCK_CUBEMAP_TRANSFORMS,
 	UNIFORM_BLOCK_COUNT
 };
 
@@ -1275,6 +1295,8 @@ typedef enum
 	UNIFORM_SCREENDEPTHMAP,
 	UNIFORM_SCREENDIFFUSEMAP,
 	UNIFORM_SCREENSPECULARMAP,
+	UNIFORM_SCREENOFFSETMAP,
+	UNIFORM_SCREENOFFSETMAP2,
 
 	UNIFORM_LIGHTGRIDDIRECTIONMAP,
 	UNIFORM_LIGHTGRIDDIRECTIONALLIGHTMAP,
@@ -1374,6 +1396,7 @@ typedef enum
 
 	UNIFORM_FX_VOLUMETRIC_BASE,
 	UNIFORM_MAPZEXTENTS,
+	UNIFORM_ZONEOFFSET,
 
 	UNIFORM_COUNT
 } uniform_t;
@@ -1406,23 +1429,6 @@ typedef struct shaderProgram_s
 	// uniform blocks
 	uint32_t uniformBlocks;
 } shaderProgram_t;
-
-struct technique_t
-{
-	shaderProgram_t *depthPrepass;
-	shaderProgram_t *shadow;
-	shaderProgram_t *forward;
-};
-
-struct EntityCullInfo
-{
-	uint32_t frustumMask;
-};
-
-struct WorkingScene
-{
-	EntityCullInfo entityCullInfo[MAX_REFENTITIES];
-};
 
 // trRefdef_t holds everything that comes in refdef_t,
 // as well as the locally generated scene information
@@ -1496,18 +1502,19 @@ typedef struct {
 	float		surface[4];
 } fog_t;
 
-typedef enum {
-	VPF_NONE            = 0x00,
-	VPF_NOVIEWMODEL     = 0x01, // Don't render the view model
-	VPF_SHADOWMAP       = 0x02, // Rendering to shadow map
-	VPF_DEPTHSHADOW     = 0x04, // Rendering depth-only
-	VPF_DEPTHCLAMP      = 0x08, // Perform depth clamping when rendering z pass
-	VPF_ORTHOGRAPHIC    = 0x10, // Use orthographic projection
-	VPF_USESUNLIGHT     = 0x20,
+enum viewParmFlag_t {
+	VPF_NONE			= 0x00,
+	VPF_NOVIEWMODEL		= 0x01, // Don't render the view model
+	VPF_SHADOWMAP		= 0x02, // Rendering to shadow map
+	VPF_DEPTHSHADOW		= 0x04, // Rendering depth-only
+	VPF_DEPTHCLAMP		= 0x08, // Perform depth clamping when rendering z pass
+	VPF_ORTHOGRAPHIC	= 0x10, // Use orthographic projection
+	VPF_USESUNLIGHT		= 0x20,
 	VPF_FARPLANEFRUSTUM = 0x40, // Use far clipping plane
-	VPF_NOCUBEMAPS      = 0x80, // Don't render cubemaps
+	VPF_NOCUBEMAPS		= 0x80, // Don't render cubemaps
 	VPF_NOPOSTPROCESS	= 0x100
-} viewParmFlags_t;
+};
+using viewParmFlags_t = uint32_t;
 
 typedef struct {
 	orientationr_t	ori;
@@ -2104,6 +2111,16 @@ void R_LerpTag( orientation_t *tag, qhandle_t handle, int startFrame, int endFra
 void R_ModelBounds( qhandle_t handle, vec3_t mins, vec3_t maxs );
 void R_Modellist_f (void);
 
+void R_GenerateDrawSurfs(viewParms_t *viewParms, trRefdef_t *refdef);
+void R_SetupViewParmsForOrthoRendering(
+	int viewportWidth,
+	int viewportHeight,
+	FBO_t *fbo,
+	viewParmFlags_t viewParmsFlags,
+	const orientationr_t& orientation,
+	const vec3_t viewBounds[2]);
+void R_SortAndSubmitDrawSurfs(drawSurf_t *drawSurfs, int numDrawSurfs);
+
 //====================================================
 
 #define	MAX_DRAWIMAGES 4096
@@ -2149,6 +2166,13 @@ struct vertexAttribute_t
 	int stepRate;
 };
 
+struct bufferBinding_t
+{
+	VBO_t *vbo;
+	int offset;
+	int size;
+};
+
 typedef struct gpuMesh_s
 {
 	VBO_t *vbo;
@@ -2187,7 +2211,7 @@ typedef struct glstate_s {
 	FBO_t          *currentFBO;
 	VBO_t          *currentVBO;
 	IBO_t          *currentIBO;
-	VBO_t		   *currentXFBBO;
+	bufferBinding_t currentXFBBO;
 	matrix_t        modelview;
 	matrix_t        projection;
 	matrix_t		modelviewProjection;
@@ -2376,6 +2400,9 @@ typedef struct trGlobals_s {
 	image_t					*glowImage;
 	image_t					*glowImageScaled[6];
 	image_t					*prevRenderImage;
+	image_t					*tempFilterBufferImage;
+	image_t					*swapTempFilterBufferImage;
+	image_t					*preSSRImage[2];
 	image_t					*sunRaysImage;
 	image_t					*renderDepthImage;
 	image_t					*pshadowMaps[MAX_DRAWN_PSHADOWS];
@@ -2393,6 +2420,7 @@ typedef struct trGlobals_s {
 	image_t                 *envBrdfImage;
 	
 	image_t					*textureDepthImage;
+	image_t					*weatherDepthImage;
 	image_t					*cubeDepthImage;
 
 	FBO_t					*renderFbo;
@@ -2415,6 +2443,7 @@ typedef struct trGlobals_s {
 	FBO_t                   *renderCubeFbo;
 	FBO_t					*shadowCubeFbo;
 	FBO_t					*preFilterEnvMapFbo;
+	FBO_t					*weatherDepthFbo;
 
 	shader_t				*defaultShader;
 	shader_t				*shadowShader;
@@ -2484,6 +2513,7 @@ typedef struct trGlobals_s {
 	shaderProgram_t dglowUpsample;
 	shaderProgram_t spriteShader[SSDEF_COUNT];
 	shaderProgram_t weatherShader;
+	shaderProgram_t weatherUpdateShader;
 
 	// Built-in meshes
 	gpuMesh_t screenQuad;
@@ -2581,6 +2611,47 @@ extern glRefConfig_t glRefConfig;
 extern window_t		window;
 
 /*
+============================================================
+VERTEX BUFFER OBJECTS
+============================================================
+*/
+
+struct VertexArraysProperties
+{
+	size_t	vertexDataSize;
+	int		numVertexArrays;
+	int		enabledAttributes[ATTR_INDEX_MAX];
+	int		offsets[ATTR_INDEX_MAX];
+	int		sizes[ATTR_INDEX_MAX];
+	int		strides[ATTR_INDEX_MAX];
+	void	*streams[ATTR_INDEX_MAX];
+};
+
+uint32_t R_VboPackTangent(vec4_t v);
+uint32_t R_VboPackNormal(vec3_t v);
+void R_VboUnpackTangent(vec4_t v, uint32_t b);
+void R_VboUnpackNormal(vec3_t v, uint32_t b);
+
+VBO_t *R_CreateVBO(byte * vertexes, int vertexesSize, vboUsage_t usage);
+IBO_t *R_CreateIBO(byte * indexes, int indexesSize, vboUsage_t usage);
+
+void R_BindIBO(IBO_t * ibo);
+void R_BindNullIBO(void);
+
+void R_BindVBO(VBO_t * vbo);
+void R_BindNullVBO(void);
+void R_InitVBOs(void);
+void R_ShutdownVBOs(void);
+void R_VBOList_f(void);
+
+void RB_UpdateVBOs(unsigned int attribBits);
+void RB_CommitInternalBufferData();
+void RB_BindUniformBlock(uniformBlock_t block);
+void RB_BindAndUpdateUniformBlock(uniformBlock_t block, void *data);
+void CalculateVertexArraysProperties(uint32_t attributes, VertexArraysProperties *properties);
+void CalculateVertexArraysFromVBO(uint32_t attributes, const VBO_t *vbo, VertexArraysProperties *properties);
+
+/*
 ====================================================================
 
 ====================================================================
@@ -2599,7 +2670,7 @@ void R_AddPolygonSurfaces(const trRefdef_t *refdef);
 void R_DecomposeSort(uint32_t sort, int *entityNum, shader_t **shader, int *cubemap, int *postRender);
 uint32_t R_CreateSortKey(int entityNum, int sortedShaderIndex, int cubemapIndex, int postRender);
 void R_AddDrawSurf( surfaceType_t *surface, int entityNum, shader_t *shader, int fogIndex, int dlightMap, int postRender, int cubemap, float distance);
-bool R_IsPostRenderEntity ( int refEntityNum, const trRefEntity_t *refEntity );
+bool R_IsPostRenderEntity(const trRefEntity_t *refEntity);
 
 void R_CalcTexDirs(vec3_t sdir, vec3_t tdir, const vec3_t v1, const vec3_t v2, const vec3_t v3, const vec2_t w1, const vec2_t w2, const vec2_t w3);
 void R_CalcTbnFromNormalAndTexDirs(vec3_t tangent, vec3_t bitangent, vec3_t normal, vec3_t sdir, vec3_t tdir);
@@ -2834,12 +2905,12 @@ LIGHTS
 ============================================================
 */
 
-void R_DlightBmodel( bmodel_t *bmodel );
+void R_DlightBmodel(bmodel_t *bmodel, trRefEntity_t *ent);
 void R_SetupEntityLighting( const trRefdef_t *refdef, trRefEntity_t *ent );
 void R_TransformDlights( int count, dlight_t *dl, orientationr_t *ori );
 int	R_LightForPoint( vec3_t point, vec3_t ambientLight, vec3_t directedLight, vec3_t lightDir );
 int	R_LightDirForPoint( vec3_t point, vec3_t lightDir, vec3_t normal, world_t *world );
-int	R_CubemapForPoint( vec3_t point );
+int	R_CubemapForPoint( const vec3_t point );
 int	R_SHForPoint(vec3_t point);
 
 /*
@@ -2885,46 +2956,6 @@ MARKERS, POLYGON PROJECTION ON WORLD POLYGONS
 
 int	R_MarkFragments( int numPoints, const vec3_t *points, const vec3_t projection, int maxPoints, vec3_t pointBuffer, int maxFragments, markFragment_t *fragmentBuffer );
 
-/*
-============================================================
-VERTEX BUFFER OBJECTS
-============================================================
-*/
-
-struct VertexArraysProperties
-{
-	size_t	vertexDataSize;
-	int		numVertexArrays;
-	int		enabledAttributes[ATTR_INDEX_MAX];
-	int		offsets[ATTR_INDEX_MAX];
-	int		sizes[ATTR_INDEX_MAX];
-	int		strides[ATTR_INDEX_MAX];
-	void	*streams[ATTR_INDEX_MAX];
-};
-
-uint32_t R_VboPackTangent(vec4_t v);
-uint32_t R_VboPackNormal(vec3_t v);
-void R_VboUnpackTangent(vec4_t v, uint32_t b);
-void R_VboUnpackNormal(vec3_t v, uint32_t b);
-
-VBO_t *R_CreateVBO(byte * vertexes, int vertexesSize, vboUsage_t usage);
-IBO_t *R_CreateIBO(byte * indexes, int indexesSize, vboUsage_t usage);
-
-void R_BindIBO(IBO_t * ibo);
-void R_BindNullIBO(void);
-
-void R_BindVBO(VBO_t * vbo);
-void R_BindNullVBO(void);
-void R_InitVBOs(void);
-void R_ShutdownVBOs(void);
-void R_VBOList_f(void);
-
-void RB_UpdateVBOs(unsigned int attribBits);
-void RB_CommitInternalBufferData();
-void RB_BindUniformBlock(uniformBlock_t block);
-void RB_BindAndUpdateUniformBlock(uniformBlock_t block, void *data);
-void CalculateVertexArraysProperties(uint32_t attributes, VertexArraysProperties *properties);
-void CalculateVertexArraysFromVBO(uint32_t attributes, const VBO_t *vbo, VertexArraysProperties *properties);
 
 /*
 ============================================================
@@ -3481,7 +3512,7 @@ struct DrawItem
 	uint32_t numUniformBlockBindings;
 	UniformBlockBinding *uniformBlockBindings;
 
-	VBO_t *transformFeedbackBuffer;
+	bufferBinding_t transformFeedbackBuffer;
 
 
 	UniformData *uniformData;

@@ -323,7 +323,7 @@ void R_AddMD3Surfaces(trRefEntity_t *ent, int entityNum) {
 		// don't add third_person objects if not viewing through a portal
 		if (!personalModel)
 		{
-			R_AddDrawSurf((surfaceType_t *)&model->vboSurfaces[i], entityNum, shader, fogNum, qfalse, R_IsPostRenderEntity(entityNum, ent), cubemapIndex, distance);
+			R_AddDrawSurf((surfaceType_t *)&model->vboSurfaces[i], entityNum, shader, fogNum, qfalse, R_IsPostRenderEntity(ent), cubemapIndex, distance);
 		}
 
 		// we will add shadows even if the main object isn't visible in the view

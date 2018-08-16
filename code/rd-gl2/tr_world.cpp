@@ -334,48 +334,59 @@ static int R_PshadowSurface( msurface_t *surf, int pshadowBits ) {
 R_AddWorldSurface
 ======================
 */
-static void R_AddWorldSurface( msurface_t *surf, int entityNum, int dlightBits, int pshadowBits ) {
+static void R_AddWorldSurface(
+	msurface_t *surf,
+	const trRefEntity_t *entity,
+	int entityNum,
+	int dlightBits,
+	int pshadowBits)
+{
 	// FIXME: bmodel fog?
 
 	// try to cull before dlighting or adding
-	if ( R_CullSurface( surf, entityNum ) ) {
+	if (R_CullSurface(surf, entityNum)) {
 		return;
 	}
 
 	// check for dlighting
-	if ( dlightBits ) {
-		dlightBits = R_DlightSurface( surf, dlightBits );
-		dlightBits = ( dlightBits != 0 );
+	if (dlightBits) {
+		dlightBits = R_DlightSurface(surf, dlightBits);
+		dlightBits = (dlightBits != 0);
 	}
 
 	// check for pshadows
-	if ( pshadowBits ) {
-		pshadowBits = R_PshadowSurface( surf, pshadowBits);
-		pshadowBits = ( pshadowBits != 0 );
+	if (pshadowBits)
+	{
+		pshadowBits = R_PshadowSurface(surf, pshadowBits);
+		pshadowBits = (pshadowBits != 0);
 	}
 
 	vec3_t transformed;
-	
 	if (entityNum != REFENTITYNUM_WORLD) {
 		R_LocalPointToWorld(surf->cullinfo.localOrigin, transformed);
 		VectorSubtract(transformed, tr.refdef.vieworg, transformed);
-	} else {
+	}
+	else {
 		VectorSubtract(surf->cullinfo.localOrigin, tr.refdef.vieworg, transformed);
 	}
-	
 	float distance = VectorLength(transformed);
 
-	bool isPostRenderEntity =
-		R_IsPostRenderEntity(entityNum, tr.currentEntity);
-	R_AddDrawSurf( surf->data, entityNum, surf->shader, surf->fogIndex,
-			dlightBits, isPostRenderEntity, surf->cubemapIndex, distance);
+	bool isPostRenderEntity = false;
+	if (entityNum != REFENTITYNUM_WORLD)
+	{
+		assert(entity);
+		isPostRenderEntity = R_IsPostRenderEntity(entity);
+	}
 
-	for ( int i = 0, numSprites = surf->numSurfaceSprites; 
-			i < numSprites; ++i )
+	R_AddDrawSurf(surf->data, entityNum, surf->shader, surf->fogIndex,
+		dlightBits, isPostRenderEntity, surf->cubemapIndex, distance);
+
+	for (int i = 0, numSprites = surf->numSurfaceSprites;
+	i < numSprites; ++i)
 	{
 		srfSprites_t *sprites = surf->surfaceSprites + i;
 		R_AddDrawSurf((surfaceType_t *)sprites, entityNum, sprites->shader,
-				surf->fogIndex, dlightBits, isPostRenderEntity, surf->cubemapIndex, distance);
+			surf->fogIndex, dlightBits, isPostRenderEntity, 0, distance);
 	}
 }
 
@@ -402,7 +413,7 @@ void R_AddBrushModelSurfaces ( trRefEntity_t *ent, int entityNum ) {
 	}
 	
 	R_SetupEntityLighting( &tr.refdef, ent );
-	R_DlightBmodel( bmodel );
+	R_DlightBmodel( bmodel , ent );
 
 	for (int i = 0 ; i < bmodel->numSurfaces ; i++ ) {
 		int surf = bmodel->firstSurface + i;
@@ -411,7 +422,7 @@ void R_AddBrushModelSurfaces ( trRefEntity_t *ent, int entityNum ) {
 		if (world->surfacesViewCount[surf] != tr.viewCount)
 		{
 			world->surfacesViewCount[surf] = tr.viewCount;
-			R_AddWorldSurface( world->surfaces + surf, entityNum, tr.currentEntity->needDlights, 0 );
+			R_AddWorldSurface( world->surfaces + surf, ent, entityNum, ent->needDlights, 0 );
 		}
 	}
 }
@@ -835,7 +846,8 @@ void R_AddWorldSurfaces (viewParms_t *viewParms, trRefdef_t *refdef) {
 			if (tr.world->surfacesViewCount[i] != tr.viewCount)
 				continue;
 
-			R_AddWorldSurface( tr.world->surfaces + i, 
+			R_AddWorldSurface( tr.world->surfaces + i,
+				NULL,
 				REFENTITYNUM_WORLD, 
 				tr.world->surfacesDlightBits[i], 
 				tr.world->surfacesPshadowBits[i] );
@@ -847,8 +859,9 @@ void R_AddWorldSurfaces (viewParms_t *viewParms, trRefdef_t *refdef) {
 			if (tr.world->mergedSurfacesViewCount[i] != tr.viewCount)
 				continue;
 
-			R_AddWorldSurface( 
+			R_AddWorldSurface(
 				tr.world->mergedSurfaces + i,
+				NULL,
 				REFENTITYNUM_WORLD, 
 				tr.world->mergedSurfacesDlightBits[i],
 				tr.world->mergedSurfacesPshadowBits[i]);

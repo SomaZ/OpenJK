@@ -1,28 +1,18 @@
 /*[Vertex]*/
-in vec3 attr_Position;
-in vec3 attr_Color;
+uniform vec2 u_ZoneOffset;
 
-uniform vec2 u_MapZExtents;
-uniform float u_Time;
-uniform vec3 u_ViewOrigin;
+in vec3 attr_Position;
+in vec3 attr_Color;  // velocity
+
+out vec3 var_Velocity;
 
 void main()
 {
-	int z = gl_InstanceID / 25;
-	int remaining = gl_InstanceID - (z * 25);
-	int y = remaining % 5;
-	int x = remaining / 5;
-
-	float zOffset = mod(
-		1000.0 * float(z) + u_Time * 1000.0,
-		u_MapZExtents.y - u_MapZExtents.x - 2000.0);
-	vec3 offset = vec3(
-		1000.0 * float(x - 2),
-		1000.0 * float(y - 2),
-		u_MapZExtents.y - zOffset);
-	offset.xy += attr_Color.xy * u_Time;
-
-	gl_Position = vec4(attr_Position + offset, 1.0);
+	gl_Position = vec4(
+		attr_Position.xy + u_ZoneOffset,
+		attr_Position.z,
+		1.0);
+	var_Velocity = attr_Color;
 }
 
 /*[Geometry]*/
@@ -31,6 +21,8 @@ layout(triangle_strip, max_vertices = 4) out;
 
 uniform mat4 u_ModelViewProjectionMatrix;
 uniform vec3 u_ViewOrigin;
+
+in vec3 var_Velocity[];
 
 void main()
 {
@@ -61,5 +53,5 @@ out vec4 out_Color;
 
 void main()
 {
-	out_Color = vec4(0.7, 0.8, 0.7, 0.4);
+	out_Color = vec4(0.7, 0.8, 0.7, 0.1);
 }

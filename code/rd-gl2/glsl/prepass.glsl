@@ -317,6 +317,61 @@ void main()
 
 }
 
+/*[Geometry]*/
+layout(triangles) in;
+layout(triangle_strip, max_vertices = 18) out;
+
+layout(std140) uniform CubemapMatrices
+{
+mat4		cubeMatrices[6];
+};
+
+uniform mat4 u_ModelViewProjectionMatrix;
+uniform vec3 u_ViewOrigin;
+in vec4   var_TexCoords[];
+in vec3	  var_Position[];
+
+#if defined(USE_G_BUFFERS)
+in vec4   var_Normal[];
+in vec4   var_Tangent[];
+in vec4   var_Bitangent[];
+
+out vec4   fs_Normal;
+out vec4   fs_Tangent;
+out vec4   fs_Bitangent;
+#endif
+
+out vec4   fs_TexCoords;
+out vec3   fs_Position;
+out int	   gl_Layer;
+
+void main()
+{
+	for (int face = 0; face < 6; ++face)
+	{
+		for (int i = 0; i < 3; ++i)
+		{
+			gl_Layer = face;
+			gl_Position = cubeMatrices[face] * vec4(var_Position[i], 1.0);
+			//vec2 position = vec2(2.0 * float(i & 2) - 1.0, 4.0 * float(i & 1) - 1.0);
+			//gl_Position = vec4(position, 0.98, 1.0);
+			//gl_Position = gl_in[i].gl_Position;
+			fs_TexCoords = var_TexCoords[i];
+			fs_Position = var_Position[i];
+
+			#if defined(USE_G_BUFFERS)
+			fs_Normal = var_Normal[i];
+			fs_Tangent = var_Tangent[i];
+			fs_Bitangent = var_Bitangent[i];
+			#endif
+
+			EmitVertex();
+		}
+
+		EndPrimitive();
+	}
+}
+
 /*[Fragment]*/
 uniform sampler2D	u_DiffuseMap;
 uniform int			u_AlphaTestFunction;
@@ -331,13 +386,25 @@ uniform vec4      u_NormalScale;
 uniform vec4      u_SpecularScale;
 #endif
 
+#if defined(USE_CUBEMAP_TRANSFORMS)
+in vec4   fs_TexCoords;
+in vec3	  fs_Position;
+#else
 in vec4   var_TexCoords;
 in vec3	  var_Position;
+#endif
 
 #if defined(USE_G_BUFFERS)
+
+#if defined(USE_CUBEMAP_TRANSFORMS)
+in vec4   fs_Normal;
+in vec4   fs_Tangent;
+in vec4   fs_Bitangent;
+#else
 in vec4   var_Normal;
 in vec4   var_Tangent;
 in vec4   var_Bitangent;
+#endif
 
 out vec4 out_Color;
 out vec4 out_Glow;
@@ -434,23 +501,34 @@ vec2 EncodeNormal(in vec3 N)
 #endif
 void main()
 {
+#if !defined(USE_CUBEMAP_TRANSFORMS)
+	vec3 fs_Position = var_Position;
+	vec4 fs_TexCoords = var_TexCoords;
+#endif
 
 #if !defined(USE_G_BUFFERS)
 	if (u_AlphaTestFunction == 0)
 		return;
 #endif
 
-	vec2 texCoords = var_TexCoords.xy;
+	vec2 texCoords = fs_TexCoords.xy;
 #if defined(USE_G_BUFFERS)
+
+	#if !defined(USE_CUBEMAP_TRANSFORMS)
+	vec4   fs_Normal = var_Normal;
+	vec4   fs_Tangent = var_Tangent;
+	vec4   fs_Bitangent = var_Bitangent;
+	#endif
+
 	vec3 offsetDir = vec3(0.0,0.0,0.0);
 	vec3 vertexColor, position;
 	vec3 N;
 
-	mat3 tangentToWorld = mat3(var_Tangent.xyz, var_Bitangent.xyz, var_Normal.xyz);
-	position = var_Position;
+	mat3 tangentToWorld = mat3(fs_Tangent.xyz, fs_Bitangent.xyz, fs_Normal.xyz);
+	position = fs_Position;
 
   #if defined(USE_PARALLAXMAP)
-    vec3 viewDir = vec3(var_Normal.w, var_Tangent.w, var_Bitangent.w);
+    vec3 viewDir = vec3(fs_Normal.w, fs_Tangent.w, fs_Bitangent.w);
 	offsetDir = viewDir * tangentToWorld;
 
 	offsetDir.xy *= -u_NormalScale.a / offsetDir.z;
@@ -474,7 +552,7 @@ void main()
 			discard;
 	}
 #if defined(USE_G_BUFFERS)
-	N = CalcNormal(var_Normal.xyz, texCoords, tangentToWorld);
+	N = CalcNormal(fs_Normal.xyz, texCoords, tangentToWorld);
 
 	vec4 specular = vec4 (1.0);
 	if (u_EnableTextures.z > 0.0)

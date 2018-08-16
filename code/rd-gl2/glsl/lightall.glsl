@@ -599,7 +599,7 @@ float pcfShadow(samplerCubeShadow depthMap, vec3 L, float distance)
 {
 	float shadow = 0.0;
 	int samples = 20;
-	float diskRadius = 1.0;
+	float diskRadius = 2.5;
 	for (int i = 0; i < samples; ++i)
 	{
 		shadow += texture(depthMap, vec4(L + sampleOffsetDirections[i] * diskRadius, distance));
@@ -836,7 +836,6 @@ void main()
 
 	if (u_EnableTextures.x == 1.0)
 		out_Color.rgb += shColor * diffuse.rgb;
-	out_Color.rgb += cubeLightColor * (specular.rgb * EnvBRDF.x + EnvBRDF.y) * horiz;
 
 	ivec2 windowCoord = ivec2(gl_FragCoord.xy);
 
@@ -844,9 +843,10 @@ void main()
 	diffuseBufferColor *= diffuseBufferColor;
 	out_Color.rgb += diffuse.rgb * diffuseBufferColor;
 
-	vec3 specBufferColor = texelFetch(u_ScreenSpecularMap, windowCoord, 0).rgb;
-	specBufferColor *= specBufferColor;
-	out_Color.rgb += specBufferColor;
+	vec4 specBufferColor = texelFetch(u_ScreenSpecularMap, windowCoord, 0);
+	specBufferColor.rgb *= specBufferColor.rgb;
+	out_Color.rgb += specBufferColor.rgb;
+	out_Color.rgb += cubeLightColor * (1.0 - specBufferColor.a) * (specular.rgb * EnvBRDF.x + EnvBRDF.y) * horiz;
 
   #endif
 

@@ -29,7 +29,7 @@ void GLSL_BindNullProgram(void);
 const uniformBlockInfo_t uniformBlocksInfo[UNIFORM_BLOCK_COUNT] = {
 	{ 0, "SurfaceSprite", sizeof(SurfaceSpriteBlock) },
 	{ 1, "Liquid", sizeof(LiquidBlock) },
-	{ 2, "Liquid2", sizeof(LiquidBlock2) }
+	{ 2, "CubemapMatrices", sizeof(CubemapTransforms) }
 };
 
 typedef struct uniformInfo_s
@@ -58,6 +58,8 @@ static uniformInfo_t uniformsInfo[] =
 	{ "u_ScreenDepthMap", GLSL_INT, 1 },
 	{ "u_ScreenDiffuseMap", GLSL_INT, 1 },
 	{ "u_ScreenSpecularMap", GLSL_INT, 1 },
+	{ "u_ScreenOffsetMap", GLSL_INT, 1 },
+	{ "u_ScreenOffsetMap2", GLSL_INT, 1 },
 
 	{ "u_LightGridDirectionMap", GLSL_INT, 1 },
 	{ "u_LightGridDirectionalLightMap", GLSL_INT, 1 },
@@ -156,6 +158,7 @@ static uniformInfo_t uniformsInfo[] =
 
 	{ "u_FXVolumetricBase",		GLSL_FLOAT, 1 },
 	{ "u_MapZExtents",			GLSL_VEC2, 1 },
+	{ "u_ZoneOffset",			GLSL_VEC2, 1 },
 };
 
 static void GLSL_PrintProgramInfoLog(GLuint object, qboolean developerOnly)
@@ -713,7 +716,7 @@ ShaderProgramBuilder::~ShaderProgramBuilder()
 }
 
 void ShaderProgramBuilder::Start(
-	const char *name, 
+	const char *name,
 	const uint32_t attribs,
 	const uint32_t xfbVariables)
 {
@@ -789,12 +792,11 @@ bool ShaderProgramBuilder::AddShader(const GPUShaderDesc& shaderDesc, const char
 bool ShaderProgramBuilder::Build(shaderProgram_t *shaderProgram)
 {
 	const size_t nameBufferSize = strlen(name) + 1;
-	shaderProgram->name = (char *)R_Malloc(nameBufferSize, TAG_GP2, qfalse);
+	shaderProgram->name = (char *)R_Malloc(nameBufferSize, TAG_GP2);
 	Q_strncpyz(shaderProgram->name, name, nameBufferSize);
-
 	shaderProgram->program = program;
 	shaderProgram->attribs = attribs;
-
+	shaderProgram->xfbVariables = xfbVariables;
 	GLSL_BindShaderInterface(shaderProgram);
 	GLSL_LinkProgram(shaderProgram->program);
 
@@ -913,7 +915,7 @@ void GLSL_FinishGPUShader(shaderProgram_t *program)
 void GLSL_SetUniforms(shaderProgram_t *program, UniformData *uniformData)
 {
 	UniformData *data = uniformData;
-	if (data == nullptr)
+	if (data == NULL)
 		return;
 
 	while (data->index != UNIFORM_COUNT)
@@ -1556,7 +1558,13 @@ static int GLSL_LoadGPUProgramPrepass(
 			Q_strcat(extradefines, sizeof(extradefines), "#define USE_G_BUFFERS\n");
 			attribs &= ~ATTR_TEXCOORD0;
 			attribs |= ATTR_TEXCOORD0 | ATTR_COLOR | ATTR_TANGENT;
-			shaderTypes |= GPUSHADER_FRAGMENT | GPUSHADER_GEOMETRY;
+			shaderTypes |= GPUSHADER_FRAGMENT;
+		}
+
+		if (i & PREPASS_USE_CUBEMAP_TRANSFORMS)
+		{
+			Q_strcat(extradefines, sizeof(extradefines), "#define USE_CUBEMAP_TRANSFORMS\n");
+			shaderTypes |= GPUSHADER_GEOMETRY;
 		}
 
 		if (i & PREPASS_USE_PARALLAX)
@@ -1630,6 +1638,12 @@ static int GLSL_LoadGPUProgramPrelight(
 		if (i == PRELIGHT_SSR)
 			Q_strcat(extradefines, sizeof(extradefines), "#define SSR\n");
 
+		if (i == PRELIGHT_SSR_RESOLVE)
+			Q_strcat(extradefines, sizeof(extradefines), "#define SSR_RESOLVE\n");
+
+		if (i == PRELIGHT_TEMPORAL_FILTER)
+			Q_strcat(extradefines, sizeof(extradefines), "#define TEMPORAL_FILTER\n");
+
 		uint32_t shaderTypes = GPUSHADER_VERTEX | GPUSHADER_FRAGMENT;
 
 		//TODO: use culling or cubemapping layering
@@ -1648,25 +1662,15 @@ static int GLSL_LoadGPUProgramPrelight(
 		GLSL_SetUniformInt(&tr.prelightShader[i], UNIFORM_SCREENDEPTHMAP, 1);
 		GLSL_SetUniformInt(&tr.prelightShader[i], UNIFORM_NORMALMAP, 2);
 		GLSL_SetUniformInt(&tr.prelightShader[i], UNIFORM_SPECULARMAP, 3);
-
-		if (i == PRELIGHT_CUBEMAP) 
-		{
-			GLSL_SetUniformInt(&tr.prelightShader[i], UNIFORM_SHADOWMAP, 4);
-			GLSL_SetUniformInt(&tr.prelightShader[i], UNIFORM_SHADOWMAP2, 5);
-			GLSL_SetUniformInt(&tr.prelightShader[i], UNIFORM_SHADOWMAP3, 6);
+		GLSL_SetUniformInt(&tr.prelightShader[i], UNIFORM_SCREENOFFSETMAP, 4);
+		GLSL_SetUniformInt(&tr.prelightShader[i], UNIFORM_SCREENOFFSETMAP2, 5);
+		GLSL_SetUniformInt(&tr.prelightShader[i], UNIFORM_ENVBRDFMAP, 7);
 		
-			GLSL_SetUniformInt(&tr.prelightShader[i], UNIFORM_ENVBRDFMAP, 7);
-
-			GLSL_SetUniformInt(&tr.prelightShader[i], UNIFORM_SHADOWMAP4, 8);
-		}
-		else 
-		{
-			GLSL_SetUniformInt(&tr.prelightShader[i], UNIFORM_SHADOWMAP, 4);
-			GLSL_SetUniformInt(&tr.prelightShader[i], UNIFORM_SHADOWMAP2, 5);
-			GLSL_SetUniformInt(&tr.prelightShader[i], UNIFORM_SHADOWMAP3, 6);
-			GLSL_SetUniformInt(&tr.prelightShader[i], UNIFORM_SHADOWMAP4, 7);
-		}
-
+		GLSL_SetUniformInt(&tr.prelightShader[i], UNIFORM_SHADOWMAP, 6);
+		GLSL_SetUniformInt(&tr.prelightShader[i], UNIFORM_SHADOWMAP2, 8);
+		GLSL_SetUniformInt(&tr.prelightShader[i], UNIFORM_SHADOWMAP3, 9);
+		GLSL_SetUniformInt(&tr.prelightShader[i], UNIFORM_SHADOWMAP4, 10);
+		
 		qglUseProgram(0);
 
 		GLSL_FinishGPUShader(&tr.prelightShader[i]);
@@ -1940,6 +1944,35 @@ static int GLSL_LoadGPUProgramLightAll(
 	return numPrograms;
 }
 
+static int GLSL_LoadGPUProgramBasicWithDefinitions(
+	ShaderProgramBuilder& builder,
+	Allocator& scratchAlloc,
+	shaderProgram_t *shaderProgram,
+	const char *programName,
+	const GPUProgramDesc& programFallback,
+	const char *extraDefines,
+	const uint32_t shaderTypes = GPUSHADER_VERTEX | GPUSHADER_FRAGMENT,
+	const uint32_t attribs = ATTR_POSITION | ATTR_TEXCOORD0,
+	const uint32_t xfbVariables = NO_XFB_VARS)
+{
+	Allocator allocator(scratchAlloc.Base(), scratchAlloc.GetSize());
+	const GPUProgramDesc *programDesc =
+		LoadProgramSource(programName, allocator, programFallback);
+	if (!GLSL_LoadGPUShader(
+		builder,
+		shaderProgram,
+		programName,
+		attribs,
+		xfbVariables,
+		extraDefines,
+		*programDesc,
+		shaderTypes))
+	{
+		ri.Error(ERR_FATAL, "Could not load %s shader!", programName);
+	}
+	return 1;
+}
+
 static int GLSL_LoadGPUProgramBasic(
 	ShaderProgramBuilder& builder,
 	Allocator& scratchAlloc,
@@ -1947,14 +1980,14 @@ static int GLSL_LoadGPUProgramBasic(
 	const char *programName,
 	const GPUProgramDesc& programFallback,
 	const uint32_t shaderTypes = GPUSHADER_VERTEX | GPUSHADER_FRAGMENT,
-	const uint32_t attribs = ATTR_POSITION | ATTR_TEXCOORD0
-	)
+	const uint32_t attribs = ATTR_POSITION | ATTR_TEXCOORD0,
+	const uint32_t xfbVariables = NO_XFB_VARS)
 {
 	Allocator allocator(scratchAlloc.Base(), scratchAlloc.GetSize());
 	const GPUProgramDesc *programDesc =
 		LoadProgramSource(programName, allocator, programFallback);
 
-	if (!GLSL_LoadGPUShader(builder, shaderProgram, programName, attribs, NO_XFB_VARS,
+	if (!GLSL_LoadGPUShader(builder, shaderProgram, programName, attribs, xfbVariables,
 		nullptr, *programDesc, shaderTypes))
 	{
 		ri.Error(ERR_FATAL, "Could not load %s shader!", programName);
@@ -2537,7 +2570,20 @@ static int GLSL_LoadGPUProgramWeather(
 	GLSL_InitUniforms(&tr.weatherShader);
 	GLSL_FinishGPUShader(&tr.weatherShader);
 
-	return 1;
+	GLSL_LoadGPUProgramBasic(
+		builder,
+		scratchAlloc,
+		&tr.weatherUpdateShader,
+		"weatherUpdate",
+		fallback_weatherUpdateProgram,
+		GPUSHADER_VERTEX | GPUSHADER_FRAGMENT | GPUSHADER_GEOMETRY,
+		ATTR_POSITION | ATTR_COLOR,
+		(1u << XFB_VAR_POSITION) | (1u << XFB_VAR_VELOCITY));
+
+	GLSL_InitUniforms(&tr.weatherUpdateShader);
+	GLSL_FinishGPUShader(&tr.weatherUpdateShader);
+
+	return 2;
 }
 
 void GLSL_LoadGPUShaders()

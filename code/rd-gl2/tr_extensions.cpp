@@ -183,6 +183,7 @@ PFNGLBINDFRAMEBUFFERPROC qglBindFramebuffer;
 PFNGLDELETEFRAMEBUFFERSPROC qglDeleteFramebuffers;
 PFNGLGENFRAMEBUFFERSPROC qglGenFramebuffers;
 PFNGLCHECKFRAMEBUFFERSTATUSPROC qglCheckFramebufferStatus;
+PFNGLFRAMEBUFFERTEXTUREPROC qglFramebufferTexture;
 PFNGLFRAMEBUFFERTEXTURE1DPROC qglFramebufferTexture1D;
 PFNGLFRAMEBUFFERTEXTURE2DPROC qglFramebufferTexture2D;
 PFNGLFRAMEBUFFERTEXTURE3DPROC qglFramebufferTexture3D;
@@ -469,6 +470,7 @@ void GLimp_InitCoreFunctions()
 	GetGLFunction (qglDeleteFramebuffers, "glDeleteFramebuffers", qtrue);
 	GetGLFunction (qglGenFramebuffers, "glGenFramebuffers", qtrue);
 	GetGLFunction (qglCheckFramebufferStatus, "glCheckFramebufferStatus", qtrue);
+	GetGLFunction (qglFramebufferTexture, "glFramebufferTexture", qtrue);
 	GetGLFunction (qglFramebufferTexture1D, "glFramebufferTexture1D", qtrue);
 	GetGLFunction (qglFramebufferTexture2D, "glFramebufferTexture2D", qtrue);
 	GetGLFunction (qglFramebufferTexture3D, "glFramebufferTexture3D", qtrue);

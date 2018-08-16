@@ -568,13 +568,10 @@ void FBO_Init(void)
 		tr.shadowCubeFbo = FBO_Create("_shadowCubeFbo", PSHADOW_MAP_SIZE, PSHADOW_MAP_SIZE);
 		FBO_Bind(tr.shadowCubeFbo);
 
-		//FBO_CreateBuffer(tr.shadowCubeFbo, GL_DEPTH_COMPONENT24, 0, 0);
+		qglFramebufferTexture(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, tr.cubeDepthImage->texnum, 0);
 
 		qglDrawBuffer(GL_NONE);
-
-		R_AttachFBOTextureDepth(tr.cubeDepthImage->texnum);
-
-		FBO_SetupDrawBuffers();
+		qglReadBuffer(GL_NONE);
 
 		R_CheckFBO(tr.shadowCubeFbo);
 	}
@@ -714,6 +711,20 @@ void FBO_Init(void)
 		FBO_AttachTextureImage(tr.prefilterEnvMapImage, 0);
 		FBO_SetupDrawBuffers();
 		R_CheckFBO(tr.preFilterEnvMapFbo);
+	}
+
+	if (tr.weatherDepthImage != NULL)
+	{
+		tr.weatherDepthFbo = FBO_Create(
+			"_weatherDepthFbo",
+			tr.weatherDepthImage->width,
+			tr.weatherDepthImage->height);
+
+		FBO_Bind(tr.weatherDepthFbo);
+		R_AttachFBOTextureDepth(tr.weatherDepthImage->texnum);
+		FBO_SetupDrawBuffers();
+
+		R_CheckFBO(tr.weatherDepthFbo);
 	}
 
 	GL_CheckErrors();

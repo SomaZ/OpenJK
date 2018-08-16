@@ -136,6 +136,8 @@ cvar_t	*r_dynamicGlowSoft;
 cvar_t	*r_dynamicGlowWidth;
 cvar_t	*r_dynamicGlowHeight;
 
+cvar_t  *r_debugWeather;
+
 /*
 Ghoul2 Insert Start
 */
@@ -1323,6 +1325,7 @@ void R_Register(void)
 	r_dynamicGlowSoft = ri.Cvar_Get("r_dynamicGlowSoft", "1", CVAR_ARCHIVE);
 	r_dynamicGlowWidth = ri.Cvar_Get("r_dynamicGlowWidth", "320", CVAR_ARCHIVE | CVAR_LATCH);
 	r_dynamicGlowHeight = ri.Cvar_Get("r_dynamicGlowHeight", "240", CVAR_ARCHIVE | CVAR_LATCH);
+	r_debugWeather = ri.Cvar_Get("r_debugWeather", "0", CVAR_ARCHIVE);
 	r_debugContext = ri.Cvar_Get("r_debugContext", "0", CVAR_LATCH);
 	r_picmip = ri.Cvar_Get("r_picmip", "0", CVAR_ARCHIVE | CVAR_LATCH);
 	ri.Cvar_CheckRange(r_picmip, 0, 16, qtrue);

@@ -3276,7 +3276,6 @@ void R_CreateBuiltinImages(void) {
 		tr.prevRenderImage = R_CreateImage("*prevRender", NULL, width / 2, height / 2, IMGTYPE_COLORALPHA, IMGFLAG_NO_COMPRESSION | IMGFLAG_CLAMPTOEDGE, hdrFormat);
 	}
 
-	tr.prefilterEnvMapImage = R_CreateImage("*prefilterEnvMap", NULL, r_cubemapSize->integer / 2, r_cubemapSize->integer / 2, IMGTYPE_COLORALPHA, IMGFLAG_NO_COMPRESSION | IMGFLAG_CLAMPTOEDGE, hdrFormat);
 
 	for (x = 0; x < MAX_DRAWN_PSHADOWS; x++)
 	{
@@ -3301,7 +3300,18 @@ void R_CreateBuiltinImages(void) {
 	if (r_cubeMapping->integer)
 	{
 		tr.renderCubeImage = R_CreateImage("*renderCube", NULL, r_cubemapSize->integer, r_cubemapSize->integer, IMGTYPE_COLORALPHA, IMGFLAG_NO_COMPRESSION | IMGFLAG_CLAMPTOEDGE | IMGFLAG_MIPMAP | IMGFLAG_CUBEMAP, hdrFormat);
+		tr.prefilterEnvMapImage = R_CreateImage("*prefilterEnvMap", NULL, r_cubemapSize->integer / 2, r_cubemapSize->integer / 2, IMGTYPE_COLORALPHA, IMGFLAG_NO_COMPRESSION | IMGFLAG_CLAMPTOEDGE, hdrFormat);
 	}
+
+	tr.weatherDepthImage = R_CreateImage(
+		"*weatherDepth",
+		NULL,
+		1024,
+		1024,
+		IMGTYPE_COLORALPHA,
+		IMGFLAG_NO_COMPRESSION | IMGFLAG_CLAMPTOEDGE,
+		GL_DEPTH_COMPONENT24);
+
 }
 
 

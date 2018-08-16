@@ -60,15 +60,19 @@ void main()
 #endif
 
 uniform vec3 u_ViewOrigin;
-uniform vec4 u_ViewInfo; // zfar / znear, zfar, znear
-#define u_ZFarDivZNear u_ViewInfo.x
-#define u_ZFar u_ViewInfo.y
+uniform vec4 u_ViewInfo;
 #define u_ZNear u_ViewInfo.z
+uniform sampler2D u_ScreenImageMap;
 uniform sampler2D u_ScreenDepthMap;
 uniform sampler2D u_NormalMap;
 uniform sampler2D u_SpecularMap;
+uniform sampler2D u_ScreenOffsetMap;
+uniform sampler2D u_ScreenOffsetMap2;
+uniform sampler2D u_EnvBrdfMap;
 
+uniform mat4 u_ModelMatrix;
 uniform mat4 u_ModelViewProjectionMatrix;
+uniform mat4 u_NormalMatrix;
 uniform mat4 u_InvViewProjectionMatrix;
 
 #if defined(POINT_LIGHT)
@@ -109,7 +113,6 @@ uniform samplerCube u_ShadowMap;
 uniform samplerCube u_ShadowMap2;
 uniform samplerCube u_ShadowMap3;
 uniform samplerCube u_ShadowMap4;
-uniform sampler2D	u_EnvBrdfMap;
 uniform vec4		u_CubeMapInfo;
 uniform vec4		u_CubemapTransforms[32]; // xyz = position, w = scale
 uniform int			u_NumCubemaps;
@@ -134,8 +137,6 @@ float LinearDepth(float zBufferDepth, float zFarDivZNear)
 }
 
 vec3 WorldPosFromDepth(float depth, vec2 TexCoord) {
-	//mat4 inverseProjectionView = inverse(u_ModelViewProjectionMatrix);
-
     float z = depth * 2.0 - 1.0;
 
     vec4 clipSpacePosition = vec4(TexCoord * 2.0 - 1.0, z, 1.0);
@@ -204,10 +205,11 @@ vec3 CalcSpecular(
 	in float roughness
 	)
 {
-	float distrib = spec_D(NH, roughness);
-	vec3 fresnel = spec_F(EH, specular);
+	float distrib = spec_D(NH,roughness);
+	vec3 fresnel = spec_F(EH,specular);
 	float vis = spec_G(NL, NE, roughness);
-	return (distrib * fresnel * vis);
+	float denominator = max((4.0 * max(NE,0.0) * max(NL,0.0)),0.001);
+	return (distrib * fresnel * vis) / denominator;
 }
 
 #if defined(POINT_LIGHT)
@@ -392,27 +394,29 @@ void main()
 
 	ivec2 windowCoord = ivec2(gl_FragCoord.xy);
 
+#if defined(SSR)
+	float depth = texelFetch(u_ScreenDepthMap, windowCoord, 1).r;
+	if (depth == 1.0)
+		discard;
+	vec3 position = WorldPosFromDepth(depth, gl_FragCoord.xy * u_ViewInfo.xy);
+	vec3 normal = texelFetch(u_NormalMap, windowCoord, 1).rgb;
+	windowCoord *= ivec2(2);
+#else
+	float depth = texelFetch(u_ScreenDepthMap, windowCoord, 0).r;
+	vec3 position = WorldPosFromDepth(depth, gl_FragCoord.xy * r_FBufScale);
+	vec3 normal = texelFetch(u_NormalMap, windowCoord, 0).rgb;
+#endif	
+	
 	vec4 specularAndGloss = texelFetch(u_SpecularMap, windowCoord, 0);
 	float roughness = 1.0 - specularAndGloss.a;
 	specularAndGloss.rgb *= specularAndGloss.rgb;
 
-	//vec2 normal = texelFetch(u_NormalMap, windowCoord, 0).rg;
-	vec3 normal = texelFetch(u_NormalMap, windowCoord, 0).rgb;
-	float depth = texelFetch(u_ScreenDepthMap, windowCoord, 0).r;
-	
-	#if defined(USE_VOLUME_SPHERE)
-		vec3 position = WorldPosFromDepth(depth, gl_FragCoord.xy * r_FBufScale);
-	#else
-		float linearDepth = LinearDepth(depth, u_ZFarDivZNear);
-		vec3 position = u_ViewOrigin + var_ViewDir * linearDepth;
-	#endif
-	
 	//vec3 N = normalize(DecodeNormal(normal));
 	vec3 N = normalize(normal);
 	vec3 E = normalize(-var_ViewDir);
 	
-	vec3 diffuseOut = vec3(1.0, 0.0, 0.0);
-	vec3 specularOut = vec3(0.0, 1.0, 0.0);
+	vec4 diffuseOut = vec4(0.0, 0.0, 0.0, 1.0);
+	vec4 specularOut = vec4(0.0, 0.0, 0.0, 0.0);
 
 #if defined(POINT_LIGHT)
 	vec4 lightVec		= vec4(var_Position.xyz - position, var_Position.w);
@@ -435,10 +439,10 @@ void main()
 	NE = abs(dot(N, E)) + 1e-5;
 
 	vec3 reflectance = vec3(1.0, 1.0, 1.0);
-	diffuseOut = sqrt(var_LightColor * reflectance * attenuation);
+	diffuseOut.rgb = sqrt(var_LightColor * reflectance * attenuation);
 
 	reflectance = CalcSpecular(specularAndGloss.rgb, NH, NL, NE, EH, roughness);
-	specularOut = sqrt(var_LightColor * reflectance * attenuation);
+	specularOut.rgb = sqrt(var_LightColor * reflectance * attenuation);
 #elif defined(CUBEMAP)
 	NE = clamp(dot(N, E), 0.0, 1.0);
 	vec3 EnvBRDF = texture(u_EnvBrdfMap, vec2(roughness, NE)).rgb;
@@ -473,7 +477,7 @@ void main()
 	#endif
 
     cubeLightColor *= cubeLightColor;
-	diffuseOut		= sqrt(cubeLightColor * (specularAndGloss.rgb * EnvBRDF.x + EnvBRDF.y) * horiz * weight);
+	diffuseOut.rgb	= sqrt(cubeLightColor * (specularAndGloss.rgb * EnvBRDF.x + EnvBRDF.y) * horiz * weight);
 
 #elif defined(SUN_LIGHT)
 	vec3 L2, H2;
@@ -492,10 +496,10 @@ void main()
 	attenuation *= shadowValue;
 
 	vec3 reflectance = vec3(1.0);
-	diffuseOut  = sqrt(u_PrimaryLightColor * reflectance * attenuation);
+	diffuseOut.rgb  = sqrt(u_PrimaryLightColor * reflectance * attenuation);
 	
-	reflectance  = CalcSpecular(specularAndGloss.rgb, NH2, NL2, NE, EH2, roughness);
-	specularOut  = sqrt(u_PrimaryLightColor * reflectance * attenuation);
+	reflectance			= CalcSpecular(specularAndGloss.rgb, NH2, NL2, NE, EH2, roughness);
+	specularOut.rgb		= sqrt(u_PrimaryLightColor * reflectance * attenuation);
 
 #elif defined(LIGHT_GRID)
   #if 1
@@ -563,6 +567,6 @@ void main()
   #endif
 #endif
 	
-	out_Color = vec4(diffuseOut, 1.0);
-	out_Glow  = vec4(specularOut, 1.0);
+	out_Color = max(diffuseOut, vec4(0.0));
+	out_Glow  = max(specularOut, vec4(0.0));
 }
