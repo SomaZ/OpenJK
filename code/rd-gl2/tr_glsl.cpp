@@ -1564,7 +1564,7 @@ static int GLSL_LoadGPUProgramPrepass(
 		if (i & PREPASS_USE_CUBEMAP_TRANSFORMS)
 		{
 			Q_strcat(extradefines, sizeof(extradefines), "#define USE_CUBEMAP_TRANSFORMS\n");
-			shaderTypes |= GPUSHADER_GEOMETRY;
+			shaderTypes |= GPUSHADER_GEOMETRY | GPUSHADER_FRAGMENT;
 		}
 
 		if (i & PREPASS_USE_PARALLAX)

@@ -239,7 +239,7 @@ float pcfShadow(samplerCubeShadow depthMap, vec3 L, float distance)
 {
 	float shadow = 0.0;
 	int samples = 20;
-	float diskRadius = 128.0/512.0;
+	float diskRadius = 1.0;
 	for (int i = 0; i < samples; ++i)
 	{
 		shadow += texture(depthMap, vec4(L + sampleOffsetDirections[i] * diskRadius, distance));

@@ -2244,50 +2244,49 @@ void R_RenderDlightCubemaps(const refdef_t *fd)
 		tr.viewParms = shadowParms;
 		tr.viewParms.frameSceneNum = tr.frameSceneNum;
 		tr.viewParms.frameCount = tr.frameCount;
+		const int firstDrawSurf = tr.refdef.numDrawSurfs;
 
-		for (j = 0; j < 6; j++)
+		for (j = 5; j >= 0 ; j--)
 		{
 			switch(j)
 			{
 				case 0:
 					// -X
-					VectorSet( shadowParms.ori.axis[0], -1,  0,  0);
-					VectorSet( shadowParms.ori.axis[1],  0,  0, -1);
-					VectorSet( shadowParms.ori.axis[2],  0,  1,  0);
+					VectorSet(tr.viewParms.ori.axis[0], -1,  0,  0);
+					VectorSet(tr.viewParms.ori.axis[1],  0,  0, -1);
+					VectorSet(tr.viewParms.ori.axis[2],  0,  1,  0);
 					break;
 				case 1: 
 					// +X
-					VectorSet( shadowParms.ori.axis[0],  1,  0,  0);
-					VectorSet( shadowParms.ori.axis[1],  0,  0,  1);
-					VectorSet( shadowParms.ori.axis[2],  0,  1,  0);
+					VectorSet(tr.viewParms.ori.axis[0],  1,  0,  0);
+					VectorSet(tr.viewParms.ori.axis[1],  0,  0,  1);
+					VectorSet(tr.viewParms.ori.axis[2],  0,  1,  0);
 					break;
 				case 2: 
 					// -Y
-					VectorSet( shadowParms.ori.axis[0],  0, -1,  0);
-					VectorSet( shadowParms.ori.axis[1],  1,  0,  0);
-					VectorSet( shadowParms.ori.axis[2],  0,  0, -1);
+					VectorSet(tr.viewParms.ori.axis[0],  0, -1,  0);
+					VectorSet(tr.viewParms.ori.axis[1],  1,  0,  0);
+					VectorSet(tr.viewParms.ori.axis[2],  0,  0, -1);
 					break;
 				case 3: 
 					// +Y
-					VectorSet( shadowParms.ori.axis[0],  0,  1,  0);
-					VectorSet( shadowParms.ori.axis[1],  1,  0,  0);
-					VectorSet( shadowParms.ori.axis[2],  0,  0,  1);
+					VectorSet(tr.viewParms.ori.axis[0],  0,  1,  0);
+					VectorSet(tr.viewParms.ori.axis[1],  1,  0,  0);
+					VectorSet(tr.viewParms.ori.axis[2],  0,  0,  1);
 					break;
 				case 4:
 					// -Z
-					VectorSet( shadowParms.ori.axis[0],  0,  0, -1);
-					VectorSet( shadowParms.ori.axis[1],  1,  0,  0);
-					VectorSet( shadowParms.ori.axis[2],  0,  1,  0);
+					VectorSet(tr.viewParms.ori.axis[0],  0,  0, -1);
+					VectorSet(tr.viewParms.ori.axis[1],  1,  0,  0);
+					VectorSet(tr.viewParms.ori.axis[2],  0,  1,  0);
 					break;
 				case 5:
 					// +Z
-					VectorSet( shadowParms.ori.axis[0],  0,  0,  1);
-					VectorSet( shadowParms.ori.axis[1], -1,  0,  0);
-					VectorSet( shadowParms.ori.axis[2],  0,  1,  0);
+					VectorSet(tr.viewParms.ori.axis[0],  0,  0,  1);
+					VectorSet(tr.viewParms.ori.axis[1], -1,  0,  0);
+					VectorSet(tr.viewParms.ori.axis[2],  0,  1,  0);
 					break;
 			}
-
-			tr.viewParms = shadowParms;
 
 			R_RotateForViewer(&tr.ori, &tr.viewParms);
 
@@ -2323,24 +2322,12 @@ void R_RenderDlightCubemaps(const refdef_t *fd)
 					break;
 			}
 		}
-
 		RB_BindAndUpdateUniformBlock(UNIFORM_BLOCK_CUBEMAP_TRANSFORMS, data);
 
-		const int firstDrawSurf = tr.refdef.numDrawSurfs;
-
 		R_GenerateDrawSurfs(&tr.viewParms, &tr.refdef);
-
-		for (int i = 0; i < tr.refdef.num_entities; ++i)
-		{
-			trRefEntity_t *ent = tr.refdef.entities + i;
-			R_AddEntitySurface(&tr.refdef, ent, i);
-		}
-		
 		R_SortAndSubmitDrawSurfs(tr.refdef.drawSurfs + firstDrawSurf, tr.refdef.numDrawSurfs - firstDrawSurf);
 
 		R_IssuePendingRenderCommands();
-
-		//R_RenderView(&shadowParms);
 	}
 }
 

@@ -298,7 +298,9 @@ void main()
 
 	gl_Position = u_ModelViewProjectionMatrix * vec4(position, 1.0);
 
+	#if !defined(USE_CUBEMAP_TRANSFORMS)
 	position  = mat3(u_ModelMatrix) * position;
+	#endif
 
 	#if defined(USE_G_BUFFERS)
 		normal    = mat3(u_NormalMatrix) * normal;
@@ -325,7 +327,7 @@ layout(std140) uniform CubemapMatrices
 {
 mat4		cubeMatrices[6];
 };
-
+uniform mat4 u_ModelMatrix;
 uniform mat4 u_ModelViewProjectionMatrix;
 uniform vec3 u_ViewOrigin;
 in vec4   var_TexCoords[];
@@ -352,10 +354,7 @@ void main()
 		for (int i = 0; i < 3; ++i)
 		{
 			gl_Layer = face;
-			gl_Position = cubeMatrices[face] * vec4(var_Position[i], 1.0);
-			//vec2 position = vec2(2.0 * float(i & 2) - 1.0, 4.0 * float(i & 1) - 1.0);
-			//gl_Position = vec4(position, 0.98, 1.0);
-			//gl_Position = gl_in[i].gl_Position;
+			gl_Position = cubeMatrices[face] * u_ModelMatrix * vec4(var_Position[i], 1.0);
 			fs_TexCoords = var_TexCoords[i];
 			fs_Position = var_Position[i];
 

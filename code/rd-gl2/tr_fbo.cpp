@@ -552,8 +552,6 @@ void FBO_Init(void)
 			qglDrawBuffer(GL_NONE);
 			qglReadBuffer(GL_NONE);
 
-			//FBO_AttachTextureImage(tr.pshadowMaps[i], 0);
-			//FBO_CreateBuffer(tr.pshadowFbos[i], GL_DEPTH_COMPONENT24, 0, 0);
 			R_AttachFBOTextureDepth(tr.pshadowMaps[i]->texnum);
 
 			FBO_SetupDrawBuffers();
@@ -583,12 +581,9 @@ void FBO_Init(void)
 			tr.sunShadowFbo[i] = FBO_Create("_sunshadowmap", tr.sunShadowDepthImage[i]->width, tr.sunShadowDepthImage[i]->height);
 			FBO_Bind(tr.sunShadowFbo[i]);
 
-			//FBO_CreateBuffer(tr.sunShadowFbo[i], GL_RGBA8, 0, 0);
-			//FBO_AttachTextureImage(tr.sunShadowImage, 0);
 			qglDrawBuffer(GL_NONE);
 			qglReadBuffer(GL_NONE);
 
-			//FBO_CreateBuffer(tr.sunShadowFbo, GL_DEPTH_COMPONENT24, 0, 0);
 			R_AttachFBOTextureDepth(tr.sunShadowDepthImage[i]->texnum);
 
 			FBO_SetupDrawBuffers();
