@@ -819,7 +819,7 @@ Ghoul2 Insert End
 			theFxScheduler.PlayEffect("env/light_cone", org, axis[0]);
 		}
 
-		VectorMA(cent->lerpOrigin, cent->gent->radius - 5, dir, org); // stay a bit back from the impact point...this may not be enough?
+		VectorMA(cent->lerpOrigin, cent->gent->radius - 30, dir, org); // stay a bit back from the impact point
 
 		cgi_R_AddLightToScene(org, cent->gent->startRGBA[3], cent->gent->startRGBA[0], cent->gent->startRGBA[1], cent->gent->startRGBA[2]);
 	}
