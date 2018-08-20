@@ -2474,6 +2474,7 @@ static int GLSL_LoadGPUProgramDynamicGlowUpsample(
 		&tr.dglowUpsample,
 		"dglow_upsample",
 		fallback_dglow_upsampleProgram,
+		GPUSHADER_VERTEX | GPUSHADER_FRAGMENT,
 		0);
 
 	GLSL_InitUniforms(&tr.dglowDownsample);
@@ -2491,6 +2492,7 @@ static int GLSL_LoadGPUProgramDynamicGlowDownsample(
 		&tr.dglowDownsample,
 		"dglow_downsample",
 		fallback_dglow_downsampleProgram,
+		GPUSHADER_VERTEX | GPUSHADER_FRAGMENT,
 		0);
 
 	GLSL_InitUniforms(&tr.dglowUpsample);
