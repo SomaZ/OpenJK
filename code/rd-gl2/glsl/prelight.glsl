@@ -59,9 +59,14 @@ void main()
 #define USE_VOLUME_SPHERE
 #endif
 
+#if defined(TWO_RAYS_PER_PIXEL)
+#define brdfBias 0.7
+#else
+#define brdfBias 0.85
+#endif
+
 uniform vec3 u_ViewOrigin;
 uniform vec4 u_ViewInfo;
-#define u_ZNear u_ViewInfo.z
 uniform sampler2D u_ScreenImageMap;
 uniform sampler2D u_ScreenDepthMap;
 uniform sampler2D u_NormalMap;
@@ -69,6 +74,10 @@ uniform sampler2D u_SpecularMap;
 uniform sampler2D u_ScreenOffsetMap;
 uniform sampler2D u_ScreenOffsetMap2;
 uniform sampler2D u_EnvBrdfMap;
+
+#if defined(TEMPORAL_FILTER)
+uniform sampler2D u_ShadowMap;
+#endif
 
 uniform mat4 u_ModelMatrix;
 uniform mat4 u_ModelViewProjectionMatrix;
@@ -192,7 +201,11 @@ float spec_G(float NL, float NE, float roughness)
 {
 	// GXX Schlick
 	// from http://blog.selfshadow.com/publications/s2013-shading-course/karis/s2013_pbs_epic_notes_v2.pdf
+#if defined(SSR_RESOLVE)
+	float k = max(roughness * roughness / 2.0, 1e-5);
+#else
 	float k = max(((roughness + 1.0) * (roughness + 1.0)) / 8.0, 1e-5);
+#endif
 	return G1(NL, k)*G1(NE, k);
 }
 
@@ -203,7 +216,7 @@ vec3 CalcSpecular(
 	in float NE,
 	in float EH,
 	in float roughness
-	)
+)
 {
 	float distrib = spec_D(NH,roughness);
 	vec3 fresnel = spec_F(EH,specular);
@@ -386,6 +399,201 @@ float getCubemapWeight(in vec3 position, in vec3 normal)
 
 #endif
 
+float Noise(vec2 n,float x){
+	n += x;
+	return fract(sin(dot(n.xy,vec2(12.9898, 78.233)))*43758.5453);
+}
+
+//from https://github.com/OpenGLInsights/OpenGLInsightsCode/blob/master/Chapter%2015%20Depth%20of%20Field%20with%20Bokeh%20Rendering/src/glf/ssao.cpp
+const vec2 halton[32] = vec2[32](
+	vec2(-0.353553, 0.612372),
+	vec2(-0.25, -0.433013),
+	vec2(0.663414, 0.55667),
+	vec2(-0.332232, 0.120922),
+	vec2(0.137281, -0.778559),
+	vec2(0.106337, 0.603069),
+	vec2(-0.879002, -0.319931),
+	vec2(0.191511, -0.160697),
+	vec2(0.729784, 0.172962),
+	vec2(-0.383621, 0.406614),
+	vec2(-0.258521, -0.86352),
+	vec2(0.258577, 0.34733),
+	vec2(-0.82355, 0.0962588),
+	vec2(0.261982, -0.607343),
+	vec2(-0.0562987, 0.966608),
+	vec2(-0.147695, -0.0971404),
+	vec2(0.651341, -0.327115),
+	vec2(0.47392, 0.238012),
+	vec2(-0.738474, 0.485702),
+	vec2(-0.0229837, -0.394616),
+	vec2(0.320861, 0.74384),
+	vec2(-0.633068, -0.0739953),
+	vec2(0.568478, -0.763598),
+	vec2(-0.0878153, 0.293323),
+	vec2(-0.528785, -0.560479),
+	vec2(0.570498, -0.13521),
+	vec2(0.915797, 0.0711813),
+	vec2(-0.264538, 0.385706),
+	vec2(-0.365725, -0.76485),
+	vec2(0.488794, 0.479406),
+	vec2(-0.948199, 0.263949),
+	vec2(0.0311802, -0.121049)
+);
+
+vec3 BinarySearch(in vec3 dir, inout vec3 hitCoord, out float dDepth)
+{
+    for(int i = 0; i < 16; i++)
+    {
+        vec4 projectedCoord = u_ModelMatrix * vec4(hitCoord, 1.0);
+        projectedCoord.xy /= projectedCoord.w;
+        projectedCoord.xy = projectedCoord.xy * 0.5 + 0.5;
+ 
+        float stupidDepth		= textureLod(u_ScreenDepthMap, projectedCoord.xy, 1).r;
+        float depth             = WorldPosFromDepth(stupidDepth, projectedCoord.xy).z;
+ 
+        dDepth = hitCoord.z - depth;
+		
+        if(dDepth >= 0.0)
+            hitCoord += dir;
+
+		dir *= 0.5;
+		hitCoord -= dir;
+    }
+ 
+    vec4 projectedCoord = u_ModelMatrix * vec4(hitCoord, 1.0); 
+    projectedCoord.xy /= projectedCoord.w;
+    projectedCoord.xy = projectedCoord.xy * 0.5 + 0.5;
+ 
+    return vec3(projectedCoord.xy, abs(dDepth) < 0.15 ? 1.0 : 0.0);
+}
+
+vec3 RayCast(in vec3 dir, inout vec3 hitCoord, out float dDepth)
+{
+    for(int i = 0; i < 30; ++i) {
+        hitCoord               += dir; 
+
+        vec4 projectedCoord		= u_ModelMatrix * vec4(hitCoord, 1.0);
+        projectedCoord.xy      /= projectedCoord.w;
+        projectedCoord.xy       = projectedCoord.xy * 0.5 + 0.5; 
+
+		float stupidDepth		= textureLod(u_ScreenDepthMap, projectedCoord.xy, 1).r;
+        float depth             = WorldPosFromDepth(stupidDepth, projectedCoord.xy).z;
+        dDepth                  = hitCoord.z - depth; 
+
+        if (dDepth < 0.0)
+			return BinarySearch(dir, hitCoord, dDepth);
+
+		dir *= 1.18;
+    }
+
+    return vec3(0.0);
+}
+
+vec3 ImportanceSampleGGX(in float roughness, in vec3 N, in int sample)
+{
+	vec2 Xi = halton[sample];
+
+	Xi.y = mix(Xi.y, 0.0, brdfBias);
+
+	float a = roughness * roughness;
+
+	float Phi = 2.0 * M_PI * Xi.x;
+	float CosTheta = sqrt((1.0 - Xi.y) / (1.0 + (a*a - 1.0) * Xi.y));
+	float SinTheta = sqrt( 1.0 - CosTheta * CosTheta);
+
+	vec3 H;
+	H.x = SinTheta * cos( Phi );
+	H.y = SinTheta * sin( Phi );
+	H.z = CosTheta;
+
+	vec3 UpVector = abs(N.z) < 0.999 ? vec3(0.0, 0.0, 1.0) : vec3(1.0, 0.0, 0.0);
+	vec3 TangentX = normalize(cross(UpVector , N));
+	vec3 TangentY = cross(N , TangentX);
+
+	return normalize(TangentX * H.x + TangentY * H.y + N * H.z);
+}
+
+vec4 traceSSRRay(in float roughness, in vec3 wsNormal, in vec3 viewPos, in vec2 uv, float random)
+{
+	vec3 hitPos = viewPos;
+	float newRandom = random;
+
+	vec3 H, reflection;
+	vec3 V = var_ViewDir;
+
+	for (int i = 0; i < 12; i++) 
+	{
+		newRandom += 13.2;
+		int sample = int(Noise(uv, newRandom) * 32.0);
+		H = ImportanceSampleGGX(roughness, wsNormal, sample);
+
+		reflection = reflect(V, H);
+		if (dot(wsNormal, reflection) > 0.0)
+			break;
+	}
+	
+	float EH  = max(1e-8, dot(-V, H));
+	float NH  = max(1e-8, dot(wsNormal, H));
+	float pdf = (spec_D(NH,roughness) * NH) / (4.0 * EH);
+	
+	reflection = normalize(mat3(u_ModelViewProjectionMatrix) * reflection);
+
+	float tracedDepth;
+	float minRayStep = 0.05;
+	vec3 screenCoord = RayCast(reflection.xyz * max(minRayStep, -viewPos.z * 0.1), hitPos, tracedDepth).xyz;
+
+	vec2 dCoords = smoothstep(0.3, 0.495, abs(vec2(0.5, 0.5) - screenCoord.xy));
+	float screenEdgefactor = clamp(1.0 - (dCoords.x + dCoords.y), 0.0, 1.0);
+	screenCoord.z *= screenEdgefactor;
+	//screenCoord.z *= clamp(-reflection.z * 4.0, 0.0, 1.0);
+
+	return vec4(screenCoord.xy, pdf, clamp(screenCoord.z, 0.0, 1.0));
+}
+
+float luma(vec3 color)
+{
+	return dot(color, vec3(0.299, 0.587, 0.114));
+}
+
+vec4 resolveSSRRay(in sampler2D packedTexture, in ivec2 coordinate, in vec3 viewPos, in vec3 viewNormal, in vec3 specular, in float roughness, inout vec4 weightSum)
+{
+	const vec2 bufferScale = 2.0 / r_FBufScale;
+
+	vec4 packedHitPos = texelFetch(packedTexture, coordinate, 0);
+
+	float depth = textureLod(u_ScreenDepthMap, packedHitPos.xy , 1.0).r;
+	vec3 hitViewPos = WorldPosFromDepth(depth, packedHitPos.xy);
+
+	vec3 L  = normalize(hitViewPos - viewPos); 
+	vec3 E  = normalize(-viewPos);
+	vec3 H  = normalize(L + E);
+	
+	float EH = max(1e-8, dot(E, H));
+	float NH = max(1e-8, dot(viewNormal, H));
+	float NE = max(1e-8, dot(viewNormal, E));
+	float NL = max(1e-8, dot(viewNormal, L));
+
+	vec4 weight = vec4(CalcSpecular(specular, NH, NL, NE, EH, roughness) / packedHitPos.z, 1.0) * packedHitPos.w;// * float(packedHitPos.w > 0.0);
+
+	float coneTangent = mix(0.0, roughness * (1.0 - brdfBias), NE * sqrt(roughness));
+	coneTangent *= mix(clamp (NE * 2.0, 0.0, 1.0), 1.0, sqrt(roughness));
+
+	float intersectionCircleRadius = coneTangent * distance(packedHitPos.xy * bufferScale, coordinate);
+	float mip = clamp(log2( intersectionCircleRadius ), 0.0, 4.0);
+
+	vec4 diffuseSample = textureLod(u_ScreenImageMap, packedHitPos.xy, mip);
+
+	diffuseSample.rgb *= diffuseSample.rgb;
+	diffuseSample.a = packedHitPos.w;
+
+	diffuseSample.rgb /= 1.0 + luma(diffuseSample.rgb);
+	diffuseSample = diffuseSample * weight;
+
+	weightSum += weight;
+
+	return diffuseSample;
+}
+
 void main()
 {
 	vec3 H;
@@ -398,9 +606,9 @@ void main()
 	float depth = texelFetch(u_ScreenDepthMap, windowCoord, 1).r;
 	if (depth == 1.0)
 		discard;
-	vec3 position = WorldPosFromDepth(depth, gl_FragCoord.xy * u_ViewInfo.xy);
+	vec3 position = WorldPosFromDepth(depth, windowCoord * u_ViewInfo.xy);
 	vec3 normal = texelFetch(u_NormalMap, windowCoord, 1).rgb;
-	windowCoord *= ivec2(2);
+	windowCoord *= 2;
 #else
 	float depth = texelFetch(u_ScreenDepthMap, windowCoord, 0).r;
 	vec3 position = WorldPosFromDepth(depth, gl_FragCoord.xy * r_FBufScale);
@@ -418,7 +626,127 @@ void main()
 	vec4 diffuseOut = vec4(0.0, 0.0, 0.0, 1.0);
 	vec4 specularOut = vec4(0.0, 0.0, 0.0, 0.0);
 
-#if defined(POINT_LIGHT)
+#if defined(SSR)
+	diffuseOut = traceSSRRay( roughness, N, position, gl_FragCoord.xy * u_ViewInfo.xy, u_ViewInfo.w);
+
+	#if defined(TWO_RAYS_PER_PIXEL)
+		specularOut = traceSSRRay( roughness, N, position, gl_FragCoord.xy * u_ViewInfo.xy, u_ViewInfo.w + 13.7);
+	#endif
+
+#elif defined(SSR_RESOLVE)
+	vec3 viewNormal = normalize(mat3(u_NormalMatrix) * N);
+	vec3 viewPos = position;
+	diffuseOut.a = 0.0;
+
+	const vec2 offset[4] = vec2[4](
+		vec2(0.0, 0.0),
+		vec2(-1.0, 0.0),
+		vec2(0.0, -1.0),
+		vec2(1.0, 1.0)
+	);
+			
+	mat2 rotationMat = mat2(u_ViewInfo.w, 
+							u_ViewInfo.z, 
+							-u_ViewInfo.z, 
+							u_ViewInfo.w);
+	vec4 weightSum = vec4(0.0);
+
+	windowCoord = ivec2((windowCoord * .5) ); 
+
+	int samples = roughness < 0.95 ? 4 : 1;
+
+	#if defined(TWO_RAYS_PER_PIXEL)
+		const int rays = 2;
+	#else
+		const int rays = 1;
+	#endif
+
+	for( int i = 0; i < samples; i++)
+	{
+		vec2 offsetUV = offset[i];
+		offsetUV *= rotationMat;
+		ivec2 neighborUV = ivec2(windowCoord + offsetUV);
+
+		diffuseOut += resolveSSRRay(u_ScreenOffsetMap, neighborUV, viewPos, viewNormal, specularAndGloss.rgb, roughness, weightSum);
+
+		#if defined(TWO_RAYS_PER_PIXEL)
+			diffuseOut += resolveSSRRay(u_ScreenOffsetMap2, neighborUV, viewPos, viewNormal, specularAndGloss.rgb, roughness, weightSum);
+		#endif
+	}
+
+	diffuseOut /= weightSum;
+	diffuseOut.rgb /= 1.0 - luma(diffuseOut.rgb);
+
+	diffuseOut.a = weightSum.a / (samples * rays);
+
+	diffuseOut.rgb = sqrt(diffuseOut.rgb * diffuseOut.a);
+	
+#elif defined(TEMPORAL_FILTER)
+/*
+Based on Playdead's TAA implementation
+https://github.com/playdeadgames/temporal
+
+The MIT License (MIT)
+
+Copyright (c) [2015] [Playdead]
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+*/
+	vec3 EnvBRDF = texture(u_EnvBrdfMap, vec2(roughness, dot(N,E))).rgb;
+
+	ivec2 uv = windowCoord;
+
+	vec2 velocity = texelFetch(u_ShadowMap, uv, 0).xy / r_FBufScale;
+	uv -= ivec2(velocity);
+	
+	vec4 current = texelFetch(u_ScreenImageMap, uv, 0);
+	vec4 previous = texelFetch(u_ScreenOffsetMap, uv, 0);
+
+	ivec2 du = ivec2(1.0,	0.0);
+	ivec2 dv = ivec2(0.0,	1.0);
+
+	vec4 ctl = texelFetch(u_ScreenImageMap,		uv.xy - dv - du	, 0);
+	vec4 ctc = texelFetch(u_ScreenImageMap,		uv.xy - dv		, 0);
+	vec4 ctr = texelFetch(u_ScreenImageMap,		uv.xy - dv + du	, 0);
+	vec4 cml = texelFetch(u_ScreenImageMap,		uv.xy - du		, 0);
+	vec4 cmc = texelFetch(u_ScreenImageMap,		uv.xy			, 0);
+	vec4 cmr = texelFetch(u_ScreenImageMap,		uv.xy + du		, 0);
+	vec4 cbl = texelFetch(u_ScreenImageMap,		uv.xy + dv - du	, 0);
+	vec4 cbc = texelFetch(u_ScreenImageMap,		uv.xy + dv		, 0);
+	vec4 cbr = texelFetch(u_ScreenImageMap,		uv.xy + dv + du	, 0);
+
+	vec4 currentMin = min(ctl, min(ctc, min(ctr, min(cml, min(cmc, min(cmr, min(cbl, min(cbc, cbr))))))));
+	vec4 currentMax = max(ctl, max(ctc, max(ctr, max(cml, max(cmc, max(cmr, max(cbl, max(cbc, cbr))))))));
+	
+	vec4 center = (currentMin + currentMax) * 0.5;
+	currentMin = (currentMin - center) * 2.0 + center;
+	currentMax = (currentMax - center) * 2.0 + center;
+
+	previous = clamp(previous, currentMin, currentMax);
+
+	float temp = clamp(1.0 - (length(velocity) * 0.1), 0.0, 1.0);
+
+	specularOut		= mix(current, previous, temp);
+	diffuseOut.rgb	= specularOut.rgb * (specularAndGloss.rgb * EnvBRDF.x + EnvBRDF.y);
+	diffuseOut.a	= specularOut.a;
+	
+#elif defined(POINT_LIGHT)
 	vec4 lightVec		= vec4(var_Position.xyz - position, var_Position.w);
 	vec3 L				= lightVec.xyz;
 	float lightDist		= length(L);
@@ -468,16 +796,8 @@ void main()
 	else
 		cubeLightColor = textureLod(u_ShadowMap4, R + parallax, ROUGHNESS_MIPS * roughness).rgb;
 
-	float horiz = 1.0;
-	// from http://marmosetco.tumblr.com/post/81245981087
-	#if defined(HORIZON_FADE)
-		const float horizonFade = HORIZON_FADE;
-		horiz = clamp( 1.0 + horizonFade * dot(-R,N.xyz), 0.0, 1.0 );
-		horiz *= horiz;
-	#endif
-
     cubeLightColor *= cubeLightColor;
-	diffuseOut.rgb	= sqrt(cubeLightColor * (specularAndGloss.rgb * EnvBRDF.x + EnvBRDF.y) * horiz * weight);
+	diffuseOut.rgb	= sqrt(cubeLightColor * (specularAndGloss.rgb * EnvBRDF.x + EnvBRDF.y) * weight);
 
 #elif defined(SUN_LIGHT)
 	vec3 L2, H2;

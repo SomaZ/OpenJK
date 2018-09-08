@@ -306,6 +306,8 @@ void main()
 /*[Fragment]*/
 #if defined(USE_LIGHT) && !defined(USE_FAST_LIGHT)
 #define PER_PIXEL_LIGHTING
+uniform sampler2D u_ScreenDiffuseMap;
+uniform sampler2D u_ScreenSpecularMap;
 #endif
 
 uniform sampler2D u_DiffuseMap;
@@ -360,8 +362,6 @@ uniform vec4      u_SpecularScale;
 uniform vec4      u_CubeMapInfo;
 uniform vec3      u_SphericalHarmonic[9];
 uniform sampler2D u_EnvBrdfMap;
-uniform sampler2D u_ScreenDiffuseMap;
-uniform sampler2D u_ScreenSpecularMap;
 #endif
 #endif
 
@@ -812,6 +812,15 @@ void main()
 	if (u_EnableTextures.x == 0.0)
 		out_Color.rgb += ambientColor * diffuse.rgb;
 
+	ivec2 windowCoordinate = ivec2(gl_FragCoord.xy);
+	vec3 diffuseBufferColor = texelFetch(u_ScreenDiffuseMap, windowCoordinate, 0).rgb;
+	diffuseBufferColor *= diffuseBufferColor;
+	out_Color.rgb += diffuse.rgb * diffuseBufferColor;
+
+	vec4 specBufferColor = texelFetch(u_ScreenSpecularMap, windowCoordinate, 0);
+	specBufferColor.rgb *= specBufferColor.rgb;
+	out_Color.rgb += specBufferColor.rgb;
+
   #if defined(USE_CUBEMAP)
 	NE = clamp(dot(N, E), 0.0, 1.0);
 	vec3 EnvBRDF = texture(u_EnvBrdfMap, vec2(roughness, NE)).rgb;
@@ -829,23 +838,13 @@ void main()
 	float horiz = 1.0;
 	// from http://marmosetco.tumblr.com/post/81245981087
 	#if defined(HORIZON_FADE)
-		const float horizonFade = HORIZON_FADE;
-		horiz = clamp( 1.0 + horizonFade * dot(-R,var_Normal.xyz), 0.0, 1.0 );
+		horiz = clamp( 1.0 + HORIZON_FADE * dot(-R,var_Normal.xyz), 0.0, 1.0 );
 		horiz *= horiz;
 	#endif
 
 	if (u_EnableTextures.x == 1.0)
 		out_Color.rgb += shColor * diffuse.rgb;
 
-	ivec2 windowCoord = ivec2(gl_FragCoord.xy);
-
-	vec3 diffuseBufferColor = texelFetch(u_ScreenDiffuseMap, windowCoord, 0).rgb;
-	diffuseBufferColor *= diffuseBufferColor;
-	out_Color.rgb += diffuse.rgb * diffuseBufferColor;
-
-	vec4 specBufferColor = texelFetch(u_ScreenSpecularMap, windowCoord, 0);
-	specBufferColor.rgb *= specBufferColor.rgb;
-	out_Color.rgb += specBufferColor.rgb;
 	out_Color.rgb += cubeLightColor * (1.0 - specBufferColor.a) * (specular.rgb * EnvBRDF.x + EnvBRDF.y) * horiz;
 
   #endif

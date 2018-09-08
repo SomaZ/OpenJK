@@ -95,6 +95,7 @@ void R_ImageLoader_Init()
 	R_ImageLoader_Add ("jpg", LoadJPG);
 	R_ImageLoader_Add ("png", LoadPNG);
 	R_ImageLoader_Add ("tga", LoadTGA);
+	R_ImageLoader_Add ("hdr", LoadHDR);
 }
 
 /*
@@ -103,17 +104,18 @@ Loads any of the supported image types into a cannonical
 32 bit format.
 =================
 */
-void R_LoadImage( const char *shortname, byte **pic, int *width, int *height ) {
+void R_LoadImage( const char *shortname, byte **pic, int *width, int *height, int *depth) {
 	*pic = NULL;
 	*width = 0;
 	*height = 0;
+	*depth = 0;
 
 	// Try loading the image with the original extension (if possible).
 	const char *extension = COM_GetExtension (shortname);
 	const ImageLoaderMap *imageLoader = FindImageLoader (extension);
 	if ( imageLoader != NULL )
 	{
-		imageLoader->loader (shortname, pic, width, height);
+		imageLoader->loader (shortname, pic, width, height, depth);
 		if ( *pic )
 		{
 			return;
@@ -133,7 +135,7 @@ void R_LoadImage( const char *shortname, byte **pic, int *width, int *height ) {
 		}
 
 		const char *name = va ("%s.%s", extensionlessName, tryLoader->extension);
-		tryLoader->loader (name, pic, width, height);
+		tryLoader->loader (name, pic, width, height, depth);
 		if ( *pic )
 		{
 			return;

@@ -1362,6 +1362,12 @@ static qboolean ParseStage( shaderStage_t *stage, const char **text )
 				return qfalse;
 			}
 
+			if (!Q_stricmp(token, "$whiteimage"))
+			{
+				stage->bundle[TB_SPECULARMAP].image[0] = tr.whiteImage;
+				continue;
+			}
+
 			int flags = IMGFLAG_NONE;
 
 			if (!shader.noMipMaps)

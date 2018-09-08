@@ -175,6 +175,7 @@ cvar_t	*com_buildScript;
 //GL2-specific
 //
 
+cvar_t  *r_drawSaberBlob;
 cvar_t	*r_flareSize;
 cvar_t	*r_flareFade;
 cvar_t	*r_flareCoeff;
@@ -208,6 +209,7 @@ cvar_t	*r_maxpolyverts;
 cvar_t  *r_refraction;
 cvar_t  *r_depthPrepass;
 cvar_t  *r_ssao;
+cvar_t  *r_ssr;
 cvar_t  *r_normalMapping;
 cvar_t  *r_specularMapping;
 cvar_t  *r_deluxeMapping;
@@ -1359,6 +1361,8 @@ void R_Register(void)
 	r_refraction = ri.Cvar_Get("r_refraction", "0", CVAR_ARCHIVE | CVAR_LATCH);
 	r_depthPrepass = ri.Cvar_Get("r_depthPrepass", "1", CVAR_ARCHIVE);
 	r_ssao = ri.Cvar_Get("r_ssao", "0", CVAR_LATCH | CVAR_ARCHIVE);
+	r_ssr = ri.Cvar_Get("r_ssr", "0", CVAR_LATCH | CVAR_ARCHIVE);
+	ri.Cvar_CheckRange(r_ssr, 0, 2, qfalse);
 	r_normalMapping = ri.Cvar_Get("r_normalMapping", "1", CVAR_ARCHIVE | CVAR_LATCH);
 	r_specularMapping = ri.Cvar_Get("r_specularMapping", "1", CVAR_ARCHIVE | CVAR_LATCH);
 	r_deluxeMapping = ri.Cvar_Get("r_deluxeMapping", "1", CVAR_ARCHIVE | CVAR_LATCH);
@@ -1406,6 +1410,7 @@ void R_Register(void)
 	//
 	r_lodCurveError = ri.Cvar_Get("r_lodCurveError", "250", CVAR_ARCHIVE | CVAR_CHEAT);
 	r_lodbias = ri.Cvar_Get("r_lodbias", "0", CVAR_ARCHIVE);
+	r_drawSaberBlob = ri.Cvar_Get("r_drawSaberBlob", "1", CVAR_ARCHIVE);
 	r_flares = ri.Cvar_Get("r_flares", "1", CVAR_ARCHIVE);
 	r_znear = ri.Cvar_Get("r_znear", "4", CVAR_CHEAT);
 	ri.Cvar_CheckRange(r_znear, 0.001f, 200, qfalse);

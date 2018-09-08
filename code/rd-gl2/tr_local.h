@@ -86,6 +86,7 @@ extern cvar_t   *r_arb_half_float_pixel;
 extern cvar_t   *r_arb_vertex_type_2_10_10_10_rev;
 extern cvar_t   *r_arb_buffer_storage;
 
+extern cvar_t	*r_drawSaberBlob;		// render the ugly saber blob?
 extern cvar_t	*r_ignore;				// used for debugging anything
 extern cvar_t	*r_verbose;				// used for verbose debug spew
 extern cvar_t	*r_znear;				// near Z clip plane
@@ -240,6 +241,7 @@ extern cvar_t	*r_maxpolyverts;
 extern cvar_t   *r_refraction;
 extern cvar_t   *r_depthPrepass;
 extern cvar_t   *r_ssao;
+extern cvar_t   *r_ssr;
 extern cvar_t   *r_normalMapping;
 extern cvar_t   *r_specularMapping;
 extern cvar_t   *r_deluxeMapping;
@@ -1363,6 +1365,7 @@ typedef enum
 
 	UNIFORM_MODELMATRIX,
 	UNIFORM_MODELVIEWPROJECTIONMATRIX,
+	UNIFORM_PREVVIEWPROJECTIONMATRIX,
 	UNIFORM_NORMALMATRIX,
 	UNIFORM_INVVIEWPROJECTIONMATRIX,
 
@@ -2405,6 +2408,7 @@ typedef struct trGlobals_s {
 	image_t					*preSSRImage[2];
 	image_t					*sunRaysImage;
 	image_t					*renderDepthImage;
+	image_t					*velocityImage;
 	image_t					*pshadowMaps[MAX_DRAWN_PSHADOWS];
 	image_t					*textureScratchImage[2];
 	image_t                 *quarterImage[2];
@@ -2521,6 +2525,7 @@ typedef struct trGlobals_s {
 	// -----------------------------------------
 
 	viewParms_t				viewParms;
+	matrix_t				preViewProjectionMatrix;
 
 	float					identityLight;		// 1.0 / ( 1 << overbrightBits )
 	int						identityLightByte;	// identityLight * 255
@@ -3421,7 +3426,7 @@ image_t *R_FindImageFile( const char *name, imgType_t type, int flags );
 void R_CreateDiffuseAndSpecMapsFromBaseColorAndRMO(shaderStage_t *stage, const char *name, const char *rmoName, int flags, int type);
 qhandle_t RE_RegisterShader( const char *name );
 qhandle_t RE_RegisterShaderNoMip( const char *name );
-image_t *R_CreateImage( const char *name, byte *pic, int width, int height, imgType_t type, int flags, int internalFormat );
+image_t *R_CreateImage( const char *name, byte *pic, int width, int height, int depth, imgType_t type, int flags, int internalFormat );
 image_t *R_CreateImage3D(const char *name, byte *data, int width, int height, int depth, int internalFormat);
 
 float ProjectRadius( float r, vec3_t location );

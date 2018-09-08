@@ -1634,6 +1634,9 @@ static void RB_IterateStagesGeneric( shaderCommands_t *input, const VertexArrays
 		uniformDataWriter.SetUniformVec3(UNIFORM_VIEWORIGIN, backEnd.viewParms.ori.origin);
 		uniformDataWriter.SetUniformVec3(UNIFORM_LOCALVIEWORIGIN, backEnd.ori.viewOrigin);
 
+		if (backEnd.renderPass == PRE_PASS)
+			uniformDataWriter.SetUniformMatrix4x4(UNIFORM_PREVVIEWPROJECTIONMATRIX, tr.preViewProjectionMatrix);
+
 		if (glState.skeletalAnimation)
 		{
 			uniformDataWriter.SetUniformMatrix4x3(UNIFORM_BONE_MATRICES, &glState.boneMatrices[0][0], glState.numBones);
@@ -1877,6 +1880,11 @@ static void RB_IterateStagesGeneric( shaderCommands_t *input, const VertexArrays
 					{
 						samplerBindingsWriter.AddStaticImage(tr.whiteImage, TB_SPECULARMAP);
 					}
+
+					if (renderSolid) {
+						samplerBindingsWriter.AddStaticImage(tr.diffuseLightingImage, TB_DIFFUSELIGHTBUFFER);
+						samplerBindingsWriter.AddStaticImage(tr.specularLightingImage, TB_SPECLIGHTBUFFER);
+					}
 				}
 
 				if (enableShpericalHarmonics)
@@ -1933,10 +1941,6 @@ static void RB_IterateStagesGeneric( shaderCommands_t *input, const VertexArrays
 					coefficients[i * 3 + 2] = sh->coefficents[i][2];
 				}
 				uniformDataWriter.SetUniformVec3(UNIFORM_SPHERICAL_HARMONIC, coefficients, 9);
-			}
-			if (backEnd.renderPass == MAIN_PASS) {
-				samplerBindingsWriter.AddStaticImage(tr.diffuseLightingImage, TB_DIFFUSELIGHTBUFFER);
-				samplerBindingsWriter.AddStaticImage(tr.specularLightingImage, TB_SPECLIGHTBUFFER);
 			}
 		}
 

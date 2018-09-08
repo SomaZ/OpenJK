@@ -50,23 +50,26 @@ float GetNoiseTime( int t );
 // Initialize the image loader.
 void R_ImageLoader_Init();
 
-typedef void (*ImageLoaderFn)( const char *filename, byte **pic, int *width, int *height );
+typedef void (*ImageLoaderFn)( const char *filename, byte **pic, int *width, int *height, int *depth);
 
 // Adds a new image loader to handle a new image type. The extension should not
 // begin with a period (a full stop).
 qboolean R_ImageLoader_Add( const char *extension, ImageLoaderFn imageLoader );
 
 // Load an image from file.
-void R_LoadImage( const char *shortname, byte **pic, int *width, int *height );
+void R_LoadImage( const char *shortname, byte **pic, int *width, int *height, int *depth );
 
 // Load raw image data from TGA image.
-void LoadTGA( const char *name, byte **pic, int *width, int *height );
+void LoadTGA( const char *name, byte **pic, int *width, int *height, int *depth);
 
 // Load raw image data from JPEG image.
-void LoadJPG( const char *filename, byte **pic, int *width, int *height );
+void LoadJPG( const char *filename, byte **pic, int *width, int *height, int *depth);
 
 // Load raw image data from PNG image.
-void LoadPNG( const char *filename, byte **data, int *width, int *height );
+void LoadPNG( const char *filename, byte **data, int *width, int *height, int *depth);
+
+// Load raw image data from PNG image.
+void LoadHDR(const char *filename, byte **data, int *width, int *height, int *depth);
 
 #ifdef JK2_MODE
 //Load raw image data from JPEG input.

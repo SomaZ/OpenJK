@@ -748,7 +748,9 @@ static void RB_SurfaceSaberGlow()
 	// Big hilt sprite
 	// Please don't kill me Pat...I liked the hilt glow blob, but wanted a subtle pulse.:)  Feel free to ditch it if you don't like it.  --Jeff
 	// Please don't kill me Jeff...  The pulse is good, but now I want the halo bigger if the saber is shorter...  --Pat
-	DoSprite( e->origin, 5.5f + Q_flrand(0.0f, 1.0f) * 0.25f, 0.0f );//random() * 360.0f );
+
+	if (r_drawSaberBlob->integer)
+		DoSprite( e->origin, 5.5f + Q_flrand(0.0f, 1.0f) * 0.25f, 0.0f );//random() * 360.0f );
 }
 
 /*

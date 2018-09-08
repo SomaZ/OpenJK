@@ -469,14 +469,28 @@ void FBO_Init(void)
 		R_CheckFBO(tr.renderFbo);
 	}
 
+	// clear render buffer
+	// this fixes the corrupt screen bug with r_hdr 1 on older hardware
+	if (tr.renderFbo)
 	{
-		tr.preBuffersFbo = FBO_Create("_preBuffers", tr.renderDepthImage->width, tr.renderDepthImage->height);
+		FBO_Bind(tr.renderFbo);
+		qglClearColor(1, 0, 0.5, 1);
+		qglClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+		FBO_Bind(NULL);
+	}
+
+	{
+		tr.preBuffersFbo = FBO_Create("_preBuffers", tr.normalBufferImage->width, tr.normalBufferImage->height);
 		FBO_Bind(tr.preBuffersFbo);
 
-		FBO_AttachTextureImage(tr.normalBufferImage, 0); // out_Color
-		FBO_AttachTextureImage(tr.specBufferImage, 1); // out_Glow
+		FBO_AttachTextureImage(tr.normalBufferImage, 0);	// out_Color
+		FBO_AttachTextureImage(tr.specBufferImage, 1);		// out_Glow
+
+		if (r_ssr->integer)
+			FBO_AttachTextureImage(tr.velocityImage, 2);	// out_Velocity
 
 		FBO_AttachTexturePackedDepthStencil(tr.renderDepthImage->texnum);
+
 		FBO_SetupDrawBuffers();
 
 		R_CheckFBO(tr.preBuffersFbo);
@@ -494,20 +508,32 @@ void FBO_Init(void)
 			if (i == PRELIGHT_DIFFUSE_SPECULAR_FBO)
 				FBO_AttachTextureImage(tr.specularLightingImage, 1); //out_Glow
 
-			FBO_AttachTexturePackedDepthStencil(tr.renderDepthImage->texnum);
+			if (r_ssr->integer) {
+				if (i == PRELIGHT_PRE_SSR_FBO)
+				{
+					FBO_AttachTextureImage(tr.preSSRImage[0], 0); //out_Color
+					FBO_AttachTextureImage(tr.preSSRImage[1], 1); //out_Glow
+				}
+				if (i == PRELIGHT_TEMP_FBO)
+				{
+					FBO_AttachTextureImage(tr.specularLightingImage, 0); //out_Color
+					FBO_AttachTextureImage(tr.swapTempFilterBufferImage, 1); //out_Color
+				}
+				if (i == PRELIGHT_SWAP_TEMP_FBO)
+				{
+					FBO_AttachTextureImage(tr.tempFilterBufferImage, 0); //out_Color
+				}
+			}
+			else
+			{
+				if ((i == PRELIGHT_PRE_SSR_FBO) || (i == PRELIGHT_TEMP_FBO) || (i == PRELIGHT_SWAP_TEMP_FBO))
+					continue;
+			}
+
 			FBO_SetupDrawBuffers();
 
 			R_CheckFBO(tr.preLightFbo[i]);
 		}
-	}
-	// clear render buffer
-	// this fixes the corrupt screen bug with r_hdr 1 on older hardware
-	if (tr.renderFbo)
-	{
-		FBO_Bind(tr.renderFbo);
-		qglClearColor( 1, 0, 0.5, 1 );
-		qglClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
-		FBO_Bind(NULL);
 	}
 
 	// glow buffers
@@ -672,7 +698,7 @@ void FBO_Init(void)
 		R_CheckFBO(tr.screenSsaoFbo);
 	}
 
-	if (r_refraction->integer) 
+	if (r_refraction->integer || r_ssr->integer) 
 	{
 		tr.refractiveFbo = FBO_Create("_refractiveFbo", tr.prevRenderImage->width, tr.prevRenderImage->height);
 		FBO_Bind(tr.refractiveFbo);

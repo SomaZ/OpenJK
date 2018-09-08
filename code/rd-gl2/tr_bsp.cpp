@@ -148,15 +148,18 @@ static void R_ColorShiftLightingFloats(float in[4], float out[4], float scale )
 	g = in[1] * scale;
 	b = in[2] * scale;
 
-	if ( r > 1.0f || g > 1.0f || b > 1.0f )
+	if (!glRefConfig.floatLightmap) 
 	{
-		float high = Q_max (Q_max (r, g), b);
+		if (r > 1.0f || g > 1.0f || b > 1.0f)
+		{
+			float high = Q_max(Q_max(r, g), b);
 
-		r /= high;
-		g /= high;
-		b /= high;
+			r /= high;
+			g /= high;
+			b /= high;
+		}
 	}
-
+	
 	out[0] = r;
 	out[1] = g;
 	out[2] = b;
@@ -208,6 +211,7 @@ static	void R_LoadLightmaps( world_t *worldData, lump_t *l, lump_t *surfs ) {
 	dsurface_t  *surf;
 	int			len;
 	byte		*image;
+	int			imageSize;
 	int			i, j, numLightmaps, textureInternalFormat = 0;
 	float maxIntensity = 0;
 	double sumIntensity = 0;
@@ -249,7 +253,8 @@ static	void R_LoadLightmaps( world_t *worldData, lump_t *l, lump_t *surfs ) {
 		}
 	}
 
-	image = (byte *)R_Malloc(tr.lightmapSize * tr.lightmapSize * 4 * 2, TAG_BSP, qfalse);
+	imageSize = tr.lightmapSize * tr.lightmapSize * 4 * 2;
+	image = (byte *)R_Malloc(imageSize, TAG_BSP, qfalse);
 
 	if (tr.worldDeluxeMapping)
 		numLightmaps >>= 1;
@@ -297,6 +302,7 @@ static	void R_LoadLightmaps( world_t *worldData, lump_t *l, lump_t *surfs ) {
 				NULL,
 				tr.lightmapAtlasSize[0],
 				tr.lightmapAtlasSize[1],
+				0,
 				IMGTYPE_COLORALPHA,
 				IMGFLAG_NOLIGHTSCALE | IMGFLAG_NO_COMPRESSION | IMGFLAG_CLAMPTOEDGE,
 				textureInternalFormat);
@@ -308,6 +314,7 @@ static	void R_LoadLightmaps( world_t *worldData, lump_t *l, lump_t *surfs ) {
 					NULL,
 					tr.lightmapAtlasSize[0],
 					tr.lightmapAtlasSize[1],
+					8,
 					IMGTYPE_DELUXE,
 					IMGFLAG_NOLIGHTSCALE | IMGFLAG_NO_COMPRESSION | IMGFLAG_CLAMPTOEDGE,
 					0);
@@ -333,53 +340,46 @@ static	void R_LoadLightmaps( world_t *worldData, lump_t *l, lump_t *surfs ) {
 		{
 			char filename[MAX_QPATH];
 			byte *hdrLightmap = NULL;
-			int size = 0;
+			float *hdrL = NULL;
+			int lightmapWidth = tr.lightmapSize;
+			int lightmapHeight = tr.lightmapSize;
+			int depth;
 
 			// look for hdr lightmaps
 			if (r_hdr->integer)
 			{
 				Com_sprintf( filename, sizeof( filename ), "maps/%s/lm_%04d.hdr", worldData->baseName, i * (tr.worldDeluxeMapping ? 2 : 1) );
 				//ri.Printf(PRINT_ALL, "looking for %s\n", filename);
-
-				size = ri.FS_ReadFile(filename, (void **)&hdrLightmap);
+				R_LoadImage(filename, &hdrLightmap, &lightmapWidth, &lightmapHeight, &depth);
+				
+				if (hdrLightmap)
+				{
+					hdrL = (float *)hdrLightmap;
+					int newImageSize = lightmapWidth * lightmapHeight * 4 * 2;
+					if (r_mergeLightmaps->integer && (lightmapWidth != tr.lightmapSize || lightmapHeight != tr.lightmapSize))
+					{
+						ri.Printf(PRINT_ALL, "Error loading %s: non %dx%d lightmaps require r_mergeLightmaps 0.\n", filename, tr.lightmapSize, tr.lightmapSize);
+						R_Free(hdrLightmap);
+						hdrLightmap = NULL;
+					}
+					else if (newImageSize > imageSize)
+					{
+						R_Free(image);
+						imageSize = newImageSize;
+						image = (byte *)R_Malloc(imageSize, TAG_BSP, qfalse);
+					}
+				}
+				if (!hdrLightmap)
+				{
+					lightmapWidth = tr.lightmapSize;
+					lightmapHeight = tr.lightmapSize;
+				}
 			}
 
 			if (hdrLightmap)
 			{
-				byte *p = hdrLightmap;
-				//ri.Printf(PRINT_ALL, "found!\n");
-				
-				/* FIXME: don't just skip over this header and actually parse it */
-				while (size && !(*p == '\n' && *(p+1) == '\n'))
-				{
-					size--;
-					p++;
-				}
+				buf_p = hdrLightmap;
 
-				if (!size)
-					ri.Error(ERR_DROP, "Bad header for %s!", filename);
-
-				size -= 2;
-				p += 2;
-				
-				while (size && !(*p == '\n'))
-				{
-					size--;
-					p++;
-				}
-
-				size--;
-				p++;
-
-				buf_p = (byte *)p;
-
-#if 0 // HDRFILE_RGBE
-				if (size != tr.lightmapSize * tr.lightmapSize * 4)
-					ri.Error(ERR_DROP, "Bad size for %s (%i)!", filename, size);
-#else // HDRFILE_FLOAT
-				if (size != tr.lightmapSize * tr.lightmapSize * 12)
-					ri.Error(ERR_DROP, "Bad size for %s (%i)!", filename, size);
-#endif
 			}
 			else
 			{
@@ -389,33 +389,23 @@ static	void R_LoadLightmaps( world_t *worldData, lump_t *l, lump_t *surfs ) {
 					buf_p = buf + i * tr.lightmapSize * tr.lightmapSize * 3;
 			}
 
-			for ( j = 0 ; j < tr.lightmapSize * tr.lightmapSize; j++ ) 
+			for ( j = 0 ; j < lightmapWidth * lightmapHeight; j++ )
 			{
 				if (hdrLightmap)
 				{
 					vec4_t color;
 
-#if 0 // HDRFILE_RGBE
-					float exponent = exp2(buf_p[j*4+3] - 128);
+					memcpy(color, &hdrL[j * 3], 12);
 
-					color[0] = buf_p[j*4+0] * exponent;
-					color[1] = buf_p[j*4+1] * exponent;
-					color[2] = buf_p[j*4+2] * exponent;
-#else // HDRFILE_FLOAT
-					memcpy(color, &buf_p[j*12], 12);
-
-					color[0] = LittleFloat(color[0]);
-					color[1] = LittleFloat(color[1]);
-					color[2] = LittleFloat(color[2]);
-#endif
 					color[3] = 1.0f;
 
-					R_ColorShiftLightingFloats(color, color, 1.0f/255.0f);
+					R_ColorShiftLightingFloats(color, color, 1.0f );
 
-					if (glRefConfig.floatLightmap)
-						ColorToRGBA16F(color, (unsigned short *)(&image[j*8]));
-					else
-						ColorToRGBM(color, &image[j*4]);
+					color[0] = sqrtf(color[0]);
+					color[1] = sqrtf(color[1]);
+					color[2] = sqrtf(color[2]);
+
+					ColorToRGBA16F(color, (uint16_t *)(&image[j*8]));
 				}
 				else if (glRefConfig.floatLightmap)
 				{
@@ -484,22 +474,23 @@ static	void R_LoadLightmaps( world_t *worldData, lump_t *l, lump_t *surfs ) {
 					image,
 					xoff,
 					yoff,
-					tr.lightmapSize,
-					tr.lightmapSize);
+					lightmapWidth,
+					lightmapHeight);
 			else
 				tr.lightmaps[i] = R_CreateImage(
 					va("*lightmap%d", i),
 					image,
-					tr.lightmapSize,
-					tr.lightmapSize,
+					lightmapWidth,
+					lightmapHeight,
+					16,
 					IMGTYPE_COLORALPHA,
 					IMGFLAG_NOLIGHTSCALE |
 					IMGFLAG_NO_COMPRESSION |
 					IMGFLAG_CLAMPTOEDGE,
-					textureInternalFormat);
+					0);
 
-			if (hdrLightmap)
-				ri.FS_FreeFile(hdrLightmap);
+			//if (hdrLightmap)
+				//R_Free(hdrLightmap);
 		}
 
 		if (tr.worldDeluxeMapping)
@@ -539,6 +530,7 @@ static	void R_LoadLightmaps( world_t *worldData, lump_t *l, lump_t *surfs ) {
 					image,
 					tr.lightmapSize,
 					tr.lightmapSize,
+					8,
 					IMGTYPE_DELUXE,
 					IMGFLAG_NOLIGHTSCALE |
 					IMGFLAG_NO_COMPRESSION |
@@ -3082,7 +3074,7 @@ void R_LoadCubemapEntities(char *cubemapEntityName)
 			qboolean isCubemap = qfalse;
 			qboolean originSet = qfalse;
 			vec3_t origin;
-			float parallaxRadius = 1000.0f;
+			float parallaxRadius = 100000.0f;
 
 			name[0] = '\0';
 			for (i = 0; i < numSpawnVars; i++)
@@ -3254,7 +3246,7 @@ void R_RenderMissingCubemaps()
 		for (int i = 0; i < tr.numCubemaps; i++)
 		{
 			if (!bounce)
-				tr.cubemaps[i].image = R_CreateImage(va("*cubeMap%d", i), NULL, r_cubemapSize->integer, r_cubemapSize->integer, IMGTYPE_COLORALPHA, IMGFLAG_NO_COMPRESSION | IMGFLAG_CLAMPTOEDGE | IMGFLAG_MIPMAP | IMGFLAG_CUBEMAP, cubemapFormat);
+				tr.cubemaps[i].image = R_CreateImage(va("*cubeMap%d", i), NULL, r_cubemapSize->integer, r_cubemapSize->integer, 0, IMGTYPE_COLORALPHA, IMGFLAG_NO_COMPRESSION | IMGFLAG_CLAMPTOEDGE | IMGFLAG_MIPMAP | IMGFLAG_CUBEMAP, cubemapFormat);
 
 			for (int j = 0; j < 6; j++)
 			{

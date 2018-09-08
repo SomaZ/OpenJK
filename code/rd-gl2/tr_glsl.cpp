@@ -125,6 +125,7 @@ static uniformInfo_t uniformsInfo[] =
 
 	{ "u_ModelMatrix",					GLSL_MAT4x4, 1 },
 	{ "u_ModelViewProjectionMatrix",	GLSL_MAT4x4, 1 },
+	{ "u_PrevViewProjectionMatrix",		GLSL_MAT4x4, 1 },
 	{ "u_NormalMatrix",					GLSL_MAT4x4, 1 },
 	{ "u_InvViewProjectionMatrix",		GLSL_MAT4x4, 1 },
 
@@ -604,7 +605,7 @@ static void GLSL_BindShaderInterface(shaderProgram_t *program)
 	static const char *shaderOutputNames[] = {
 		"out_Color",  // Color output
 		"out_Glow",  // Glow output 
-		//"out_Normal", // Normal Parallax output
+		"out_Velocity", // Velocity output
 		//"out_Specular" // Specular Gloss output
 	};
 
@@ -1564,7 +1565,7 @@ static int GLSL_LoadGPUProgramPrepass(
 		if (i & PREPASS_USE_CUBEMAP_TRANSFORMS)
 		{
 			Q_strcat(extradefines, sizeof(extradefines), "#define USE_CUBEMAP_TRANSFORMS\n");
-			shaderTypes |= GPUSHADER_GEOMETRY | GPUSHADER_FRAGMENT;
+			shaderTypes |= GPUSHADER_FRAGMENT | GPUSHADER_GEOMETRY;
 		}
 
 		if (i & PREPASS_USE_PARALLAX)
@@ -1643,6 +1644,9 @@ static int GLSL_LoadGPUProgramPrelight(
 
 		if (i == PRELIGHT_TEMPORAL_FILTER)
 			Q_strcat(extradefines, sizeof(extradefines), "#define TEMPORAL_FILTER\n");
+
+		if (r_ssr->integer == 2)
+			Q_strcat(extradefines, sizeof(extradefines), "#define TWO_RAYS_PER_PIXEL\n");
 
 		uint32_t shaderTypes = GPUSHADER_VERTEX | GPUSHADER_FRAGMENT;
 
@@ -2457,6 +2461,9 @@ static int GLSL_LoadGPUProgramGaussianBlur(
 	for (int i = 0; i < 2; i++)
 	{
 		GLSL_InitUniforms(&tr.gaussianBlurShader[i]);
+		qglUseProgram(tr.gaussianBlurShader[i].program);
+		GLSL_SetUniformInt(&tr.gaussianBlurShader[i], UNIFORM_TEXTUREMAP, TB_COLORMAP);
+		qglUseProgram(0);
 		GLSL_FinishGPUShader(&tr.gaussianBlurShader[i]);
 		++numPrograms;
 	}

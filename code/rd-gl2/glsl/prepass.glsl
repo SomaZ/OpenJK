@@ -38,6 +38,7 @@ uniform float u_Time;
 #endif
 
 uniform mat4 u_ModelViewProjectionMatrix;
+uniform mat4 u_PrevViewProjectionMatrix;
 uniform mat4 u_ModelMatrix;
 uniform mat4 u_NormalMatrix;
 
@@ -54,6 +55,8 @@ out vec3 var_Position;
 out vec4 var_Normal;
 out vec4 var_Tangent;
 out vec4 var_Bitangent;
+out vec4 var_CurrentPosition;
+out vec4 var_OldPosition;
 #endif
 
 #if defined(USE_DEFORM_VERTEXES)
@@ -299,6 +302,10 @@ void main()
 	gl_Position = u_ModelViewProjectionMatrix * vec4(position, 1.0);
 
 	#if !defined(USE_CUBEMAP_TRANSFORMS)
+	#if !defined(USE_SKELETAL_ANIMATION) && defined(USE_G_BUFFERS)
+	var_CurrentPosition = gl_Position;
+	var_OldPosition = (u_PrevViewProjectionMatrix * u_ModelMatrix) * vec4(position, 1.0);
+	#endif
 	position  = mat3(u_ModelMatrix) * position;
 	#endif
 
@@ -315,6 +322,10 @@ void main()
 		var_Normal    = vec4(normal,    viewDir.x);
 		var_Tangent   = vec4(tangent,   viewDir.y);
 		var_Bitangent = vec4(bitangent, viewDir.z);
+		
+		#if defined(USE_SKELETAL_ANIMATION)
+		var_OldPosition = vec4(vec3(0.0), 1.0);
+		#endif
 	#endif
 
 }
@@ -403,10 +414,13 @@ in vec4   fs_Bitangent;
 in vec4   var_Normal;
 in vec4   var_Tangent;
 in vec4   var_Bitangent;
+in vec4   var_OldPosition;
+in vec4   var_CurrentPosition;
 #endif
 
 out vec4 out_Color;
 out vec4 out_Glow;
+out vec2 out_Velocity;
 
 #if defined(USE_PARALLAXMAP)
 float SampleDepth(sampler2D normalMap, vec2 t)
@@ -526,8 +540,9 @@ void main()
 	mat3 tangentToWorld = mat3(fs_Tangent.xyz, fs_Bitangent.xyz, fs_Normal.xyz);
 	position = fs_Position;
 
+	vec3 viewDir = vec3(fs_Normal.w, fs_Tangent.w, fs_Bitangent.w);
+
   #if defined(USE_PARALLAXMAP)
-    vec3 viewDir = vec3(fs_Normal.w, fs_Tangent.w, fs_Bitangent.w);
 	offsetDir = viewDir * tangentToWorld;
 
 	offsetDir.xy *= -u_NormalScale.a / offsetDir.z;
@@ -561,5 +576,11 @@ void main()
 	out_Glow	= specular;
 	//out_Color	= vec4(EncodeNormal(N), offsetDir.xy * 0.5 + 0.5);
 	out_Color	= vec4(N, 1.0);
+
+	#if !defined(USE_CUBEMAP_TRANSFORMS)
+		vec2 a = (var_CurrentPosition.xy / var_CurrentPosition.w) * 0.5 + 0.5;
+		vec2 b = (var_OldPosition.xy / var_OldPosition.w) * 0.5 + 0.5;
+		out_Velocity = (a - b);
+	#endif
 #endif
 }
