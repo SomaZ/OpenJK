@@ -29,6 +29,9 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #include "tr_weather.h"
 #include <algorithm>
 
+#define STB_IMAGE_WRITE_IMPLEMENTATION
+#include "stb_image_write.h"
+
 static size_t FRAME_UNIFORM_BUFFER_SIZE = 8 * 1024 * 1024;
 static size_t FRAME_VERTEX_BUFFER_SIZE = 12 * 1024 * 1024;
 static size_t FRAME_INDEX_BUFFER_SIZE = 4 * 1024 * 1024;
@@ -722,6 +725,16 @@ void RB_TakeScreenshotPNG(int x, int y, int width, int height, char *fileName) {
 
 	RE_SavePNG(fileName, buffer, width, height, 3);
 	R_Free(buffer);
+
+	float	*pic;
+	pic = (float *)R_Malloc(width * height * 4 * sizeof( float ), TAG_TEMP_WORKSPACE, qfalse);
+
+	qglBindTexture(GL_TEXTURE_2D, tr.renderImage->texnum);
+	qglGetTexImage(GL_TEXTURE_2D, 0, GL_RGBA, GL_FLOAT, pic);
+	qglBindTexture(GL_TEXTURE_2D, NULL);
+
+	int status = stbi_write_hdr(va("D:\\%s%s", fileName, ".hdr"), width, height, 4, pic);
+	R_Free(pic);
 }
 
 /*

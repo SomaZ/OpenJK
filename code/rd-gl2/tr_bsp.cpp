@@ -148,7 +148,7 @@ static void R_ColorShiftLightingFloats(float in[4], float out[4], float scale )
 	g = in[1] * scale;
 	b = in[2] * scale;
 
-	if (!glRefConfig.floatLightmap) 
+	/*if (!glRefConfig.floatLightmap) 
 	{
 		if (r > 1.0f || g > 1.0f || b > 1.0f)
 		{
@@ -158,7 +158,7 @@ static void R_ColorShiftLightingFloats(float in[4], float out[4], float scale )
 			g /= high;
 			b /= high;
 		}
-	}
+	}*/
 	
 	out[0] = r;
 	out[1] = g;
@@ -216,6 +216,8 @@ static	void R_LoadLightmaps( world_t *worldData, lump_t *l, lump_t *surfs ) {
 	float maxIntensity = 0;
 	double sumIntensity = 0;
 
+	ri.Printf(PRINT_ALL, "R_LoadLightmaps called\n");
+
 	len = l->filelen;
 	if ( !len ) {
 		return;
@@ -261,6 +263,7 @@ static	void R_LoadLightmaps( world_t *worldData, lump_t *l, lump_t *surfs ) {
 
 	if (r_mergeLightmaps->integer)
 	{
+		ri.Printf(PRINT_ALL, "r_mergeLightmaps->integer\n");
 		const int targetLightmapsPerX = (int)ceilf(sqrtf(numLightmaps));
 
 		int lightmapsPerX = 1;
@@ -336,7 +339,7 @@ static	void R_LoadLightmaps( world_t *worldData, lump_t *l, lump_t *surfs ) {
 			lightmapnum = 0;
 		}
 
-		// if (tr.worldLightmapping)
+		//if (tr.worldLightmapping)
 		{
 			char filename[MAX_QPATH];
 			byte *hdrLightmap = NULL;
@@ -344,12 +347,12 @@ static	void R_LoadLightmaps( world_t *worldData, lump_t *l, lump_t *surfs ) {
 			int lightmapWidth = tr.lightmapSize;
 			int lightmapHeight = tr.lightmapSize;
 			int depth;
-
+			ri.Printf(PRINT_ALL, "tr.worldLightmapping\n");
 			// look for hdr lightmaps
 			if (r_hdr->integer)
 			{
 				Com_sprintf( filename, sizeof( filename ), "maps/%s/lm_%04d.hdr", worldData->baseName, i * (tr.worldDeluxeMapping ? 2 : 1) );
-				//ri.Printf(PRINT_ALL, "looking for %s\n", filename);
+				ri.Printf(PRINT_ALL, "looking for %s\n", filename);
 				R_LoadImage(filename, &hdrLightmap, &lightmapWidth, &lightmapHeight, &depth);
 				
 				if (hdrLightmap)

@@ -2325,6 +2325,7 @@ image_t *R_CreateImage(const char *name, byte *pic, int width, int height, int d
 
 	image->type = type;
 	image->flags = flags;
+	image->textureArray = -1;
 
 	Q_strncpyz(image->imgName, name, sizeof(image->imgName));
 
@@ -2491,8 +2492,8 @@ image_t *R_CreateImage3D(const char *name, byte *data, int width, int height, in
 
 	qglTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 	qglTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-	qglTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-	qglTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+	qglTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+	qglTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_T, GL_REPEAT);
 	qglTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
 
 	hash = generateHashValue(name);
@@ -2500,6 +2501,61 @@ image_t *R_CreateImage3D(const char *name, byte *data, int width, int height, in
 	hashTable[hash] = image;
 
 	return image;
+}
+
+textureArray_t *R_Create2DImageArrayBasedOn2DImage(image_t *image)
+{
+	if (tr.numTextureArrays > MAX_TEXTUREARRAYS)
+	{
+		ri.Printf(PRINT_WARNING, "MAX_TEXTUREARRAYS hit!\n");
+		return NULL;
+	}
+	textureArray_t *imageArray;
+	GLint page = 0;
+
+	imageArray = (textureArray_t *)R_Hunk_Alloc(sizeof(textureArray_t), qtrue);
+	qglGenTextures(1, &imageArray->texnum);
+
+	//ri.Printf(PRINT_ALL, "Trying to add %s to texture array %i\n", image->imgName, imageArray->texnum);
+
+	imageArray->type = image->type;
+	imageArray->flags = image->flags;
+
+	imageArray->width = image->width;
+	imageArray->height = image->height;
+
+	imageArray->internalFormat = image->internalFormat;
+
+	int format = GL_BGRA;
+
+	if (image->internalFormat == GL_DEPTH_COMPONENT24)
+		return NULL;
+
+	qglBindTexture(GL_TEXTURE_2D_ARRAY, imageArray->texnum);
+
+	//TODO: mip mapping?
+	qglTexImage3D(GL_TEXTURE_2D_ARRAY, 0, GL_RGBA8, image->width, image->height, imageArray->type == IMGTYPE_COLORALPHA ? 2*MAX_TEXTUREARRAYDEPTH : MAX_TEXTUREARRAYDEPTH, 0, GL_RGBA, GL_UNSIGNED_BYTE, 0);
+	
+	//qglTexStorage3D(GL_TEXTURE_2D_ARRAY, 1, GL_RGBA8, image->width, image->height, MAX_TEXTUREARRAYDEPTH);
+	
+	imageArray->numTextures = 0;
+
+	int glWrapClampMode;
+	if (image->flags & IMGFLAG_CLAMPTOEDGE)
+		glWrapClampMode = GL_CLAMP_TO_EDGE;
+	else
+		glWrapClampMode = GL_REPEAT;
+
+	qglTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	qglTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	qglTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_S, glWrapClampMode);
+	qglTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_T, glWrapClampMode);
+
+	tr.numTextureArrays++;
+
+	qglBindTexture(GL_TEXTURE_2D_ARRAY, NULL);
+
+	return imageArray;
 }
 
 void R_UpdateSubImage(image_t *image, byte *pic, int x, int y, int width, int height)
@@ -2737,9 +2793,9 @@ void R_CreateDiffuseAndSpecMapsFromBaseColorAndRMO(shaderStage_t *stage, const c
 		// diffuse Color = baseColor * (1.0 - metalness) 
 		// also gamma correct again
 		// FIXME: AO should be handled in shader because it should only affect the ambient lighting
-		diffusePic[i + 0] = FloatToByte(RGBtosRGB(baseColor[0] * (1.0f - metalness) * ao));
-		diffusePic[i + 1] = FloatToByte(RGBtosRGB(baseColor[1] * (1.0f - metalness) * ao));
-		diffusePic[i + 2] = FloatToByte(RGBtosRGB(baseColor[2] * (1.0f - metalness) * ao));
+		diffusePic[i + 0] = FloatToByte(baseColor[0] * ao);// FloatToByte(RGBtosRGB(baseColor[0] * (1.0f - metalness) * ao));
+		diffusePic[i + 1] = FloatToByte(baseColor[1] * ao);// FloatToByte(RGBtosRGB(baseColor[1] * (1.0f - metalness) * ao));
+		diffusePic[i + 2] = FloatToByte(baseColor[2] * ao);// FloatToByte(RGBtosRGB(baseColor[2] * (1.0f - metalness) * ao));
 		diffusePic[i + 3] = FloatToByte(baseColor[3]);
 
 		// specular Color = mix(baseSpecular, baseColor, metalness)
@@ -2907,6 +2963,54 @@ image_t	*R_FindImageFile(const char *name, imgType_t type, int flags)
 	return image;
 }
 
+void R_AddImageToTextureArray(image_t *image, textureArray_t *textureArray)
+{
+	//ri.Printf(PRINT_ALL, "Trying to add %s to texture array %i which has %i textures in it already\n", image->imgName, textureArray->texnum, textureArray->numTextures);
+
+	if (textureArray == NULL)
+		ri.Printf(PRINT_ALL, "could not find texture array to add %s\n", image->imgName);
+
+	if (textureArray->numTextures >= MAX_TEXTUREARRAYDEPTH)
+		ri.Printf(PRINT_ALL, "could not add texture to array because it hit max size: %s\n", image->imgName);
+
+	int		width, height, depth;
+	byte	*pic;
+
+	int format = GL_RGBA;
+
+	if (image->internalFormat == GL_DEPTH_COMPONENT24)
+		format = GL_DEPTH_COMPONENT;
+
+	pic = (byte *)R_Malloc(image->width * image->height * 4, TAG_TEMP_WORKSPACE, qfalse);
+
+	qglActiveTexture(GL_TEXTURE0);
+
+	qglBindTexture(GL_TEXTURE_2D, image->texnum);
+	qglGetTexImage(GL_TEXTURE_2D, 0, format, GL_UNSIGNED_BYTE, pic);
+	if (pic == NULL) {
+		qglBindTexture(GL_TEXTURE_2D, NULL);
+		//ri.Printf(PRINT_ALL, "pic was null: %s\n", image->imgName);
+		return;
+	}
+	qglBindTexture(GL_TEXTURE_2D, NULL);
+
+	qglBindTexture(GL_TEXTURE_2D_ARRAY, textureArray->texnum);
+
+	qglTexSubImage3D(GL_TEXTURE_2D_ARRAY,
+		0,
+		0, 0, textureArray->numTextures,
+		textureArray->width, textureArray->height, 1,
+		format,
+		GL_UNSIGNED_BYTE,
+		pic);
+
+	R_Free(pic);
+
+	qglBindTexture(GL_TEXTURE_2D_ARRAY, NULL);
+
+	image->page = textureArray->numTextures;
+	textureArray->numTextures++;
+}
 
 /*
 ================
@@ -3179,6 +3283,9 @@ void R_CreateBuiltinImages(void) {
 	// we use a solid white image instead of disabling texturing
 	Com_Memset(data, 255, sizeof(data));
 	tr.whiteImage = R_CreateImage("*white", (byte *)data, 8, 8, 8, IMGTYPE_COLORALPHA, IMGFLAG_NONE, 0);
+
+	for (int i = 0; i < MAX_TEXTUREARRAYS; i++)
+		tr.textureArrays[i] = (textureArray_t *)R_Hunk_Alloc(sizeof(textureArray_t), qtrue);
 
 	if (r_dlightMode->integer >= 2)
 	{
@@ -3474,6 +3581,14 @@ void R_DeleteTextures(void) {
 	Com_Memset(tr.images, 0, sizeof(tr.images));
 
 	tr.numImages = 0;
+
+	for (i = 0; i<tr.numTextureArrays; i++) {
+		qglDeleteTextures(1, &tr.textureArrays[i]->texnum);
+	}
+	Com_Memset(tr.textureArrays, 0, sizeof(tr.textureArrays));
+
+	tr.numImages = 0;
+	tr.numTextureArrays = 0;
 
 	Com_Memset(glState.currenttextures, 0, sizeof(glState.currenttextures));
 	GL_SelectTexture(1);

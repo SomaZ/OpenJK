@@ -304,7 +304,8 @@ typedef enum
 	IMGFLAG_GENNORMALMAP   = 0x0100,
 	IMGFLAG_MUTABLE        = 0x0200,
 	IMGFLAG_3D             = 0x0400,
-	IMGFLAG_NPOT_MIP	   = 0x0800,
+	IMGFLAG_2D_ARRAY	   = 0x0800,
+	IMGFLAG_NPOT_MIP	   = 0x1000,
 } imgFlags_t;
 
 typedef enum
@@ -347,10 +348,14 @@ enum
 static const int NO_XFB_VARS = 0;
 
 typedef struct image_s {
-	char		imgName[MAX_QPATH];		// game path, including extension
-	int			width, height, depth;				// source image
+	char		imgName[MAX_QPATH];			// game path, including extension
+	int			width, height, depth;		// source image
 	int			uploadWidth, uploadHeight;	// after power of two and picmip but not including clamp to MAX_TEXTURE_SIZE
-	GLuint		texnum;					// gl texture binding
+
+	GLuint		texnum;						// gl texture binding
+	GLuint		page;
+
+	int			textureArray;
 
 	int			frameUsed;			// for texture usage in frame statistics
 
@@ -362,6 +367,18 @@ typedef struct image_s {
 
 	struct image_s *next;
 } image_t;
+
+typedef struct textureArray_s {
+	int			width, height, depth;
+	imgType_t	type;
+	int			flags;
+	int			internalFormat;
+
+	GLuint		texnum;
+
+	int			numTextures;
+	image_t		*textures;
+} textureArray_t;
 
 typedef struct cubemap_s {
 	char name[MAX_QPATH];
@@ -690,6 +707,18 @@ struct LiquidBlock
 	float		freq;
 };
 
+struct TexturesBlock
+{
+	int diffuseBlock;
+	int diffusePage;
+	int specularBlock;
+	int specularPage;
+	int normalBlock;
+	int normalPage;
+	int emissiveBlock;
+	int emissivePage;
+};
+
 struct CubemapTransforms
 {
 	matrix_t XM;
@@ -762,7 +791,8 @@ enum
 	TB_LGAMBIENT   =10,
 	TB_DIFFUSELIGHTBUFFER = 11,
 	TB_SPECLIGHTBUFFER = 12,
-	NUM_TEXTURE_BUNDLES = 13,
+	TB_TEXTUREARRAY = 13,
+	NUM_TEXTURE_BUNDLES = 14,
 };
 
 typedef enum
@@ -1232,6 +1262,7 @@ enum uniformBlock_t
 {
 	UNIFORM_BLOCK_SURFACESPRITE,
 	UNIFORM_BLOCK_LIQUID,
+	UNIFORM_BLOCK_TEXTURES,
 	UNIFORM_BLOCK_CUBEMAP_TRANSFORMS,
 	UNIFORM_BLOCK_COUNT
 };
@@ -1299,6 +1330,8 @@ typedef enum
 	UNIFORM_SCREENSPECULARMAP,
 	UNIFORM_SCREENOFFSETMAP,
 	UNIFORM_SCREENOFFSETMAP2,
+
+	UNIFORM_TEXTUREARRAY,
 
 	UNIFORM_LIGHTGRIDDIRECTIONMAP,
 	UNIFORM_LIGHTGRIDDIRECTIONALLIGHTMAP,
@@ -2128,7 +2161,8 @@ void R_SortAndSubmitDrawSurfs(drawSurf_t *drawSurfs, int numDrawSurfs);
 
 #define	MAX_DRAWIMAGES 4096
 #define	MAX_SKINS 1024
-
+#define MAX_TEXTUREARRAYS 16
+#define MAX_TEXTUREARRAYDEPTH 50
 
 #define	MAX_DRAWSURFS 0x10000
 #define	DRAWSURF_MASK (MAX_DRAWSURFS-1)
@@ -2561,6 +2595,8 @@ typedef struct trGlobals_s {
 
 	int						numImages;
 	image_t					*images[MAX_DRAWIMAGES];
+	int						numTextureArrays;
+	textureArray_t			*textureArrays[MAX_TEXTUREARRAYS];
 
 	int						numFBOs;
 	FBO_t					*fbos[MAX_FBOS];
@@ -2760,6 +2796,8 @@ void R_ScreenShotTGA_f( void );
 void R_ScreenShotPNG_f( void );
 void R_ScreenShotJPEG_f( void );
 
+void R_AddImageToTextureArray(image_t *image, textureArray_t *textureArray);
+textureArray_t *R_Create2DImageArrayBasedOn2DImage(image_t *image);
 void R_InitFogTable( void );
 float R_FogFactor( float s, float t );
 void R_InitImages( void );

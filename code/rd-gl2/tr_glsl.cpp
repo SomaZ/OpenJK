@@ -29,7 +29,8 @@ void GLSL_BindNullProgram(void);
 const uniformBlockInfo_t uniformBlocksInfo[UNIFORM_BLOCK_COUNT] = {
 	{ 0, "SurfaceSprite", sizeof(SurfaceSpriteBlock) },
 	{ 1, "Liquid", sizeof(LiquidBlock) },
-	{ 2, "CubemapMatrices", sizeof(CubemapTransforms) }
+	{ 2, "StageTextures", sizeof(TexturesBlock) },
+	{ 3, "CubemapMatrices", sizeof(CubemapTransforms) }
 };
 
 typedef struct uniformInfo_s
@@ -60,6 +61,8 @@ static uniformInfo_t uniformsInfo[] =
 	{ "u_ScreenSpecularMap", GLSL_INT, 1 },
 	{ "u_ScreenOffsetMap", GLSL_INT, 1 },
 	{ "u_ScreenOffsetMap2", GLSL_INT, 1 },
+
+	{ "u_TextureArray", GLSL_INT, MAX_TEXTUREARRAYS },
 
 	{ "u_LightGridDirectionMap", GLSL_INT, 1 },
 	{ "u_LightGridDirectionalLightMap", GLSL_INT, 1 },
@@ -1017,6 +1020,37 @@ void GLSL_SetUniformInt(shaderProgram_t *program, int uniformNum, GLint value)
 	qglUniform1i(uniforms[uniformNum], value);
 }
 
+void GLSL_SetUniformIntN(shaderProgram_t *program, int uniformNum, GLint *values, int numInts)
+{
+	GLint *uniforms = program->uniforms;
+	GLint *compare = (GLint *)(program->uniformBuffer + program->uniformBufferOffsets[uniformNum]);
+
+	if (uniforms[uniformNum] == -1)
+		return;
+
+	if (uniformsInfo[uniformNum].type != GLSL_INT)
+	{
+		ri.Printf(PRINT_WARNING, "GLSL_SetUniformInt: wrong type for uniform %i in program %s\n", uniformNum, program->name);
+		return;
+	}
+
+	if (uniformsInfo[uniformNum].size < numInts)
+	{
+		ri.Printf(PRINT_WARNING, "GLSL_SetUniformIntN: uniform %i only has %d elements! Tried to set %d\n",
+			uniformNum,
+			uniformsInfo[uniformNum].size,
+			numInts);
+		return;
+	}
+
+	if (memcmp(compare, values, sizeof(GLint) * numInts) == 0)
+	{
+		return;
+	}
+
+	qglUniform1iv(uniforms[uniformNum], numInts, values);
+}
+
 void GLSL_SetUniformFloat(shaderProgram_t *program, int uniformNum, GLfloat value)
 {
 	GLint *uniforms = program->uniforms;
@@ -1503,6 +1537,8 @@ static int GLSL_LoadGPUProgramGeneric(
 		qglUseProgram(tr.genericShader[i].program);
 		GLSL_SetUniformInt(&tr.genericShader[i], UNIFORM_DIFFUSEMAP, TB_DIFFUSEMAP);
 		GLSL_SetUniformInt(&tr.genericShader[i], UNIFORM_LIGHTMAP, TB_LIGHTMAP);
+		int arrayBindings[MAX_TEXTUREARRAYS] = { 13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28 };
+		GLSL_SetUniformIntN(&tr.genericShader[i], UNIFORM_TEXTUREARRAY, arrayBindings, MAX_TEXTUREARRAYS);
 		qglUseProgram(0);
 
 		GLSL_FinishGPUShader(&tr.genericShader[i]);
@@ -1587,6 +1623,8 @@ static int GLSL_LoadGPUProgramPrepass(
 		GLSL_SetUniformInt(&tr.prepassShader[i], UNIFORM_DIFFUSEMAP, TB_DIFFUSEMAP);
 		GLSL_SetUniformInt(&tr.prepassShader[i], UNIFORM_SPECULARMAP, TB_SPECULARMAP);
 		GLSL_SetUniformInt(&tr.prepassShader[i], UNIFORM_NORMALMAP, TB_NORMALMAP);
+		int arrayBindings[MAX_TEXTUREARRAYS] = { 13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28 };
+		GLSL_SetUniformIntN(&tr.prepassShader[i], UNIFORM_TEXTUREARRAY, arrayBindings, MAX_TEXTUREARRAYS);
 		qglUseProgram(0);
 
 		GLSL_FinishGPUShader(&tr.prepassShader[i]);
@@ -1924,6 +1962,7 @@ static int GLSL_LoadGPUProgramLightAll(
 		GLSL_InitUniforms(&tr.lightallShader[i]);
 
 		qglUseProgram(tr.lightallShader[i].program);
+		
 		GLSL_SetUniformInt(&tr.lightallShader[i], UNIFORM_DIFFUSEMAP, TB_DIFFUSEMAP);
 		GLSL_SetUniformInt(&tr.lightallShader[i], UNIFORM_LIGHTMAP, TB_LIGHTMAP);
 		GLSL_SetUniformInt(&tr.lightallShader[i], UNIFORM_NORMALMAP, TB_NORMALMAP);
@@ -1938,6 +1977,8 @@ static int GLSL_LoadGPUProgramLightAll(
 		GLSL_SetUniformInt(&tr.lightallShader[i], UNIFORM_LIGHTGRIDAMBIENTLIGHTMAP, TB_LGAMBIENT);
 		GLSL_SetUniformInt(&tr.lightallShader[i], UNIFORM_SCREENDIFFUSEMAP, TB_DIFFUSELIGHTBUFFER);
 		GLSL_SetUniformInt(&tr.lightallShader[i], UNIFORM_SCREENSPECULARMAP, TB_SPECLIGHTBUFFER);
+		int arrayBindings[MAX_TEXTUREARRAYS] = { 13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28 };
+		GLSL_SetUniformIntN(&tr.lightallShader[i], UNIFORM_TEXTUREARRAY, arrayBindings, MAX_TEXTUREARRAYS);
 		qglUseProgram(0);
 
 		GLSL_FinishGPUShader(&tr.lightallShader[i]);

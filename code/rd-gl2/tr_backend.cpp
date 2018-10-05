@@ -66,6 +66,8 @@ void GL_Bind( image_t *image ) {
 				qglBindTexture(GL_TEXTURE_CUBE_MAP, texnum);
 			else if (image->flags & IMGFLAG_3D)
 				qglBindTexture(GL_TEXTURE_3D, texnum);
+			else if (image->flags & IMGFLAG_2D_ARRAY)
+				qglBindTexture(GL_TEXTURE_2D_ARRAY, texnum);
 			else
 				qglBindTexture(GL_TEXTURE_2D, texnum);
 		}
@@ -122,7 +124,8 @@ void GL_BindToTMU( image_t *image, int tmu )
 		}
 		else
 			qglBindTexture( GL_TEXTURE_2D, texnum );
-		GL_SelectTexture( oldtmu );
+		// why should we?
+		//GL_SelectTexture( oldtmu );
 	}
 }
 
@@ -1436,6 +1439,13 @@ static void RB_SubmitRenderPass(
 		return sortKeys[a] < sortKeys[b];
 	});
 
+	for (int i = 0; i < tr.numTextureArrays; i++)
+	{
+		qglActiveTexture(GL_TEXTURE0 + TB_TEXTUREARRAY + i);
+		qglBindTexture(GL_TEXTURE_2D_ARRAY, tr.textureArrays[i]->texnum);
+	}
+	qglActiveTexture(GL_TEXTURE0);
+
 	RB_DrawItems(renderPass.numDrawItems, renderPass.drawItems, drawOrder);
 }
 
@@ -2196,6 +2206,7 @@ static void RB_RenderSSAO()
 	GLSL_BindProgram(&tr.ssaoShader);
 
 	GL_BindToTMU(tr.hdrDepthImage, TB_COLORMAP);
+
 	GLSL_SetUniformVec4(&tr.ssaoShader, UNIFORM_VIEWINFO, viewInfo);
 
 	RB_InstantQuad2(quadVerts, texCoords);

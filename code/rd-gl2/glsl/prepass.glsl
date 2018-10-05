@@ -387,6 +387,20 @@ uniform sampler2D	u_DiffuseMap;
 uniform int			u_AlphaTestFunction;
 uniform float		u_AlphaTestValue;
 
+uniform sampler2DArray u_TextureArray[16];
+
+layout(std140) uniform StageTextures
+{
+	int diffuseBlock;
+	int diffusePage;
+	int specularBlock;
+	int specularPage;
+	int normalBlock;
+	int normalPage;
+	int emissiveBlock;
+	int emissivePage;
+};
+
 #if defined(USE_G_BUFFERS)
 uniform sampler2D u_NormalMap;
 uniform sampler2D u_SpecularMap;
@@ -423,9 +437,9 @@ out vec4 out_Glow;
 out vec2 out_Velocity;
 
 #if defined(USE_PARALLAXMAP)
-float SampleDepth(sampler2D normalMap, vec2 t)
+float SampleDepth(vec2 t)
 {
-	return 1.0 - texture(normalMap, t).r;
+	return 1.0 - texture(u_TextureArray[normalBlock], vec3(t, normalPage)).r;
 }
 
 float RayIntersectDisplaceMap(vec2 dp, vec2 ds, sampler2D normalMap)
@@ -445,7 +459,7 @@ float RayIntersectDisplaceMap(vec2 dp, vec2 ds, sampler2D normalMap)
 	// texture depth at best depth
 	float texDepth = 0.0;
 
-	float prevT = SampleDepth(normalMap, dp);
+	float prevT = SampleDepth(dp);
 	float prevTexDepth = prevT;
 
 	// search front to back for first point inside object
@@ -453,7 +467,7 @@ float RayIntersectDisplaceMap(vec2 dp, vec2 ds, sampler2D normalMap)
 	{
 		depth += size;
 		
-		float t = SampleDepth(normalMap, dp + ds * depth);
+		float t = SampleDepth(dp + ds * depth);
 		
 		if(bestDepth > 0.996)		// if no depth found yet
 			if(depth >= t)
@@ -476,7 +490,7 @@ float RayIntersectDisplaceMap(vec2 dp, vec2 ds, sampler2D normalMap)
 	{
 		size *= 0.5;
 
-		float t = SampleDepth(normalMap, dp + ds * depth);
+		float t = SampleDepth(dp + ds * depth);
 		
 		if(depth >= t)
 		{
@@ -497,7 +511,7 @@ vec3 CalcNormal( in vec3 vertexNormal, in vec2 texCoords, in mat3 tangentToWorld
 	vec3 N = vertexNormal;
 
 	if (u_EnableTextures.x > 0.5) {
-		N.xy = texture(u_NormalMap, texCoords).ag - vec2(0.5);
+		N.xy = texture(u_TextureArray[normalBlock], vec3(texCoords, normalPage)).ag - vec2(0.5);
 		N.xy *= u_NormalScale.xy;
 		N.z = sqrt(clamp((0.25 - N.x * N.x) - N.y * N.y, 0.0, 1.0));
 		N = tangentToWorld * N;
@@ -551,7 +565,7 @@ void main()
 	texCoords += offsetDir.xy; 
   #endif
 #endif
-	vec4 diffuse = texture(u_DiffuseMap, texCoords);
+	vec4 diffuse = texture(u_TextureArray[diffuseBlock], vec3(texCoords, diffusePage));
 	
 	if (u_AlphaTestFunction == ATEST_CMP_GE){
 		if (diffuse.a < u_AlphaTestValue)
@@ -570,7 +584,7 @@ void main()
 
 	vec4 specular = vec4 (1.0);
 	if (u_EnableTextures.z > 0.0)
-		specular = texture(u_SpecularMap, texCoords);
+		specular = texture(u_TextureArray[specularBlock], vec3(texCoords, specularPage));
 	specular *= u_SpecularScale;
 
 	out_Glow	= specular;

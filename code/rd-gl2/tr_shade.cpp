@@ -1526,6 +1526,43 @@ void RB_StageIteratorLiquid( void )
 	RB_AddDrawItem(backEndData->currentPass, key, item);
 }
 
+static void RB_PackImageInTextureArray(image_t *image) 
+{
+
+	//ri.Printf(PRINT_ALL, "RB_PackImageInTextureArray called\n");
+
+	for (int i = 0; i < tr.numTextureArrays; i++)
+	{
+		if (image->width == tr.textureArrays[i]->width &&
+			image->height == tr.textureArrays[i]->height &&
+			image->flags == tr.textureArrays[i]->flags &&
+			image->internalFormat == tr.textureArrays[i]->internalFormat &&
+			image->type == tr.textureArrays[i]->type)
+		{
+			//add to textureArray
+			int number = tr.textureArrays[i]->numTextures;
+			R_AddImageToTextureArray(image, tr.textureArrays[i]);
+
+			if (number < tr.textureArrays[i]->numTextures)
+				image->textureArray = i;
+
+			return;
+		}
+	}
+
+	//not found, create textureArray and add the picture to it
+	image->textureArray = tr.numTextureArrays;
+	textureArray_t *tArray = R_Create2DImageArrayBasedOn2DImage(image);
+
+	if (tArray == NULL)
+		return;
+
+	tr.textureArrays[image->textureArray] = tArray;
+	R_AddImageToTextureArray(image, tr.textureArrays[image->textureArray]);
+
+	//ri.Printf(PRINT_ALL, "Number of texture arrays: %i\n", tr.numTextureArrays);
+}
+
 static void RB_IterateStagesGeneric( shaderCommands_t *input, const VertexArraysProperties *vertexArrays )
 {
 	deform_t deformType;
@@ -1562,6 +1599,10 @@ static void RB_IterateStagesGeneric( shaderCommands_t *input, const VertexArrays
 		int index = 0;
 		bool forceRefraction = false;
 		bool useAlphaTestGE192 = false;
+
+		TexturesBlock *textureData;
+		textureData = ojkAlloc<TexturesBlock>(*backEndData->perFrameMemory);
+		*textureData = {};
 
 		if ( !pStage )
 		{
@@ -1766,19 +1807,47 @@ static void RB_IterateStagesGeneric( shaderCommands_t *input, const VertexArrays
 		{
 			if (pStage->alphaTestCmp == ATEST_CMP_NONE)
 				samplerBindingsWriter.AddStaticImage(tr.whiteImage, 0);
-			else if ( pStage->bundle[TB_COLORMAP].image[0] != 0 )
+			else if (pStage->bundle[TB_COLORMAP].image[0] != 0)
+			{
 				samplerBindingsWriter.AddAnimatedImage(&pStage->bundle[TB_COLORMAP], TB_COLORMAP);
 
+				if (pStage->bundle[TB_DIFFUSEMAP].image[0]->textureArray == -1)
+					RB_PackImageInTextureArray(pStage->bundle[TB_DIFFUSEMAP].image[0]);
+				else
+				{
+					//ri.Printf(PRINT_ALL, "Image %s has array %i and page %i\n", pStage->bundle[TB_DIFFUSEMAP].image[0]->imgName, pStage->bundle[TB_DIFFUSEMAP].image[0]->textureArray, pStage->bundle[TB_DIFFUSEMAP].image[0]->page);
+					textureData->diffuseBlock = pStage->bundle[TB_DIFFUSEMAP].image[0]->textureArray;
+					textureData->diffusePage = pStage->bundle[TB_DIFFUSEMAP].image[0]->page;
+				}
+			}
 			if (backEnd.renderPass == PRE_PASS) 
 			{
 				vec4_t enableTextures = {};
 				if (pStage->bundle[TB_NORMALMAP].image[0] != 0) {
-					samplerBindingsWriter.AddAnimatedImage(&pStage->bundle[TB_NORMALMAP], TB_NORMALMAP);
+					//samplerBindingsWriter.AddAnimatedImage(&pStage->bundle[TB_NORMALMAP], TB_NORMALMAP);
 					enableTextures[0] = 1.0f;
+
+					if (pStage->bundle[TB_NORMALMAP].image[0]->textureArray == -1)
+						RB_PackImageInTextureArray(pStage->bundle[TB_NORMALMAP].image[0]);
+					else
+					{
+						//ri.Printf(PRINT_ALL, "Image %s has array %i and page %i\n", pStage->bundle[TB_NORMALMAP].image[0]->imgName, pStage->bundle[TB_NORMALMAP].image[0]->textureArray, pStage->bundle[TB_NORMALMAP].image[0]->page);
+						textureData->normalBlock = pStage->bundle[TB_NORMALMAP].image[0]->textureArray;
+						textureData->normalPage = pStage->bundle[TB_NORMALMAP].image[0]->page;
+					}
 				}
 				if (pStage->bundle[TB_SPECULARMAP].image[0] != 0) {
-					samplerBindingsWriter.AddAnimatedImage(&pStage->bundle[TB_SPECULARMAP], TB_SPECULARMAP);
+					//samplerBindingsWriter.AddAnimatedImage(&pStage->bundle[TB_SPECULARMAP], TB_SPECULARMAP);
 					enableTextures[2] = 1.0f;
+
+					if (pStage->bundle[TB_SPECULARMAP].image[0]->textureArray == -1)
+						RB_PackImageInTextureArray(pStage->bundle[TB_SPECULARMAP].image[0]);
+					else
+					{
+						//ri.Printf(PRINT_ALL, "Image %s has array %i and page %i\n", pStage->bundle[TB_SPECULARMAP].image[0]->imgName, pStage->bundle[TB_SPECULARMAP].image[0]->textureArray, pStage->bundle[TB_SPECULARMAP].image[0]->page);
+						textureData->specularBlock = pStage->bundle[TB_SPECULARMAP].image[0]->textureArray;
+						textureData->specularPage = pStage->bundle[TB_SPECULARMAP].image[0]->page;
+					}
 				}
 				uniformDataWriter.SetUniformVec4(UNIFORM_ENABLETEXTURES, enableTextures);
 			}
@@ -1825,7 +1894,18 @@ static void RB_IterateStagesGeneric( shaderCommands_t *input, const VertexArrays
 				qboolean allowVertexLighting = (qboolean)!(r_normalMapping->integer || r_specularMapping->integer);
 
 				if (pStage->bundle[TB_DIFFUSEMAP].image[0])
-					samplerBindingsWriter.AddAnimatedImage(&pStage->bundle[TB_DIFFUSEMAP], TB_DIFFUSEMAP);
+				{
+					//samplerBindingsWriter.AddAnimatedImage(&pStage->bundle[TB_DIFFUSEMAP], TB_DIFFUSEMAP);
+
+					if (pStage->bundle[TB_DIFFUSEMAP].image[0]->textureArray == -1)
+						RB_PackImageInTextureArray(pStage->bundle[TB_DIFFUSEMAP].image[0]);
+					else
+					{
+						//ri.Printf(PRINT_ALL, "Image %s has array %i and page %i\n", pStage->bundle[TB_DIFFUSEMAP].image[0]->imgName, pStage->bundle[TB_DIFFUSEMAP].image[0]->textureArray, pStage->bundle[TB_DIFFUSEMAP].image[0]->page);
+						textureData->diffuseBlock = pStage->bundle[TB_DIFFUSEMAP].image[0]->textureArray;
+						textureData->diffusePage = pStage->bundle[TB_DIFFUSEMAP].image[0]->page;
+					}
+				}
 
 				if (pStage->bundle[TB_LIGHTMAP].image[0])
 					samplerBindingsWriter.AddAnimatedImage(&pStage->bundle[TB_LIGHTMAP], TB_LIGHTMAP);
@@ -1854,7 +1934,16 @@ static void RB_IterateStagesGeneric( shaderCommands_t *input, const VertexArrays
 
 					if (pStage->bundle[TB_NORMALMAP].image[0])
 					{
-						samplerBindingsWriter.AddAnimatedImage(&pStage->bundle[TB_NORMALMAP], TB_NORMALMAP);
+						//samplerBindingsWriter.AddAnimatedImage(&pStage->bundle[TB_NORMALMAP], TB_NORMALMAP);
+
+						if (pStage->bundle[TB_NORMALMAP].image[0]->textureArray == -1)
+							RB_PackImageInTextureArray(pStage->bundle[TB_NORMALMAP].image[0]);
+						else
+						{
+							//ri.Printf(PRINT_ALL, "Image %s has array %i and page %i\n", pStage->bundle[TB_NORMALMAP].image[0]->imgName, pStage->bundle[TB_NORMALMAP].image[0]->textureArray, pStage->bundle[TB_NORMALMAP].image[0]->page);
+							textureData->normalBlock = pStage->bundle[TB_NORMALMAP].image[0]->textureArray;
+							textureData->normalPage = pStage->bundle[TB_NORMALMAP].image[0]->page;
+						}
 					}
 					else if (r_normalMapping->integer)
 					{
@@ -1873,8 +1962,17 @@ static void RB_IterateStagesGeneric( shaderCommands_t *input, const VertexArrays
 
 					if (pStage->bundle[TB_SPECULARMAP].image[0])
 					{
-						samplerBindingsWriter.AddAnimatedImage(&pStage->bundle[TB_SPECULARMAP], TB_SPECULARMAP);
+						//samplerBindingsWriter.AddAnimatedImage(&pStage->bundle[TB_SPECULARMAP], TB_SPECULARMAP);
 						enableTextures[2] = 1.0f;
+
+						if (pStage->bundle[TB_SPECULARMAP].image[0]->textureArray == -1)
+							RB_PackImageInTextureArray(pStage->bundle[TB_SPECULARMAP].image[0]);
+						else
+						{
+							//ri.Printf(PRINT_ALL, "Image %s has array %i and page %i\n", pStage->bundle[TB_SPECULARMAP].image[0]->imgName, pStage->bundle[TB_SPECULARMAP].image[0]->textureArray, pStage->bundle[TB_SPECULARMAP].image[0]->page);
+							textureData->specularBlock = pStage->bundle[TB_SPECULARMAP].image[0]->textureArray;
+							textureData->specularPage = pStage->bundle[TB_SPECULARMAP].image[0]->page;
+						}
 					}
 					else if (r_specularMapping->integer)
 					{
@@ -1944,7 +2042,7 @@ static void RB_IterateStagesGeneric( shaderCommands_t *input, const VertexArrays
 			}
 		}
 
-		LiquidBlock *data;
+		LiquidBlock *liquidData;
 		if (forceRefraction)
 		{
 			samplerBindingsWriter.AddStaticImage(tr.prevRenderImage, TB_COLORMAP);
@@ -1971,16 +2069,16 @@ static void RB_IterateStagesGeneric( shaderCommands_t *input, const VertexArrays
 			uniformDataWriter.SetUniformVec4(UNIFORM_VIEWINFO, viewInfo);
 			uniformDataWriter.SetUniformMatrix4x4(UNIFORM_NORMALMATRIX, transInvModelViewProjectionMatrix);
 
-			data = ojkAlloc<LiquidBlock>(*backEndData->perFrameMemory);
-			*data = {};
+			liquidData = ojkAlloc<LiquidBlock>(*backEndData->perFrameMemory);
+			*liquidData = {};
 
-			data->isLiquid = 0.0;
-			data->height = tess.shader->liquid.height;
-			data->choppy = tess.shader->liquid.choppy;
-			data->speed = tess.shader->liquid.speed;
-			data->freq = tess.shader->liquid.freq;
-			data->depth = tess.shader->liquid.depth;
-			data->time = tess.shaderTime;
+			liquidData->isLiquid = 0.0;
+			liquidData->height = tess.shader->liquid.height;
+			liquidData->choppy = tess.shader->liquid.choppy;
+			liquidData->speed = tess.shader->liquid.speed;
+			liquidData->freq = tess.shader->liquid.freq;
+			liquidData->depth = tess.shader->liquid.depth;
+			liquidData->time = tess.shaderTime;
 		}
 
 		CaptureDrawData(input, pStage, index, stage);
@@ -1997,12 +2095,17 @@ static void RB_IterateStagesGeneric( shaderCommands_t *input, const VertexArrays
 			*backEndData->perFrameMemory, vertexArrays->numVertexArrays);
 		memcpy(item.attributes, attribs, sizeof(*item.attributes)*vertexArrays->numVertexArrays);
 
+		item.numUniformBlockBindings = 1;
+		if (forceRefraction)
+			item.numUniformBlockBindings += 1;
+
+		item.uniformBlockBindings = ojkAllocArray<UniformBlockBinding>(*backEndData->perFrameMemory, item.numUniformBlockBindings);
+		item.uniformBlockBindings[0].data = textureData;
+		item.uniformBlockBindings[0].block = UNIFORM_BLOCK_TEXTURES;
 		if (forceRefraction)
 		{
-			item.numUniformBlockBindings = 1;
-			item.uniformBlockBindings = ojkAllocArray<UniformBlockBinding>(*backEndData->perFrameMemory, item.numUniformBlockBindings);
-			item.uniformBlockBindings[0].data = data;
-			item.uniformBlockBindings[0].block = UNIFORM_BLOCK_LIQUID;
+			item.uniformBlockBindings[1].data = liquidData;
+			item.uniformBlockBindings[1].block = UNIFORM_BLOCK_LIQUID;
 		}
 
 		item.uniformData = uniformDataWriter.Finish(*backEndData->perFrameMemory);

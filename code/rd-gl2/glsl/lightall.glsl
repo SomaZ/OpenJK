@@ -312,6 +312,20 @@ uniform sampler2D u_ScreenSpecularMap;
 
 uniform sampler2D u_DiffuseMap;
 
+uniform sampler2DArray u_TextureArray[16];
+
+layout(std140) uniform StageTextures
+{
+	int diffuseBlock;
+	int diffusePage;
+	int specularBlock;
+	int specularPage;
+	int normalBlock;
+	int normalPage;
+	int emissiveBlock;
+	int emissivePage;
+};
+
 #if defined(USE_LIGHTMAP)
 uniform sampler2D u_LightMap;
 #endif
@@ -382,6 +396,7 @@ in vec3	  var_Position;
 uniform sampler3D u_LightGridDirectionMap;
 uniform sampler3D u_LightGridDirectionalLightMap;
 uniform sampler3D u_LightGridAmbientLightMap;
+
 uniform vec3 u_LightGridOrigin;
 uniform vec3 u_LightGridCellInverseSize;
 uniform vec3 u_StyleColor;
@@ -401,13 +416,9 @@ out vec4 out_Glow;
 #define EPSILON 0.00000001
 
 #if defined(USE_PARALLAXMAP)
-float SampleDepth(sampler2D normalMap, vec2 t)
+float SampleDepth(vec2 t)
 {
-  #if defined(SWIZZLE_NORMALMAP)
-	return 1.0 - texture(normalMap, t).r;
-  #else
-	return 1.0 - texture(normalMap, t).a;
-  #endif
+	return 1.0 - texture(u_TextureArray[normalBlock], vec3(t, normalPage)).r;
 }
 
 float RayIntersectDisplaceMap(vec2 dp, vec2 ds, sampler2D normalMap)
@@ -427,7 +438,7 @@ float RayIntersectDisplaceMap(vec2 dp, vec2 ds, sampler2D normalMap)
 	// texture depth at best depth
 	float texDepth = 0.0;
 
-	float prevT = SampleDepth(normalMap, dp);
+	float prevT = SampleDepth(dp);
 	float prevTexDepth = prevT;
 
 	// search front to back for first point inside object
@@ -435,7 +446,7 @@ float RayIntersectDisplaceMap(vec2 dp, vec2 ds, sampler2D normalMap)
 	{
 		depth += size;
 		
-		float t = SampleDepth(normalMap, dp + ds * depth);
+		float t = SampleDepth(dp + ds * depth);
 		
 		if(bestDepth > 0.996)		// if no depth found yet
 			if(depth >= t)
@@ -458,7 +469,7 @@ float RayIntersectDisplaceMap(vec2 dp, vec2 ds, sampler2D normalMap)
 	{
 		size *= 0.5;
 
-		float t = SampleDepth(normalMap, dp + ds * depth);
+		float t = SampleDepth(dp + ds * depth);
 		
 		if(depth >= t)
 		{
@@ -569,12 +580,7 @@ vec3 CalcNormal( in vec3 vertexNormal, in vec2 texCoords, in mat3 tangentToWorld
 	vec3 N = vertexNormal;
 
 #if defined(USE_NORMALMAP)
-  #if defined(SWIZZLE_NORMALMAP)
-	N.xy = texture(u_NormalMap, texCoords).ag - vec2(0.5);
-  #else
-	N.xy = texture(u_NormalMap, texCoords).rg - vec2(0.5);
-  #endif
-
+	N.xy = texture(u_TextureArray[normalBlock], vec3(texCoords, normalPage)).ag - vec2(0.5);
 	N.xy *= u_NormalScale.xy;
 	N.z = sqrt(clamp((0.25 - N.x * N.x) - N.y * N.y, 0.0, 1.0));
 	N = tangentToWorld * N;
@@ -739,7 +745,7 @@ void main()
 	texCoords += offsetDir.xy * RayIntersectDisplaceMap(texCoords, offsetDir.xy, u_NormalMap);
 #endif
 
-	diffuse = texture(u_DiffuseMap, texCoords);
+	diffuse = texture(u_TextureArray[diffuseBlock], vec3(texCoords, diffusePage));
 
 	if (u_AlphaTestFunction == ATEST_CMP_GE){
 		if (diffuse.a < u_AlphaTestValue)
@@ -774,7 +780,7 @@ void main()
   #endif
 
   #if defined(USE_SPECULARMAP)
-	vec4 specular = texture(u_SpecularMap, texCoords);
+	vec4 specular = texture(u_TextureArray[specularBlock], vec3(texCoords, specularPage));
   #else
 	vec4 specular = vec4(1.0);
   #endif
@@ -816,6 +822,9 @@ void main()
 	vec3 diffuseBufferColor = texelFetch(u_ScreenDiffuseMap, windowCoordinate, 0).rgb;
 	diffuseBufferColor *= diffuseBufferColor;
 	out_Color.rgb += diffuse.rgb * diffuseBufferColor;
+
+	vec3 test = texture(u_TextureArray[0], vec3(texCoords, 0)).rgb;
+	out_Color.rgb += test * 0.0001;
 
 	vec4 specBufferColor = texelFetch(u_ScreenSpecularMap, windowCoordinate, 0);
 	specBufferColor.rgb *= specBufferColor.rgb;
@@ -889,7 +898,7 @@ void main()
 	out_Color.rgb = sqrt(out_Color.rgb);
 
 #else
-	diffuse = texture(u_DiffuseMap, texCoords);
+	diffuse = texture(u_TextureArray[diffuseBlock], vec3(texCoords, diffusePage));
 
 	if (u_AlphaTestFunction == ATEST_CMP_GE){
 		if (diffuse.a < u_AlphaTestValue)

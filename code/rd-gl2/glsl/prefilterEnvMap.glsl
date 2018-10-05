@@ -67,7 +67,9 @@ vec3 PrefilterEnvMap( float Roughness, vec3 R )
 		float NoL = clamp((dot( N, L )),0.0,1.0);
 		if ( NoL > 0 )
 		{
-			PrefilteredColor += textureLod(u_CubeMap, L, 0.0).rgb * NoL;
+			vec3 sample = textureLod(u_CubeMap, L, 0.0).rgb;
+			sample *= sample;
+			PrefilteredColor += sample * NoL;
 			TotalWeight += NoL;
 		}
 	}
@@ -96,5 +98,5 @@ void main()
 
 	float roughness = u_ViewInfo.y / u_ViewInfo.z;
 	vec3 result = PrefilterEnvMap(roughness, normal);
-	out_Color = vec4(result, 1.0);
+	out_Color = vec4(sqrt(result), 1.0);
 }
