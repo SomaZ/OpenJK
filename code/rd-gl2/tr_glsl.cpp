@@ -2045,6 +2045,41 @@ static int GLSL_LoadGPUProgramTextureColor(
 	return 1;
 }
 
+static int GLSL_LoadGPUProgramEquirectangular(
+	ShaderProgramBuilder& builder,
+	Allocator& scratchAlloc)
+{
+
+	int numPrograms = 0;
+	Allocator allocator(scratchAlloc.Base(), scratchAlloc.GetSize());
+
+	char extradefines[1200];
+	const GPUProgramDesc *programDesc =
+		LoadProgramSource("equirectangular", allocator, fallback_equirectangularProgram);
+
+	extradefines[0] = '\0';
+	uint32_t shaderTypes = GPUSHADER_VERTEX | GPUSHADER_FRAGMENT;
+	uint32_t attribs = ATTR_POSITION | ATTR_TEXCOORD0;
+	Q_strcat(extradefines, sizeof(extradefines), "#define CREATE_EQUIRECTANGULAR\n");
+
+	if (!GLSL_LoadGPUShader(builder, &tr.equirectangularShader, "equirectangular", attribs, NO_XFB_VARS,
+		extradefines, *programDesc, shaderTypes))
+	{
+		ri.Error(ERR_FATAL, "Could not load equirectangular shader!");
+	}
+
+	GLSL_InitUniforms(&tr.equirectangularShader);
+
+	qglUseProgram(tr.equirectangularShader.program);
+	GLSL_SetUniformInt(&tr.equirectangularShader, UNIFORM_DIFFUSEMAP, TB_DIFFUSEMAP);
+	GLSL_SetUniformInt(&tr.equirectangularShader, UNIFORM_CUBEMAP, TB_CUBEMAP);
+	qglUseProgram(0);
+
+	GLSL_FinishGPUShader(&tr.equirectangularShader);
+
+	return 1;
+}
+
 static int GLSL_LoadGPUProgramDepthFill(
 	ShaderProgramBuilder& builder,
 	Allocator& scratchAlloc)
@@ -2160,12 +2195,28 @@ static int GLSL_LoadGPUProgramTonemap(
 	ShaderProgramBuilder& builder,
 	Allocator& scratchAlloc)
 {
-	GLSL_LoadGPUProgramBasic(
-		builder,
-		scratchAlloc,
-		&tr.tonemapShader,
-		"tonemap",
-		fallback_tonemapProgram);
+	Allocator allocator(scratchAlloc.Base(), scratchAlloc.GetSize());
+
+	char extradefines[1200];
+	const GPUProgramDesc *programDesc =
+		LoadProgramSource("tonemap", allocator, fallback_tonemapProgram);
+
+	extradefines[0] = '\0';
+
+	if (r_toneMap->integer == 1)
+		Q_strcat(extradefines, sizeof(extradefines), "#define USE_FILMIC_TONEMAPPING\n");
+	if (r_toneMap->integer == 2)
+		Q_strcat(extradefines, sizeof(extradefines), "#define USE_ACES_V_TONEMAPPING\n");
+	if (r_toneMap->integer == 3)
+		Q_strcat(extradefines, sizeof(extradefines), "#define USE_ACES_TONEMAPPING\n");
+
+	uint32_t shaderTypes = GPUSHADER_VERTEX | GPUSHADER_FRAGMENT;
+
+	if (!GLSL_LoadGPUShader(builder, &tr.tonemapShader, "tonemap", 0, NO_XFB_VARS,
+		extradefines, *programDesc, shaderTypes))
+	{
+		ri.Error(ERR_FATAL, "Could not load tonemap shader!");
+	}
 
 	GLSL_InitUniforms(&tr.tonemapShader);
 
@@ -2669,6 +2720,7 @@ void GLSL_LoadGPUShaders()
 	numEtcShaders += GLSL_LoadGPUProgramFogPass(builder, allocator);
 	numEtcShaders += GLSL_LoadGPUProgramDLight(builder, allocator);
 	numEtcShaders += GLSL_LoadGPUProgramTextureColor(builder, allocator);
+	numEtcShaders += GLSL_LoadGPUProgramEquirectangular(builder, allocator);
 	numEtcShaders += GLSL_LoadGPUProgramDepthFill(builder, allocator);
 	numEtcShaders += GLSL_LoadGPUProgramPShadow(builder, allocator);
 	numEtcShaders += GLSL_LoadGPUProgramDownscale4x(builder, allocator);
@@ -2729,6 +2781,7 @@ void GLSL_ShutdownGPUShaders(void)
 	GLSL_DeleteGPUShader(&tr.down4xShader);
 	GLSL_DeleteGPUShader(&tr.bokehShader);
 	GLSL_DeleteGPUShader(&tr.tonemapShader);
+	GLSL_DeleteGPUShader(&tr.equirectangularShader);
 
 	for (i = 0; i < 2; i++)
 		GLSL_DeleteGPUShader(&tr.calclevels4xShader[i]);

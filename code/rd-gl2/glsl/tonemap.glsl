@@ -35,7 +35,8 @@ vec3 LinearTosRGB( in vec3 color )
 	return mix(lo, hi, greaterThanEqual(color, vec3(0.0031308)));
 }
 
-vec3 FilmicTonemap(vec3 x)
+#if defined(USE_FILMIC_TONEMAPPING)
+vec3 Tonemap( in vec3 x )
 {
 	const float SS  = 0.22; // Shoulder Strength
 	const float LS  = 0.30; // Linear Strength
@@ -53,30 +54,36 @@ vec3 FilmicTonemap(vec3 x)
 	//return ((x*(SS*x+LA*LS)+TS*TAN)/(x*(SS*x+LS)+TS*TAD)) - TAN/TAD;
 
 }
-
-vec3 ACESFilm(vec3 v)
+#elif defined(USE_ACES_TONEMAPPING)
+vec3 Tonemap( in vec3 x )
 {
-	vec3 a = v * (v + 0.0245786f) - 0.000090537f;
-	vec3 b = v * (0.983729f * v + 0.4329510f) + 0.238081f;
+	vec3 a = x * (x + 0.0245786) - 0.000090537;
+	vec3 b = x * (0.983729 * x + 0.4329510) + 0.238081;
 	return a / b;
 }
-
-vec3 ACESFilmVariation(vec3 x)
+#elif defined(USE_ACES_V_TONEMAPPING)
+vec3 Tonemap( in vec3 x )
 {
-	float a = 2.51f;
-	float b = 0.03f;
-	float c = 2.43f;
-	float d = 0.59f;
-	float e = 0.14f;
+	const float a = 2.51;
+	const float b = 0.03;
+	const float c = 2.43;
+	const float d = 0.59;
+	const float e = 0.14;
 	return clamp((x*(a*x + b)) / (x*(c*x + d) + e), 0.0, 1.0);
 }
+#else
+vec3 Tonemap( in vec3 x)
+{
+	return x;
+}
+#endif
 
 void main()
 {
 	vec4 color = texture(u_TextureMap, var_TexCoords) * u_Color;
-#if defined(USE_PBR)
+
 	color.rgb = pow(color.rgb, vec3(2.2));
-#endif
+
 	vec3 minAvgMax = texture(u_LevelsMap, var_TexCoords).rgb;
 	vec3 logMinAvgMaxLum = clamp(minAvgMax * 20.0 - 10.0, -u_AutoExposureMinMax.y, -u_AutoExposureMinMax.x);
 		
@@ -86,13 +93,11 @@ void main()
 	color.rgb *= u_ToneMinAvgMaxLinear.y / avgLum;
 	color.rgb = max(vec3(0.0), color.rgb - vec3(u_ToneMinAvgMaxLinear.x));
 
-	vec3 fWhite = 1.0 / ACESFilm(vec3(u_ToneMinAvgMaxLinear.z - u_ToneMinAvgMaxLinear.x));
-	color.rgb = ACESFilm(color.rgb) * fWhite;
+	vec3 fWhite = 1.0 / Tonemap(vec3(u_ToneMinAvgMaxLinear.z - u_ToneMinAvgMaxLinear.x));
+	color.rgb = Tonemap(color.rgb) * fWhite;
 	//color.rgb = LinearTosRGB(color.rgb);
 
-#if defined(USE_PBR)
 	color.rgb = pow(color.rgb, vec3(1.0 / 2.2));
-#endif
 	
 	out_Color = clamp(color, 0.0, 1.0);
 }

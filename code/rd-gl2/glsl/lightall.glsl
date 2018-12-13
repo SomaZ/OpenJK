@@ -784,7 +784,7 @@ void main()
 	diffuse.rgb *= diffuse.rgb;
 	specular.rgb *= specular.rgb;
 	// energy conservation
-	diffuse.rgb *= vec3(1.0) - specular.rgb;
+	//diffuse.rgb *= (vec3(1.0) - specular.rgb);
 
 
 	// diffuse rgb is diffuse

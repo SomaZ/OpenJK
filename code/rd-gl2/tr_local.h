@@ -2420,6 +2420,7 @@ typedef struct trGlobals_s {
 	image_t                 *screenSsaoImage;
 	image_t					*hdrDepthImage;
 	image_t                 *renderCubeImage;
+	image_t					*equirectangularCubeImage;
 	image_t                 *prefilterEnvMapImage;
 	image_t                 *envBrdfImage;
 	
@@ -2445,6 +2446,7 @@ typedef struct trGlobals_s {
 	FBO_t					*screenSsaoFbo;
 	FBO_t					*hdrDepthFbo;
 	FBO_t                   *renderCubeFbo;
+	FBO_t                   *renderEquirectangularFbo;
 	FBO_t					*shadowCubeFbo;
 	FBO_t					*preFilterEnvMapFbo;
 	FBO_t					*weatherDepthFbo;
@@ -2494,6 +2496,7 @@ typedef struct trGlobals_s {
 	shaderProgram_t splashScreenShader;
 	shaderProgram_t genericShader[GENERICDEF_COUNT];
 	shaderProgram_t textureColorShader;
+	shaderProgram_t equirectangularShader;
 	shaderProgram_t prepassShader[PREPASS_COUNT];
 	shaderProgram_t prelightShader[PRELIGHT_COUNT];
 	shaderProgram_t fogShader[FOGDEF_COUNT];

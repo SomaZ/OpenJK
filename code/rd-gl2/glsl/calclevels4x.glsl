@@ -29,9 +29,7 @@ vec3 GetValues(vec2 offset, vec3 current)
 	vec3 minAvgMax = texture(u_TextureMap, tc).rgb;
 
 #ifdef FIRST_PASS
-  #if defined(USE_PBR)
 	minAvgMax = pow(minAvgMax, vec3(2.2));
-  #endif
 	float lumi = max(dot(LUMINANCE_VECTOR, minAvgMax), 0.000001);
 	float loglumi = clamp(log2(lumi), -10.0, 10.0);
 	minAvgMax = vec3(loglumi * 0.05 + 0.5);

@@ -726,12 +726,20 @@ void FBO_Init(void)
 		R_CheckFBO(tr.renderCubeFbo);
 	}
 
-	if (tr.renderCubeImage != NULL) {
+	if (tr.prefilterEnvMapImage != NULL && tr.renderCubeImage != NULL) {
 		tr.preFilterEnvMapFbo = FBO_Create("_preFilterEnvMapFbo", tr.renderCubeImage->width, tr.renderCubeImage->height);
 		FBO_Bind(tr.preFilterEnvMapFbo);
 		FBO_AttachTextureImage(tr.prefilterEnvMapImage, 0);
 		FBO_SetupDrawBuffers();
 		R_CheckFBO(tr.preFilterEnvMapFbo);
+	}
+
+	if (tr.equirectangularCubeImage != NULL) {
+		tr.renderEquirectangularFbo = FBO_Create("_renderEquirectangularFbo", tr.equirectangularCubeImage->width, tr.equirectangularCubeImage->height);
+		FBO_Bind(tr.renderEquirectangularFbo);
+		FBO_AttachTextureImage(tr.equirectangularCubeImage, 0);
+		FBO_SetupDrawBuffers();
+		R_CheckFBO(tr.renderEquirectangularFbo);
 	}
 
 	if (tr.weatherDepthImage != NULL)
