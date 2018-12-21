@@ -2080,6 +2080,11 @@ static const void *RB_PrefilterEnvMap(const void *data) {
 
 static void RB_RenderSunShadows()
 {
+	if ((backEnd.viewParms.flags & VPF_DEPTHSHADOW) ||
+		(backEnd.refdef.rdflags & RDF_NOWORLDMODEL) ||
+		(tr.shadowCubeFbo != NULL && backEnd.viewParms.targetFbo == tr.shadowCubeFbo))
+		return;
+
 	FBO_t *shadowFbo = tr.screenShadowFbo;
 
 	vec4_t quadVerts[4];
@@ -2168,9 +2173,14 @@ static void RB_RenderSunShadows()
 
 static void RB_RenderSSAO()
 {
+	if ((backEnd.viewParms.flags & VPF_DEPTHSHADOW) ||
+		(backEnd.refdef.rdflags & RDF_NOWORLDMODEL) ||
+		(tr.shadowCubeFbo != NULL && backEnd.viewParms.targetFbo == tr.shadowCubeFbo))
+		return;
+
 	const float zmax = backEnd.viewParms.zFar;
 	const float zmin = r_znear->value;
-	const vec4_t viewInfo = { zmax / zmin, zmax, 0.0f, 0.0f };
+	
 
 	vec4_t quadVerts[4];
 	vec2_t texCoords[4];
@@ -2195,35 +2205,44 @@ static void RB_RenderSSAO()
 	GLSL_BindProgram(&tr.ssaoShader);
 
 	GL_BindToTMU(tr.hdrDepthImage, TB_COLORMAP);
+
+	matrix_t invProjectionMatrix;
+	Matrix16Inverse(backEnd.viewParms.projectionMatrix, invProjectionMatrix);
+
+	GLSL_SetUniformMatrix4x4(&tr.ssaoShader, UNIFORM_INVVIEWPROJECTIONMATRIX, invProjectionMatrix);
+	vec4_t viewInfo = { zmax / zmin, zmax, 0.0f, 0.0f };
 	GLSL_SetUniformVec4(&tr.ssaoShader, UNIFORM_VIEWINFO, viewInfo);
 
-	RB_InstantQuad2(quadVerts, texCoords);
+	qglDrawArrays(GL_TRIANGLES, 0, 3);
+
+	/*FBO_Bind(tr.quarterFbo[1]);
+	GLSL_BindProgram(&tr.depthBlurShader[0]);
+	GL_BindToTMU(tr.quarterImage[0], TB_COLORMAP);
+	GL_BindToTMU(tr.hdrDepthImage, TB_LIGHTMAP);
+	VectorSet4(viewInfo, zmax / zmin, zmax, 1.0f, -1.0f );
+	GLSL_SetUniformVec4(&tr.depthBlurShader[0], UNIFORM_VIEWINFO, viewInfo);
+	qglDrawArrays(GL_TRIANGLES, 0, 3);
+
+	FBO_Bind(tr.quarterFbo[0]);
+	GL_BindToTMU(tr.quarterImage[1], TB_COLORMAP);
+	VectorSet4(viewInfo, zmax / zmin, zmax, 1.0f, 1.0f);
+	GLSL_SetUniformVec4(&tr.depthBlurShader[0], UNIFORM_VIEWINFO, viewInfo);
+	qglDrawArrays(GL_TRIANGLES, 0, 3);
 
 	FBO_Bind(tr.quarterFbo[1]);
-
-	qglViewport(0, 0, tr.quarterFbo[1]->width, tr.quarterFbo[1]->height);
-	qglScissor(0, 0, tr.quarterFbo[1]->width, tr.quarterFbo[1]->height);
+	GL_BindToTMU(tr.quarterImage[0], TB_COLORMAP);
+	VectorSet4(viewInfo, zmax / zmin, zmax, 1.0f, 0.0f);
+	GLSL_SetUniformVec4(&tr.depthBlurShader[0], UNIFORM_VIEWINFO, viewInfo);
+	qglDrawArrays(GL_TRIANGLES, 0, 3);*/
 
 	GLSL_BindProgram(&tr.depthBlurShader[0]);
 
+	FBO_Bind(tr.screenSsaoFbo);
 	GL_BindToTMU(tr.quarterImage[0], TB_COLORMAP);
 	GL_BindToTMU(tr.hdrDepthImage, TB_LIGHTMAP);
+	VectorSet4(viewInfo, zmax / zmin, zmax, 0.0f, 1.0f);
 	GLSL_SetUniformVec4(&tr.depthBlurShader[0], UNIFORM_VIEWINFO, viewInfo);
-
-	RB_InstantQuad2(quadVerts, texCoords);
-
-	FBO_Bind(tr.screenSsaoFbo);
-
-	qglViewport(0, 0, tr.screenSsaoFbo->width, tr.screenSsaoFbo->height);
-	qglScissor(0, 0, tr.screenSsaoFbo->width, tr.screenSsaoFbo->height);
-
-	GLSL_BindProgram(&tr.depthBlurShader[1]);
-
-	GL_BindToTMU(tr.quarterImage[1], TB_COLORMAP);
-	GL_BindToTMU(tr.hdrDepthImage, TB_LIGHTMAP);
-	GLSL_SetUniformVec4(&tr.depthBlurShader[1], UNIFORM_VIEWINFO, viewInfo);
-
-	RB_InstantQuad2(quadVerts, texCoords);
+	qglDrawArrays(GL_TRIANGLES, 0, 3);
 }
 
 static void RB_RenderDepthOnly(drawSurf_t *drawSurfs, int numDrawSurfs)
@@ -2477,8 +2496,8 @@ void RB_RenderAllRealTimeLightTypes()
 		GLSL_SetUniformMatrix4x4(sp, UNIFORM_MODELVIEWPROJECTIONMATRIX, backEnd.viewParms.world.modelViewMatrix);
 		qglViewport(0, 0, tr.preSSRImage[0]->width , tr.preSSRImage[0]->height);
 		qglScissor(0, 0, tr.preSSRImage[0]->width, tr.preSSRImage[0]->height);
-		qglDrawElementsInstanced(GL_TRIANGLES, 3, GL_UNSIGNED_INT, 0, 1);
-
+		//qglDrawElementsInstanced(GL_TRIANGLES, 3, GL_UNSIGNED_INT, 0, 1);
+		qglDrawArrays(GL_TRIANGLES, 0, 3);
 		qglViewport(0, 0, tr.renderImage->width, tr.renderImage->height);
 		qglScissor(0, 0, tr.renderImage->width, tr.renderImage->height);
 		// only compute lighting for non sky pixels
@@ -2504,7 +2523,8 @@ void RB_RenderAllRealTimeLightTypes()
 		GLSL_SetUniformMatrix4x4(sp, UNIFORM_NORMALMATRIX, transInvModelViewMatrix);
 		GLSL_SetUniformMatrix4x4(sp, UNIFORM_MODELVIEWPROJECTIONMATRIX, backEnd.viewParms.world.modelViewMatrix);
 
-		qglDrawElementsInstanced(GL_TRIANGLES, 3, GL_UNSIGNED_INT, 0, 1);
+		qglDrawArrays(GL_TRIANGLES, 0, 3);
+		//qglDrawElementsInstanced(GL_TRIANGLES, 3, GL_UNSIGNED_INT, 0, 1);
 
 		// temporal filter
 		FBO_Bind(tr.preLightFbo[PRELIGHT_TEMP_FBO]);
@@ -2518,9 +2538,8 @@ void RB_RenderAllRealTimeLightTypes()
 
 		if (tr.envBrdfImage != NULL)
 			GL_BindToTMU(tr.envBrdfImage, 7);
-
-		qglDrawElementsInstanced(GL_TRIANGLES, 3, GL_UNSIGNED_INT, 0, 1);
-
+		//qglDrawElementsInstanced(GL_TRIANGLES, 3, GL_UNSIGNED_INT, 0, 1);
+		qglDrawArrays(GL_TRIANGLES, 0, 3);
 		FBO_Bind(tr.preLightFbo[PRELIGHT_DIFFUSE_FBO]);
 		qglClear(GL_COLOR_BUFFER_BIT);
 	}
@@ -2962,6 +2981,13 @@ static const void	*RB_SwapBuffers( const void *data ) {
 
 void RB_StoreFrameData() {
 
+	// finish any 2D drawing if needed
+	if (tess.numIndexes) {
+		RB_EndSurface();
+	}
+
+	R_IssuePendingRenderCommands();
+
 	RB_SetGL2D();
 
 	//store temporal image for temoral filter
@@ -3071,11 +3097,14 @@ const void *RB_PostProcess(const void *data)
 		srcBox[3] = backEnd.viewParms.viewportHeight * tr.screenSsaoImage->height / (float)glConfig.vidHeight;
 
 		//FBO_BlitFromTexture(tr.screenSsaoImage, srcBox, NULL, srcFbo, dstBox, NULL, NULL, GLS_SRCBLEND_DST_COLOR | GLS_DSTBLEND_ZERO);
-		srcBox[1] = tr.screenSsaoImage->height - srcBox[1];
-		srcBox[3] = -srcBox[3];
+		//srcBox[1] = tr.screenSsaoImage->height - srcBox[1];
+		//srcBox[3] = -srcBox[3];
 
 		FBO_Blit(tr.screenSsaoFbo, srcBox, NULL, srcFbo, dstBox, NULL, NULL, GLS_SRCBLEND_DST_COLOR | GLS_DSTBLEND_ZERO);
 	}
+
+	if (r_ssr->integer && !(backEnd.refdef.rdflags & RDF_SKYBOXPORTAL))
+		RB_StoreFrameData();
 
 	if (r_dynamicGlow->integer)
 	{
@@ -3119,9 +3148,6 @@ const void *RB_PostProcess(const void *data)
 
 	if (r_drawSunRays->integer)
 		RB_SunRays(NULL, srcBox, NULL, dstBox);
-
-	if (r_ssr->integer && !(backEnd.refdef.rdflags & RDF_SKYBOXPORTAL))
-		RB_StoreFrameData();
 
 	if (1)
 		RB_BokehBlur(NULL, srcBox, NULL, dstBox, backEnd.refdef.blurFactor);

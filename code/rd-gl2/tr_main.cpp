@@ -2326,8 +2326,8 @@ void R_RenderDlightCubemaps(const refdef_t *fd)
 
 		R_GenerateDrawSurfs(&tr.viewParms, &tr.refdef);
 		R_SortAndSubmitDrawSurfs(tr.refdef.drawSurfs + firstDrawSurf, tr.refdef.numDrawSurfs - firstDrawSurf);
-
-		R_IssuePendingRenderCommands();
+		
+		RE_ClearDrawData();
 	}
 }
 

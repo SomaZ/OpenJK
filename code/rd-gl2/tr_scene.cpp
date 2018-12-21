@@ -51,9 +51,6 @@ void R_InitNextFrame( void ) {
 
 	r_firstSceneDrawSurf = 0;
 
-	r_numdlights = 0;
-	r_firstSceneDlight = 0;
-
 	r_numentities = 0;
 	r_firstSceneEntity = 0;
 
@@ -61,6 +58,9 @@ void R_InitNextFrame( void ) {
 	r_firstScenePoly = 0;
 
 	r_numpolyverts = 0;
+
+	r_numdlights = 0;
+	r_firstSceneDlight = 0;
 }
 
 
@@ -76,6 +76,22 @@ void RE_ClearScene( void ) {
 	r_firstScenePoly = r_numpolys;
 	tr.refdef.rdflags &= ~(RDF_doLAGoggles | RDF_doFullbright);	//probably not needed since it gets copied over in RE_RenderScene
 	tr.refdef.doLAGoggles = qfalse;
+}
+
+/*
+====================
+RE_ClearDrawData
+
+====================
+*/
+void RE_ClearDrawData( void ) {
+	tr.refdef.numDrawSurfs = r_firstSceneDrawSurf;
+	tr.refdef.drawSurfs = backEndData->drawSurfs;
+
+	R_IssuePendingRenderCommands();
+
+	r_firstSceneDrawSurf = 0;
+	r_firstSceneDrawSurf = tr.refdef.numDrawSurfs;
 }
 
 /*
@@ -443,6 +459,9 @@ void RE_BeginScene(const refdef_t *fd)
 	tr.refdef.num_entities = r_numentities - r_firstSceneEntity;
 	tr.refdef.entities = &backEndData->entities[r_firstSceneEntity];
 
+	tr.refdef.numPolys = r_numpolys - r_firstScenePoly;
+	tr.refdef.polys = &backEndData->polys[r_firstScenePoly];
+
 	tr.refdef.num_dlights = r_numdlights - r_firstSceneDlight;
 	tr.refdef.dlights = &backEndData->dlights[r_firstSceneDlight];
 
@@ -450,9 +469,6 @@ void RE_BeginScene(const refdef_t *fd)
 	// that the polys are added before the the renderer is prepared
 	if ( !(tr.refdef.rdflags & RDF_NOWORLDMODEL) )
 		R_AddDecals();
-
-	tr.refdef.numPolys = r_numpolys - r_firstScenePoly;
-	tr.refdef.polys = &backEndData->polys[r_firstScenePoly];
 
 	tr.refdef.num_pshadows = 0;
 	tr.refdef.pshadows = &backEndData->pshadows[0];
@@ -478,8 +494,8 @@ void RE_EndScene()
 	// the next scene rendered in this frame will tack on after this one
 	r_firstSceneDrawSurf = tr.refdef.numDrawSurfs;
 	r_firstSceneEntity = r_numentities;
-	r_firstSceneDlight = r_numdlights;
 	r_firstScenePoly = r_numpolys;
+	r_firstSceneDlight = r_numdlights;
 }
 
 /*
@@ -534,10 +550,16 @@ void RE_RenderScene( const refdef_t *fd ) {
 	if(r_sunlightMode->integer && !( fd->rdflags & RDF_NOWORLDMODEL ) && (r_forceSun->integer || tr.sunShadows))
 	{
 		qhandle_t timer = R_BeginTimedBlockCmd( "Shadow cascades" );
+
 		R_RenderSunShadowMaps(fd, 0);
-		R_RenderSunShadowMaps(fd, 1);
-		R_RenderSunShadowMaps(fd, 2);
-		R_RenderSunShadowMaps(fd, 3);
+
+		if (tr.frameCount % 3 == 1)
+			R_RenderSunShadowMaps(fd, 2);
+		else if (tr.frameCount % 5 == 1)
+			R_RenderSunShadowMaps(fd, 3);
+		else
+			R_RenderSunShadowMaps(fd, 1);
+
 		R_EndTimedBlockCmd( timer );
 	}
 

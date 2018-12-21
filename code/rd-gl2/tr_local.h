@@ -52,7 +52,7 @@ typedef unsigned int glIndex_t;
 #define SHADERNUM_BITS 14
 #define MAX_SHADERS (1<<SHADERNUM_BITS)
 
-#define	MAX_FBOS 64
+#define	MAX_FBOS 128
 #define MAX_VISCOUNTS 5
 #define MAX_VBOS 4096
 #define MAX_IBOS 4096
@@ -3003,6 +3003,7 @@ SCENE GENERATION
 
 void R_InitNextFrame( void );
 void RE_ClearScene( void );
+void RE_ClearDrawData( void );
 void RE_AddRefEntityToScene( const refEntity_t *ent );
 void RE_AddPolyToScene(qhandle_t hShader, int numVerts, const polyVert_t *verts);
 void RE_AddLightToScene( const vec3_t org, float intensity, float r, float g, float b );

@@ -545,7 +545,7 @@ vec4 traceSSRRay(in float roughness, in vec3 wsNormal, in vec3 viewPos, in vec2 
 	vec2 dCoords = smoothstep(0.3, 0.495, abs(vec2(0.5, 0.5) - screenCoord.xy));
 	float screenEdgefactor = clamp(1.0 - (dCoords.x + dCoords.y), 0.0, 1.0);
 	screenCoord.z *= screenEdgefactor;
-	//screenCoord.z *= clamp(-reflection.z * 4.0, 0.0, 1.0);
+	screenCoord.z *= clamp(-reflection.z * 4.0, 0.0, 1.0);
 
 	return vec4(screenCoord.xy, pdf, clamp(screenCoord.z, 0.0, 1.0));
 }
@@ -747,7 +747,7 @@ SOFTWARE.
 	diffuseOut.a	= specularOut.a;
 	
 #elif defined(POINT_LIGHT)
-	vec4 lightVec		= vec4(var_Position.xyz - position, var_Position.w);
+	vec4 lightVec		= vec4(var_Position.xyz - position + (N*0.01), var_Position.w);
 	vec3 L				= lightVec.xyz;
 	float lightDist		= length(L);
 	L				   /= lightDist;
