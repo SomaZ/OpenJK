@@ -193,6 +193,20 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 #define IS_NOEXCEPT(x) noexcept(x)
 #endif
 
+#if defined(__GNUC__)
+#define NORETURN __attribute__((noreturn))
+#define NORETURN_PTR __attribute__((noreturn))
+#elif defined(_MSC_VER)
+#define NORETURN __declspec(noreturn)
+// __declspec doesn't work on function pointers
+#define NORETURN_PTR /* nothing */
+#else
+#define NORETURN /* nothing */
+#define NORETURN_PTR /* nothing */
+#endif
+
+#define OVERRIDE override
+
 #if defined(__cplusplus)
 	#include <cstddef>
 
@@ -357,4 +371,9 @@ typedef union byteAlias_u {
 	#define PLATFORM_STRING OS_STRING "-" ARCH_STRING
 #else
 	#define PLATFORM_STRING OS_STRING "-" ARCH_STRING "-debug"
+#endif
+
+// to support https://reproducible-builds.org/specs/source-date-epoch/
+#ifndef SOURCE_DATE
+#define SOURCE_DATE __DATE__
 #endif

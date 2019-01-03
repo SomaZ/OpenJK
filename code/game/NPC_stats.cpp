@@ -4214,9 +4214,9 @@ Ghoul2 Insert Start
 
 			G_SetG2PlayerModel( NPC, playerModel, customSkin, surfOff, surfOn );
 			
-			if ( playerHeadModel && playerHeadModel[0] )
+			if ( playerHeadModel[0] )
 			{
-				if (customHeadSkin && customHeadSkin[0])
+				if ( customHeadSkin[0] )
 				{
 					G_ChangeHeadModel( NPC, va("%s|%s", playerHeadModel, customHeadSkin) );
 				}

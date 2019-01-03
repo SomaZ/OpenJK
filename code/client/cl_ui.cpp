@@ -348,6 +348,13 @@ void CL_DataPad_f(void)
 	}
 }
 
+void CL_DeveloperMenu_f(void)
+{
+	if (cls.uiStarted && cls.cgameStarted && (cls.state == CA_ACTIVE)) {
+		UI_SetActiveMenu("ingame", "developer");
+	}
+}
+
 /*
 ====================
 CL_GetGlConfig

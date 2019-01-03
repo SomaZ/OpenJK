@@ -229,7 +229,7 @@ stringID_table_t BSETTable[] =
 
 stringID_table_t WPTable[] =
 {
-	{ "NULL",WP_NONE },
+	{ "NULL", WP_NONE },
 	ENUM2STRING(WP_NONE),
 	// Player weapons
 	ENUM2STRING(WP_SABER),				 // NOTE: lots of code assumes this is the first weapon (... which is crap) so be careful -Ste.
@@ -7460,7 +7460,7 @@ void CQuake3GameInterface::VariableLoadFloats( varFloat_m &fmap )
 
 		if (idSize < 0 || static_cast<size_t>(idSize) >= sizeof(tempBuffer))
 		{
-			idSize = 0;
+			::G_Error("invalid length for FIDS string in save game: %d bytes\n", idSize);
 		}
 
 		saved_game.read_chunk(
@@ -7510,7 +7510,7 @@ void CQuake3GameInterface::VariableLoadStrings( int type, varString_m &fmap )
 
 		if (idSize < 0 || static_cast<size_t>(idSize) >= sizeof(tempBuffer))
 		{
-			idSize = 0;
+			::G_Error("invalid length for SIDS string in save game: %d bytes\n", idSize);
 		}
 
 		saved_game.read_chunk(
@@ -7526,7 +7526,7 @@ void CQuake3GameInterface::VariableLoadStrings( int type, varString_m &fmap )
 
 		if (idSize < 0 || static_cast<size_t>(idSize) >= sizeof(tempBuffer2))
 		{
-			idSize = 0;
+			::G_Error("invalid length for SVAL string in save game: %d bytes\n", idSize);
 		}
 
 		saved_game.read_chunk(

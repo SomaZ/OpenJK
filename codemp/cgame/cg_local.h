@@ -73,8 +73,6 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 #define STAT_MINUS			10	// num frame for '-' stats digit
 
 #define	ICON_SIZE			48
-#define	CHAR_WIDTH			32
-#define	CHAR_HEIGHT			48
 #define	TEXT_ICON_SPACE		4
 
 // very large characters
@@ -432,7 +430,7 @@ typedef struct centity_s {
 	int				trickAlphaTime;
 
 	int				teamPowerEffectTime;
-	qboolean		teamPowerType; //0 regen, 1 heal, 2 drain, 3 absorb
+	int				teamPowerType; //0 regen, 1 heal, 2 drain, 3 absorb
 
 	qboolean		isRagging;
 	qboolean		ownerRagging;

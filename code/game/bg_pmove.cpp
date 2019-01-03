@@ -9094,6 +9094,11 @@ static void PM_FinishWeaponChange( void ) {
 				else
 				{
 					pm->ps->SaberActivate();
+                    if ( pm->ps->dualSabers && pm->gent->weaponModel[1] == -1 )
+                    {
+                        G_RemoveHolsterModels( pm->gent );
+                        WP_SaberAddG2SaberModels( pm->gent, qtrue );
+                    }
 				}
 				pm->ps->SetSaberLength( 0.0f );
 			}
@@ -9787,6 +9792,11 @@ void PM_SetSaberMove(saberMoveName_t newMove)
 		case LS_STAFF_SOULCAL:
 			//FIXME: probably more...
 			pm->ps->SaberActivate();
+            if ( pm->ps->dualSabers && pm->gent->weaponModel[1] == -1 )
+            {
+                G_RemoveHolsterModels( pm->gent );
+                WP_SaberAddG2SaberModels( pm->gent, qtrue );
+            }
 			break;
 		default:
 			break;
@@ -13475,6 +13485,11 @@ void PM_WeaponWampa( void )
 		&& pm->ps->torsoAnim == BOTH_HANG_IDLE )
 	{
 		pm->ps->SaberActivate();
+        if ( pm->ps->dualSabers && pm->gent->weaponModel[1] == -1 )
+        {
+            G_RemoveHolsterModels( pm->gent );
+            WP_SaberAddG2SaberModels( pm->gent, qtrue );
+        }
 		pm->ps->SaberActivateTrail( 150 );
 		PM_SetAnim( pm, SETANIM_BOTH, BOTH_HANG_ATTACK, SETANIM_FLAG_OVERRIDE|SETANIM_FLAG_HOLD );
 		pm->ps->weaponstate = WEAPON_FIRING;

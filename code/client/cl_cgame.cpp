@@ -734,6 +734,12 @@ Ghoul2 Insert End
 		case CG_Z_FREE_JK2:
 			return CG_Z_FREE;
 			break;
+		case CG_UI_SETACTIVE_MENU_JK2:
+			return CG_UI_SETACTIVE_MENU;
+			break;
+		case CG_UI_MENU_OPENBYNAME_JK2:
+			return CG_UI_MENU_OPENBYNAME;
+			break;
 		case CG_UI_MENU_RESET_JK2:
 			return CG_UI_MENU_RESET;
 			break;

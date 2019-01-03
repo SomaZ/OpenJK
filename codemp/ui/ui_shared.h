@@ -109,6 +109,12 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 #define SLIDER_THUMB_HEIGHT 20.0
 #define	NUM_CROSSHAIRS			9
 
+enum {
+	SSF_JPEG = 0,
+	SSF_TGA,
+	SSF_PNG
+};
+
 typedef struct scriptDef_s {
   const char *command;
   const char *args[MAX_SCRIPT_ARGS];
@@ -455,7 +461,7 @@ typedef struct displayContextDef_s {
 	void			(*getBindingBuf)					( int keynum, char *buf, int buflen );
 	void			(*setBinding)						( int keynum, const char *binding );
 	void			(*executeText)						( int exec_when, const char *text );
-	void			(*Error)							( int level, const char *error, ... );
+	NORETURN_PTR void (*Error)( int level, const char *fmt, ... );
 	void			(*Print)							( const char *msg, ... );
 	void			(*Pause)							( qboolean b );
 	int				(*ownerDrawWidth)					( int ownerDraw, float scale );
@@ -483,6 +489,7 @@ typedef struct displayContextDef_s {
 	qhandle_t		gradientImage;
 	qhandle_t		cursor;
 	float			FPS;
+	int				screenshotFormat;
 
 	struct {
 		float			(*Font_StrLenPixels)				( const char *text, const int iFontIndex, const float scale );

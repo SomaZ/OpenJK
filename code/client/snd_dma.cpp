@@ -30,6 +30,7 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
  *****************************************************************************/
 #include "../server/exe_headers.h"
 
+#include "sdl/sdl_sound.h"
 #include "snd_local.h"
 #include "cl_mp3.h"
 #include "snd_music.h"
@@ -452,7 +453,7 @@ void S_Init( void ) {
 	s_musicVolume = Cvar_Get ("s_musicvolume", "0.25", CVAR_ARCHIVE);
 	s_separation = Cvar_Get ("s_separation", "0.5", CVAR_ARCHIVE);
 	s_khz = Cvar_Get ("s_khz", "44", CVAR_ARCHIVE|CVAR_LATCH);
-	s_allowDynamicMusic = Cvar_Get ("s_allowDynamicMusic", "1", CVAR_ARCHIVE);
+	s_allowDynamicMusic = Cvar_Get ("s_allowDynamicMusic", "1", CVAR_ARCHIVE_ND);
 	s_mixahead = Cvar_Get ("s_mixahead", "0.2", CVAR_ARCHIVE);
 
 	s_mixPreStep = Cvar_Get ("s_mixPreStep", "0.05", CVAR_ARCHIVE);
@@ -619,7 +620,7 @@ void S_Init( void ) {
 	else
 	{
 #endif
-		r = SNDDMA_Init();
+		r = SNDDMA_Init(s_khz->integer);
 
 		if ( r ) {
 			s_soundStarted = 1;

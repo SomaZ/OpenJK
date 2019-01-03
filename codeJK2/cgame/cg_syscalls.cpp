@@ -45,7 +45,7 @@ void	cgi_Printf( const char *fmt ) {
 	Q_syscall( CG_PRINT, fmt );
 }
 
-void	cgi_Error( const char *fmt ) {
+NORETURN void	cgi_Error( const char *fmt ) {
 	Q_syscall( CG_ERROR, fmt );
 	// shut up GCC warning about returning functions, because we know better
 	exit(1);
@@ -454,6 +454,16 @@ void *cgi_Z_Malloc( int size, int tag )
 void cgi_Z_Free( void *ptr )
 {
 	Q_syscall(CG_Z_FREE,ptr);
+}
+
+void cgi_UI_SetActive_Menu(char *name)
+{
+	Q_syscall(CG_UI_SETACTIVE_MENU, name);
+}
+
+void cgi_UI_Menu_OpenByName(char *buf)
+{
+	Q_syscall(CG_UI_MENU_OPENBYNAME, buf);
 }
 
 void cgi_UI_Menu_Reset(void)

@@ -1589,25 +1589,21 @@ and anim number. Obviously does not take things like the length of the
 anim while force speeding (as an example) and whatnot into account.
 =============
 */
-int BG_AnimLength( int index, animNumber_t anim )
-{
-	if (anim >= MAX_ANIMATIONS)
-	{
-		return -1;
+int BG_AnimLength( int index, animNumber_t anim ) {
+	if ( (int)anim < 0 || anim >= MAX_ANIMATIONS ) {
+		return 0;
 	}
 
-	return bgAllAnims[index].anims[anim].numFrames * fabs((float)(bgAllAnims[index].anims[anim].frameLerp));
+	return bgAllAnims[index].anims[anim].numFrames * fabs( (float)(bgAllAnims[index].anims[anim].frameLerp) );
 }
 
 //just use whatever pm->animations is
-int PM_AnimLength( int index, animNumber_t anim )
-{
-	if (anim >= MAX_ANIMATIONS || !pm->animations)
-	{
-		return -1;
+int PM_AnimLength( int index, animNumber_t anim ) {
+	if ( !pm->animations || (int)anim < 0 || anim >= MAX_ANIMATIONS ) {
+		return 0;
 	}
 
-	return pm->animations[anim].numFrames * fabs((float)(pm->animations[anim].frameLerp));
+	return pm->animations[anim].numFrames * fabs( (float)(pm->animations[anim].frameLerp) );
 }
 
 void PM_DebugLegsAnim(int anim)
@@ -1848,7 +1844,7 @@ void ParseAnimationEvtBlock(const char *aeb_filename, animevent_t *animEvents, a
 
 		token = COM_Parse( text_p );
 		eventType = (animEventType_t)GetIDForString(animEventTypeTable, token);
-		if ( eventType == AEV_NONE || eventType == -1 )
+		if ( eventType == AEV_NONE || eventType == (animEventType_t)-1 )
 		{//Unrecognized ANIM EVENT TYOE, or we're skipping this line, keep going till you get a good one
 			//Com_Printf(S_COLOR_YELLOW"WARNING: Unknown token %s in animEvent file %s\n", token, aeb_filename );
 			continue;
@@ -2379,6 +2375,7 @@ int BG_ParseAnimationFile(const char *filename, animation_t *animset, qboolean i
 		len = trap->FS_Open( filename, &f, FS_READ );
 		if ( (len <= 0) || (len >= sizeof( BGPAFtext ) - 1) )
 		{
+			trap->FS_Close( f );
 			if (dynAlloc)
 			{
 				BG_AnimsetFree(animset);

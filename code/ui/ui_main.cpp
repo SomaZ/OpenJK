@@ -362,15 +362,40 @@ uiInfo_t uiInfo;
 static void UI_RegisterCvars( void );
 void UI_Load(void);
 
+static int UI_GetScreenshotFormatForString( const char *str ) {
+	if ( !Q_stricmp(str, "jpg") || !Q_stricmp(str, "jpeg") )
+		return SSF_JPEG;
+	else if ( !Q_stricmp(str, "tga") )
+		return SSF_TGA;
+	else if ( !Q_stricmp(str, "png") )
+		return SSF_PNG;
+	else
+		return -1;
+}
 
-typedef struct {
+static const char *UI_GetScreenshotFormatString( int format )
+{
+	switch ( format )
+	{
+	default:
+	case SSF_JPEG:
+		return "jpg";
+	case SSF_TGA:
+		return "tga";
+	case SSF_PNG:
+		return "png";
+	}
+}
+
+typedef struct cvarTable_s {
 	vmCvar_t	*vmCvar;
 	const char		*cvarName;
 	const char		*defaultString;
-	int			cvarFlags;
+	void		(*update)( void );
+	uint32_t	cvarFlags;
 } cvarTable_t;
 
-
+vmCvar_t	ui_menuFiles;
 vmCvar_t	ui_hudFiles;
 
 vmCvar_t	ui_char_anim;
@@ -387,6 +412,7 @@ vmCvar_t	ui_char_color_red;
 vmCvar_t	ui_char_color_green;
 vmCvar_t	ui_char_color_blue;
 vmCvar_t	ui_PrecacheModels;
+vmCvar_t	ui_screenshotType;
 
 vmCvar_t	ui_rgb_saber_red;
 vmCvar_t	ui_rgb_saber_green;
@@ -439,78 +465,118 @@ vmCvar_t    ui_hilt2_color_red;
 vmCvar_t    ui_hilt2_color_green;
 vmCvar_t    ui_hilt2_color_blue;
 
-static cvarTable_t cvarTable[] = 
+static void UI_UpdateScreenshot( void )
 {
+	qboolean changed = qfalse;
+	// check some things
+	if ( ui_screenshotType.string[0] && isalpha( ui_screenshotType.string[0] ) )
+	{
+		int ssf = UI_GetScreenshotFormatForString( ui_screenshotType.string );
+		if ( ssf == -1 )
+		{
+			ui.Printf( "UI Screenshot Format Type '%s' unrecognised, defaulting to JPEG\n", ui_screenshotType.string );
+			uiInfo.uiDC.screenshotFormat = SSF_JPEG;
+			changed = qtrue;
+		}
+		else
+			uiInfo.uiDC.screenshotFormat = ssf;
+	}
+	else if ( ui_screenshotType.integer < SSF_JPEG || ui_screenshotType.integer > SSF_PNG )
+	{
+		ui.Printf( "ui_screenshotType %i is out of range, defaulting to 0 (JPEG)\n", ui_screenshotType.integer );
+		uiInfo.uiDC.screenshotFormat = SSF_JPEG;
+		changed = qtrue;
+	}
+	else {
+		uiInfo.uiDC.screenshotFormat = atoi( ui_screenshotType.string );
+		changed = qtrue;
+	}
+
+	if ( changed ) {
+		Cvar_Set( "ui_screenshotType", UI_GetScreenshotFormatString( uiInfo.uiDC.screenshotFormat ) );
+		Cvar_Update( &ui_screenshotType );
+	}
+}
+
+static cvarTable_t cvarTable[] =
+{
+	{ &ui_menuFiles,			"ui_menuFiles",			"ui/menus.txt", NULL, CVAR_ARCHIVE },
 #ifdef JK2_MODE
-	{ &ui_hudFiles,				"cg_hudFiles",			"ui/jk2hud.txt",CVAR_ARCHIVE},
+	{ &ui_hudFiles,				"cg_hudFiles",			"ui/jk2hud.txt", NULL, CVAR_ARCHIVE},
 #else
-	{ &ui_hudFiles,				"cg_hudFiles",			"ui/jahud.txt",CVAR_ARCHIVE},
+	{ &ui_hudFiles,				"cg_hudFiles",			"ui/jahud.txt", NULL, CVAR_ARCHIVE},
 #endif
 
-	{ &ui_char_anim,			"ui_char_anim",			"BOTH_WALK1",0},
+	{ &ui_char_anim,			"ui_char_anim",			"BOTH_WALK1", NULL, 0},
 
-	{ &ui_char_model,			"ui_char_model",		"",0},	//these are filled in by the "g_*" versions on load
-	{ &ui_char_skin_head,		"ui_char_skin_head",	"",0},	//the "g_*" versions are initialized in UI_Init, ui_atoms.cpp
-	{ &ui_char_skin_torso,		"ui_char_skin_torso",	"",0},
-	{ &ui_char_skin_legs,		"ui_char_skin_legs",	"",0},
+	{ &ui_char_model,			"ui_char_model",		"", NULL, 0},	//these are filled in by the "g_*" versions on load
+	{ &ui_char_skin_head,		"ui_char_skin_head",	"", NULL, 0},	//the "g_*" versions are initialized in UI_Init, ui_atoms.cpp
+	{ &ui_char_skin_torso,		"ui_char_skin_torso",	"", NULL, 0},
+	{ &ui_char_skin_legs,		"ui_char_skin_legs",	"", NULL, 0},
 
-	{ &ui_saber_type,			"ui_saber_type",		"",0},
-	{ &ui_saber,				"ui_saber",				"",0},
-	{ &ui_saber2,				"ui_saber2",			"",0},
-	{ &ui_saber_color,			"ui_saber_color",		"",0},
-	{ &ui_saber2_color,			"ui_saber2_color",		"",0},
+	{ &ui_saber_type,			"ui_saber_type",		"", NULL, 0},
+	{ &ui_saber,				"ui_saber",				"", NULL, 0},
+	{ &ui_saber2,				"ui_saber2",			"", NULL, 0},
+	{ &ui_saber_color,			"ui_saber_color",		"", NULL, 0},
+	{ &ui_saber2_color,			"ui_saber2_color",		"", NULL, 0},
 
-	{ &ui_char_color_red,		"ui_char_color_red",	"", 0},
-	{ &ui_char_color_green,		"ui_char_color_green",	"", 0},
-	{ &ui_char_color_blue,		"ui_char_color_blue",	"", 0},
+	{ &ui_char_color_red,		"ui_char_color_red",	"", NULL, 0},
+	{ &ui_char_color_green,		"ui_char_color_green",	"", NULL, 0},
+	{ &ui_char_color_blue,		"ui_char_color_blue",	"", NULL, 0},
 
+<<<<<<< HEAD
 	{ &ui_PrecacheModels,		"ui_PrecacheModels",	"1", CVAR_ARCHIVE},
 
 	{ &r_ratioFix,			"r_ratioFix",			"1", CVAR_ARCHIVE},
-	
-	{ &ui_rgb_saber_red,		"ui_rgb_saber_red",	"", 0},
-	{ &ui_rgb_saber_blue,		"ui_rgb_saber_blue",	"", 0},
-	{ &ui_rgb_saber_green,		"ui_rgb_saber_green",	"", 0},
-	{ &ui_rgb_saber2_red,		"ui_rgb_saber2_red",	"", 0},
-	{ &ui_rgb_saber2_blue,		"ui_rgb_saber2_blue",	"", 0},
-	{ &ui_rgb_saber2_green,		"ui_rgb_saber2_green",	"", 0},
+=======
+	{ &ui_PrecacheModels,		"ui_PrecacheModels",	"1", NULL, CVAR_ARCHIVE},
 
-	{ &ui_char_head_model,			"ui_char_head_model",		"",0},	//these are filled in by the "g_*" versions on load
-	{ &ui_char_head_skin,		"ui_char_head_skin",	"",0},	//the "g_*" versions are initialized in UI_Init, ui_atoms.cpp
+	{ &ui_screenshotType,		"ui_screenshotType",	"jpg", UI_UpdateScreenshot, CVAR_ARCHIVE },
+>>>>>>> 5c4ef20984d9bc48ca7efd071efd458cfdbc635e
 	
-	{ &ui_char_color_2_red,		"ui_char_color_2_red",	"", 0},
-	{ &ui_char_color_2_green,		"ui_char_color_2_green",	"", 0},
-	{ &ui_char_color_2_blue,		"ui_char_color_2_blue",	"", 0},
-	
-	{ &ui_rgb_saber_red,		"ui_rgb_saber_red",	"", 0},
-	{ &ui_rgb_saber_blue,		"ui_rgb_saber_blue",	"", 0},
-	{ &ui_rgb_saber_green,		"ui_rgb_saber_green",	"", 0},
-	{ &ui_rgb_saber2_red,		"ui_rgb_saber2_red",	"", 0},
-	{ &ui_rgb_saber2_blue,		"ui_rgb_saber2_blue",	"", 0},
-	{ &ui_rgb_saber2_green,		"ui_rgb_saber2_green",	"", 0},
-	
-    { &ui_hilt_color_red,		"ui_hilt_color_red",	"", 0},
-    { &ui_hilt_color_green,		"ui_hilt_color_green",	"", 0},
-    { &ui_hilt_color_blue,		"ui_hilt_color_blue",	"", 0},
+	{ &ui_rgb_saber_red,		"ui_rgb_saber_red",	"", NULL, 0},
+	{ &ui_rgb_saber_blue,		"ui_rgb_saber_blue",	"", NULL, 0},
+	{ &ui_rgb_saber_green,		"ui_rgb_saber_green",	"", NULL, 0},
+	{ &ui_rgb_saber2_red,		"ui_rgb_saber2_red",	"", NULL, 0},
+	{ &ui_rgb_saber2_blue,		"ui_rgb_saber2_blue",	"", NULL, 0},
+	{ &ui_rgb_saber2_green,		"ui_rgb_saber2_green",	"", NULL, 0},
 
-    { &ui_hilt2_color_red,		"ui_hilt2_color_red",	"", 0},
-    { &ui_hilt2_color_green,	"ui_hilt2_color_green",	"", 0},
-    { &ui_hilt2_color_blue,		"ui_hilt2_color_blue",	"", 0},
-
-	{ &ui_saber_skin1,		"ui_saber_skin1",	"", 0},
-	{ &ui_saber_skin2,		"ui_saber_skin2",	"", 0},
-	{ &ui_saber_skin3,		"ui_saber_skin3",	"", 0},
-	{ &ui_saber_skin4,		"ui_saber_skin4",	"", 0},
-	{ &ui_saber_skin5,		"ui_saber_skin5",	"", 0},
-	{ &ui_saber2_skin1,		"ui_saber2_skin1",	"", 0},
-	{ &ui_saber2_skin2,		"ui_saber2_skin2",	"", 0},
-	{ &ui_saber2_skin3,		"ui_saber2_skin3",	"", 0},
-	{ &ui_saber2_skin4,		"ui_saber2_skin4",	"", 0},
-	{ &ui_saber2_skin5,		"ui_saber2_skin5",	"", 0},
+	{ &ui_char_head_model,			"ui_char_head_model",		"", NULL, 0},	//these are filled in by the "g_*" versions on load
+	{ &ui_char_head_skin,		"ui_char_head_skin",	"", NULL, 0},	//the "g_*" versions are initialized in UI_Init, ui_atoms.cpp
 	
-	{ &ui_SFXSabers,	"cg_SFXSabers",	"1", CVAR_ARCHIVE },
-	{ &ui_SFXSabersGlowSize,	"cg_SFXSabersGlowSize",	"1.0", CVAR_ARCHIVE },
-	{ &ui_SFXSabersCoreSize,	"cg_SFXSabersCoreSize",	"1.0", CVAR_ARCHIVE },
+	{ &ui_char_color_2_red,		"ui_char_color_2_red",	"", NULL, 0},
+	{ &ui_char_color_2_green,		"ui_char_color_2_green",	"", NULL, 0},
+	{ &ui_char_color_2_blue,		"ui_char_color_2_blue",	"", NULL, 0},
+	
+	{ &ui_rgb_saber_red,		"ui_rgb_saber_red",	"", NULL, 0},
+	{ &ui_rgb_saber_blue,		"ui_rgb_saber_blue",	"", NULL, 0},
+	{ &ui_rgb_saber_green,		"ui_rgb_saber_green",	"", NULL, 0},
+	{ &ui_rgb_saber2_red,		"ui_rgb_saber2_red",	"", NULL, 0},
+	{ &ui_rgb_saber2_blue,		"ui_rgb_saber2_blue",	"", NULL, 0},
+	{ &ui_rgb_saber2_green,		"ui_rgb_saber2_green",	"", NULL, 0},
+	
+    { &ui_hilt_color_red,		"ui_hilt_color_red",	"", NULL, 0},
+    { &ui_hilt_color_green,		"ui_hilt_color_green",	"", NULL, 0},
+    { &ui_hilt_color_blue,		"ui_hilt_color_blue",	"", NULL, 0},
+
+    { &ui_hilt2_color_red,		"ui_hilt2_color_red",	"", NULL, 0},
+    { &ui_hilt2_color_green,	"ui_hilt2_color_green",	"", NULL, 0},
+    { &ui_hilt2_color_blue,		"ui_hilt2_color_blue",	"", NULL, 0},
+
+	{ &ui_saber_skin1,		"ui_saber_skin1",	"", NULL, 0},
+	{ &ui_saber_skin2,		"ui_saber_skin2",	"", NULL, 0},
+	{ &ui_saber_skin3,		"ui_saber_skin3",	"", NULL, 0},
+	{ &ui_saber_skin4,		"ui_saber_skin4",	"", NULL, 0},
+	{ &ui_saber_skin5,		"ui_saber_skin5",	"", NULL, 0},
+	{ &ui_saber2_skin1,		"ui_saber2_skin1",	"", NULL, 0},
+	{ &ui_saber2_skin2,		"ui_saber2_skin2",	"", NULL, 0},
+	{ &ui_saber2_skin3,		"ui_saber2_skin3",	"", NULL, 0},
+	{ &ui_saber2_skin4,		"ui_saber2_skin4",	"", NULL, 0},
+	{ &ui_saber2_skin5,		"ui_saber2_skin5",	"", NULL, 0},
+	
+	{ &ui_SFXSabers,	"cg_SFXSabers",	"1", NULL, CVAR_ARCHIVE },
+	{ &ui_SFXSabersGlowSize,	"cg_SFXSabersGlowSize",	"1.0", NULL, CVAR_ARCHIVE },
+	{ &ui_SFXSabersCoreSize,	"cg_SFXSabersCoreSize",	"1.0", NULL, CVAR_ARCHIVE },
 
 
 };
@@ -518,7 +584,7 @@ static cvarTable_t cvarTable[] =
 #define FP_UPDATED_NONE -1
 #define NOWEAPON -1
 
-static int cvarTableSize = sizeof(cvarTable) / sizeof(cvarTable[0]);
+static const size_t cvarTableSize = ARRAY_LEN( cvarTable );
 
 void Text_Paint(float x, float y, float scale, vec4_t color, const char *text, int iMaxPixelWidth, int style, int iFontIndex);
 int Key_GetCatcher( void );
@@ -565,8 +631,6 @@ void _UI_Refresh( int realtime )
 		}
 		uiInfo.uiDC.FPS = 1000 * UI_FPS_FRAMES / total;
 	}
-
-
 
 	UI_UpdateCvars();
 
@@ -3810,7 +3874,7 @@ void _UI_Init( qboolean inGameLoad )
 
 	String_Init();
 
-	const char *menuSet = "\0";
+	const char *menuSet = UI_Cvar_VariableString("ui_menuFiles");
 
 	if (menuSet == NULL || menuSet[0] == '\0')
 	{
@@ -3865,7 +3929,6 @@ void _UI_Init( qboolean inGameLoad )
 
 }
 
-
 /*
 =================
 UI_RegisterCvars
@@ -3873,17 +3936,21 @@ UI_RegisterCvars
 */
 static void UI_RegisterCvars( void )
 {
-	int			i;
-	cvarTable_t	*cv;
+	size_t i = 0;
+	const cvarTable_t *cv = NULL;
 
-	for ( i = 0, cv = cvarTable ; i < cvarTableSize ; i++, cv++ )
-	{
+	for ( i=0, cv=cvarTable; i<cvarTableSize; i++, cv++ ) {
 		Cvar_Register( cv->vmCvar, cv->cvarName, cv->defaultString, cv->cvarFlags );
+<<<<<<< HEAD
 		if (!Q_stricmp(cv->cvarName, "r_ratioFix")) 
 		{
 			Cvar_Update(cv->vmCvar);
 			CG_Set2DRatio();
 		}
+=======
+		if ( cv->update )
+			cv->update();
+>>>>>>> 5c4ef20984d9bc48ca7efd071efd458cfdbc635e
 	}
 }
 
@@ -4767,15 +4834,26 @@ UI_UpdateCvars
 */
 void UI_UpdateCvars( void )
 {
-	int			i;
-	cvarTable_t	*cv;
+	size_t i = 0;
+	const cvarTable_t *cv = NULL;
 
+<<<<<<< HEAD
 	for ( i = 0, cv = cvarTable ; i < cvarTableSize ; i++, cv++ )
 	{
 		Cvar_Update( cv->vmCvar );
 		if (!Q_stricmp(cv->cvarName, "r_ratioFix")) 
 		{
 			CG_Set2DRatio();
+=======
+	for ( i=0, cv=cvarTable; i<cvarTableSize; i++, cv++ ) {
+		if ( cv->vmCvar ) {
+			int modCount = cv->vmCvar->modificationCount;
+			Cvar_Update( cv->vmCvar );
+			if ( cv->vmCvar->modificationCount != modCount ) {
+				if ( cv->update )
+					cv->update();
+			}
+>>>>>>> 5c4ef20984d9bc48ca7efd071efd458cfdbc635e
 		}
 	}
 }
@@ -5726,7 +5804,7 @@ static void UI_InitAllocForcePowers ( const char *forceName )
 
 	client_t* cl = &svs.clients[0];	// 0 because only ever us as a player
 
-	// NOTE: this UIScript can be called outside the running game now, so handle that case
+	// NOTE: this can be called outside the running game now, so handle that case
 	// by getting info frim UIInfo instead of PlayerState
 	if( cl )
 	{

@@ -1,5 +1,5 @@
 #============================================================================
-# Copyright (C) 2013 - 2015, OpenJK contributors
+# Copyright (C) 2013 - 2018, OpenJK contributors
 #
 # This file is part of the OpenJK source code.
 #
@@ -325,6 +325,7 @@ if(BuildSPEngine OR BuildJK2SPEngine)
 			"${SPDir}/win32/jkenhanced.ico"
 			"${SPDir}/win32/resource.h"
 			"${SPDir}/win32/winquake.rc"
+			"${SharedDir}/sys/win_manifest.manifest"
 			)
 		source_group("win32" FILES ${SPEngineWin32Files})
 		set(SPEngineFiles ${SPEngineFiles} ${SPEngineWin32Files})
@@ -402,6 +403,12 @@ if(BuildSPEngine OR BuildJK2SPEngine)
 		endif(WIN32)
 
 		if(MakeApplicationBundles)
+			install(CODE "
+				include(BundleUtilities)
+				set(BU_CHMOD_BUNDLE_ITEMS ON)
+				fixup_bundle(\"${CMAKE_BINARY_DIR}/${ProjectName}.app\" \"\" \"\")
+				"
+				COMPONENT Runtime)
 			install(TARGETS ${ProjectName}
 				BUNDLE
 				DESTINATION ${InstallDir}

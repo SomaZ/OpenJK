@@ -7500,7 +7500,7 @@ else
 	
 		if ( !(cent->gent->client->ps.saber[saberNum].type == SABER_SITH_SWORD || client->ps.saber[saberNum].saberFlags2&SFL2_NO_BLADE) )
 		{
-			CG_DoSFXSaber( saberTrail->base, saberTrail->tip, saberTrail->dualtip, saberTrail->dualbase, (client->ps.saber[saberNum].blade[bladeNum].lengthMax), (client->ps.saber[saberNum].blade[bladeNum].radius), client->ps.saber[saberNum].blade[bladeNum].color, renderfx, (qboolean)!noDlight, client->ps.saber[saberNum].crystals );
+			CG_DoSFXSaber( fx->mVerts[0].origin, fx->mVerts[1].origin, fx->mVerts[2].origin, fx->mVerts[3].origin, (client->ps.saber[saberNum].blade[bladeNum].lengthMax), (client->ps.saber[saberNum].blade[bladeNum].radius), client->ps.saber[saberNum].blade[bladeNum].color, renderfx, (qboolean)!noDlight, client->ps.saber[saberNum].crystals );
 		}
 
 		if ( cg.time > saberTrail->inAction )
@@ -8729,7 +8729,8 @@ SkipTrueView:
 									}
 								}
 								if (( cg_ignitionFlare.integer == 1 ||
-									(cg_ignitionFlare.integer > 0 && cg_SFXSabers.integer == 0)) && !(cent->gent->client->ps.saber[saberNum].type == SABER_SITH_SWORD || cent->gent->client->ps.saber[saberNum].saberFlags2&SFL2_NO_BLADE))
+									(cg_ignitionFlare.integer > 0 && cg_SFXSabers.integer == 0)) && !(cent->gent->client->ps.saber[saberNum].type == SABER_SITH_SWORD || cent->gent->client->ps.saber[saberNum].saberFlags2&SFL2_NO_BLADE) &&
+                                    cent->gent->weaponModel[saberNum] != -1)
 								{
 									vec3_t org_;
 									vec3_t	RGB	= {1.0f,0.75f,0.0f};

@@ -13,7 +13,7 @@ before_install:
   - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then brew install sdl2 --universal; fi
 
 script:
-  - ./tools/travis-build.sh "${host:-native}" "${flavour:-Release}" $opts
+  - ./scripts/travis/build.sh "${host:-native}" "${flavour:-Release}" $opts
 
 matrix:
   include:

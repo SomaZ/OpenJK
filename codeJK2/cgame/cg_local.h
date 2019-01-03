@@ -73,8 +73,6 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 #define STAT_MINUS			10	// num frame for '-' stats digit
 
 #define	ICON_SIZE			48
-#define	CHAR_WIDTH			32
-#define	CHAR_HEIGHT			48
 #define	TEXT_ICON_SPACE		4
 
 #define	CHARSMALL_WIDTH		16
@@ -668,7 +666,7 @@ const char *CG_ConfigString( int index );
 const char *CG_Argv( int arg );
 
 void QDECL CG_Printf( const char *msg, ... );
-void QDECL CG_Error( const char *msg, ... );
+NORETURN void QDECL CG_Error( const char *msg, ... );
 
 void CG_StartMusic( qboolean bForceStart );
 
@@ -930,7 +928,7 @@ qboolean CG_Credits_Draw( void );
 void	cgi_Printf( const char *fmt );
 
 // abort the game
-void	cgi_Error( const char *fmt );
+NORETURN void	cgi_Error( const char *fmt );
 
 // milliseconds should only be used for performance tuning, never
 // for anything game related.  Get time from the CG_DrawActiveFrame parameter
@@ -1178,6 +1176,9 @@ void	trap_CIN_DrawCinematic (int handle);
 void	trap_CIN_SetExtents (int handle, int x, int y, int w, int h);
 void	*cgi_Z_Malloc( int size, int tag );
 void	cgi_Z_Free( void *ptr );
+
+void cgi_UI_SetActive_Menu(char *name);
+void cgi_UI_Menu_OpenByName(char *buf);
 
 int		cgi_SP_Register(const char *text, qboolean persist);
 int		cgi_SP_GetStringTextString(const char *text, char *buf, int bufferlength);
