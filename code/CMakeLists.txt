@@ -371,7 +371,7 @@ if(BuildSPEngine OR BuildJK2SPEngine)
     list(APPEND SPEngineIncludeDirectories ${ZLIB_INCLUDE_DIR})
     list(APPEND SPEngineLibraries          ${ZLIB_LIBRARIES})
 
-	# project macro so we can invoke it twice: for ja
+	# project macro so we can invoke it twice: for jk2 and for ja
 	function(add_sp_project ProjectName Label SPDirName InstallDir Component)
 		if(MakeApplicationBundles)
 			set_source_files_properties(${SPDirName}/macosx/JKEnhanced.icns PROPERTIES MACOSX_PACKAGE_LOCATION Resources)

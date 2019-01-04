@@ -1319,9 +1319,15 @@ static qboolean UI_RunMenuScript ( const char **args )
 		{
 			Menus_CloseAll();
 #ifdef JK2_MODE
-			ui.Cmd_ExecuteText( EXEC_APPEND, "map kejim_post\n" );
+#ifdef JK2_DEMO
+			ui.Cmd_ExecuteText(EXEC_APPEND, "map demo\n");
 #else
-			ui.Cmd_ExecuteText( EXEC_APPEND, "map yavin1\n");
+			ui.Cmd_ExecuteText(EXEC_APPEND, "map kejim_post\n");
+#endif
+#else
+			//DT EDIT: DF2 - START - Changed start up map
+			ui.Cmd_ExecuteText(EXEC_APPEND, "map 01nar\n");
+			//DT EDIT: DF2 - END
 #endif
 		}
 		else if (Q_stricmp(name, "startmap") == 0)
