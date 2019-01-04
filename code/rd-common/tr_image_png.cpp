@@ -300,7 +300,7 @@ void user_read_data( png_structp png_ptr, png_bytep data, png_size_t length ) {
 }
 
 // Loads a PNG image from file.
-void LoadPNG ( const char *filename, byte **data, int *width, int *height, int *depth)
+void LoadPNG ( const char *filename, byte **data, int *width, int *height, int *bppc)
 {
 	char *buf = NULL;
 	int len = ri.FS_ReadFile (filename, (void **)&buf);
@@ -311,5 +311,5 @@ void LoadPNG ( const char *filename, byte **data, int *width, int *height, int *
 
 	PNGFileReader reader (buf);
 	reader.Read (data, width, height);
-	*depth = 8;
+        *bppc = 8;
 }

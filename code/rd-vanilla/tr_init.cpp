@@ -1999,7 +1999,6 @@ extern "C" Q_EXPORT refexport_t* QDECL GetRefAPI ( int apiVersion, refimport_t *
 	REX(RegisterShaderNoMip);
 	re.LoadWorld = RE_LoadWorldMap;
 	re.R_LoadImage = R_LoadImage;
-	re.FontRatioFix = RE_FontRatioFix;
 
 	REX(RegisterMedia_LevelLoadBegin);
 	REX(RegisterMedia_LevelLoadEnd);

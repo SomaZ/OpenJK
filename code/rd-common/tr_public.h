@@ -172,7 +172,7 @@ typedef struct {
 	//qboolean(*inPVS)(const vec3_t p1, const vec3_t p2, byte *mask);
 	//DT EDIT: Rend2 - END
 	void	(*LoadWorld)( const char *name );
-	void(*R_LoadImage)(const char *name, byte **pic, int *width, int *height, int *bppc);
+	void	(*R_LoadImage)(const char *name, byte **pic, int *width, int *height, int *bppc);
 
 	// these two functions added to help with the new model alloc scheme...
 	//
@@ -206,8 +206,6 @@ typedef struct {
 		float s1, float t1, float s2, float t2, float a1, qhandle_t hShader );	// 0 = white
 	void	(*DrawRotatePic2) ( float x, float y, float w, float h,
 		float s1, float t1, float s2, float t2, float a1, qhandle_t hShader );	// 0 = white
-	void	(*RotatePic2RatioFix) (float ratio);
-	void	(*FontRatioFix) (float ratio);
 	void	(*LAGoggles)(void);
 	void	(*Scissor) ( float x, float y, float w, float h);	// 0 = white
 

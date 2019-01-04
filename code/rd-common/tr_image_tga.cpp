@@ -55,7 +55,7 @@ typedef struct TGAHeader_s {
 //  returns false if found but had a format error, else true for either OK or not-found (there's a reason for this)
 //
 
-void LoadTGA ( const char *name, byte **pic, int *width, int *height, int *depth)
+void LoadTGA ( const char *name, byte **pic, int *width, int *height, int *bppc)
 {
 	char sErrorString[1024];
 	bool bFormatErrors = false;
@@ -204,7 +204,7 @@ void LoadTGA ( const char *name, byte **pic, int *width, int *height, int *depth
 
 	pRGBA	= (byte *) R_Malloc (pHeader->wImageWidth * pHeader->wImageHeight * 4, TAG_TEMP_WORKSPACE, qfalse);
 	*pic	= pRGBA;
-	*depth  = 8;
+	*bppc   = 8;
 	pOut	= pRGBA;
 	pIn		= pTempLoadedBuffer + sizeof(*pHeader);
 

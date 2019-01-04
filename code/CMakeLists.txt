@@ -27,7 +27,7 @@ if(BuildSPGame)
 endif(BuildSPGame)
 
 #    Add Modular Renderer project
-add_subdirectory("${SPDir}/rd-gl1")
+add_subdirectory("${SPDir}/rd-vanilla")
 add_subdirectory("${SPDir}/rd-gl2")
 
 #    Add Engine Project

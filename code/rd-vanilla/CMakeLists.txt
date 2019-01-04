@@ -136,11 +136,13 @@ if(BuildSPRdVanilla OR BuildJK2SPRdVanilla)
 
 	set(SPRDVanillaRdCommonFiles
 		"${SPDir}/rd-common/mdx_format.h"
+		"${SPDir}/rd-common/stb_image.h"
 		"${SPDir}/rd-common/tr_common.h"
 		"${SPDir}/rd-common/tr_font.cpp"
 		"${SPDir}/rd-common/tr_font.h"
 		"${SPDir}/rd-common/tr_image_load.cpp"
 		"${SPDir}/rd-common/tr_image_jpg.cpp"
+		"${SPDir}/rd-common/tr_image_stb.cpp"
 		"${SPDir}/rd-common/tr_image_tga.cpp"
 		"${SPDir}/rd-common/tr_image_png.cpp"
 		"${SPDir}/rd-common/tr_noise.cpp"
