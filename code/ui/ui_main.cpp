@@ -1325,9 +1325,7 @@ static qboolean UI_RunMenuScript ( const char **args )
 			ui.Cmd_ExecuteText(EXEC_APPEND, "map kejim_post\n");
 #endif
 #else
-			//DT EDIT: DF2 - START - Changed start up map
-			ui.Cmd_ExecuteText(EXEC_APPEND, "map 01nar\n");
-			//DT EDIT: DF2 - END
+			ui.Cmd_ExecuteText(EXEC_APPEND, "map yavin1\n");
 #endif
 		}
 		else if (Q_stricmp(name, "startmap") == 0)

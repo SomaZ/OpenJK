@@ -59,7 +59,7 @@ static void R_JPGOutputMessage(j_common_ptr cinfo)
 	Com_Printf("%s\n", buffer);
 }
 
-void LoadJPG( const char *filename, unsigned char **pic, int *width, int *height, int *depth) {
+void LoadJPG( const char *filename, unsigned char **pic, int *width, int *height, int *bppc) {
 	/* This struct contains the JPEG decompression parameters and pointers to
 	* working space (which is allocated as needed by the JPEG library).
 	*/
@@ -170,7 +170,7 @@ void LoadJPG( const char *filename, unsigned char **pic, int *width, int *height
 
 	*width = cinfo.output_width;
 	*height = cinfo.output_height;
-	*depth = 8;
+	*bppc = 8;
 
 	/* Step 6: while (scan lines remain to be read) */
 	/*           jpeg_read_scanlines(...); */
