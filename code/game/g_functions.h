@@ -400,7 +400,6 @@ typedef enum
 	useF_NPC_Use,
 	useF_NPC_Spawn,
 	useF_misc_dlight_use,
-	useF_misc_dlight_ent_use,
 	useF_health_use,
 	useF_ammo_use,
 	useF_mega_ammo_use,
@@ -486,7 +485,6 @@ extern void NPC_Spawn				( gentity_t *self, gentity_t *other, gentity_t *activat
 extern void transporter_use			( gentity_t *self, gentity_t *other, gentity_t *activator);
 extern void teleporter_use			( gentity_t *self, gentity_t *other, gentity_t *activator);
 extern void misc_dlight_use			( gentity_t *ent, gentity_t *other, gentity_t *activator );
-extern void misc_dlight_ent_use		( gentity_t *ent, gentity_t *other, gentity_t *activator );
 extern void health_use				( gentity_t *self, gentity_t *other, gentity_t *activator );
 extern void ammo_use				( gentity_t *self, gentity_t *other, gentity_t *activator );
 extern void mega_ammo_use			( gentity_t *self, gentity_t *other, gentity_t *activator );

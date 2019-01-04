@@ -151,8 +151,3 @@ int trap_CIN_StopCinematic(int handle)
 	return CIN_StopCinematic(handle);
 }
 
-void trap_R_FontRatioFix(float ratio) 
-{
-//	return syscall(UI_R_FONTRATIOFIX, PASSFLOAT(ratio));
-	ui.R_FontRatioFix(ratio);
-}

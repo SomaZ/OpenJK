@@ -936,7 +936,6 @@ void CL_InitRenderer( void ) {
 	cls.charSetShader = re.RegisterShaderNoMip("gfx/2d/charsgrid_med");
 	cls.whiteShader = re.RegisterShader( "white" );
 	cls.consoleShader = re.RegisterShader( "console" );
-	cls.ratioFix = (float)(SCREEN_WIDTH * cls.glconfig.vidHeight) / (float)(SCREEN_HEIGHT * cls.glconfig.vidWidth);
 	g_console_field_width = cls.glconfig.vidWidth / SMALLCHAR_WIDTH - 2;
 	g_consoleField.widthInChars = g_console_field_width;
 }
@@ -1075,9 +1074,9 @@ static CMiniHeap *GetG2VertSpaceServer( void ) {
 
 // NOTENOTE: If you change the output name of rd-vanilla, change this define too!
 #ifdef JK2_MODE
-#define DEFAULT_RENDER_LIBRARY	"rdjosp-gl2"
+#define DEFAULT_RENDER_LIBRARY	"rdjosp-vanilla"
 #else
-#define DEFAULT_RENDER_LIBRARY	"rdsp-gl2"
+#define DEFAULT_RENDER_LIBRARY	"rdcustomsp-vanilla"
 #endif
 
 void CL_InitRef( void ) {

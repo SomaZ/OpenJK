@@ -198,7 +198,6 @@ void WPN_SelectSnd (const char **holdBuf);
 void WPN_Range (const char **holdBuf);
 void WPN_WeaponClass ( const char **holdBuf);
 void WPN_WeaponIcon (const char **holdBuf);
-void WPN_DP_WeaponIcon(const char **holdBuf);
 void WPN_WeaponModel (const char **holdBuf);
 void WPN_WeaponType (const char **holdBuf);
 void WPN_AltEnergyPerShot (const char **holdBuf);
@@ -219,11 +218,6 @@ void WPN_MissileHitSound(const char **holdBuf);
 void WPN_AltMissileHitSound(const char **holdBuf);
 void WPN_MuzzleEffect(const char **holdBuf);
 void WPN_AltMuzzleEffect(const char **holdBuf);
-//DT EDIT: Ghoul2 viewmodels - START
-void WPN_G2_SkinFile(const char **holdBuf);
-void WPN_G2_WorldModel(const char **holdBuf);
-void WPN_G2_NoMD3Model(const char **holdBuf);
-//DT EDIT: Ghoul2 viewmodels - END
 
 // OPENJK ADD
 
@@ -280,9 +274,6 @@ const int defaultDamage[] = {
 
 	BRYAR_PISTOL_DAMAGE,		// WP_JAWA
 	0,							// WP_TUSKEN_RIFLE
-	//DT EDIT: DF2 - START - Added Gamorrean weapon
-	0,							// WP_GAMORREAN_AXE
-	//DT EDIT: DF2 - END
 	0,							// WP_TUSKEN_STAFF
 	0,							// WP_SCEPTER
 	0,							// WP_NOGHRI_STICK
@@ -326,9 +317,6 @@ const int defaultAltDamage[] = {
 
 	BRYAR_PISTOL_DAMAGE,	// WP_JAWA
 	0,						// WP_TUSKEN_RIFLE
-	//DT EDIT: DF2 - START - Added Gamorrean weapon
-	0,						// WP_GAMORREAN_AXE
-	//DT EDIT: DF2 - END
 	0,						// WP_TUSKEN_STAFF
 	0,						// WP_SCEPTER
 	0,						// WP_NOGHRI_STICK
@@ -372,9 +360,6 @@ const int defaultSplashDamage[] = {
 
 	0,								// WP_JAWA
 	0,								// WP_TUSKEN_RIFLE
-	//DT EDIT: DF2 - START - Added Gamorrean weapon
-	0,								// WP_GAMORREAN_AXE
-	//DT EDIT: DF2 - END
 	0,								// WP_TUSKEN_STAFF
 	0,								// WP_SCEPTER
 	0,								// WP_NOGHRI_STICK
@@ -418,9 +403,6 @@ const float defaultSplashRadius[] = {
 
 	0.0f,							// WP_JAWA
 	0.0f,							// WP_TUSKEN_RIFLE
-	//DT EDIT: DF2 - START - Added Gamorrean weapon
-	0.0f,							// WP_GAMORREAN_AXE
-	//DT EDIT: DF2 - END
 	0.0f,							// WP_TUSKEN_STAFF
 	0.0f,							// WP_SCEPTER
 	0.0f,							// WP_NOGHRI_STICK
@@ -464,9 +446,6 @@ const int defaultAltSplashDamage[] = {
 
 	0,								// WP_JAWA
 	0,								// WP_TUSKEN_RIFLE
-	//DT EDIT: DF2 - START - Added Gamorrean weapon
-	0,								// WP_GAMORREAN_AXE
-	//DT EDIT: DF2 - END
 	0,								// WP_TUSKEN_STAFF
 	0,								// WP_SCEPTER
 	0,								// WP_NOGHRI_STICK
@@ -482,7 +461,6 @@ const float defaultAltSplashRadius[] = {
 	0.0f,							// WP_NONE
 	0.0f,							// WP_SABER		// handled elsewhere
 	0.0f,							// WP_BLASTER_PISTOL
-	0.0f,							// WP_BRYAR_PISTOL
 	0.0f,							// WP_BLASTER
 	0.0f,							// WP_DISRUPTOR
 	BOWCASTER_SPLASH_RADIUS,		// WP_BOWCASTER
@@ -502,6 +480,7 @@ const float defaultAltSplashRadius[] = {
 
 	0.0f,							// WP_STUN_BATON
 
+	0.0f,							// WP_BRYAR_PISTOL
 	0.0f,							// WP_EMPLACED_GUN
 	0.0f,							// WP_BOT_LASER
 	0.0f,							// WP_TURRET		// handled elsewhere
@@ -510,9 +489,6 @@ const float defaultAltSplashRadius[] = {
 
 	0.0f,							// WP_JAWA
 	0.0f,							// WP_TUSKEN_RIFLE
-	//DT EDIT: DF2 - START - Added Gamorrean weapon
-	0.0f,							// WP_GAMORREAN_AXE
-	//DT EDIT: DF2 - END
 	0.0f,							// WP_TUSKEN_STAFF
 	0.0f,							// WP_SCEPTER
 	0.0f,							// WP_NOGHRI_STICK
@@ -544,7 +520,6 @@ wpnParms_t WpnParms[] =
 	{ "range",			WPN_Range },
 	{ "weaponclass",		WPN_WeaponClass },
 	{ "weaponicon",		WPN_WeaponIcon },
-	{ "dp_weaponicon",		WPN_DP_WeaponIcon },
 	{ "weaponmodel",		WPN_WeaponModel },
 	{ "weapontype",		WPN_WeaponType },
 	{ "altenergypershot",	WPN_AltEnergyPerShot },
@@ -582,73 +557,9 @@ wpnParms_t WpnParms[] =
 	{ "chargeforce",		WPN_FuncSkip },
 	{ "altchargeforce",	WPN_FuncSkip },
 	{ "selectforce",		WPN_FuncSkip },
-
-	//DT EDIT: Ghoul2 viewmodels - START
-	// Ghoul2 viewmodels
-	{ "G2_skinfile",		WPN_G2_SkinFile },
-	{ "G2_worldmodel",		WPN_G2_WorldModel },
-	{ "G2_nomd3model",		WPN_G2_NoMD3Model },
-	//DT EDIT: Ghoul2 viewmodels - END
 };
 
 static const size_t numWpnParms = ARRAY_LEN(WpnParms);
-
-//DT EDIT: Ghoul2 viewmodels - START
-void WPN_G2_SkinFile(const char **holdBuf)
-{
-	int len;
-	const char	*tokenStr;
-
-	if (COM_ParseString(holdBuf, &tokenStr))
-	{
-		return;
-	}
-
-	len = strlen(tokenStr);
-	len++;
-	if (len > 64)
-	{
-		len = 64;
-		gi.Printf(S_COLOR_YELLOW"WARNING: G2_VM_skinfile path too long in ext_data/weapons.dat '%s'\n", tokenStr);
-	}
-
-	Q_strncpyz(weaponData[wpnParms.weaponNum].G2_skinPath, tokenStr, len);
-}
-
-void WPN_G2_WorldModel(const char **holdBuf)
-{
-	int len;
-	const char	*tokenStr;
-
-	if (COM_ParseString(holdBuf, &tokenStr))
-	{
-		return;
-	}
-
-	len = strlen(tokenStr);
-	len++;
-	if (len > 64)
-	{
-		len = 64;
-		gi.Printf(S_COLOR_YELLOW"WARNING: G2_VM_worldmodel path too long in ext_data/weapons.dat '%s'\n", tokenStr);
-	}
-
-	Q_strncpyz(weaponData[wpnParms.weaponNum].G2_worldModel, tokenStr, len);
-}
-
-void WPN_G2_NoMD3Model(const char **holdBuf)
-{
-	int		tokenInt;
-
-	if (COM_ParseInt(holdBuf, &tokenInt))
-	{
-		SkipRestOfLine(holdBuf);
-		return;
-	}
-
-	weaponData[wpnParms.weaponNum].bNoMD3Model = tokenInt;
-}
-//DT EDIT: Ghoul2 viewmodels - END
 
 void WPN_FuncSkip( const char **holdBuf)
 {
@@ -718,10 +629,6 @@ void WPN_WeaponType( const char **holdBuf)
 		weaponNum = WP_JAWA;
 	else if (!Q_stricmp(tokenStr,"WP_TUSKEN_RIFLE"))
 		weaponNum = WP_TUSKEN_RIFLE;
-	//DT EDIT: DF2 - START - Added Gamorrean weapon
-	else if (!Q_stricmp(tokenStr, "WP_GAMORREAN_AXE"))
-		weaponNum = WP_GAMORREAN_AXE;
-	//DT EDIT: DF2 - END
 	else if (!Q_stricmp(tokenStr,"WP_TUSKEN_STAFF"))
 		weaponNum = WP_TUSKEN_STAFF;
 	else if (!Q_stricmp(tokenStr,"WP_SCEPTER"))
@@ -834,28 +741,6 @@ void WPN_WeaponIcon(const char **holdBuf)
 	}
 
 	Q_strncpyz(weaponData[wpnParms.weaponNum].weaponIcon,tokenStr,len);
-}
-
-//--------------------------------------------
-void WPN_DP_WeaponIcon(const char **holdBuf)
-{
-	int len;
-	const char	*tokenStr;
-
-	if (COM_ParseString(holdBuf, &tokenStr))
-	{
-		return;
-	}
-
-	len = strlen(tokenStr);
-	len++;
-	if (len > 64)
-	{
-		len = 64;
-		gi.Printf(S_COLOR_YELLOW"WARNING: dp_weaponIcon too long in external WEAPONS.DAT '%s'\n", tokenStr);
-	}
-
-	Q_strncpyz(weaponData[wpnParms.weaponNum].dp_weaponIcon, tokenStr, len);
 }
 
 //--------------------------------------------

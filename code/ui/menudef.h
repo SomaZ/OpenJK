@@ -27,16 +27,15 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 #define ITEM_TYPE_EDITFIELD			4		// editable text, associated with a cvar
 #define ITEM_TYPE_COMBO				5		// drop down list
 #define ITEM_TYPE_LISTBOX			6		// scrollable list
-#define ITEM_TYPE_LISTBOX_DP		7		// datapad scrollable list
-#define ITEM_TYPE_MODEL				8		// model
-#define ITEM_TYPE_OWNERDRAW			9		// owner draw, name specs what it is
-#define ITEM_TYPE_NUMERICFIELD		10		// editable text, associated with a cvar
-#define ITEM_TYPE_SLIDER			11		// mouse speed, volume, etc.
-#define ITEM_TYPE_YESNO				12		// yes no cvar setting
-#define ITEM_TYPE_MULTI				13		// multiple list setting, enumerated
-#define ITEM_TYPE_BIND				14		// multiple list setting, enumerated
+#define ITEM_TYPE_MODEL				7		// model
+#define ITEM_TYPE_OWNERDRAW			8		// owner draw, name specs what it is
+#define ITEM_TYPE_NUMERICFIELD		9		// editable text, associated with a cvar
+#define ITEM_TYPE_SLIDER			10		// mouse speed, volume, etc.
+#define ITEM_TYPE_YESNO				11		// yes no cvar setting
+#define ITEM_TYPE_MULTI				12		// multiple list setting, enumerated
+#define ITEM_TYPE_BIND				13		// multiple list setting, enumerated
+#define ITEM_TYPE_TEXTSCROLL		14		// scrolling text
 #define ITEM_TYPE_SLIDER_INTEGER	15
-#define ITEM_TYPE_TEXTSCROLL		16
 
 
 #define ITEM_ALIGN_LEFT 0                 // left alignment

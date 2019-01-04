@@ -74,7 +74,7 @@ typedef struct {
 
 	int			(*R_Font_StrLenPixels)(const char *text, const int setIndex, const float scale );
 	int			(*R_Font_HeightPixels)(const int setIndex, const float scale );
-	void		(*R_Font_DrawString)(int ox, int oy, const char *text, const float *rgba, const int setIndex, int iMaxPixelWidth, const float scale );
+	void		(*R_Font_DrawString)(int ox, int oy, const char *text, const float *rgba, const int setIndex, int iMaxPixelWidth, const float scale, const float aspectCorrection );
 	int			(*R_Font_StrLenChars)(const char *text);
 	qboolean	(*Language_IsAsian) (void);
 	qboolean	(*Language_UsesSpaces) (void);
@@ -154,8 +154,6 @@ typedef struct {
 
 	int			(*Milliseconds)( void );
 	void		(*Draw_DataPad)(int HUDType);
-
-	void		(*R_FontRatioFix)(float ratio);
 } uiimport_t;
 
 typedef enum {
@@ -262,8 +260,7 @@ typedef enum {
 	UI_ATAN2,
 	UI_SQRT,
 	UI_FLOOR,
-	UI_CEIL,
-	UI_R_FONTRATIOFIX = 400
+	UI_CEIL
 } uiImport_t;
 
 #endif

@@ -246,7 +246,6 @@ void CL_InitUI( void ) {
 	uii.R_Font_HeightPixels		= re.Font_HeightPixels;
 	uii.R_Font_DrawString		= re.Font_DrawString;
 	uii.R_Font_StrLenChars		= re.Font_StrLenChars;
-	uii.R_FontRatioFix			= re.FontRatioFix;
 	uii.Language_IsAsian		= re.Language_IsAsian;
 	uii.Language_UsesSpaces		= re.Language_UsesSpaces;
 	uii.AnyLanguage_ReadCharFromString = re.AnyLanguage_ReadCharFromString;
@@ -505,9 +504,6 @@ intptr_t CL_UISystemCalls( intptr_t *args )
 		Key_GetBindingBuf( args[1], (char *) VMA(2), args[3] );
 		return 0;
 
-	case UI_R_FONTRATIOFIX:
-		re.FontRatioFix(VMF(1));
-		return 0;
 
 	default:
 		Com_Error( ERR_DROP, "Bad UI system trap: %i", args[0] );

@@ -442,32 +442,6 @@ void Gamorrean_AxeTrace(void)
 
 qboolean G_GamorreanAttackAnimDamage(gentity_t *self)
 {
-	if (self->client->ps.torsoAnim == BOTH_GAM_ATTACK2 ||
-		self->client->ps.torsoAnim == BOTH_GAM_ATTACK1)
-	{
-		float		current	  = 0.0f;
-		int			end		  = 0;
-		int			start	  = 0;
-		if (!!gi.G2API_GetBoneAnimIndex(&
-					self->ghoul2[self->playerModel], 
-					self->lowerLumbarBone, 
-					level.time, 
-					&current, 
-					&start, 
-					&end, 
-					NULL,
-					NULL,
-					NULL))
-		{
- 			float percentComplete = (current-start)/(end-start);
-			//gi.Printf("%f\n", percentComplete);
-			switch (self->client->ps.torsoAnim)
-			{
-			case BOTH_GAM_ATTACK2: return (qboolean)(percentComplete>0.3 && percentComplete<0.7);
-			case BOTH_GAM_ATTACK1: return (qboolean)(percentComplete>0.3 && percentComplete<0.7);
-			}
-		}
-	}
 	return qfalse;
 }
 

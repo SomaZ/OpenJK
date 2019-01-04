@@ -4181,10 +4181,9 @@ static void CG_ForcePushRefraction( vec3_t org, centity_t *cent, float scaleFact
 	{
 		alpha = 244.0f;
 	}
-	//DT EDIT: Changed from 10.0f, so it fades completely and not leave a "circle" there for a few secs.
-	else if (alpha < 0.0f)
+	else if (alpha < 10.0f)
 	{
-		alpha = 0.0f;
+		alpha = 10.0f;
 	}
 
 	memset( &ent, 0, sizeof( ent ) );

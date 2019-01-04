@@ -284,8 +284,8 @@ static void GLW_InitTextureCompression( void )
 {
 	bool newer_tc, old_tc;
 	// Check for available tc methods.
-	newer_tc = ri->GL_ExtensionSupported("GL_ARB_texture_compression") && ri->GL_ExtensionSupported("GL_EXT_texture_compression_s3tc");
-	old_tc = ri->GL_ExtensionSupported("GL_S3_s3tc");
+	newer_tc = ri.GL_ExtensionSupported("GL_ARB_texture_compression") && ri.GL_ExtensionSupported("GL_EXT_texture_compression_s3tc");
+	old_tc = ri.GL_ExtensionSupported("GL_S3_s3tc");
 
 	if ( old_tc )
 	{
@@ -409,7 +409,7 @@ static void GLimp_InitExtensions( void )
 
 	// GL_EXT_texture_env_add
 	glConfig.textureEnvAddAvailable = qfalse;
-	if ( ri->GL_ExtensionSupported( "GL_EXT_texture_env_add" ) )
+	if ( ri.GL_ExtensionSupported( "GL_EXT_texture_env_add" ) )
 	{
 		if ( r_ext_texture_env_add->integer )
 		{
@@ -429,7 +429,7 @@ static void GLimp_InitExtensions( void )
 
 	// GL_EXT_texture_filter_anisotropic
 	glConfig.maxTextureFilterAnisotropy = 0;
-	if ( ri->GL_ExtensionSupported( "GL_EXT_texture_filter_anisotropic" ) )
+	if ( ri.GL_ExtensionSupported( "GL_EXT_texture_filter_anisotropic" ) )
 	{
 		qglGetFloatv( GL_MAX_TEXTURE_MAX_ANISOTROPY_EXT, &glConfig.maxTextureFilterAnisotropy );
 		Com_Printf ("...GL_EXT_texture_filter_anisotropic available\n" );
@@ -462,7 +462,7 @@ static void GLimp_InitExtensions( void )
 	qglMultiTexCoord2fARB = NULL;
 	qglActiveTextureARB = NULL;
 	qglClientActiveTextureARB = NULL;
-	if ( ri->GL_ExtensionSupported( "GL_ARB_multitexture" ) )
+	if ( ri.GL_ExtensionSupported( "GL_ARB_multitexture" ) )
 	{
 		if ( r_ext_multitexture->integer )
 		{
@@ -500,7 +500,7 @@ static void GLimp_InitExtensions( void )
 	// GL_EXT_compiled_vertex_array
 	qglLockArraysEXT = NULL;
 	qglUnlockArraysEXT = NULL;
-	if ( ri->GL_ExtensionSupported( "GL_EXT_compiled_vertex_array" ) )
+	if ( ri.GL_ExtensionSupported( "GL_EXT_compiled_vertex_array" ) )
 	{
 		if ( r_ext_compiled_vertex_array->integer )
 		{
@@ -523,7 +523,7 @@ static void GLimp_InitExtensions( void )
 
 	bool bNVRegisterCombiners = false;
 	// Register Combiners.
-	if ( ri->GL_ExtensionSupported( "GL_NV_register_combiners" ) )
+	if ( ri.GL_ExtensionSupported( "GL_NV_register_combiners" ) )
 	{
 		// NOTE: This extension requires multitexture support (over 2 units).
 		if ( glConfig.maxActiveTextures >= 2 )
@@ -576,7 +576,7 @@ static void GLimp_InitExtensions( void )
 
 	// Vertex Programs.
 	bool bARBVertexProgram = false;
-	if ( ri->GL_ExtensionSupported( "GL_ARB_vertex_program" ) )
+	if ( ri.GL_ExtensionSupported( "GL_ARB_vertex_program" ) )
 	{
 		bARBVertexProgram = true;
 	}
@@ -588,7 +588,7 @@ static void GLimp_InitExtensions( void )
 
 	// Fragment Programs.
 	bool bARBFragmentProgram = false;
-	if ( ri->GL_ExtensionSupported( "GL_ARB_fragment_program" ) )
+	if ( ri.GL_ExtensionSupported( "GL_ARB_fragment_program" ) )
 	{
 		bARBFragmentProgram = true;
 	}
@@ -647,7 +647,7 @@ static void GLimp_InitExtensions( void )
 		g_bTextureRectangleHack = true;
 	}
 
-	if ( ri->GL_ExtensionSupported( "GL_NV_texture_rectangle" ) || ri->GL_ExtensionSupported( "GL_EXT_texture_rectangle" ) )
+	if ( ri.GL_ExtensionSupported( "GL_NV_texture_rectangle" ) || ri.GL_ExtensionSupported( "GL_EXT_texture_rectangle" ) )
 	{
 		bTexRectSupported = true;
 	}
@@ -1296,11 +1296,11 @@ void GfxInfo_f( void )
 		}
 	}
 
-<<<<<<< HEAD:code/rd-gl1/tr_init.cpp
 	ri.Printf( PRINT_ALL, "texturemode: %s\n", r_textureMode->string );
 	ri.Printf( PRINT_ALL, "picmip: %d\n", r_picmip->integer );
 	ri.Printf( PRINT_ALL, "texture bits: %d\n", r_texturebits->integer );
-	ri.Printf( PRINT_ALL, "lightmap texture bits: %d\n", r_texturebitslm->integer );
+	if ( r_texturebitslm->integer > 0 )
+		ri.Printf( PRINT_ALL, "lightmap texture bits: %d\n", r_texturebitslm->integer );
 	ri.Printf( PRINT_ALL, "multitexture: %s\n", enablestrings[qglActiveTextureARB != 0] );
 	ri.Printf( PRINT_ALL, "compiled vertex arrays: %s\n", enablestrings[qglLockArraysEXT != 0 ] );
 	ri.Printf( PRINT_ALL, "texenv add: %s\n", enablestrings[glConfig.textureEnvAddAvailable != 0] );
@@ -1308,20 +1308,7 @@ void GfxInfo_f( void )
 	ri.Printf( PRINT_ALL, "compressed lightmaps: %s\n", enablestrings[(r_ext_compressed_lightmaps->integer != 0 && glConfig.textureCompression != TC_NONE)] );
 	ri.Printf( PRINT_ALL, "texture compression method: %s\n", tc_table[glConfig.textureCompression] );
 	ri.Printf( PRINT_ALL, "anisotropic filtering: %s  ", enablestrings[(r_ext_texture_filter_anisotropic->integer != 0) && glConfig.maxTextureFilterAnisotropy] );
-=======
-	ri->Printf( PRINT_ALL, "texturemode: %s\n", r_textureMode->string );
-	ri->Printf( PRINT_ALL, "picmip: %d\n", r_picmip->integer );
-	ri->Printf( PRINT_ALL, "texture bits: %d\n", r_texturebits->integer );
-	if ( r_texturebitslm->integer > 0 )
-		ri->Printf( PRINT_ALL, "lightmap texture bits: %d\n", r_texturebitslm->integer );
-	ri->Printf( PRINT_ALL, "multitexture: %s\n", enablestrings[qglActiveTextureARB != 0] );
-	ri->Printf( PRINT_ALL, "compiled vertex arrays: %s\n", enablestrings[qglLockArraysEXT != 0 ] );
-	ri->Printf( PRINT_ALL, "texenv add: %s\n", enablestrings[glConfig.textureEnvAddAvailable != 0] );
-	ri->Printf( PRINT_ALL, "compressed textures: %s\n", enablestrings[glConfig.textureCompression != TC_NONE] );
-	ri->Printf( PRINT_ALL, "compressed lightmaps: %s\n", enablestrings[(r_ext_compressed_lightmaps->integer != 0 && glConfig.textureCompression != TC_NONE)] );
-	ri->Printf( PRINT_ALL, "texture compression method: %s\n", tc_table[glConfig.textureCompression] );
-	ri->Printf( PRINT_ALL, "anisotropic filtering: %s  ", enablestrings[(r_ext_texture_filter_anisotropic->integer != 0) && glConfig.maxTextureFilterAnisotropy] );
->>>>>>> 5c4ef20984d9bc48ca7efd071efd458cfdbc635e:code/rd-vanilla/tr_init.cpp
+
 	if (r_ext_texture_filter_anisotropic->integer != 0 && glConfig.maxTextureFilterAnisotropy)
 	{
 		if (Q_isintegral(r_ext_texture_filter_anisotropic->value))
@@ -1521,7 +1508,6 @@ void R_Register( void )
 	// latched and archived variables
 	//
 
-<<<<<<< HEAD:code/rd-gl1/tr_init.cpp
 	r_allowExtensions = ri.Cvar_Get( "r_allowExtensions", "1", CVAR_ARCHIVE | CVAR_LATCH );
 	r_ext_compressed_textures = ri.Cvar_Get( "r_ext_compress_textures", "1", CVAR_ARCHIVE | CVAR_LATCH );
 	r_ext_compressed_lightmaps = ri.Cvar_Get( "r_ext_compress_lightmaps", "0", CVAR_ARCHIVE | CVAR_LATCH );
@@ -1553,39 +1539,6 @@ void R_Register( void )
 	r_subdivisions = ri.Cvar_Get ("r_subdivisions", "2", CVAR_ARCHIVE | CVAR_LATCH);
 	ri.Cvar_CheckRange( r_subdivisions, 4, 80, qfalse );
 	r_intensity = ri.Cvar_Get ("r_intensity", "1", CVAR_LATCH|CVAR_ARCHIVE );
-=======
-	r_allowExtensions = ri->Cvar_Get( "r_allowExtensions", "1", CVAR_ARCHIVE | CVAR_LATCH );
-	r_ext_compressed_textures = ri->Cvar_Get( "r_ext_compress_textures", "1", CVAR_ARCHIVE | CVAR_LATCH );
-	r_ext_compressed_lightmaps = ri->Cvar_Get( "r_ext_compress_lightmaps", "0", CVAR_ARCHIVE | CVAR_LATCH );
-	r_ext_preferred_tc_method = ri->Cvar_Get( "r_ext_preferred_tc_method", "0", CVAR_ARCHIVE | CVAR_LATCH );
-	r_ext_gamma_control = ri->Cvar_Get( "r_ext_gamma_control", "1", CVAR_ARCHIVE | CVAR_LATCH );
-	r_ext_multitexture = ri->Cvar_Get( "r_ext_multitexture", "1", CVAR_ARCHIVE | CVAR_LATCH );
-	r_ext_compiled_vertex_array = ri->Cvar_Get( "r_ext_compiled_vertex_array", "1", CVAR_ARCHIVE | CVAR_LATCH);
-	r_ext_texture_env_add = ri->Cvar_Get( "r_ext_texture_env_add", "1", CVAR_ARCHIVE | CVAR_LATCH);
-	r_ext_texture_filter_anisotropic = ri->Cvar_Get( "r_ext_texture_filter_anisotropic", "16", CVAR_ARCHIVE );
-
-	r_DynamicGlow = ri->Cvar_Get( "r_DynamicGlow", "0", CVAR_ARCHIVE );
-	r_DynamicGlowPasses = ri->Cvar_Get( "r_DynamicGlowPasses", "5", CVAR_ARCHIVE );
-	r_DynamicGlowDelta  = ri->Cvar_Get( "r_DynamicGlowDelta", "0.8f", CVAR_ARCHIVE );
-	r_DynamicGlowIntensity = ri->Cvar_Get( "r_DynamicGlowIntensity", "1.13f", CVAR_ARCHIVE );
-	r_DynamicGlowSoft = ri->Cvar_Get( "r_DynamicGlowSoft", "1", CVAR_ARCHIVE );
-	r_DynamicGlowWidth = ri->Cvar_Get( "r_DynamicGlowWidth", "320", CVAR_ARCHIVE | CVAR_LATCH );
-	r_DynamicGlowHeight = ri->Cvar_Get( "r_DynamicGlowHeight", "240", CVAR_ARCHIVE | CVAR_LATCH );
-
-	r_picmip = ri->Cvar_Get ("r_picmip", "0", CVAR_ARCHIVE | CVAR_LATCH );
-	ri->Cvar_CheckRange( r_picmip, 0, 16, qtrue );
-	r_colorMipLevels = ri->Cvar_Get ("r_colorMipLevels", "0", CVAR_LATCH );
-	r_detailTextures = ri->Cvar_Get( "r_detailtextures", "1", CVAR_ARCHIVE | CVAR_LATCH );
-	r_texturebits = ri->Cvar_Get( "r_texturebits", "0", CVAR_ARCHIVE | CVAR_LATCH );
-	r_texturebitslm = ri->Cvar_Get( "r_texturebitslm", "0", CVAR_ARCHIVE | CVAR_LATCH );
-	r_overBrightBits = ri->Cvar_Get ("r_overBrightBits", "0", CVAR_ARCHIVE | CVAR_LATCH );
-	r_mapOverBrightBits = ri->Cvar_Get( "r_mapOverBrightBits", "0", CVAR_ARCHIVE|CVAR_LATCH );
-	r_simpleMipMaps = ri->Cvar_Get( "r_simpleMipMaps", "1", CVAR_ARCHIVE | CVAR_LATCH );
-	r_vertexLight = ri->Cvar_Get( "r_vertexLight", "0", CVAR_ARCHIVE | CVAR_LATCH );
-	r_subdivisions = ri->Cvar_Get ("r_subdivisions", "4", CVAR_ARCHIVE | CVAR_LATCH);
-	ri->Cvar_CheckRange( r_subdivisions, 0, 80, qfalse );
-	r_intensity = ri->Cvar_Get ("r_intensity", "1", CVAR_LATCH|CVAR_ARCHIVE );
->>>>>>> 5c4ef20984d9bc48ca7efd071efd458cfdbc635e:code/rd-vanilla/tr_init.cpp
 
 	//
 	// temporary latched variables that can only change over a restart

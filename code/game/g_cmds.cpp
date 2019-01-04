@@ -211,23 +211,6 @@ void G_Give( gentity_t *ent, const char *name, const char *args, int argc )
 			return;
 	}
 
-	if ( give_all || !Q_stricmp( name, "inventory") )
-	{
-		// Huh?  Was doing a INV_MAX+1 which was wrong because then you'd actually have every inventory item including INV_MAX 
-		ent->client->ps.stats[STAT_ITEMS] = (1 << (INV_MAX)) - (1 << INV_ELECTROBINOCULARS);
-	
-		ent->client->ps.inventory[INV_ELECTROBINOCULARS] = 1;
-		ent->client->ps.inventory[INV_BACTA_CANISTER] = 5;
-		ent->client->ps.inventory[INV_SEEKER] = 5;
-		ent->client->ps.inventory[INV_LIGHTAMP_GOGGLES] = 1;
-		ent->client->ps.inventory[INV_SENTRY] = 5;
-		ent->client->ps.inventory[INV_GOODIE_KEY] = 5;
-		ent->client->ps.inventory[INV_SECURITY_KEY] = 5;
-	
-		if ( !give_all )
-			return;
-	}
-	
 	if ( give_all || !Q_stricmp( name, "weapons" ) )
 	{
 		for ( int i = 0; i < WP_MELEE; i++ )

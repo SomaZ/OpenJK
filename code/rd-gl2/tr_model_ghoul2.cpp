@@ -2326,7 +2326,7 @@ void RenderSurfaces(CRenderSurface &RS, const trRefEntity_t *ent, int entityNum)
 
 						last->goreChain = newSurf2;
 						last = newSurf2;
-						R_AddDrawSurf((surfaceType_t *)newSurf2, entityNum, gshader, RS.fogNum, qfalse, R_IsPostRenderEntity(tr.currentEntity), cubemapIndex, distance);
+						R_AddDrawSurf((surfaceType_t *)newSurf2, entityNum, gshader, RS.fogNum, qfalse, R_IsPostRenderEntity(ent), cubemapIndex, distance);
 					}
 				}
 			}

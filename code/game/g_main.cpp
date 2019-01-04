@@ -705,20 +705,18 @@ void G_InitCvars( void ) {
 
 	g_speederControlScheme = gi.cvar( "g_speederControlScheme", "2", CVAR_ARCHIVE );//2 is default, 1 is alternate
 
-	//DT EDIT: DF2 - START - Changed to kyle
-	g_char_model = gi.cvar("g_char_model", "df2_kyle", CVAR_ARCHIVE | CVAR_SAVEGAME | CVAR_NORESTART);
-	g_char_skin_head = gi.cvar("g_char_skin_head", "model_default", CVAR_ARCHIVE | CVAR_SAVEGAME | CVAR_NORESTART);
-	g_char_skin_torso = gi.cvar("g_char_skin_torso", "model_default", CVAR_ARCHIVE | CVAR_SAVEGAME | CVAR_NORESTART);
-	g_char_skin_legs = gi.cvar("g_char_skin_legs", "model_default", CVAR_ARCHIVE | CVAR_SAVEGAME | CVAR_NORESTART);
-	g_char_color_red = gi.cvar("g_char_color_red", "255", CVAR_ARCHIVE | CVAR_SAVEGAME | CVAR_NORESTART);
-	g_char_color_green = gi.cvar("g_char_color_green", "255", CVAR_ARCHIVE | CVAR_SAVEGAME | CVAR_NORESTART);
-	g_char_color_blue = gi.cvar("g_char_color_blue", "255", CVAR_ARCHIVE | CVAR_SAVEGAME | CVAR_NORESTART);
-	g_saber = gi.cvar("g_saber", "single_1", CVAR_ARCHIVE | CVAR_SAVEGAME | CVAR_NORESTART);
-	g_saber2 = gi.cvar("g_saber2", "", CVAR_ARCHIVE | CVAR_SAVEGAME | CVAR_NORESTART);
-	g_saber_color = gi.cvar("g_saber_color", "green", CVAR_ARCHIVE | CVAR_SAVEGAME | CVAR_NORESTART);
-	g_saber2_color = gi.cvar("g_saber2_color", "yellow", CVAR_ARCHIVE | CVAR_SAVEGAME | CVAR_NORESTART);
-	g_saberDarkSideSaberColor = gi.cvar("g_saberDarkSideSaberColor", "0", CVAR_ARCHIVE);	//when you turn evil, it turns your saber red!
-	//DT EDIT: DF2 - END
+	g_char_model = gi.cvar( "g_char_model", "jedi_tf", CVAR_ARCHIVE|CVAR_SAVEGAME|CVAR_NORESTART );
+	g_char_skin_head = gi.cvar( "g_char_skin_head", "head_a1", CVAR_ARCHIVE|CVAR_SAVEGAME|CVAR_NORESTART );
+	g_char_skin_torso = gi.cvar( "g_char_skin_torso", "torso_a1", CVAR_ARCHIVE|CVAR_SAVEGAME|CVAR_NORESTART );
+	g_char_skin_legs = gi.cvar( "g_char_skin_legs", "lower_a1", CVAR_ARCHIVE|CVAR_SAVEGAME|CVAR_NORESTART );
+	g_char_color_red = gi.cvar( "g_char_color_red", "255", CVAR_ARCHIVE|CVAR_SAVEGAME|CVAR_NORESTART );
+	g_char_color_green = gi.cvar( "g_char_color_green", "255", CVAR_ARCHIVE|CVAR_SAVEGAME|CVAR_NORESTART );
+	g_char_color_blue = gi.cvar( "g_char_color_blue", "255", CVAR_ARCHIVE|CVAR_SAVEGAME|CVAR_NORESTART );
+	g_saber = gi.cvar( "g_saber", "single_1", CVAR_ARCHIVE|CVAR_SAVEGAME|CVAR_NORESTART );
+	g_saber2 = gi.cvar( "g_saber2", "", CVAR_ARCHIVE|CVAR_SAVEGAME|CVAR_NORESTART );
+	g_saber_color = gi.cvar( "g_saber_color", "yellow", CVAR_ARCHIVE|CVAR_SAVEGAME|CVAR_NORESTART );
+	g_saber2_color = gi.cvar( "g_saber2_color", "yellow", CVAR_ARCHIVE|CVAR_SAVEGAME|CVAR_NORESTART );
+	g_saberDarkSideSaberColor = gi.cvar( "g_saberDarkSideSaberColor", "0", CVAR_ARCHIVE );	//when you turn evil, it turns your saber red!
 
 	g_char_head_model = gi.cvar( "g_char_head_model", "", CVAR_ARCHIVE|CVAR_SAVEGAME|CVAR_NORESTART );
 	g_char_head_skin = gi.cvar( "g_char_head_skin", "", CVAR_ARCHIVE|CVAR_SAVEGAME|CVAR_NORESTART );

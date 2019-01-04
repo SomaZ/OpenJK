@@ -292,9 +292,6 @@ void G_AttackDelay( gentity_t *self, gentity_t *enemy )
 			break;
 		case WP_BRYAR_PISTOL:
 			break;
-		case WP_BLASTER_PISTOL:	// apparently some enemy only version of the blaster
-			attDelay -= Q_irand(500, 1500);
-			break;
 		case WP_BLASTER:
 			if ( self->NPC->scriptFlags & SCF_ALT_FIRE )
 			{//rapid-fire blasters
@@ -322,6 +319,9 @@ void G_AttackDelay( gentity_t *self, gentity_t *enemy )
 			break;
 		case WP_CONCUSSION:
 			attDelay += Q_irand( 500, 1500 );
+			break;
+		case WP_BLASTER_PISTOL:	// apparently some enemy only version of the blaster
+			attDelay -= Q_irand( 500, 1500 );
 			break;
 		case WP_DISRUPTOR://sniper's don't delay?
 			return;
@@ -951,9 +951,6 @@ void ChangeWeapon( gentity_t *ent, int newWeapon )
 		break;
 
 	case WP_MELEE:
-	//DT EDIT: DF2 - START - Added Gamorrean weapon
-	case WP_GAMORREAN_AXE:
-	//DT EDIT: DF2 - END
 	case WP_TUSKEN_STAFF:
 		ent->NPC->aiFlags &= ~NPCAI_BURST_WEAPON;
 		ent->NPC->burstSpacing = 1000;//attackdebounce
@@ -1152,9 +1149,6 @@ void NPC_ApplyWeaponFireDelay(void)
 		break;
 
 	case WP_MELEE:
-	//DT EDIT: DF2 - START - Added Gamorrean weapon
-	case WP_GAMORREAN_AXE:
-	//DT EDIT: DF2 - END
 	case WP_TUSKEN_STAFF:
 		if ( !PM_DroidMelee( client->NPC_class ) )
 		{//FIXME: should be unique per melee anim

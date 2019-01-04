@@ -1140,10 +1140,10 @@ static void R_CreateDlightImage( void )
 	}
 	tr.dlightImage = R_CreateImage("*dlight", (byte *)data, DLIGHT_SIZE, DLIGHT_SIZE, GL_RGBA, qfalse, qfalse, qfalse, GL_CLAMP );
 #else
-	int		width, height;
+	int		width, height, bitdepth;
 	byte	*pic;
 
-	R_LoadImage("gfx/2d/dlight", &pic, &width, &height);
+	R_LoadImage("gfx/2d/dlight", &pic, &width, &height, &bitdepth);
 	if (pic)
 	{
 		tr.dlightImage = R_CreateImage("*dlight", pic, width, height, GL_RGBA, qfalse, qfalse, qfalse, GL_CLAMP );

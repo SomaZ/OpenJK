@@ -82,19 +82,8 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 #define HOMEPATH_NAME_MACOSX HOMEPATH_NAME_WIN
 #endif
 
-#ifdef JK2_DEMO
-#define	BASEGAME "demo"
-#else
 #define	BASEGAME "base"
-#endif // JK2_DEMO
-
-#ifdef JK2_MODE
-#define OPENJKGAME "jke"
-#else
 #define OPENJKGAME "jaenhanced"
-#endif // JK2_MODE
-
-
 
 #define Q3CONFIG_NAME PRODUCT_NAME ".cfg"
 

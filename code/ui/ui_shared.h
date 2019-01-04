@@ -126,12 +126,6 @@ typedef struct {
 	qhandle_t	scrollBarArrowRight;
 	qhandle_t	scrollBar;
 	qhandle_t	scrollBarThumb;
-	qhandle_t	scrollBarArrowUp_dp;
-	qhandle_t	scrollBarArrowDown_dp;
-	qhandle_t	scrollBarArrowLeft_dp;
-	qhandle_t	scrollBarArrowRight_dp;
-	qhandle_t	scrollBar_dp;
-	qhandle_t	scrollBarThumb_dp;
 	qhandle_t	buttonMiddle;
 	qhandle_t	buttonInside;
 	qhandle_t	solidBox;
@@ -255,11 +249,7 @@ typedef struct {
 	qhandle_t	gradientImage;
 	float FPS;
 
-<<<<<<< HEAD
-	float		widthRatioCoef; //to make 2Ds be not stretched
-=======
 	int			screenshotFormat;
->>>>>>> 5c4ef20984d9bc48ca7efd071efd458cfdbc635e
 
 } displayContextDef_t;
 
@@ -385,7 +375,6 @@ typedef struct itemDef_s {
 	int			textStyle;					// ( optional ) style, normal and shadowed are it for now
 	char		*text;						// display text
 	char		*text2;						// display text2
-	int			descFont;					// Description FONT_SMALL,FONT_MEDIUM,FONT_LARGE
 	const char		*descText;				//	Description text
 	void		*parent;					// menu owner
 	qhandle_t	asset;						// handle to asset
@@ -426,7 +415,6 @@ typedef struct itemDef_s {
 typedef struct {
 	Window window;
 	const char  *font;						// font
-	const char  *descFont;					// Description font
 	qboolean	fullScreen;					// covers entire screen
 	int			itemCount;					// number of items;
 	int			fontIndex;					//
@@ -453,7 +441,7 @@ typedef struct {
 	vec4_t		descColor;					// description text color for items
 	int			descAlignment;				// Description of alignment
 	float		descScale;					// Description scale
-	int			descTextStyle;				// ( optional ) style, normal and shadowed are it for now
+	int			descTextStyle;					// ( optional ) style, normal and shadowed are it for now
 
 
 } menuDef_t;

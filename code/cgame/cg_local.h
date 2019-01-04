@@ -658,8 +658,6 @@ extern	vmCvar_t		cg_fovViewmodelAdjust;
 
 extern	vmCvar_t		cg_scaleVehicleSensitivity;
 
-extern  vmCvar_t		r_ratioFix;
-
 extern	vmCvar_t		cg_trueguns;
 extern	vmCvar_t		cg_fpls;
 extern	vmCvar_t		cg_drawRadar;

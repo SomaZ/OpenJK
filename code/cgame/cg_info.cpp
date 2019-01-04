@@ -135,16 +135,16 @@ static void ObjectivePrint_Line(const int color, const int objectIndex, int &mis
 		//
 		if (pixelLen < objectiveTextBoxWidth)	// One shot - small enough to print entirely on one line
 		{
-			y = 105 + (iYPixelsPerLine * (missionYcnt));
+			y =objectiveStartingYpos + (iYPixelsPerLine * (missionYcnt));
 
 			cgi_R_Font_DrawString (
-				60,
+				objectiveStartingXpos,
 				y,
 				str,
 				colorTable[color],
-				cgs.media.qhFontArimob,
+				cgs.media.qhFontMedium,
 				-1,
-				0.35f);
+				1.0f);
 
 			++missionYcnt;
 		}
@@ -253,10 +253,10 @@ void CG_DrawDataPadObjectives(const centity_t *cent )
 	int		i,totalY;
 	int		iYPixelsPerLine = cgi_R_Font_HeightPixels(cgs.media.qhFontMedium, 1.0f);
 
-	const short titleXPos = objectiveStartingXpos - 22;					// X starting position for title text
-	const short titleYPos = objectiveStartingYpos - 23;					// Y starting position for title text
-	const short graphic_size = 16;										// Size (width and height) of graphic used to show status of objective
-	const short graphicXpos = 67 - graphic_size - 8;					// Amount of X to backup from text starting position
+	const short titleXPos = objectiveStartingXpos - 22;		// X starting position for title text
+	const short titleYPos = objectiveStartingYpos - 23;		// Y starting position for title text
+	const short graphic_size = 16;							// Size (width and height) of graphic used to show status of objective
+	const short graphicXpos = objectiveStartingXpos - graphic_size - 8;	// Amount of X to backup from text starting position
 	const short graphicYOffset = (iYPixelsPerLine - graphic_size)/2;	// Amount of Y to raise graphic so it's in the center of the text line
 
 	missionInfo_Updated = qfalse;		// This will stop the text from flashing
@@ -270,10 +270,8 @@ void CG_DrawDataPadObjectives(const centity_t *cent )
 
 	// Title Text at the top
 	char text[1024]={0};
-	/*
 	cgi_SP_GetStringTextString( "SP_INGAME_OBJECTIVES", text, sizeof(text) );
 	cgi_R_Font_DrawString (titleXPos, titleYPos, text, colorTable[CT_TITLE], cgs.media.qhFontMedium, -1, 1.0f);
-	*/
 
 	int missionYcnt = 0;
 
@@ -284,18 +282,18 @@ void CG_DrawDataPadObjectives(const centity_t *cent )
 		if (cent->gent->client->sess.mission_objectives[i].display)
 		{
 			// Calculate the Y position
-			totalY = 100 + (iYPixelsPerLine * (missionYcnt))+(iYPixelsPerLine/2);
+			totalY = objectiveStartingYpos + (iYPixelsPerLine * (missionYcnt))+(iYPixelsPerLine/2);
 
 			//	Draw graphics that show if mission has been accomplished or not
-			cgi_R_SetColor(colorTable[CT_HUD_GREEN]);
-			CG_DrawPic( (graphicXpos),   (totalY-graphicYOffset),   graphic_size*cgs.widthRatioCoef,  graphic_size, cgs.media.messageObjCircle);	// Circle in front
+			cgi_R_SetColor(colorTable[CT_BLUE3]);
+			CG_DrawPic( (graphicXpos),   (totalY-graphicYOffset),   graphic_size,  graphic_size, cgs.media.messageObjCircle);	// Circle in front
 			if (cent->gent->client->sess.mission_objectives[i].status == OBJECTIVE_STAT_SUCCEEDED)
 			{
-				CG_DrawPic( (graphicXpos),   (totalY-graphicYOffset),   graphic_size*cgs.widthRatioCoef,  graphic_size, cgs.media.messageLitOn);	// Center Dot
+				CG_DrawPic( (graphicXpos),   (totalY-graphicYOffset),   graphic_size,  graphic_size, cgs.media.messageLitOn);	// Center Dot
 			}
 
 			// Print current objective text
-			ObjectivePrint_Line(CT_HUD_GREEN, i, missionYcnt );
+			ObjectivePrint_Line(CT_WHITE, i, missionYcnt );
 		}
 	}
 
@@ -303,19 +301,19 @@ void CG_DrawDataPadObjectives(const centity_t *cent )
 	if (!missionYcnt)
 	{
 		// Set the message a quarter of the way down and in the center of the text box
-		int messageYPosition = objectiveStartingYpos + (objectiveTextBoxHeight / 4) + 50;
+		int messageYPosition = objectiveStartingYpos + (objectiveTextBoxHeight / 4);
 
-		cgi_SP_GetStringTextString("SP_INGAME_OBJNONE", text, sizeof(text));
-		int messageXPosition = objectiveStartingXpos + (objectiveTextBoxWidth / 2) - (cgi_R_Font_StrLenPixels(text, cgs.media.qhFontArimob, 0.35f) / 2);
+		cgi_SP_GetStringTextString( "SP_INGAME_OBJNONE", text, sizeof(text) );
+		int messageXPosition = objectiveStartingXpos + (objectiveTextBoxWidth/2) -  (cgi_R_Font_StrLenPixels(text, cgs.media.qhFontMedium, 1.0f) /2);
 
-		cgi_R_Font_DrawString(
+		cgi_R_Font_DrawString (
 			messageXPosition,
 			messageYPosition,
 			text,
-			colorTable[CT_HUD_GREEN],
-			cgs.media.qhFontArimob,
+			colorTable[CT_WHITE],
+			cgs.media.qhFontMedium,
 			-1,
-			0.35f);
+			1.0f);
 	}
 }
 
@@ -411,7 +409,7 @@ static void CG_LoadScreen_PersonalInfo(void)
 }
 */
 
-static void CG_NewGameLoadBar(void)
+static void CG_LoadBar(void)
 {
 	const int numticks = 9, tickwidth = 40, tickheight = 8;
 	const int tickpadx = 20, tickpady = 12;
@@ -422,29 +420,6 @@ static void CG_NewGameLoadBar(void)
 
 	cgi_R_SetColor( colorTable[CT_WHITE]);
 	// Draw background
-	CG_DrawPic(barleft, bartop, barwidth, barheight, cgs.media.newgamelevelLoad);
-
-	// Draw left cap (backwards)
-	CG_DrawPic(tickleft, ticktop, -capwidth, tickheight, cgs.media.newgameloadTickCap);
-
-	// Draw bar
-	CG_DrawPic(tickleft, ticktop, tickwidth*cg.loadLCARSStage, tickheight, cgs.media.newgameloadTick);
-
-	// Draw right cap
-	CG_DrawPic(tickleft+tickwidth*cg.loadLCARSStage, ticktop, capwidth, tickheight, cgs.media.newgameloadTickCap);
-}
-
-static void CG_LoadBar(void)
-{
-	const int numticks = 9, tickwidth = 40, tickheight = 8;
-	const int tickpadx = 20, tickpady = 12;
-	const int capwidth = 8;
-	const int barwidth = numticks*tickwidth + tickpadx * 2 + capwidth * 2, barleft = ((640 - barwidth) / 2);
-	const int barheight = tickheight + tickpady * 2, bartop = 475 - barheight;
-	const int capleft = barleft + tickpadx, tickleft = capleft + capwidth, ticktop = bartop + tickpady;
-
-	cgi_R_SetColor(colorTable[CT_WHITE]);
-	// Draw background
 	CG_DrawPic(barleft, bartop, barwidth, barheight, cgs.media.levelLoad);
 
 	// Draw left cap (backwards)
@@ -454,7 +429,7 @@ static void CG_LoadBar(void)
 	CG_DrawPic(tickleft, ticktop, tickwidth*cg.loadLCARSStage, tickheight, cgs.media.loadTick);
 
 	// Draw right cap
-	CG_DrawPic(tickleft + tickwidth*cg.loadLCARSStage, ticktop, capwidth, tickheight, cgs.media.loadTickCap);
+	CG_DrawPic(tickleft+tickwidth*cg.loadLCARSStage, ticktop, capwidth, tickheight, cgs.media.loadTickCap);
 }
 
 int CG_WeaponCheck( int weaponIndex );
@@ -866,9 +841,7 @@ void CG_DrawInformation( void ) {
 		}
 	}
 
-	//DT EDIT: DF2 - START - Changed start up map
-	if ( g_eSavedGameJustLoaded != eFULL && !strcmp(s,"01nar") )//special case for first map!
-	//DT EDIT: DF2 - END
+	if ( g_eSavedGameJustLoaded != eFULL && !strcmp(s,"yavin1") )//special case for first map!
 	{
 		char	text[1024]={0};
 
@@ -878,21 +851,17 @@ void CG_DrawInformation( void ) {
 
 		cgi_SP_GetStringTextString( "SP_INGAME_ALONGTIME", text, sizeof(text) );
 
-		int w = cgi_R_Font_StrLenPixels(text,cgs.media.qhFontArimo, 1.0f);
-		cgi_R_Font_DrawString((320)-(w/2), 140, text,  colorTable[CT_ICON_BLUE], cgs.media.qhFontArimo, -1, 1.0f);
-
-		CG_NewGameLoadBar();
+		int w = cgi_R_Font_StrLenPixels(text,cgs.media.qhFontMedium, 1.0f);
+		cgi_R_Font_DrawString((320)-(w/2), 140, text,  colorTable[CT_ICON_BLUE], cgs.media.qhFontMedium, -1, 1.0f);
 	}
 	else
 	{
 		CG_DrawLoadingScreen(levelshot, s);
 		cgi_UI_Menu_Paint( cgi_UI_GetMenuByName( "loadscreen" ), qtrue );
 		//cgi_UI_MenuPaintAll();
-
-		CG_LoadBar();
 	}
 
-	//CG_LoadBar();
+	CG_LoadBar();
 
 
 	// the first 150 rows are reserved for the client connection

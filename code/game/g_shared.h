@@ -34,10 +34,6 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 #include "bset.h"
 #include "anims.h"
 
-//DT EDIT: Ghoul2 viewmodels - START
-#include "anims.h"
-//DT EDIT: Ghoul2 viewmodels - END
-
 #define	FOFS(x) offsetof(gentity_t, x)
 
 typedef enum //# taskID_e
@@ -1724,9 +1720,6 @@ typedef struct weaponInfo_s {
 	qhandle_t		barrelModel[4];
 
 	vec3_t			weaponMidpoint;		// so it will rotate centered instead of by tag
-
-	qhandle_t		dp_weaponIcon;			// The version of the icon for the datapad
-	qhandle_t		dp_weaponIconNoAmmo;	// The version of the icon for the datapad with no ammo warning
 
 	qhandle_t		weaponIcon;			// The version of the icon with a glowy background
 	qhandle_t		weaponIconNoAmmo;	// The version of the icon with no ammo warning

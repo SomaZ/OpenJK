@@ -145,24 +145,9 @@ void CrystalAmmoSettings(gentity_t *ent)
 //------------------------------------------------------------
 
 //------------------------------------------------------------
-/*QUAKED misc_model_ghoul (1 0 0) (-16 -16 -24) (16 16 32) SOLID
-SOLID - Movement is blocked by it with the MASK_NPCSOLID & CONTENTS_BODY.
-
-"model" - Ghoul2 .glm file to load
-"modelscale" - "x" uniform scale
-"modelscale_vec" - "x y z" scale model in each axis
-"renderRadius" - Default "120" model render radius
-"rootbone" - Default "model_root" animation root bone
-"startframe" - Default "0". animation start frame
-"endframe" - Default "0". animation end frame
-"skin" - Default "models/players/kyle/model_default.skin". Skin file to load.
-
-- Use "endframe" when you have an animation that's more than 1 frame to play.
-- Use "renderRadius" for models larger than a player model if you notice the misc_model_ghoul disappearing when moving the camera.
-- Use "rootbone" to change the bone that the animation will play from, instead of animating the entire GLA. Use wisely.
-
-
-loaded as a model in the renderer - does not take up precious bsp space!
+/*QUAKED misc_model_ghoul (1 0 0) (-16 -16 -37) (16 16 32)
+"model"		arbitrary .glm file to display
+"health" - how much health the model has - default 60 (zero makes non-breakable)
 */
 //------------------------------------------------------------
 #include "anims.h"
@@ -199,15 +184,7 @@ void SP_misc_model_ghoul( gentity_t *ent )
 #if 1
 	ent->s.modelindex = G_ModelIndex( ent->model );
 	gi.G2API_InitGhoul2Model(ent->ghoul2, ent->model, ent->s.modelindex, NULL_HANDLE, NULL_HANDLE, 0, 0);
-
-	//DT EDIT: misc_model_ghoul edits - START
-	if (ent->playerModel >= 0)
-	{
-		ent->rootBone = gi.G2API_GetBoneIndex(&ent->ghoul2[ent->playerModel], "model_root", qtrue);
-	}
-
-	G_SpawnInt("renderRadius", "120", &ent->s.radius);
-	//DT EDIT: misc_model_ghoul edits - END
+	ent->s.radius = 50;
 
 	G_SetOrigin( ent, ent->s.origin );
 	G_SetAngles( ent, ent->s.angles );
@@ -215,7 +192,6 @@ void SP_misc_model_ghoul( gentity_t *ent )
 	qboolean bHasScale = G_SpawnVector( "modelscale_vec", "1 1 1", ent->s.modelScale );
 	if ( !bHasScale ) {
 		float temp;
-
 		G_SpawnFloat( "modelscale", "0", &temp );
 		if ( temp != 0.0f ) {
 			ent->s.modelScale[0] = ent->s.modelScale[1] = ent->s.modelScale[2] = temp;
@@ -232,39 +208,11 @@ void SP_misc_model_ghoul( gentity_t *ent )
 		ent->mins[1] *= ent->s.modelScale[1];
 
 		//scale the z axis of the bbox up and adjust origin accordingly
-		float oldMins2 = ent->mins[2];
-
 		ent->maxs[2] *= ent->s.modelScale[2];
+		float oldMins2 = ent->mins[2];
 		ent->mins[2] *= ent->s.modelScale[2];
 		ent->s.origin[2] += (oldMins2 - ent->mins[2]);
 	}
-
-	//DT EDIT: misc_model_ghoul edits - START
-	if (ent->spawnflags & 1) //SOLID
-	{
-		ent->contents = CONTENTS_BODY;
-		ent->clipmask = MASK_NPCSOLID;
-	}
-
-	G_SpawnInt("startframe", "0", &ent->startFrame);
-	G_SpawnInt("endframe", "0", &ent->endFrame);
-
-	char *root_boneName;
-
-	G_SpawnString("rootbone", "model_root", &root_boneName);
-	gi.G2API_SetBoneAnim(&ent->ghoul2[0], root_boneName, ent->startFrame, ent->endFrame, BONE_ANIM_OVERRIDE_LOOP, 1.0f + Q_flrand(-1.0f, 1.0f) * 0.1f, 0, -1, -1);
-	ent->endFrame = 0; // don't allow it to do anything with the animation function in G_main
-
-	char *skinName;
-	int skin = gi.RE_RegisterSkin(skinName);
-
-	G_SpawnString("skin", "models/players/kyle/model_default.skin", &skinName);
-	gi.G2API_SetSkin(&ent->ghoul2[ent->playerModel], G_SkinIndex(skinName), skin);
-
-	char Model[MAX_QPATH];
-
-	gi.G2API_PrecacheGhoul2Model(Model);
-	//DT EDIT: misc_model_ghoul edits - END
 
 	gi.linkentity (ent);
 #else

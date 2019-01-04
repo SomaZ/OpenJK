@@ -471,9 +471,6 @@ public:
 	//initial lerp is abs(frameLerp)
 	signed char		loopFrames;			// 0 to numFrames, -1 = no loop
 	unsigned char	glaIndex;
-	//DT EDIT: Ghoul2 viewmodels - START
-	int		initialLerp;				// msec to get to first frame
-	//DT EDIT: Ghoul2 viewmodels - END
 
 
 	void sg_export(
@@ -677,8 +674,6 @@ typedef struct gitem_s {
 	const char	*world_model;
 
 	const char	*icon;
-
-	const char	*dp_icon;
 
 	int			quantity;		// for ammo how much, or duration of powerup
 	itemType_t  giType;			// IT_* flags

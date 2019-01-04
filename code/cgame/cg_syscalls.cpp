@@ -360,16 +360,6 @@ void	cgi_R_DrawRotatePic2( float x, float y, float w, float h,
 	Q_syscall( CG_R_DRAWROTATEPIC2, PASSFLOAT(x), PASSFLOAT(y), PASSFLOAT(w), PASSFLOAT(h), PASSFLOAT(s1), PASSFLOAT(t1), PASSFLOAT(s2), PASSFLOAT(t2), PASSFLOAT(a), hShader );
 }
 
-void trap_R_RotatePic2RatioFix(float ratio)
-{
-	Q_syscall(CG_R_ROTATEPIC2_RATIOFIX, PASSFLOAT(ratio));
-}
-
-void trap_R_FontRatioFix(float ratio) 
-{
-	Q_syscall(CG_R_FONTRATIOFIX, PASSFLOAT(ratio));
-}
-
 //linear fogging, with settable range -rww
 void cgi_R_SetRangeFog(float range)
 {

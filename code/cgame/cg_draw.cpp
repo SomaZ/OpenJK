@@ -220,14 +220,11 @@ static void CG_DrawForcePower(const centity_t *cent,const int xPos,const int yPo
 		}
 
 		cgi_R_SetColor( calcColor);
-
-		CG_DrawPic(
-			SCREEN_WIDTH - (SCREEN_WIDTH - forceTics[i].xPos)*cgs.widthRatioCoef,
+		CG_DrawPic( forceTics[i].xPos,
 			forceTics[i].yPos,
-			forceTics[i].width*cgs.widthRatioCoef,
+			forceTics[i].width,
 			forceTics[i].height,
-			forceTics[i].background
-		);
+			forceTics[i].background );
 
 		value -= inc;
 	}
@@ -242,17 +239,15 @@ static void CG_DrawForcePower(const centity_t *cent,const int xPos,const int yPo
 	}
 
 	// Print force numeric amount
-	/*
-	CG_DrawNumField(
-		SCREEN_WIDTH - (SCREEN_WIDTH - otherHUDBits[OHB_FORCEAMOUNT].xPos)*cgs.widthRatioCoef,
+	CG_DrawNumField (
+		otherHUDBits[OHB_FORCEAMOUNT].xPos,
 		otherHUDBits[OHB_FORCEAMOUNT].yPos,
 		3,
 		cent->gent->client->ps.forcePower,
-		otherHUDBits[OHB_FORCEAMOUNT].width*cgs.widthRatioCoef,
+		otherHUDBits[OHB_FORCEAMOUNT].width,
 		otherHUDBits[OHB_FORCEAMOUNT].height,
 		NUM_FONT_SMALL,
 		qfalse);
-	*/
 }
 
 /*
@@ -309,12 +304,12 @@ static void CG_DrawSaberStyle(const centity_t	*cent,const int xPos,const int yPo
 	}
 
 	CG_DrawPic(
-		SCREEN_WIDTH - (SCREEN_WIDTH - otherHUDBits[index].xPos)*cgs.widthRatioCoef,
+		otherHUDBits[index].xPos,
 		otherHUDBits[index].yPos,
-		otherHUDBits[index].width*cgs.widthRatioCoef,
+		otherHUDBits[index].width,
 		otherHUDBits[index].height,
 		otherHUDBits[index].background
-	);
+		);
 
 }
 
@@ -338,9 +333,7 @@ static void CG_DrawAmmo(const centity_t	*cent,const int xPos,const int yPos)
 		return;
 	}
 
-	//DT EDIT: DF2 - START - Added WP_MELEE for ammo count removal
-	if (cent->currentState.weapon == WP_STUN_BATON || cent->currentState.weapon == WP_MELEE)
-	//DT EDIT: DF2 - END
+	if ( cent->currentState.weapon == WP_STUN_BATON )
 	{
 		return;
 	}
@@ -396,15 +389,16 @@ static void CG_DrawAmmo(const centity_t	*cent,const int xPos,const int yPos)
 	// Print number amount
 	cgi_R_SetColor( calcColor );
 
-	CG_DrawNumField(
-		SCREEN_WIDTH - (SCREEN_WIDTH - otherHUDBits[OHB_AMMOAMOUNT].xPos)*cgs.widthRatioCoef,
+	CG_DrawNumField (
+		otherHUDBits[OHB_AMMOAMOUNT].xPos,
 		otherHUDBits[OHB_AMMOAMOUNT].yPos,
 		3,
 		ps->ammo[weaponData[cent->currentState.weapon].ammoIndex],
-		otherHUDBits[OHB_AMMOAMOUNT].width*cgs.widthRatioCoef,
+		otherHUDBits[OHB_AMMOAMOUNT].width,
 		otherHUDBits[OHB_AMMOAMOUNT].height,
 		NUM_FONT_SMALL,
 		qfalse);
+
 
 
 	inc = (float) ammoData[weaponData[cent->currentState.weapon].ammoIndex].max / MAX_HUD_TICS;
@@ -426,14 +420,11 @@ static void CG_DrawAmmo(const centity_t	*cent,const int xPos,const int yPos)
 		}
 
 		cgi_R_SetColor( calcColor);
-
-		CG_DrawPic(
-			SCREEN_WIDTH - (SCREEN_WIDTH - ammoTics[i].xPos)*cgs.widthRatioCoef,
+		CG_DrawPic( ammoTics[i].xPos,
 			ammoTics[i].yPos,
-			ammoTics[i].width*cgs.widthRatioCoef,
+			ammoTics[i].width,
 			ammoTics[i].height,
-			ammoTics[i].background
-		);
+			ammoTics[i].background );
 
 		currValue -= inc;
 	}
@@ -458,7 +449,7 @@ static void CG_DrawHealth(const int x,const int y,const int w,const int h)
 	float currValue = ps->stats[STAT_HEALTH];
 	memcpy(calcColor, colorTable[CT_WHITE], sizeof(vec4_t));
 	int i;
-	for (i = (MAX_HUD_TICS - 1); i >= 0; i--)
+	for (i=(MAX_HUD_TICS-1);i>=0;i--)
 	{
 
 		if (currValue <= 0)	// don't show tic
@@ -472,15 +463,15 @@ static void CG_DrawHealth(const int x,const int y,const int w,const int h)
 			calcColor[3] *= percent;		// Fade it out
 		}
 
-		cgi_R_SetColor(calcColor);
+		cgi_R_SetColor( calcColor);
 
 		CG_DrawPic(
-			healthTics[i].xPos*cgs.widthRatioCoef,
+			healthTics[i].xPos,
 			healthTics[i].yPos,
-			healthTics[i].width*cgs.widthRatioCoef,
+			healthTics[i].width,
 			healthTics[i].height,
 			healthTics[i].background
-		);
+			);
 
 		currValue -= inc;
 	}
@@ -489,15 +480,16 @@ static void CG_DrawHealth(const int x,const int y,const int w,const int h)
 	// Print force health amount
 	cgi_R_SetColor( otherHUDBits[OHB_HEALTHAMOUNT].color );
 
-	CG_DrawNumField(
-		otherHUDBits[OHB_HEALTHAMOUNT].xPos*cgs.widthRatioCoef,
+	CG_DrawNumField (
+		otherHUDBits[OHB_HEALTHAMOUNT].xPos,
 		otherHUDBits[OHB_HEALTHAMOUNT].yPos,
 		3,
 		ps->stats[STAT_HEALTH],
-		otherHUDBits[OHB_HEALTHAMOUNT].width*cgs.widthRatioCoef,
+		otherHUDBits[OHB_HEALTHAMOUNT].width,
 		otherHUDBits[OHB_HEALTHAMOUNT].height,
 		NUM_FONT_SMALL,
 		qfalse);
+
 }
 
 /*
@@ -543,23 +535,23 @@ static void CG_DrawArmor(const int x,const int y,const int w,const int h)
 			if (cg.HUDArmorFlag)
 			{
 				CG_DrawPic(
-					armorTics[i].xPos*cgs.widthRatioCoef,
+					armorTics[i].xPos,
 					armorTics[i].yPos,
-					armorTics[i].width*cgs.widthRatioCoef,
+					armorTics[i].width,
 					armorTics[i].height,
 					armorTics[i].background
-				);
+					);
 			}
 		}
 		else
 		{
 			CG_DrawPic(
-			armorTics[i].xPos*cgs.widthRatioCoef,
-			armorTics[i].yPos,
-			armorTics[i].width*cgs.widthRatioCoef,
-			armorTics[i].height,
-			armorTics[i].background
-			);
+				armorTics[i].xPos,
+				armorTics[i].yPos,
+				armorTics[i].width,
+				armorTics[i].height,
+				armorTics[i].background
+				);
 		}
 
 		currValue -= inc;
@@ -568,12 +560,12 @@ static void CG_DrawArmor(const int x,const int y,const int w,const int h)
 	// Print armor amount
 	cgi_R_SetColor( otherHUDBits[OHB_ARMORAMOUNT].color );
 
-	CG_DrawNumField(
-		otherHUDBits[OHB_ARMORAMOUNT].xPos*cgs.widthRatioCoef,
+	CG_DrawNumField (
+		otherHUDBits[OHB_ARMORAMOUNT].xPos,
 		otherHUDBits[OHB_ARMORAMOUNT].yPos,
 		3,
 		ps->stats[STAT_ARMOR],
-		otherHUDBits[OHB_ARMORAMOUNT].width*cgs.widthRatioCoef,
+		otherHUDBits[OHB_ARMORAMOUNT].width,
 		otherHUDBits[OHB_ARMORAMOUNT].height,
 		NUM_FONT_SMALL,
 		qfalse);
@@ -1875,49 +1867,30 @@ static void CG_DrawHUD( centity_t *cent )
 			CG_DrawSmallStringColor(sectionXPos+5, sectionYPos - 40,va("Health:%d",cg.snap->ps.stats[STAT_HEALTH]), colorTable[CT_HUD_GREEN] );
 		}
 
-		// Print innerframe
-		cgi_R_SetColor(otherHUDBits[OHB_INNERFRAME_LEFT].color);
+		// Print scanline
+		cgi_R_SetColor( otherHUDBits[OHB_SCANLINE_LEFT].color);
+
 		CG_DrawPic(
-			otherHUDBits[OHB_INNERFRAME_LEFT].xPos*cgs.widthRatioCoef,
-			otherHUDBits[OHB_INNERFRAME_LEFT].yPos,
-			otherHUDBits[OHB_INNERFRAME_LEFT].width*cgs.widthRatioCoef,
-			otherHUDBits[OHB_INNERFRAME_LEFT].height,
-			otherHUDBits[OHB_INNERFRAME_LEFT].background
-		);
+			otherHUDBits[OHB_SCANLINE_LEFT].xPos,
+			otherHUDBits[OHB_SCANLINE_LEFT].yPos,
+			otherHUDBits[OHB_SCANLINE_LEFT].width,
+			otherHUDBits[OHB_SCANLINE_LEFT].height,
+			otherHUDBits[OHB_SCANLINE_LEFT].background
+			);
+
+		// Print frame
+		cgi_R_SetColor( otherHUDBits[OHB_FRAME_LEFT].color);
+		CG_DrawPic(
+			otherHUDBits[OHB_FRAME_LEFT].xPos,
+			otherHUDBits[OHB_FRAME_LEFT].yPos,
+			otherHUDBits[OHB_FRAME_LEFT].width,
+			otherHUDBits[OHB_FRAME_LEFT].height,
+			otherHUDBits[OHB_FRAME_LEFT].background
+			);
 
 		CG_DrawArmor(sectionXPos,sectionYPos,sectionWidth,sectionHeight);
 
 		CG_DrawHealth(sectionXPos,sectionYPos,sectionWidth,sectionHeight);
-
-		// Print scanline
-		cgi_R_SetColor(otherHUDBits[OHB_SCANLINE_LEFT].color);
-		CG_DrawPic(
-			otherHUDBits[OHB_SCANLINE_LEFT].xPos*cgs.widthRatioCoef,
-			otherHUDBits[OHB_SCANLINE_LEFT].yPos,
-			otherHUDBits[OHB_SCANLINE_LEFT].width*cgs.widthRatioCoef,
-			otherHUDBits[OHB_SCANLINE_LEFT].height,
-			otherHUDBits[OHB_SCANLINE_LEFT].background
-		);
-
-		// Print staticline
-		cgi_R_SetColor(otherHUDBits[OHB_STATICLINE_LEFT].color);
-		CG_DrawPic(
-			otherHUDBits[OHB_STATICLINE_LEFT].xPos*cgs.widthRatioCoef,
-			otherHUDBits[OHB_STATICLINE_LEFT].yPos,
-			otherHUDBits[OHB_STATICLINE_LEFT].width*cgs.widthRatioCoef,
-			otherHUDBits[OHB_STATICLINE_LEFT].height,
-			otherHUDBits[OHB_STATICLINE_LEFT].background
-		);
-
-		// Print frame
-		cgi_R_SetColor(otherHUDBits[OHB_FRAME_LEFT].color);
-		CG_DrawPic(
-			otherHUDBits[OHB_FRAME_LEFT].xPos*cgs.widthRatioCoef,
-			otherHUDBits[OHB_FRAME_LEFT].yPos,
-			otherHUDBits[OHB_FRAME_LEFT].width*cgs.widthRatioCoef,
-			otherHUDBits[OHB_FRAME_LEFT].height,
-			otherHUDBits[OHB_FRAME_LEFT].background
-		);
 	}
 
 
@@ -1930,9 +1903,7 @@ static void CG_DrawHUD( centity_t *cent )
 		// Draw armor & health values
 		if ( cg_drawStatus.integer == 2 )
 		{
-			//DT EDIT: DF2 - START - Added WP_MELEE for ammo count removal
-			if (cent->currentState.weapon != WP_SABER && cent->currentState.weapon != WP_STUN_BATON && cent->gent && cent->currentState.weapon != WP_MELEE && cent->gent)
-			//DT EDIT: DF2 - END
+			if ( cent->currentState.weapon != WP_SABER && cent->currentState.weapon != WP_STUN_BATON && cent->gent )
 			{
 				value = cg.snap->ps.ammo[weaponData[cent->currentState.weapon].ammoIndex];
 				CG_DrawSmallStringColor(sectionXPos, sectionYPos - 60,va("Ammo:%d",value), colorTable[CT_HUD_GREEN] );
@@ -1940,15 +1911,27 @@ static void CG_DrawHUD( centity_t *cent )
 			CG_DrawSmallStringColor(sectionXPos, sectionYPos - 40,va("Force:%d",cent->gent->client->ps.forcePower), colorTable[CT_HUD_GREEN] );
 		}
 
-		// Print innerframe
-		cgi_R_SetColor(otherHUDBits[OHB_INNERFRAME_RIGHT].color);
+		// Print scanline
+		cgi_R_SetColor( otherHUDBits[OHB_SCANLINE_RIGHT].color);
+
 		CG_DrawPic(
-			SCREEN_WIDTH - (SCREEN_WIDTH - otherHUDBits[OHB_INNERFRAME_RIGHT].xPos)*cgs.widthRatioCoef,
-			otherHUDBits[OHB_INNERFRAME_RIGHT].yPos,
-			otherHUDBits[OHB_INNERFRAME_RIGHT].width*cgs.widthRatioCoef,
-			otherHUDBits[OHB_INNERFRAME_RIGHT].height,
-			otherHUDBits[OHB_INNERFRAME_RIGHT].background
-		);
+			otherHUDBits[OHB_SCANLINE_RIGHT].xPos,
+			otherHUDBits[OHB_SCANLINE_RIGHT].yPos,
+			otherHUDBits[OHB_SCANLINE_RIGHT].width,
+			otherHUDBits[OHB_SCANLINE_RIGHT].height,
+			otherHUDBits[OHB_SCANLINE_RIGHT].background
+			);
+
+
+		// Print frame
+		cgi_R_SetColor( otherHUDBits[OHB_FRAME_RIGHT].color);
+		CG_DrawPic(
+			otherHUDBits[OHB_FRAME_RIGHT].xPos,
+			otherHUDBits[OHB_FRAME_RIGHT].yPos,
+			otherHUDBits[OHB_FRAME_RIGHT].width,
+			otherHUDBits[OHB_FRAME_RIGHT].height,
+			otherHUDBits[OHB_FRAME_RIGHT].background
+			);
 
 		CG_DrawForcePower(cent,sectionXPos,sectionYPos);
 
@@ -1961,36 +1944,6 @@ static void CG_DrawHUD( centity_t *cent )
 		{
 			CG_DrawAmmo(cent,sectionXPos,sectionYPos);
 		}
-
-		// Print scanline
-		cgi_R_SetColor(otherHUDBits[OHB_SCANLINE_RIGHT].color);
-		CG_DrawPic(
-			SCREEN_WIDTH - (SCREEN_WIDTH - otherHUDBits[OHB_SCANLINE_RIGHT].xPos)*cgs.widthRatioCoef,
-			otherHUDBits[OHB_SCANLINE_RIGHT].yPos,
-			otherHUDBits[OHB_SCANLINE_RIGHT].width*cgs.widthRatioCoef,
-			otherHUDBits[OHB_SCANLINE_RIGHT].height,
-			otherHUDBits[OHB_SCANLINE_RIGHT].background
-		);
-
-		// Print staticline
-		cgi_R_SetColor(otherHUDBits[OHB_STATICLINE_RIGHT].color);
-		CG_DrawPic(
-			SCREEN_WIDTH - (SCREEN_WIDTH - otherHUDBits[OHB_STATICLINE_RIGHT].xPos)*cgs.widthRatioCoef,
-			otherHUDBits[OHB_STATICLINE_RIGHT].yPos,
-			otherHUDBits[OHB_STATICLINE_RIGHT].width*cgs.widthRatioCoef,
-			otherHUDBits[OHB_STATICLINE_RIGHT].height,
-			otherHUDBits[OHB_STATICLINE_RIGHT].background
-		);
-
-		// Print frame
-		cgi_R_SetColor(otherHUDBits[OHB_FRAME_RIGHT].color);
-		CG_DrawPic(
-			SCREEN_WIDTH - (SCREEN_WIDTH - otherHUDBits[OHB_FRAME_RIGHT].xPos)*cgs.widthRatioCoef,
-			otherHUDBits[OHB_FRAME_RIGHT].yPos,
-			otherHUDBits[OHB_FRAME_RIGHT].width*cgs.widthRatioCoef,
-			otherHUDBits[OHB_FRAME_RIGHT].height,
-			otherHUDBits[OHB_FRAME_RIGHT].background
-		);
 //		CG_DrawMessageLit(cent,x,y);
 	}
 }
@@ -2062,12 +2015,9 @@ void CG_DrawDataPadHUD( centity_t *cent )
 
 }
 
-/*
-================
-CG_DrawBinocularNumbers
-
-================
-*/
+//------------------------
+// CG_DrawZoomMask
+//------------------------
 static void CG_DrawBinocularNumbers( qboolean power )
 {
 	vec4_t color1;
@@ -2118,7 +2068,7 @@ CG_DrawZoomMask
 ================
 */
 extern float cg_zoomFov;	//from cg_view.cpp
-extern void trap_R_RotatePic2RatioFix(float ratio);
+
 static void CG_DrawZoomMask( void )
 {
 	vec4_t			color1;
@@ -2127,8 +2077,6 @@ static void CG_DrawZoomMask( void )
 	static qboolean	flip = qtrue;
 	float			charge = cg.snap->ps.batteryCharge / (float)MAX_BATTERIES; // convert charge to a percentage
 	qboolean		power = qfalse;
-
-	float			ratio = (cgs.media.zoomLeft || cgs.media.zoomRight) ? cgs.widthRatioCoef : 1.0f;
 
 	cent = &cg_entities[0];
 
@@ -2183,7 +2131,7 @@ static void CG_DrawZoomMask( void )
 
 			cgi_R_SetColor( color1 );
 
-			CG_DrawPic( 82, 94, 16 * ratio, 16, cgs.media.binocularCircle );
+			CG_DrawPic( 82, 94, 16, 16, cgs.media.binocularCircle );
 		}
 
 		CG_DrawPic( 0, 0, 640, 480, cgs.media.binocularMask );
@@ -2238,16 +2186,16 @@ static void CG_DrawZoomMask( void )
 	//------------
 	// Disruptor
 	//--------------------------------
-	else if (cg.zoomMode == 2)
+	else if ( cg.zoomMode == 2 )
 	{
 		level = (float)(80.0f - cg_zoomFov) / 80.0f;
 
 		// ...so we'll clamp it
-		if (level < 0.0f)
+		if ( level < 0.0f )
 		{
 			level = 0.0f;
 		}
-		else if (level > 1.0f)
+		else if ( level > 1.0f )
 		{
 			level = 1.0f;
 		}
@@ -2256,26 +2204,8 @@ static void CG_DrawZoomMask( void )
 		level *= 103.0f;
 
 		// Draw target mask
-		cgi_R_SetColor(colorTable[CT_WHITE]);
-
-		CG_DrawPic(SCREEN_WIDTH / 2 - (SCREEN_WIDTH / 2) * ratio, 0, SCREEN_WIDTH * ratio, SCREEN_HEIGHT, cgs.media.disruptorMask);
-
-		if (ratio != 1.0f) {
-			cgi_R_SetColor(colorTable[CT_BLACK]);
-			if (cgs.media.zoomLeft) {
-				CG_DrawPic(0, 0, SCREEN_WIDTH / 2 - (SCREEN_WIDTH / 2) * ratio, SCREEN_HEIGHT, cgs.media.zoomLeft);
-				if (!cgs.media.zoomRight) {
-					CG_DrawPic(SCREEN_WIDTH, 0, -(SCREEN_WIDTH / 2 - (SCREEN_WIDTH / 2) * ratio), SCREEN_HEIGHT, cgs.media.zoomLeft);
-				}
-			}
-			if (cgs.media.zoomRight) {
-				CG_DrawPic(SCREEN_WIDTH / 2 + (SCREEN_WIDTH / 2) * ratio, 0, SCREEN_WIDTH / 2 - (SCREEN_WIDTH / 2) * ratio, SCREEN_HEIGHT, cgs.media.zoomRight);
-				if (!cgs.media.zoomLeft) {
-					CG_DrawPic(SCREEN_WIDTH / 2 - (SCREEN_WIDTH / 2) * ratio, 0, -(SCREEN_WIDTH / 2 - (SCREEN_WIDTH / 2) * ratio), SCREEN_HEIGHT, cgs.media.zoomRight);
-				}
-			}
-		}
-		cgi_R_SetColor(colorTable[CT_WHITE]);
+		cgi_R_SetColor( colorTable[CT_WHITE] );
+		CG_DrawPic( 0, 0, 640, 480, cgs.media.disruptorMask );
 
 		// apparently 99.0f is the full zoom level
 		if ( level >= 99 )
@@ -2290,8 +2220,7 @@ static void CG_DrawZoomMask( void )
 		}
 
 		// Draw rotating insert
-		trap_R_RotatePic2RatioFix(ratio);
-		CG_DrawRotatePic2(SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2, SCREEN_WIDTH, SCREEN_HEIGHT, -level, cgs.media.disruptorInsert);
+		CG_DrawRotatePic2( 320, 240, 640, 480, -level, cgs.media.disruptorInsert );
 
 		float cx, cy;
 		float max;
@@ -2330,12 +2259,11 @@ static void CG_DrawZoomMask( void )
 
 		for ( float i = 18.5f; i <= 18.5f + max; i+= 3 ) // going from 15 to 45 degrees, with 5 degree increments
 		{
-			cx = 320 + sin((i + 90.0f) / 57.296f) * 190 * ratio;
-			cy = 240 + cos((i + 90.0f) / 57.296f) * 190;
+			cx = 320 + sin( (i+90.0f)/57.296f ) * 190;
+			cy = 240 + cos( (i+90.0f)/57.296f ) * 190;
 
 			CG_DrawRotatePic2( cx, cy, 12, 24, 90 - i, cgs.media.disruptorInsertTick );
 		}
-		trap_R_RotatePic2RatioFix(1.0f);
 
 		// FIXME: doesn't know about ammo!! which is bad because it draws charge beyond what ammo you may have..
 		if ( cg_entities[0].gent->client->ps.weaponstate == WEAPON_CHARGING_ALT )
@@ -2350,7 +2278,7 @@ static void CG_DrawZoomMask( void )
 				max = 1.0f;
 			}
 
-			cgi_R_DrawStretchPic(SCREEN_WIDTH / 2 - (SCREEN_WIDTH / 2 - 257) * ratio, 435, 134 * max * ratio, 34, 0, 0, max, 1, cgi_R_RegisterShaderNoMip("gfx/2d/crop_charge"));
+			CG_DrawPic2( 257, 435, 134 * max, 34, 0,0,max,1,cgi_R_RegisterShaderNoMip( "gfx/2d/crop_charge" ));
 		}
 	}
 	//-----------
@@ -2466,7 +2394,6 @@ CG_DrawPickupItem
 static void CG_DrawPickupItem( void ) {
 	int		value;
 	float	*fadeColor;
-	int xoff = 0;
 
 	value = cg.itemPickup;
 	if ( value && cg_items[ value ].icon != -1 )
@@ -2476,7 +2403,7 @@ static void CG_DrawPickupItem( void ) {
 		{
 			CG_RegisterItemVisuals( value );
 			cgi_R_SetColor( fadeColor );
-			CG_DrawPic(SCREEN_WIDTH - (SCREEN_WIDTH - 573)*cgs.widthRatioCoef, 320 - ICON_SIZE, ICON_SIZE*cgs.widthRatioCoef, ICON_SIZE, cg_items[value].icon);
+			CG_DrawPic( 573, 320, ICON_SIZE, ICON_SIZE, cg_items[ value ].icon );
 			//CG_DrawBigString( ICON_SIZE + 16, 398, bg_itemlist[ value ].classname, fadeColor[0] );
 			//CG_DrawProportionalString( ICON_SIZE + 16, 398,
 			//	bg_itemlist[ value ].classname, CG_SMALLFONT,fadeColor );
@@ -2817,14 +2744,13 @@ static void CG_DrawCrosshair( vec3_t worldPoint )
 		h *= ( 1 + f );
 	}
 
-	if (worldPoint && VectorLength(worldPoint))
+	if ( worldPoint && VectorLength( worldPoint ) )
 	{
-		if (!CG_WorldCoordToScreenCoordFloat(worldPoint, &x, &y))
+		if ( !CG_WorldCoordToScreenCoordFloat( worldPoint, &x, &y ) )
 		{//off screen, don't draw it
-			cgi_R_SetColor(NULL);
+			cgi_R_SetColor( NULL );
 			return;
 		}
-
 		x -= 320;//????
 		y -= 240;//????
 	}
@@ -2839,18 +2765,19 @@ static void CG_DrawCrosshair( vec3_t worldPoint )
 		if ( !Q_stricmp( "misc_panel_turret", g_entities[cg.snap->ps.viewEntity].classname ))
 		{
 			// draws a custom crosshair that is twice as large as normal
-			cgi_R_DrawStretchPic(x + cg.refdef.x + 320 - w,
+			cgi_R_DrawStretchPic( x + cg.refdef.x + 320 - w,
 				y + cg.refdef.y + 240 - h,
-				w * 2, h * 2, 0, 0, 1, 1, cgs.media.turretCrossHairShader);
+				w * 2, h * 2, 0, 0, 1, 1, cgs.media.turretCrossHairShader );
+
 		}
 	}
 	else
 	{
 		hShader = cgs.media.crosshairShader[ cg_drawCrosshair.integer % NUM_CROSSHAIRS ];
 
-		cgi_R_DrawStretchPic(x + cg.refdef.x + 0.5 * (640 - w*cgs.widthRatioCoef),
+		cgi_R_DrawStretchPic( x + cg.refdef.x + 0.5 * (640 - w),
 			y + cg.refdef.y + 0.5 * (480 - h),
-			w*cgs.widthRatioCoef, h, 0, 0, 1, 1, hShader);
+			w, h, 0, 0, 1, 1, hShader );
 	}
 
 	if ( cg.forceCrosshairStartTime && cg_crosshairForceHint.integer ) // drawing extra bits
@@ -2863,10 +2790,10 @@ static void CG_DrawCrosshair( vec3_t worldPoint )
 		w *= 2.0f;
 		h *= 2.0f;
 
-		cgi_R_DrawStretchPic(x + cg.refdef.x + 0.5f * (640 - w*cgs.widthRatioCoef), y + cg.refdef.y + 0.5f * (480 - h),
-			w*cgs.widthRatioCoef, h,
-			0, 0, 1, 1,
-			cgs.media.forceCoronaShader);
+		cgi_R_DrawStretchPic( x + cg.refdef.x + 0.5f * ( 640 - w ), y + cg.refdef.y + 0.5f * ( 480 - h ),
+								w, h,
+								0, 0, 1, 1,
+								cgs.media.forceCoronaShader );
 	}
 
 	cgi_R_SetColor( NULL );
@@ -2889,8 +2816,8 @@ qboolean CG_WorldCoordToScreenCoordFloat(vec3_t worldCoord, float *x, float *y)
 
     VectorSubtract(worldCoord, cg.refdef.vieworg, trans);
 
-	xc = 640 / 2.0;
-	yc = 480 / 2.0;
+    xc = 640 / 2.0;
+    yc = 480 / 2.0;
 
 	// z = how far is the object in our forward direction
     z = DotProduct(trans, cg.refdef.viewaxis[0]);
@@ -3435,10 +3362,6 @@ static void CG_DrawRocketLocking( int lockEntNum, int lockTime )
 		// we are locked and loaded baby
 		if ( dif == 8 )
 		{
-			//since we have hardcoded rotated pic with ratio fix above,
-			//we want undepended (on r_ratioFix) hardcoded coef here too
-			float ratioFix = ((float)SCREEN_WIDTH*cgs.glconfig.vidHeight) / ((float)SCREEN_HEIGHT*cgs.glconfig.vidWidth);
-
 			color[0] = color[1] = color[2] = sin( cg.time * 0.05f ) * 0.5f + 0.5f;
 			color[3] = 1.0f; // this art is additive, so the alpha value does nothing
 
@@ -3929,11 +3852,11 @@ static qboolean CG_RenderingFromMiscCamera()
 			// Only doing a misc_camera, so check health.
 			if ( g_entities[cg.snap->ps.viewEntity].health > 0 )
 			{
-				CG_DrawPic(0, 0, 640, 480, cgi_R_RegisterShader("gfx/2d/workingCamera"));
+				CG_DrawPic( 0, 0, 640, 480, cgi_R_RegisterShader( "gfx/2d/workingCamera" ));
 			}
 			else
 			{
-				CG_DrawPic(0, 0, 640, 480, cgi_R_RegisterShader("gfx/2d/brokenCamera"));
+				CG_DrawPic( 0, 0, 640, 480, cgi_R_RegisterShader( "gfx/2d/brokenCamera" ));
 			}
 			// don't render other 2d stuff
 			return qtrue;
@@ -3947,7 +3870,7 @@ static qboolean CG_RenderingFromMiscCamera()
 		else
 		{
 			// FIXME: make sure that this assumption is correct...because I'm assuming that I must be a droid.
-			CG_DrawPic(0, 0, 640, 480, cgi_R_RegisterShader("gfx/2d/droid_view"));
+			CG_DrawPic( 0, 0, 640, 480, cgi_R_RegisterShader( "gfx/2d/droid_view" ));
 		}
 	}
 
@@ -3999,7 +3922,7 @@ static void CG_Draw2DScreenTints( void )
 
 		if (!cg.renderingThirdPerson)
 		{
-			CG_FillRect(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, hcolor);
+			CG_FillRect( 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, hcolor  );
 		}
 
 		cgRageFadeTime = 0;
@@ -4054,7 +3977,7 @@ static void CG_Draw2DScreenTints( void )
 
 		if (!cg.renderingThirdPerson && rageTime)
 		{
-			CG_FillRect(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, hcolor);
+			CG_FillRect( 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, hcolor  );
 		}
 		else
 		{
@@ -4064,8 +3987,7 @@ static void CG_Draw2DScreenTints( void )
 				hcolor[0] = 0.2f;
 				hcolor[1] = 0.2f;
 				hcolor[2] = 0.2f;
-
-				CG_FillRect(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, hcolor);
+				CG_FillRect( 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, hcolor  );
 			}
 			cgRageTime = 0;
 		}
@@ -4097,7 +4019,7 @@ static void CG_Draw2DScreenTints( void )
 
 		if ( !cg.renderingThirdPerson )
 		{
-			CG_FillRect(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, hcolor);
+			CG_FillRect( 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, hcolor  );
 		}
 
 		cgRageRecFadeTime = 0;
@@ -4131,7 +4053,7 @@ static void CG_Draw2DScreenTints( void )
 
 		if (!cg.renderingThirdPerson && rageRecTime)
 		{
-			CG_FillRect(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, hcolor);
+			CG_FillRect( 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, hcolor  );
 		}
 		else
 		{
@@ -4166,7 +4088,7 @@ static void CG_Draw2DScreenTints( void )
 
 		if ( !cg.renderingThirdPerson )
 		{
-			CG_FillRect(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, hcolor);
+			CG_FillRect( 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, hcolor  );
 		}
 
 		cgAbsorbFadeTime = 0;
@@ -4200,7 +4122,7 @@ static void CG_Draw2DScreenTints( void )
 
 		if ( !cg.renderingThirdPerson && absorbTime )
 		{
-			CG_FillRect(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, hcolor);
+			CG_FillRect( 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, hcolor  );
 		}
 		else
 		{
@@ -4235,7 +4157,7 @@ static void CG_Draw2DScreenTints( void )
 
 		if ( !cg.renderingThirdPerson )
 		{
-			CG_FillRect(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, hcolor);
+			CG_FillRect( 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, hcolor  );
 		}
 
 		cgProtectFadeTime = 0;
@@ -4269,7 +4191,7 @@ static void CG_Draw2DScreenTints( void )
 
 		if ( !cg.renderingThirdPerson && protectTime )
 		{
-			CG_FillRect(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, hcolor);
+			CG_FillRect( 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, hcolor  );
 		}
 		else
 		{
@@ -4285,7 +4207,7 @@ static void CG_Draw2DScreenTints( void )
 		hcolor[1] = 0;
 		hcolor[2] = 0;
 
-		CG_FillRect(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, hcolor);
+		CG_FillRect( 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, hcolor  );
 	}
 	else if ( (cg.refdef.viewContents&CONTENTS_SLIME) )
 	{//tint screen green
@@ -4295,7 +4217,7 @@ static void CG_Draw2DScreenTints( void )
 		hcolor[1] = 0.7f;
 		hcolor[2] = 0;
 
-		CG_FillRect(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, hcolor);
+		CG_FillRect( 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, hcolor  );
 	}
 	else if ( (cg.refdef.viewContents&CONTENTS_WATER) )
 	{//tint screen light blue -- FIXME: check to see if in fog?
@@ -4305,7 +4227,7 @@ static void CG_Draw2DScreenTints( void )
 		hcolor[1] = 0.2f;
 		hcolor[2] = 0.8f;
 
-		CG_FillRect(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, hcolor);
+		CG_FillRect( 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, hcolor  );
 	}
 }
 /*
@@ -4384,7 +4306,7 @@ static void CG_Draw2D( void )
 	if ( (cg.snap->ps.forcePowersActive&(1<<FP_SEE)) )
 	{//force sight is on
 		//indicate this with sight cone thingy
-		CG_DrawPic(0, 0, 640, 480, cgi_R_RegisterShader("gfx/2d/jsense"));
+		CG_DrawPic( 0, 0, 640, 480, cgi_R_RegisterShader( "gfx/2d/jsense" ));
 		CG_DrawHealthBars();
 	}
 	else if ( cg_debugHealthBars.integer )

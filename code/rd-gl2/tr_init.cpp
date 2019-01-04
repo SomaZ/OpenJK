@@ -2132,6 +2132,7 @@ extern "C" Q_EXPORT refexport_t* QDECL GetRefAPI(int apiVersion, refimport_t *ri
 	G2EX(StopBoneAnimIndex);
 	G2EX(StopBoneAngles);
 	G2EX(StopBoneAnglesIndex);
+	G2EX(SetTintType);
 #ifdef _G2_GORE
 	G2EX(AddSkinGore);
 	G2EX(ClearSkinGore);

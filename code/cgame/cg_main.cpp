@@ -65,7 +65,6 @@ Ghoul2 Insert End
 
 void CG_LoadHudMenu(void);
 int inv_icons[INV_MAX];
-int dp_inv_icons[INV_MAX];
 const char *inv_names[] =
 {
 "ELECTROBINOCULARS",
@@ -86,7 +85,7 @@ const char *inv_names[] =
 };
 
 int	force_icons[NUM_FORCE_POWERS];
-int	DP_force_icons[NUM_FORCE_POWERS];
+
 
 void CG_DrawDataPadHUD( centity_t *cent );
 void CG_DrawDataPadObjectives(const centity_t *cent );
@@ -228,19 +227,6 @@ int					cg_numpermanents = 0;
 weaponInfo_t		cg_weapons[MAX_WEAPONS];
 itemInfo_t			cg_items[MAX_ITEMS];
 
-extern void trap_R_FontRatioFix(float ratio);
-static void CG_Set2DRatio(void) {
-	if (r_ratioFix.integer)
-		cgs.widthRatioCoef = (float)(SCREEN_WIDTH * cgs.glconfig.vidHeight) / (float)(SCREEN_HEIGHT * cgs.glconfig.vidWidth);
-	else
-		cgs.widthRatioCoef = 1.0f;
-
-	if (r_ratioFix.integer == 2)
-		trap_R_FontRatioFix(1.0f);
-	else
-		trap_R_FontRatioFix(cgs.widthRatioCoef);
-}
-
 typedef struct {
 	qboolean		registered;		// Has the player picked it up
 	qboolean		active;			// Is it the chosen inventory item
@@ -278,11 +264,8 @@ vmCvar_t	cg_drawHUD;
 vmCvar_t	cg_debugAnim;
 #ifndef FINAL_BUILD
 vmCvar_t	cg_debugAnimTarget;
-//DT EDIT: Ghoul2 viewmodels - START
-//vmCvar_t	cg_gun_frame;
-#endif
 vmCvar_t	cg_gun_frame;
-//DT EDIT: Ghoul2 viewmodels - END
+#endif
 vmCvar_t	cg_gun_x;
 vmCvar_t	cg_gun_y;
 vmCvar_t	cg_gun_z;
@@ -357,8 +340,6 @@ vmCvar_t	cg_fovViewmodel;
 vmCvar_t	cg_fovViewmodelAdjust;
 
 vmCvar_t	cg_scaleVehicleSensitivity;
-
-vmCvar_t	r_ratioFix;
 
 vmCvar_t	cg_SFXSabers;
 vmCvar_t	cg_SFXSabersGlowSize;
@@ -506,8 +487,6 @@ static cvarTable_t cvarTable[] = {
 	{ &cg_fovViewmodelAdjust, "cg_fovViewmodelAdjust", "1", CVAR_ARCHIVE },
 
 	{ &cg_scaleVehicleSensitivity, "cg_scaleVehicleSensitivity", "1", CVAR_ARCHIVE },
-
-	{ &r_ratioFix, "r_ratioFix", "1", CVAR_ARCHIVE },
 	
 	{ &cg_SFXSabers,	"cg_SFXSabers",	"1", CVAR_ARCHIVE },
 	{ &cg_SFXSabersGlowSize,	"cg_SFXSabersGlowSize",	"1.0", CVAR_ARCHIVE },
@@ -554,11 +533,6 @@ void CG_RegisterCvars( void ) {
 
 	for ( i=0, cv=cvarTable; i<cvarTableSize; i++, cv++ ) {
 		cgi_Cvar_Register( cv->vmCvar, cv->cvarName, cv->defaultString, cv->cvarFlags );
-		if (!Q_stricmp(cv->cvarName, "r_ratioFix"))
-		{
-			cgi_Cvar_Update(cv->vmCvar);
-			CG_Set2DRatio();
-		}
 	}
 }
 
@@ -574,9 +548,6 @@ void CG_UpdateCvars( void ) {
 	for ( i=0, cv=cvarTable; i<cvarTableSize; i++, cv++ ) {
 		if ( cv->vmCvar ) {
 			cgi_Cvar_Update( cv->vmCvar );
-			if (!Q_stricmp(cv->cvarName, "r_ratioFix")) {
-				CG_Set2DRatio();
-			}
 		}
 	}
 }
@@ -3577,7 +3548,7 @@ void CG_DrawInventorySelect( void )
 
 	// Left side ICONS
 	// Work backwards from current icon
-	holdX = x - ((bigIconSize/2) + pad + smallIconSize)*cgs.widthRatioCoef;
+	holdX = x - ((bigIconSize/2) + pad + smallIconSize);
 	//height = smallIconSize * cg.iconHUDPercent;
 	addX = (float) smallIconSize * .75;
 
@@ -3598,13 +3569,13 @@ void CG_DrawInventorySelect( void )
 		if (inv_icons[i])
 		{
 			cgi_R_SetColor(NULL);
-			CG_DrawPic( holdX, y+10, smallIconSize*cgs.widthRatioCoef, smallIconSize, inv_icons[i] );
+			CG_DrawPic( holdX, y+10, smallIconSize, smallIconSize, inv_icons[i] );
 
 			cgi_R_SetColor(colorTable[CT_ICON_BLUE]);
-			CG_DrawNumField (holdX + addX, y + smallIconSize, 2*cgs.widthRatioCoef, cg.snap->ps.inventory[i], 6, 12,
+			CG_DrawNumField (holdX + addX, y + smallIconSize, 2, cg.snap->ps.inventory[i], 6, 12,
 				NUM_FONT_SMALL,qfalse);
 
-			holdX -= (smallIconSize+pad)*cgs.widthRatioCoef;
+			holdX -= (smallIconSize+pad);
 		}
 	}
 
@@ -3613,10 +3584,10 @@ void CG_DrawInventorySelect( void )
 	if (inv_icons[cg.inventorySelect])
 	{
 		cgi_R_SetColor(NULL);
-		CG_DrawPic( x-(bigIconSize*cgs.widthRatioCoef/2), (y-((bigIconSize-smallIconSize)/2))+10, bigIconSize*cgs.widthRatioCoef, bigIconSize, inv_icons[cg.inventorySelect] );
+		CG_DrawPic( x-(bigIconSize/2), (y-((bigIconSize-smallIconSize)/2))+10, bigIconSize, bigIconSize, inv_icons[cg.inventorySelect] );
 		addX = (float) bigIconSize * .75;
 		cgi_R_SetColor(colorTable[CT_ICON_BLUE]);
-		CG_DrawNumField ((x-(bigIconSize*cgs.widthRatioCoef/2)) + addX, y, 2*cgs.widthRatioCoef, cg.snap->ps.inventory[cg.inventorySelect], 6, 12,
+		CG_DrawNumField ((x-(bigIconSize/2)) + addX, y, 2, cg.snap->ps.inventory[cg.inventorySelect], 6, 12,
 			NUM_FONT_SMALL,qfalse);
 
 		if (inv_names[cg.inventorySelect])
@@ -3660,7 +3631,7 @@ void CG_DrawInventorySelect( void )
 
 	// Right side ICONS
 	// Work forwards from current icon
-	holdX = x + ((bigIconSize/2) + pad)*cgs.widthRatioCoef;
+	holdX = x + (bigIconSize/2) + pad;
 	//height = smallIconSize * cg.iconHUDPercent;
 	addX = (float) smallIconSize * .75;
 	for (iconCnt=0;iconCnt<sideRightIconCnt;i++)
@@ -3680,13 +3651,13 @@ void CG_DrawInventorySelect( void )
 		if (inv_icons[i])
 		{
 			cgi_R_SetColor(NULL);
-			CG_DrawPic( holdX, y+10, smallIconSize*cgs.widthRatioCoef, smallIconSize, inv_icons[i] );
+			CG_DrawPic( holdX, y+10, smallIconSize, smallIconSize, inv_icons[i] );
 
 			cgi_R_SetColor(colorTable[CT_ICON_BLUE]);
-			CG_DrawNumField (holdX + addX, y + smallIconSize, 2*cgs.widthRatioCoef, cg.snap->ps.inventory[i], 6, 12,
+			CG_DrawNumField (holdX + addX, y + smallIconSize, 2, cg.snap->ps.inventory[i], 6, 12,
 				NUM_FONT_SMALL,qfalse);
 
-			holdX += (smallIconSize+pad)*cgs.widthRatioCoef;
+			holdX += (smallIconSize+pad);
 		}
 	}
 }
@@ -3727,7 +3698,7 @@ void CG_DrawDataPadInventorySelect( void )
 	count = 0;
 	for ( i = 0 ; i < INV_MAX ; i++ )
 	{
-		if (CG_InventorySelectable(i) && dp_inv_icons[i])
+		if (CG_InventorySelectable(i) && inv_icons[i])
 		{
 			count++;
 		}
@@ -3736,20 +3707,10 @@ void CG_DrawDataPadInventorySelect( void )
 
 	if (!count)
 	{
-		int messageYPosition = 200;
-
-		cgi_SP_GetStringTextString("SP_INGAME_EMPTY_INV", text, sizeof(text));
-		int messageXPosition = 310 - (cgi_R_Font_StrLenPixels(text, cgs.media.qhFontArimob, 0.35f) / 2);
-
-		cgi_R_Font_DrawString(
-			messageXPosition,
-			messageYPosition,
-			text,
-			colorTable[CT_HUD_GREEN],
-			cgs.media.qhFontArimob,
-			-1,
-			0.35f);
-
+		cgi_SP_GetStringTextString("SP_INGAME_EMPTY_INV",text, sizeof(text) );
+		int w = cgi_R_Font_StrLenPixels( text, cgs.media.qhFontSmall, 1.0f );
+		int x = ( SCREEN_WIDTH - w ) / 2;
+		CG_DrawProportionalString(x, 300 + 22, text, CG_CENTER | CG_SMALLFONT, colorTable[CT_ICON_BLUE]);
 		return;
 	}
 
@@ -3785,14 +3746,13 @@ void CG_DrawDataPadInventorySelect( void )
 	const int bigPad = 64;
 	const int pad = 32;
 
-	const int centerXPos = 312;
-	const int graphicYPos = 343;
-	const int centergraphicYPos = 333;
+	const int centerXPos = 320;
+	const int graphicYPos = 340;
 
 
 	// Left side ICONS
 	// Work backwards from current icon
-	holdX = centerXPos - ((bigIconSize/2) + bigPad + smallIconSize)*cgs.widthRatioCoef;
+	holdX = centerXPos - ((bigIconSize/2) + bigPad + smallIconSize);
 	//height = smallIconSize * cg.iconHUDPercent;
 	addX = (float) smallIconSize * .75;
 
@@ -3803,35 +3763,35 @@ void CG_DrawDataPadInventorySelect( void )
 			i = INV_MAX-1;
 		}
 
-		if ((!CG_InventorySelectable(i)) || (!dp_inv_icons[i]))
+		if ((!CG_InventorySelectable(i)) || (!inv_icons[i]))
 		{
 			continue;
 		}
 
 		++iconCnt;					// Good icon
 
-		if (dp_inv_icons[i])
+		if (inv_icons[i])
 		{
 			cgi_R_SetColor(colorTable[CT_WHITE]);
-			CG_DrawPic( holdX, graphicYPos+10, smallIconSize*cgs.widthRatioCoef, smallIconSize, dp_inv_icons[i] );
+			CG_DrawPic( holdX, graphicYPos+10, smallIconSize, smallIconSize, inv_icons[i] );
 
-			cgi_R_SetColor(colorTable[CT_HUD_GREEN]);
-			CG_DrawNumField (holdX + addX, graphicYPos - 2 + smallIconSize, 2*cgs.widthRatioCoef, cg.snap->ps.inventory[i], 6, 12,
+			cgi_R_SetColor(colorTable[CT_ICON_BLUE]);
+			CG_DrawNumField (holdX + addX, graphicYPos + smallIconSize, 2, cg.snap->ps.inventory[i], 6, 12,
 				NUM_FONT_SMALL,qfalse);
 
-			holdX -= (smallIconSize+pad)*cgs.widthRatioCoef;
+			holdX -= (smallIconSize+pad);
 		}
 	}
 
 	// Current Center Icon
 	//height = bigIconSize * cg.iconHUDPercent;
-	if (dp_inv_icons[cg.DataPadInventorySelect])
+	if (inv_icons[cg.DataPadInventorySelect])
 	{
 		cgi_R_SetColor(colorTable[CT_WHITE]);
-		CG_DrawPic( centerXPos-(bigIconSize*cgs.widthRatioCoef/2), (centergraphicYPos-((bigIconSize-smallIconSize)/2))+10, bigIconSize*cgs.widthRatioCoef, bigIconSize, dp_inv_icons[cg.DataPadInventorySelect] );
+		CG_DrawPic( centerXPos-(bigIconSize/2), (graphicYPos-((bigIconSize-smallIconSize)/2))+10, bigIconSize, bigIconSize, inv_icons[cg.DataPadInventorySelect] );
 		addX = (float) bigIconSize * .75;
-		cgi_R_SetColor(colorTable[CT_HUD_GREEN]);
-		CG_DrawNumField ((centerXPos-(bigIconSize*cgs.widthRatioCoef/2)) + addX, centergraphicYPos, 2*cgs.widthRatioCoef, cg.snap->ps.inventory[cg.DataPadInventorySelect], 6, 12,
+		cgi_R_SetColor(colorTable[CT_ICON_BLUE]);
+		CG_DrawNumField ((centerXPos-(bigIconSize/2)) + addX, graphicYPos, 2, cg.snap->ps.inventory[cg.DataPadInventorySelect], 6, 12,
 			NUM_FONT_SMALL,qfalse);
 
 	}
@@ -3844,7 +3804,7 @@ void CG_DrawDataPadInventorySelect( void )
 
 	// Right side ICONS
 	// Work forwards from current icon
-	holdX = centerXPos + ((bigIconSize/2) + bigPad)*cgs.widthRatioCoef;
+	holdX = centerXPos + (bigIconSize/2) + bigPad;
 	//height = smallIconSize * cg.iconHUDPercent;
 	addX = (float) smallIconSize * .75;
 	for (iconCnt=0;iconCnt<sideRightIconCnt;i++)
@@ -3854,23 +3814,23 @@ void CG_DrawDataPadInventorySelect( void )
 			i = 0;
 		}
 
-		if ((!CG_InventorySelectable(i)) || (!dp_inv_icons[i]))
+		if ((!CG_InventorySelectable(i)) || (!inv_icons[i]))
 		{
 			continue;
 		}
 
 		++iconCnt;					// Good icon
 
-		if (dp_inv_icons[i])
+		if (inv_icons[i])
 		{
 			cgi_R_SetColor(colorTable[CT_WHITE]);
-			CG_DrawPic( holdX, graphicYPos+3, smallIconSize*cgs.widthRatioCoef, smallIconSize, dp_inv_icons[i] );
+			CG_DrawPic( holdX, graphicYPos+10, smallIconSize, smallIconSize, inv_icons[i] );
 
-			cgi_R_SetColor(colorTable[CT_HUD_GREEN]);
-			CG_DrawNumField (holdX + addX, graphicYPos - 2 + smallIconSize, 2*cgs.widthRatioCoef, cg.snap->ps.inventory[i], 6, 12,
+			cgi_R_SetColor(colorTable[CT_ICON_BLUE]);
+			CG_DrawNumField (holdX + addX, graphicYPos + smallIconSize, 2, cg.snap->ps.inventory[i], 6, 12,
 				NUM_FONT_SMALL,qfalse);
 
-			holdX += (smallIconSize+pad)*cgs.widthRatioCoef;
+			holdX += (smallIconSize+pad);
 		}
 	}
 
@@ -4201,7 +4161,7 @@ void CG_DrawForceSelect( void )
 
 	cgi_R_SetColor(NULL);
 	// Work backwards from current icon
-	holdX = x - ((bigIconSize/2) + pad + smallIconSize)*cgs.widthRatioCoef;
+	holdX = x - ((bigIconSize/2) + pad + smallIconSize);
 	for (iconCnt=1;iconCnt<(sideLeftIconCnt+1);i--)
 	{
 		if (i < 0)
@@ -4218,15 +4178,15 @@ void CG_DrawForceSelect( void )
 
 		if (force_icons[showPowers[i]])
 		{
-			CG_DrawPic( holdX, y + yOffset, smallIconSize*cgs.widthRatioCoef, smallIconSize, force_icons[showPowers[i]] );
-			holdX -= (smallIconSize+pad)*cgs.widthRatioCoef;
+			CG_DrawPic( holdX, y + yOffset, smallIconSize, smallIconSize, force_icons[showPowers[i]] );
+			holdX -= (smallIconSize+pad);
 		}
 	}
 
 	// Current Center Icon
 	if (force_icons[showPowers[cg.forcepowerSelect]])
 	{
-		CG_DrawPic( x-(bigIconSize/2), (y-((bigIconSize-smallIconSize)/2)) + yOffset, bigIconSize*cgs.widthRatioCoef, bigIconSize, force_icons[showPowers[cg.forcepowerSelect]] );
+		CG_DrawPic( x-(bigIconSize/2), (y-((bigIconSize-smallIconSize)/2)) + yOffset, bigIconSize, bigIconSize, force_icons[showPowers[cg.forcepowerSelect]] );
 	}
 
 
@@ -4237,7 +4197,7 @@ void CG_DrawForceSelect( void )
 	}
 
 	// Work forwards from current icon
-	holdX = x + ((bigIconSize/2) + pad)*cgs.widthRatioCoef;
+	holdX = x + (bigIconSize/2) + pad;
 	for (iconCnt=1;iconCnt<(sideRightIconCnt+1);i++)
 	{
 		if (i>=MAX_SHOWPOWERS)
@@ -4254,8 +4214,8 @@ void CG_DrawForceSelect( void )
 
 		if (force_icons[showPowers[i]])
 		{
-			CG_DrawPic( holdX, y + yOffset, smallIconSize*cgs.widthRatioCoef, smallIconSize, force_icons[showPowers[i]] );
-			holdX += (smallIconSize+pad)*cgs.widthRatioCoef;
+			CG_DrawPic( holdX, y + yOffset, smallIconSize, smallIconSize, force_icons[showPowers[i]] );
+			holdX += (smallIconSize+pad);
 		}
 	}
 
@@ -4546,9 +4506,8 @@ void CG_DrawDataPadForceSelect( void )
 	const int bigPad = 64;
 	const int pad = 32;
 
-	const int centerXPos = 312;
-	const int graphicYPos = 343;
-	const int centergraphicYPos = 333;
+	const int centerXPos = 320;
+	const int graphicYPos = 340;
 
 	i = cg.DataPadforcepowerSelect - 1;
 	if (i < 0)
@@ -4560,7 +4519,7 @@ void CG_DrawDataPadForceSelect( void )
 
 	cgi_R_SetColor(colorTable[CT_WHITE]);
 	// Work backwards from current icon
-	holdX = centerXPos - ((bigIconSize/2) + bigPad + smallIconSize)*cgs.widthRatioCoef;
+	holdX = centerXPos - ((bigIconSize/2) + bigPad + smallIconSize);
 	for (iconCnt=1;iconCnt<(sideLeftIconCnt+1);i--)
 	{
 		if (i < 0)
@@ -4575,9 +4534,9 @@ void CG_DrawDataPadForceSelect( void )
 
 		++iconCnt;					// Good icon
 
-		if (DP_force_icons[showDataPadPowers[i]])
+		if (force_icons[showDataPadPowers[i]])
 		{
-			CG_DrawPic( holdX, graphicYPos, smallIconSize*cgs.widthRatioCoef, smallIconSize, DP_force_icons[showDataPadPowers[i]] );
+			CG_DrawPic( holdX, graphicYPos, smallIconSize, smallIconSize, force_icons[showDataPadPowers[i]] );
 		}
 
 		// A new force power
@@ -4585,28 +4544,28 @@ void CG_DrawDataPadForceSelect( void )
 			((cg_updatedDataPadForcePower2.integer - 1) == showDataPadPowers[i]) ||
 			((cg_updatedDataPadForcePower3.integer - 1) == showDataPadPowers[i]))
 		{
-			CG_DrawPic( holdX, graphicYPos, smallIconSize*cgs.widthRatioCoef, smallIconSize, cgs.media.DPForcePowerOverlay );
+			CG_DrawPic( holdX, graphicYPos, smallIconSize, smallIconSize, cgs.media.DPForcePowerOverlay );
 		}
 
-		if (DP_force_icons[showDataPadPowers[i]])
+		if (force_icons[showDataPadPowers[i]])
 		{
-			holdX -= (smallIconSize+pad)*cgs.widthRatioCoef;
+			holdX -= (smallIconSize+pad);
 		}
 	}
 
 	// Current Center Icon
-	if (DP_force_icons[showDataPadPowers[cg.DataPadforcepowerSelect]])
+	if (force_icons[showDataPadPowers[cg.DataPadforcepowerSelect]])
 	{
 
 		cgi_R_SetColor(colorTable[CT_WHITE]);
-		CG_DrawPic( centerXPos-(bigIconSize*cgs.widthRatioCoef/2), (centergraphicYPos-((bigIconSize-smallIconSize)/2)), bigIconSize*cgs.widthRatioCoef, bigIconSize, DP_force_icons[showDataPadPowers[cg.DataPadforcepowerSelect]] );
+		CG_DrawPic( centerXPos-(bigIconSize/2), (graphicYPos-((bigIconSize-smallIconSize)/2)), bigIconSize, bigIconSize, force_icons[showDataPadPowers[cg.DataPadforcepowerSelect]] );
 
 		// New force power
 		if (((cg_updatedDataPadForcePower1.integer - 1) == showDataPadPowers[cg.DataPadforcepowerSelect]) ||
 			((cg_updatedDataPadForcePower2.integer - 1) == showDataPadPowers[cg.DataPadforcepowerSelect]) ||
 			((cg_updatedDataPadForcePower3.integer - 1) == showDataPadPowers[cg.DataPadforcepowerSelect]))
 		{
-			CG_DrawPic( centerXPos-(bigIconSize*cgs.widthRatioCoef/2), (centergraphicYPos-((bigIconSize-smallIconSize)/2)), bigIconSize*cgs.widthRatioCoef, bigIconSize, cgs.media.DPForcePowerOverlay );
+			CG_DrawPic( centerXPos-(bigIconSize/2), (graphicYPos-((bigIconSize-smallIconSize)/2)), bigIconSize, bigIconSize, cgs.media.DPForcePowerOverlay );
 		}
 	}
 
@@ -4620,7 +4579,7 @@ void CG_DrawDataPadForceSelect( void )
 	cgi_R_SetColor(colorTable[CT_WHITE]);
 
 	// Work forwards from current icon
-	holdX = centerXPos + ((bigIconSize/2) + bigPad)*cgs.widthRatioCoef;
+	holdX = centerXPos + (bigIconSize/2) + bigPad;
 	for (iconCnt=1;iconCnt<(sideRightIconCnt+1);i++)
 	{
 		if (i>=MAX_DPSHOWPOWERS)
@@ -4635,9 +4594,9 @@ void CG_DrawDataPadForceSelect( void )
 
 		++iconCnt;					// Good icon
 
-		if (DP_force_icons[showDataPadPowers[i]])
+		if (force_icons[showDataPadPowers[i]])
 		{
-			CG_DrawPic( holdX, graphicYPos, smallIconSize*cgs.widthRatioCoef, smallIconSize, DP_force_icons[showDataPadPowers[i]] );
+			CG_DrawPic( holdX, graphicYPos, smallIconSize, smallIconSize, force_icons[showDataPadPowers[i]] );
 		}
 
 		// A new force power
@@ -4645,12 +4604,12 @@ void CG_DrawDataPadForceSelect( void )
 			((cg_updatedDataPadForcePower2.integer - 1) == showDataPadPowers[i]) ||
 			((cg_updatedDataPadForcePower3.integer - 1) == showDataPadPowers[i]))
 		{
-			CG_DrawPic( holdX, graphicYPos, smallIconSize*cgs.widthRatioCoef, smallIconSize, cgs.media.DPForcePowerOverlay );
+			CG_DrawPic( holdX, graphicYPos, smallIconSize, smallIconSize, cgs.media.DPForcePowerOverlay );
 		}
 
-		if (DP_force_icons[showDataPadPowers[i]])
+		if (force_icons[showDataPadPowers[i]])
 		{
-			holdX += (smallIconSize+pad)*cgs.widthRatioCoef;
+			holdX += (smallIconSize+pad);
 		}
 	}
 

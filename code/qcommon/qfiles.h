@@ -274,14 +274,14 @@ typedef struct {
 } mdrFrame_t;
 
 typedef struct {
-	unsigned char Comp[24]; // MC_COMP_BYTES is in MatComp.h, but don't want to couple
+        unsigned char Comp[24]; // MC_COMP_BYTES is in MatComp.h, but don't want to couple
 } mdrCompBone_t;
 
 typedef struct {
-	vec3_t          bounds[2];		// bounds of all surfaces of all LOD's for this frame
-	vec3_t          localOrigin;		// midpoint of bounds, used for sphere cull
-	float           radius;			// dist from localOrigin to corner
-	mdrCompBone_t   bones[1];		// [numBones]
+        vec3_t          bounds[2];		// bounds of all surfaces of all LOD's for this frame
+        vec3_t          localOrigin;		// midpoint of bounds, used for sphere cull
+        float           radius;			// dist from localOrigin to corner
+        mdrCompBone_t   bones[1];		// [numBones]
 } mdrCompFrame_t;
 
 typedef struct {
@@ -291,8 +291,8 @@ typedef struct {
 } mdrLOD_t;
 
 typedef struct {
-	int                     boneIndex;
-	char            name[32];
+        int                     boneIndex;
+        char            name[32];
 } mdrTag_t;
 
 typedef struct {
@@ -547,10 +547,9 @@ typedef enum //# hunkAllocType_e
 #define GLYPH_COUNT			256
 
 // Must match define in stmparse.h
-#define STYLE_DROPSHADOWDARK	0x80000000
-#define STYLE_DROPSHADOW		0x40000000
-#define STYLE_BLINK				0x20000000
-#define	SET_MASK				0x00ffffff
+#define STYLE_DROPSHADOW	0x80000000
+#define STYLE_BLINK			0x40000000
+#define	SET_MASK			0x00ffffff
 
 typedef struct
 {

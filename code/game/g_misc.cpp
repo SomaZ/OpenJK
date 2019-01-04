@@ -188,7 +188,6 @@ void SP_light( gentity_t *self ) {
 	misc_lightstyle_set (self);
 }
 
-// "light" uses this, not misc_dlight.
 void misc_dlight_use ( gentity_t *ent, gentity_t *other, gentity_t *activator )
 {
 	G_ActivateBehavior(ent,BSET_USE);
@@ -1087,7 +1086,7 @@ void SP_misc_dlight(gentity_t *ent)
 	ent->radius *= 1000;
 
 	//FIXME: attach self to a train or something?
-	ent->e_UseFunc = useF_misc_dlight_ent_use;
+	ent->e_UseFunc = useF_misc_dlight_use;
 
 	ent->misc_dlight_active = qfalse;
 	ent->e_clThinkFunc = clThinkF_NULL;
@@ -1106,7 +1105,7 @@ void SP_misc_dlight(gentity_t *ent)
 	}
 }
 
-void misc_dlight_ent_use ( gentity_t *ent, gentity_t *other, gentity_t *activator )
+void misc_dlight_use_old ( gentity_t *ent, gentity_t *other, gentity_t *activator )
 {
 	G_ActivateBehavior(ent,BSET_USE);
 

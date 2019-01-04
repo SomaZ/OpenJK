@@ -6061,21 +6061,6 @@ void PM_TorsoAnimation( void )
 						}
 					}
 					break;
-				//DT EDIT: DF2 - START - Added Gamorrean weapon
-				case WP_GAMORREAN_AXE:
-					if (PM_RunningAnim(pm->ps->legsAnim)
-						|| PM_WalkingAnim(pm->ps->legsAnim)
-						|| PM_JumpingAnim(pm->ps->legsAnim)
-						|| PM_SwimmingAnim(pm->ps->legsAnim))
-					{//running w/1-handed weapon uses full-body anim
-						PM_SetAnim(pm, SETANIM_TORSO, pm->ps->legsAnim, SETANIM_FLAG_NORMAL);
-					}
-					else
-					{
-						PM_SetAnim(pm, SETANIM_TORSO, BOTH_STAND9, SETANIM_FLAG_NORMAL);
-					}
-					break;
-				//DT EDIT: DF2 - END
 				case WP_TUSKEN_STAFF:
 					if ( PM_RunningAnim( pm->ps->legsAnim )
 						|| PM_WalkingAnim( pm->ps->legsAnim )
@@ -6399,21 +6384,7 @@ void PM_TorsoAnimation( void )
 						}
 					}
 					break;
-				//DT EDIT: DF2 - START - Added Gamorrean weapon
-				case WP_GAMORREAN_AXE:
-					if (PM_RunningAnim(pm->ps->legsAnim)
-						|| PM_WalkingAnim(pm->ps->legsAnim)
-						|| PM_JumpingAnim(pm->ps->legsAnim)
-						|| PM_SwimmingAnim(pm->ps->legsAnim))
-					{//running w/1-handed weapon uses full-body anim
-						PM_SetAnim(pm, SETANIM_TORSO, pm->ps->legsAnim, SETANIM_FLAG_NORMAL);
-					}
-					else
-					{
-						PM_SetAnim(pm, SETANIM_TORSO, BOTH_STAND9, SETANIM_FLAG_NORMAL);
-					}
-					break;
-				//DT EDIT: DF2 - END
+
 				case WP_TUSKEN_STAFF:
 					if ( PM_RunningAnim( pm->ps->legsAnim )
 						|| PM_WalkingAnim( pm->ps->legsAnim )

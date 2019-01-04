@@ -1620,7 +1620,7 @@ int RE_Font_HeightPixels(const int iFontHandle, const float fScale)
 
 // iMaxPixelWidth is -1 for "all of string", else pixel display count...
 //
-void RE_Font_DrawString(int ox, int oy, const char *psText, const float *rgba, const int iFontHandle, int iMaxPixelWidth, const float fScale)
+void RE_Font_DrawString(int ox, int oy, const char *psText, const float *rgba, const int iFontHandle, int iMaxPixelWidth, const float fScale, const float fAspectCorrection)
 {
 	// HAAAAAAAAAAAAAAAX..fix me please --eez
 #ifdef JK2_MODE
@@ -1854,18 +1854,6 @@ void RE_Font_DrawString(int ox, int oy, const char *psText, const float *rgba, c
 
 		gbInShadow = qtrue;
 		RE_Font_DrawString(ox + offset * fontRatioFix, oy + offset, psText, v4DKGREY2, iFontHandle & SET_MASK, iMaxPixelWidth, fScale);
-		gbInShadow = qfalse;
-	}
-
-	// Draw a dark dropshadow if required
-	if (iFontHandle & STYLE_DROPSHADOWDARK)
-	{
-		offset = Round(curfont->GetPointSize() * fScale * 0.075f);
-
-		const vec4_t v4BLACK = { 0.00f, 0.00f, 0.00f, rgba ? rgba[3] : 1.0f };
-
-		gbInShadow = qtrue;
-		RE_Font_DrawString(ox + offset, oy + offset, psText, v4BLACK, iFontHandle & SET_MASK, iMaxPixelWidth, fScale);
 		gbInShadow = qfalse;
 	}
 

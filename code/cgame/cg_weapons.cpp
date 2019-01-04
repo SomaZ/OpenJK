@@ -44,9 +44,6 @@ const char *CG_DisplayBoxedText(int iBoxX, int iBoxY, int iBoxWidth, int iBoxHei
 								const vec4_t v4Color);
 void CG_LoadViewmodelAnimations (CGhoul2Info* ghl2, const char *modelName, viewModelAnimSet_t* ptAnims);
 
-//DT EDIT: Ghoul2 viewmodels - START
-void CG_LoadViewmodelAnimations(CGhoul2Info* ghl2, const char *modelName, viewModelAnimSet_t* ptAnims);
-
 /*
 =================
 CG_RegisterWeapon
@@ -54,7 +51,7 @@ CG_RegisterWeapon
 The server says this item is used on this level
 =================
 */
-void CG_RegisterWeapon(int weaponNum) {
+void CG_RegisterWeapon( int weaponNum ) {
 	weaponInfo_t	*weaponInfo;
 	gitem_t			*item, *ammo;
 	char			path[MAX_QPATH];
@@ -64,40 +61,30 @@ void CG_RegisterWeapon(int weaponNum) {
 	weaponInfo = &cg_weapons[weaponNum];
 
 	// error checking
-	if (weaponNum == 0) {
+	if ( weaponNum == 0 ) {
 		return;
 	}
 
-	if (weaponNum >= WP_NUM_WEAPONS) {
-		return;
-	}
-
-	if (weaponInfo->registered) {
+	if ( weaponInfo->registered ) {
 		return;
 	}
 
 	// clear out the memory we use
-	memset(weaponInfo, 0, sizeof(*weaponInfo));
+	memset( weaponInfo, 0, sizeof( *weaponInfo ) );
 	weaponInfo->registered = qtrue;
 
 	// find the weapon in the item list
-	for (item = bg_itemlist + 1; item->classname; item++) {
-		if (item->giType == IT_WEAPON && item->giTag == weaponNum) {
+	for ( item = bg_itemlist + 1 ; item->classname ; item++ ) {
+		if ( item->giType == IT_WEAPON && item->giTag == weaponNum ) {
 			weaponInfo->item = item;
 			break;
 		}
 	}
 	// if we couldn't find which weapon this is, give us an error
-	if (!item->classname) {
-		CG_Error("Couldn't find item for weapon %s\nNeed to update Items.dat!", weaponData[weaponNum].classname);
+	if ( !item->classname ) {
+		CG_Error( "Couldn't find item for weapon %s\nNeed to update Items.dat!", weaponData[weaponNum].classname);
 	}
-	CG_RegisterItemVisuals(item - bg_itemlist);
-	Q_strncpyz(path, weaponData[weaponNum].weaponMdl, sizeof(path));
-	// Detect model type
-	const char* test = &path[strlen(path) - 4];
-	if (!Q_stricmp(test, ".glm")) {
-		weaponInfo->bUsesGhoul2 = true;
-	}
+	CG_RegisterItemVisuals( item - bg_itemlist );
 
 	
 	Q_strncpyz( path, weaponData[weaponNum].weaponMdl, sizeof(path) );
@@ -1959,14 +1946,13 @@ void CG_DrawDataPadWeaponSelect( void )
 	const int bigPad = 64;
 	const int pad = 32;
 
-	const int centerXPos = 312;
-	const int graphicYPos = 343;
-	const int centergraphicYPos = 333;
+	const int centerXPos = 320;
+	const int graphicYPos = 340;
 
 
 	// Left side ICONS
 	// Work backwards from current icon
-	holdX = centerXPos - ((bigIconSize/2) + bigPad + smallIconSize)*cgs.widthRatioCoef;
+	holdX = centerXPos - ((bigIconSize/2) + bigPad + smallIconSize);
 
 	cgi_R_SetColor( colorTable[CT_WHITE] );
 	for (iconCnt=1;iconCnt<(sideLeftIconCnt+1);weaponSelectI--)
@@ -1985,7 +1971,7 @@ void CG_DrawDataPadWeaponSelect( void )
 			weaponSelectI = WP_NUM_WEAPONS - 1;
 		}
 
-		if ( !(weaponBitFlag & ( 1 << weaponSelectI )))	// Does he have this weapon?
+		if ( !(cg.snap->ps.weapons[weaponSelectI]))	// Does he have this weapon?
 		{
 			if ( weaponSelectI == WP_CONCUSSION )
 			{
@@ -2005,14 +1991,14 @@ void CG_DrawDataPadWeaponSelect( void )
 
 			if (!CG_WeaponCheck(weaponSelectI))
 			{
-				CG_DrawPic( holdX, graphicYPos, smallIconSize*cgs.widthRatioCoef, smallIconSize, weaponInfo->weaponIconNoAmmo );
+				CG_DrawPic( holdX, graphicYPos, smallIconSize, smallIconSize, weaponInfo->weaponIconNoAmmo );
 			}
 			else
 			{
-				CG_DrawPic( holdX, graphicYPos, smallIconSize*cgs.widthRatioCoef, smallIconSize, weaponInfo->weaponIcon );
+				CG_DrawPic( holdX, graphicYPos, smallIconSize, smallIconSize, weaponInfo->weaponIcon );
 			}
 
-			holdX -= (smallIconSize + pad)*cgs.widthRatioCoef;
+			holdX -= (smallIconSize+pad);
 		}
 
 		if ( weaponSelectI == WP_CONCUSSION )
@@ -2034,11 +2020,11 @@ void CG_DrawDataPadWeaponSelect( void )
 			// Draw graphic to show weapon has ammo or no ammo
 		if (!CG_WeaponCheck(cg.DataPadWeaponSelect))
 		{
-			CG_DrawPic( centerXPos-(bigIconSize*cgs.widthRatioCoef/2), (centergraphicYPos-((bigIconSize-smallIconSize)/2))+10, bigIconSize*cgs.widthRatioCoef, bigIconSize, weaponInfo->weaponIconNoAmmo );
+			CG_DrawPic( centerXPos-(bigIconSize/2), (graphicYPos-((bigIconSize-smallIconSize)/2))+10, bigIconSize, bigIconSize, weaponInfo->weaponIconNoAmmo );
 		}
 		else
 		{
-			CG_DrawPic( centerXPos-(bigIconSize*cgs.widthRatioCoef/2), (centergraphicYPos-((bigIconSize-smallIconSize)/2))+10, bigIconSize*cgs.widthRatioCoef, bigIconSize, weaponInfo->weaponIcon);
+			CG_DrawPic( centerXPos-(bigIconSize/2), (graphicYPos-((bigIconSize-smallIconSize)/2))+10, bigIconSize, bigIconSize, weaponInfo->weaponIcon );
 		}
 	}
 
@@ -2059,7 +2045,7 @@ void CG_DrawDataPadWeaponSelect( void )
 	// Right side ICONS
 	// Work forwards from current icon
 	cgi_R_SetColor(colorTable[CT_WHITE]);
-	holdX = centerXPos + ((bigIconSize/2) + bigPad)*cgs.widthRatioCoef;
+	holdX = centerXPos + (bigIconSize/2) + bigPad;
 	for (iconCnt=1;iconCnt<(sideRightIconCnt+1);weaponSelectI++)
 	{
 		if ( weaponSelectI == WP_CONCUSSION )
@@ -2096,14 +2082,15 @@ void CG_DrawDataPadWeaponSelect( void )
 			// Draw graphic to show weapon has ammo or no ammo
 			if (!CG_WeaponCheck(i))
 			{
-				CG_DrawPic( holdX, graphicYPos, smallIconSize*cgs.widthRatioCoef, smallIconSize, weaponInfo->weaponIconNoAmmo);
+				CG_DrawPic( holdX, graphicYPos, smallIconSize, smallIconSize, weaponInfo->weaponIconNoAmmo );
 			}
 			else
 			{
-				CG_DrawPic( holdX, graphicYPos, smallIconSize*cgs.widthRatioCoef, smallIconSize, weaponInfo->weaponIcon);
+				CG_DrawPic( holdX, graphicYPos, smallIconSize, smallIconSize, weaponInfo->weaponIcon );
 			}
 
-			holdX += (smallIconSize + pad)*cgs.widthRatioCoef;
+
+			holdX += (smallIconSize+pad);
 		}
 		if ( weaponSelectI == WP_CONCUSSION )
 		{
@@ -2120,11 +2107,11 @@ void CG_DrawDataPadWeaponSelect( void )
 
 	if (text[0])
 	{
-		const short textboxXPos = 35;
-		const short textboxYPos = 85;
-		const int	textboxWidth = 540;
+		const short textboxXPos = 40;
+		const short textboxYPos = 60;
+		const int	textboxWidth = 560;
 		const int	textboxHeight = 300;
-		const float	textScale = 0.35f;
+		const float	textScale = 1.0f;
 
 		CG_DisplayBoxedText(
 			textboxXPos, textboxYPos,
@@ -2366,14 +2353,14 @@ void CG_DrawWeaponSelect( void )
 
 			if (!CG_WeaponCheck(i))
 			{
-				CG_DrawPic( holdX, y+10+yOffset, smallIconSize*cgs.widthRatioCoef, smallIconSize, weaponInfo->weaponIconNoAmmo );
+				CG_DrawPic( holdX, y+10+yOffset, smallIconSize, smallIconSize, weaponInfo->weaponIconNoAmmo );
 			}
 			else
 			{
-				CG_DrawPic( holdX, y+10+yOffset, smallIconSize*cgs.widthRatioCoef, smallIconSize, weaponInfo->weaponIcon );
+				CG_DrawPic( holdX, y+10+yOffset, smallIconSize, smallIconSize, weaponInfo->weaponIcon );
 			}
 
-			holdX -= (smallIconSize+pad)*cgs.widthRatioCoef;
+			holdX -= (smallIconSize+pad);
 		}
 		if ( i == WP_CONCUSSION )
 		{
@@ -2393,11 +2380,11 @@ void CG_DrawWeaponSelect( void )
 
 		if (!CG_WeaponCheck(cg.weaponSelect))
 		{
-			CG_DrawPic( x-(bigIconSize*cgs.widthRatioCoef /2), (y-((bigIconSize-smallIconSize)/2))+10+yOffset, bigIconSize*cgs.widthRatioCoef, bigIconSize, weaponInfo->weaponIconNoAmmo );
+			CG_DrawPic( x-(bigIconSize/2), (y-((bigIconSize-smallIconSize)/2))+10+yOffset, bigIconSize, bigIconSize, weaponInfo->weaponIconNoAmmo );
 		}
 		else
 		{
-			CG_DrawPic( x-(bigIconSize*cgs.widthRatioCoef /2), (y-((bigIconSize-smallIconSize)/2))+10+yOffset, bigIconSize*cgs.widthRatioCoef, bigIconSize, weaponInfo->weaponIcon );
+			CG_DrawPic( x-(bigIconSize/2), (y-((bigIconSize-smallIconSize)/2))+10+yOffset, bigIconSize, bigIconSize, weaponInfo->weaponIcon );
 		}
 	}
 
@@ -2417,7 +2404,7 @@ void CG_DrawWeaponSelect( void )
 	// Right side ICONS
 	// Work forwards from current icon
 	cgi_R_SetColor( calcColor);
-	holdX = x + ((bigIconSize/2) + pad)*cgs.widthRatioCoef;
+	holdX = x + (bigIconSize/2) + pad;
 	//height = smallIconSize * cg.iconHUDPercent;
 	drewConc = qfalse;
 	for (iconCnt=1;iconCnt<(sideRightIconCnt+1);i++)
@@ -2467,15 +2454,15 @@ void CG_DrawWeaponSelect( void )
 			// No ammo for this weapon?
 			if (!CG_WeaponCheck(i))
 			{
-				CG_DrawPic( holdX, y+10+yOffset, smallIconSize*cgs.widthRatioCoef, smallIconSize, weaponInfo->weaponIconNoAmmo );
+				CG_DrawPic( holdX, y+10+yOffset, smallIconSize, smallIconSize, weaponInfo->weaponIconNoAmmo );
 			}
 			else
 			{
-				CG_DrawPic( holdX, y+10+yOffset, smallIconSize*cgs.widthRatioCoef, smallIconSize, weaponInfo->weaponIcon );
+				CG_DrawPic( holdX, y+10+yOffset, smallIconSize, smallIconSize, weaponInfo->weaponIcon );
 			}
 
 
-			holdX += (smallIconSize+pad)*cgs.widthRatioCoef;
+			holdX += (smallIconSize+pad);
 		}
 		if ( i == WP_CONCUSSION )
 		{
