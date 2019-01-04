@@ -1946,7 +1946,7 @@ GetRefAPI
 
 @@@@@@@@@@@@@@@@@@@@@
 */
-extern void R_LoadImage( const char *shortname, byte **pic, int *width, int *height, int *depth);
+extern void R_LoadImage( const char *shortname, byte **pic, int *width, int *height, int *bppc);
 extern void R_WorldEffectCommand(const char *command);
 extern qboolean R_inPVS( vec3_t p1, vec3_t p2 );
 extern void RE_GetModelBounds(refEntity_t *refEnt, vec3_t bounds1, vec3_t bounds2);

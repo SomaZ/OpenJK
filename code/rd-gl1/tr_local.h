@@ -1836,7 +1836,7 @@ qboolean	RE_InitDissolve(qboolean bForceCircularExtroWipe);
 
 
 long generateHashValue( const char *fname );
-void R_LoadImage( const char *name, byte **pic, int *width, int *height, int *depth );
+void R_LoadImage( const char *name, byte **pic, int *width, int *height, int *bppc );
 void		RE_InsertModelIntoHash(const char *name, model_t *mod);
 qboolean R_FogParmsMatch( int fog1, int fog2 );
 

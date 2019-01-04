@@ -77,15 +77,15 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 #define RF_FORCE_ENT_ALPHA	0x800000 // override shader alpha settings
 
 // refdef flags
-#define RDF_NOWORLDMODEL	1		// used for player configuration screen
-#define RDF_HYPERSPACE		4		// teleportation effect
+#define RDF_NOWORLDMODEL	0x00001		// used for player configuration screen
+#define RDF_HYPERSPACE		0x00004		// teleportation effect
 
-#define RDF_SKYBOXPORTAL	8
-#define RDF_DRAWSKYBOX		16		// the above marks a scene as being a 'portal sky'.  this flag says to draw it or not
+#define RDF_SKYBOXPORTAL	0x00008
+#define RDF_DRAWSKYBOX		0x00010		// the above marks a scene as being a 'portal sky'.  this flag says to draw it or not
 
-#define RDF_doLAGoggles		32		// Light Amp goggles
-#define RDF_doFullbright	64		// Light Amp goggles
-#define RDF_ForceSightOn	128		// using force sight
+#define RDF_doLAGoggles		0x00020		// Light Amp goggles
+#define RDF_doFullbright	0x00040		// Light Amp goggles
+#define RDF_ForceSightOn	0x00080		// using force sight
 
 typedef enum
 {

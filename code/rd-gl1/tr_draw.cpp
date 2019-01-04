@@ -310,9 +310,9 @@ byte* RE_TempRawImage_ReadFromFile(const char *psLocalFilename, int *piWidth, in
 
 	if (psLocalFilename && piWidth && piHeight)
 	{
-		int	 iLoadedWidth, iLoadedHeight, iLoadedDepth;
+		int	 iLoadedWidth, iLoadedHeight, iLoadedBitsPerPixelComponent;
 
-		R_LoadImage( psLocalFilename, &pbLoadedPic, &iLoadedWidth, &iLoadedHeight, &iLoadedDepth);
+		R_LoadImage( psLocalFilename, &pbLoadedPic, &iLoadedWidth, &iLoadedHeight, &iLoadedBitsPerPixelComponent);
 		if ( pbLoadedPic )
 		{
 			pbReturn = RE_ReSample(	pbLoadedPic,		iLoadedWidth,	iLoadedHeight,

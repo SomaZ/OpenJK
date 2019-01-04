@@ -343,14 +343,14 @@ static	void R_LoadLightmaps( world_t *worldData, lump_t *l, lump_t *surfs ) {
 			float *hdrL = NULL;
 			int lightmapWidth = tr.lightmapSize;
 			int lightmapHeight = tr.lightmapSize;
-			int depth;
+			int bppc;
 
 			// look for hdr lightmaps
 			if (r_hdr->integer)
 			{
 				Com_sprintf( filename, sizeof( filename ), "maps/%s/lm_%04d.hdr", worldData->baseName, i * (tr.worldDeluxeMapping ? 2 : 1) );
 				//ri.Printf(PRINT_ALL, "looking for %s\n", filename);
-				R_LoadImage(filename, &hdrLightmap, &lightmapWidth, &lightmapHeight, &depth);
+				R_LoadImage(filename, &hdrLightmap, &lightmapWidth, &lightmapHeight, &bppc);
 				
 				if (hdrLightmap)
 				{

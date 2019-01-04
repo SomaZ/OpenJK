@@ -2621,7 +2621,7 @@ void R_CreateDiffuseAndSpecMapsFromBaseColorAndRMO(shaderStage_t *stage, const c
 {
 	char	diffuseName[MAX_QPATH];
 	char	specularName[MAX_QPATH];
-	int		width, height, depth, rmoWidth, rmoHeight, rmoDepth;
+	int		width, height, bppc, rmoWidth, rmoHeight, rmoBppc;
 	byte	*rmoPic, *baseColorPic, *specGlossPic, *diffusePic;
 	image_t *image;
 
@@ -2655,12 +2655,12 @@ void R_CreateDiffuseAndSpecMapsFromBaseColorAndRMO(shaderStage_t *stage, const c
 	//
 	// load the pics from disk
 	//
-	R_LoadImage(name, &baseColorPic, &width, &height, &depth);
+	R_LoadImage(name, &baseColorPic, &width, &height, &bppc);
 	if (baseColorPic == NULL) {
 		return;
 	}
 
-	R_LoadImage(rmoName, &rmoPic, &rmoWidth, &rmoHeight, &rmoDepth);
+	R_LoadImage(rmoName, &rmoPic, &rmoWidth, &rmoHeight, &rmoBppc);
 	if (rmoPic == NULL) {
 		R_Free(baseColorPic);
 		return;
@@ -2751,8 +2751,8 @@ void R_CreateDiffuseAndSpecMapsFromBaseColorAndRMO(shaderStage_t *stage, const c
 		specGlossPic[i + 3] = FloatToByte(gloss);
 	}
 
-	stage->bundle[TB_COLORMAP].image[0] = R_CreateImage(diffuseName, diffusePic, width, height, depth, IMGTYPE_COLORALPHA, flags, 0);
-	stage->bundle[TB_SPECULARMAP].image[0] = R_CreateImage(specularName, specGlossPic, width, height, depth, IMGTYPE_COLORALPHA, flags, 0);
+	stage->bundle[TB_COLORMAP].image[0] = R_CreateImage(diffuseName, diffusePic, width, height, bppc, IMGTYPE_COLORALPHA, flags, 0);
+	stage->bundle[TB_SPECULARMAP].image[0] = R_CreateImage(specularName, specGlossPic, width, height, bppc, IMGTYPE_COLORALPHA, flags, 0);
 
 	R_Free(diffusePic);
 	R_Free(specGlossPic);
@@ -2876,7 +2876,7 @@ Returns NULL if it fails, not a default image.
 image_t	*R_FindImageFile(const char *name, imgType_t type, int flags)
 {
 	image_t	*image;
-	int		width, height, depth;
+	int		width, height, bppc;
 	byte	*pic;
 
 	if (!name) {
@@ -2889,7 +2889,7 @@ image_t	*R_FindImageFile(const char *name, imgType_t type, int flags)
 	//
 	// load the pic from disk
 	//
-	R_LoadImage(name, &pic, &width, &height, &depth);
+	R_LoadImage(name, &pic, &width, &height, &bppc);
 	if (pic == NULL) {
 		return NULL;
 	}
@@ -2901,7 +2901,7 @@ image_t	*R_FindImageFile(const char *name, imgType_t type, int flags)
 		R_CreateNormalMap(name, pic, width, height, flags);
 	}
 
-	image = R_CreateImage(name, pic, width, height, depth, type, flags, 0);
+	image = R_CreateImage(name, pic, width, height, bppc, type, flags, 0);
 	R_Free(pic);
 
 	return image;
@@ -2915,13 +2915,13 @@ R_CreateDlightImage
 */
 #define	DLIGHT_SIZE	16
 static void R_CreateDlightImage(void) {
-	int		width, height, depth;
+	int		width, height, bppc;
 	byte	*pic;
 
-	R_LoadImage("gfx/2d/dlight", &pic, &width, &height, &depth);
+	R_LoadImage("gfx/2d/dlight", &pic, &width, &height, &bppc);
 	if (pic)
 	{
-		tr.dlightImage = R_CreateImage("*dlight", pic, width, height, depth, IMGTYPE_COLORALPHA, IMGFLAG_NO_COMPRESSION | IMGFLAG_CLAMPTOEDGE, 0);
+		tr.dlightImage = R_CreateImage("*dlight", pic, width, height, bppc, IMGTYPE_COLORALPHA, IMGFLAG_NO_COMPRESSION | IMGFLAG_CLAMPTOEDGE, 0);
 		R_Free(pic);
 	}
 	else
@@ -2950,7 +2950,7 @@ static void R_CreateDlightImage(void) {
 				data[y][x][3] = 255;
 			}
 		}
-		tr.dlightImage = R_CreateImage("*dlight", (byte *)data, DLIGHT_SIZE, DLIGHT_SIZE, depth, IMGTYPE_COLORALPHA, IMGFLAG_NO_COMPRESSION | IMGFLAG_CLAMPTOEDGE, 0);
+		tr.dlightImage = R_CreateImage("*dlight", (byte *)data, DLIGHT_SIZE, DLIGHT_SIZE, bppc, IMGTYPE_COLORALPHA, IMGFLAG_NO_COMPRESSION | IMGFLAG_CLAMPTOEDGE, 0);
 	}
 }
 

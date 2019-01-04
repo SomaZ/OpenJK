@@ -2204,7 +2204,7 @@ void R_RenderDlightCubemaps(const refdef_t *fd)
 {
 	int i;
 
-	unsigned int bufferDlightMask = tr.refdef.dlightMask;
+	//unsigned int bufferDlightMask = tr.refdef.dlightMask;
 
 	for (i = 0; i < tr.refdef.num_dlights; i++)
 	{
@@ -2212,8 +2212,8 @@ void R_RenderDlightCubemaps(const refdef_t *fd)
 		int j;
 
 		// use previous frame to determine visible dlights
-		if ((1 << i) & bufferDlightMask)
-			continue;
+		//if ((1 << i) & bufferDlightMask)
+			//continue;
 
 		Com_Memset( &shadowParms, 0, sizeof( shadowParms ) );
 
