@@ -740,7 +740,7 @@ SOFTWARE.
 
 	previous = clamp(previous, currentMin, currentMax);
 
-	float temp = clamp(1.0 - (length(velocity) * 0.1), 0.0, 1.0);
+	float temp = clamp(32.0 * (1.0 - (length(velocity) * 0.1)), 0.0, 1.0);
 
 	specularOut		= mix(current, previous, temp);
 	diffuseOut.rgb	= specularOut.rgb * (specularAndGloss.rgb * EnvBRDF.x + EnvBRDF.y);

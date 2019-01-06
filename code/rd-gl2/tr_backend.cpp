@@ -1137,8 +1137,14 @@ static Pass *RB_CreatePass( Allocator& allocator, int capacity )
 
 void RB_StoreFrameImage()
 {
+	if ((backEnd.viewParms.flags & VPF_DEPTHSHADOW) ||
+		(backEnd.refdef.rdflags & RDF_NOWORLDMODEL) ||
+		(backEnd.refdef.rdflags & RDF_SKYBOXPORTAL) ||
+		(tr.shadowCubeFbo != NULL && backEnd.viewParms.targetFbo == tr.shadowCubeFbo))
+		return;
+
 	//store image for use in next frame, used for ssr and refraction rendering
-	if ((r_refraction->integer || r_ssr->integer) && !(backEnd.refdef.rdflags & RDF_SKYBOXPORTAL))
+	if (r_refraction->integer || r_ssr->integer)
 	{
 		FBO_t *srcFbo;
 
@@ -2414,9 +2420,9 @@ static void RB_RenderAllDepthRelatedPasses(drawSurf_t *drawSurfs, int numDrawSur
 
 void RB_RenderAllRealTimeLightTypes()
 {
-
 	if ((backEnd.viewParms.flags & VPF_DEPTHSHADOW) || 
 		(backEnd.refdef.rdflags & RDF_NOWORLDMODEL) ||
+		(backEnd.refdef.rdflags & RDF_SKYBOXPORTAL) ||
 		(tr.shadowCubeFbo != NULL && backEnd.viewParms.targetFbo == tr.shadowCubeFbo))
 		return;
 
@@ -2478,7 +2484,7 @@ void RB_RenderAllRealTimeLightTypes()
 		GLSL_SetUniformVec3(sp, UNIFORM_VIEWUP, viewBasis[2]);
 		GLSL_SetUniformVec3(sp, UNIFORM_VIEWORIGIN, backEnd.viewParms.ori.origin);
 		
-		vec4_t viewInfo = { 1.f / (float)tr.preSSRImage[0]->width, 1.f / (float)tr.preSSRImage[0]->height, Q_flrand(1.0f, 3.0f), tr.frameCount % 32 };
+		vec4_t viewInfo = { 1.f / (float)tr.preSSRImage[0]->width, 1.f / (float)tr.preSSRImage[0]->height, Q_flrand(1.0f, 3.0f), float(tr.frameCount % 32) };
 		GLSL_SetUniformVec4(sp, UNIFORM_VIEWINFO, viewInfo);
 		
 		matrix_t invModelViewMatrix;
@@ -2496,7 +2502,7 @@ void RB_RenderAllRealTimeLightTypes()
 		GLSL_SetUniformMatrix4x4(sp, UNIFORM_MODELVIEWPROJECTIONMATRIX, backEnd.viewParms.world.modelViewMatrix);
 		qglViewport(0, 0, tr.preSSRImage[0]->width , tr.preSSRImage[0]->height);
 		qglScissor(0, 0, tr.preSSRImage[0]->width, tr.preSSRImage[0]->height);
-		//qglDrawElementsInstanced(GL_TRIANGLES, 3, GL_UNSIGNED_INT, 0, 1);
+
 		qglDrawArrays(GL_TRIANGLES, 0, 3);
 		qglViewport(0, 0, tr.renderImage->width, tr.renderImage->height);
 		qglScissor(0, 0, tr.renderImage->width, tr.renderImage->height);
@@ -2524,7 +2530,6 @@ void RB_RenderAllRealTimeLightTypes()
 		GLSL_SetUniformMatrix4x4(sp, UNIFORM_MODELVIEWPROJECTIONMATRIX, backEnd.viewParms.world.modelViewMatrix);
 
 		qglDrawArrays(GL_TRIANGLES, 0, 3);
-		//qglDrawElementsInstanced(GL_TRIANGLES, 3, GL_UNSIGNED_INT, 0, 1);
 
 		// temporal filter
 		FBO_Bind(tr.preLightFbo[PRELIGHT_TEMP_FBO]);
@@ -2538,7 +2543,7 @@ void RB_RenderAllRealTimeLightTypes()
 
 		if (tr.envBrdfImage != NULL)
 			GL_BindToTMU(tr.envBrdfImage, 7);
-		//qglDrawElementsInstanced(GL_TRIANGLES, 3, GL_UNSIGNED_INT, 0, 1);
+
 		qglDrawArrays(GL_TRIANGLES, 0, 3);
 		FBO_Bind(tr.preLightFbo[PRELIGHT_DIFFUSE_FBO]);
 		qglClear(GL_COLOR_BUFFER_BIT);
@@ -2981,6 +2986,12 @@ static const void	*RB_SwapBuffers( const void *data ) {
 
 void RB_StoreFrameData() {
 
+	if ((backEnd.viewParms.flags & VPF_DEPTHSHADOW) ||
+		(backEnd.refdef.rdflags & RDF_NOWORLDMODEL) ||
+		(backEnd.refdef.rdflags & RDF_SKYBOXPORTAL) ||
+		(tr.shadowCubeFbo != NULL && backEnd.viewParms.targetFbo == tr.shadowCubeFbo))
+		return;
+
 	// finish any 2D drawing if needed
 	if (tess.numIndexes) {
 		RB_EndSurface();
@@ -3039,6 +3050,9 @@ void RB_StoreFrameData() {
 
 	FBO_Bind(tr.refractiveFbo);
 	qglFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, tr.prevRenderImage->texnum, 0);
+
+	qglViewport(0, 0, tr.renderImage->width, tr.renderImage->height);
+	qglScissor(0, 0, tr.renderImage->width, tr.renderImage->height);
 }
 
 /*
@@ -3103,7 +3117,7 @@ const void *RB_PostProcess(const void *data)
 		FBO_Blit(tr.screenSsaoFbo, srcBox, NULL, srcFbo, dstBox, NULL, NULL, GLS_SRCBLEND_DST_COLOR | GLS_DSTBLEND_ZERO);
 	}
 
-	if (r_ssr->integer && !(backEnd.refdef.rdflags & RDF_SKYBOXPORTAL))
+	if (r_ssr->integer)
 		RB_StoreFrameData();
 
 	if (r_dynamicGlow->integer)

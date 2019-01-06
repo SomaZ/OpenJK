@@ -1038,7 +1038,10 @@ void FBO_FastBlitIndexed(FBO_t *src, FBO_t *dst, int srcReadBuffer, int dstDrawB
 	                      0, 0, dst->width, dst->height,
 						  buffers, filter);
 
+	qglBindFramebuffer(GL_READ_FRAMEBUFFER, src->frameBuffer);
 	qglReadBuffer (GL_COLOR_ATTACHMENT0);
+	qglBindFramebuffer(GL_DRAW_FRAMEBUFFER, dst->frameBuffer);
+	qglDrawBuffer(GL_COLOR_ATTACHMENT0);
 
 	glState.currentFBO = dst;
 	FBO_SetupDrawBuffers();
