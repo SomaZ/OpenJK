@@ -112,7 +112,7 @@ static void ClearGlobalShader(void)
 		VectorSet4(stages[i].normalScale, 0.0f, 0.0f, 0.0f, 0.0f);
 		stages[i].specularScale[0] =
 		stages[i].specularScale[1] =
-		stages[i].specularScale[2] = pow(r_baseSpecular->value, (1.0f/2.2f));
+		stages[i].specularScale[2] = sRGBtoRGB(r_baseSpecular->value);
 		stages[i].specularScale[3] = r_baseGloss->value;
 
 	}

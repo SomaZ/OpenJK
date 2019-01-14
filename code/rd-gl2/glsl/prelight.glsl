@@ -75,7 +75,7 @@ uniform sampler2D u_ScreenOffsetMap;
 uniform sampler2D u_ScreenOffsetMap2;
 uniform sampler2D u_EnvBrdfMap;
 
-#if defined(TEMPORAL_FILTER)
+#if defined(TEMPORAL_FILTER) || defined(SSR_RESOLVE)
 uniform sampler2D u_ShadowMap;
 #endif
 
@@ -555,7 +555,14 @@ float luma(vec3 color)
 	return dot(color, vec3(0.299, 0.587, 0.114));
 }
 
-vec4 resolveSSRRay(in sampler2D packedTexture, in ivec2 coordinate, in vec3 viewPos, in vec3 viewNormal, in vec3 specular, in float roughness, inout vec4 weightSum)
+vec4 resolveSSRRay(	in sampler2D packedTexture, 
+					in ivec2 coordinate,
+					in sampler2D velocityTexture, 
+					in vec3 viewPos, 
+					in vec3 viewNormal, 
+					in vec3 specular, 
+					in float roughness, 
+					inout vec4 weightSum)
 {
 	const vec2 bufferScale = 2.0 / r_FBufScale;
 
@@ -581,7 +588,8 @@ vec4 resolveSSRRay(in sampler2D packedTexture, in ivec2 coordinate, in vec3 view
 	float intersectionCircleRadius = coneTangent * distance(packedHitPos.xy * bufferScale, coordinate);
 	float mip = clamp(log2( intersectionCircleRadius ), 0.0, 4.0);
 
-	vec4 diffuseSample = textureLod(u_ScreenImageMap, packedHitPos.xy, mip);
+	vec2 velocity		= texture(velocityTexture, packedHitPos.xy).rg;
+	vec4 diffuseSample	= textureLod(u_ScreenImageMap, packedHitPos.xy - velocity, mip);
 
 	diffuseSample.rgb *= diffuseSample.rgb;
 	diffuseSample.a = packedHitPos.w;
@@ -603,19 +611,20 @@ void main()
 	ivec2 windowCoord = ivec2(gl_FragCoord.xy);
 
 #if defined(SSR)
-	float depth = texelFetch(u_ScreenDepthMap, windowCoord, 1).r;
-	if (depth == 1.0)
-		discard;
-	vec3 position = WorldPosFromDepth(depth, windowCoord * u_ViewInfo.xy);
-	vec3 normal = texelFetch(u_NormalMap, windowCoord, 1).rgb;
+	vec2 coord = windowCoord * u_ViewInfo.xy;
+	float depth = texture(u_ScreenDepthMap, coord).r;
+	vec3 position = WorldPosFromDepth(depth, coord );
+	vec3 normal = texture(u_NormalMap, coord).rgb;
+	vec4 specularAndGloss = texture(u_SpecularMap, coord);
 	windowCoord *= 2;
 #else
-	float depth = texelFetch(u_ScreenDepthMap, windowCoord, 0).r;
-	vec3 position = WorldPosFromDepth(depth, gl_FragCoord.xy * r_FBufScale);
-	vec3 normal = texelFetch(u_NormalMap, windowCoord, 0).rgb;
+	vec2 coord = gl_FragCoord.xy * r_FBufScale;
+	float depth = texture(u_ScreenDepthMap, coord).r;
+	vec3 position = WorldPosFromDepth(depth, coord);
+	vec3 normal = texture(u_NormalMap, coord).rgb;
+	vec4 specularAndGloss = texture(u_SpecularMap, coord);
 #endif	
 	
-	vec4 specularAndGloss = texelFetch(u_SpecularMap, windowCoord, 0);
 	float roughness = 1.0 - specularAndGloss.a;
 	specularAndGloss.rgb *= specularAndGloss.rgb;
 
@@ -627,11 +636,16 @@ void main()
 	vec4 specularOut = vec4(0.0, 0.0, 0.0, 0.0);
 
 #if defined(SSR)
-	diffuseOut = traceSSRRay( roughness, N, position, gl_FragCoord.xy * u_ViewInfo.xy, u_ViewInfo.w);
+	if (depth < 1.0)
+	{
+		diffuseOut = traceSSRRay( roughness, N, position, gl_FragCoord.xy * u_ViewInfo.xy, u_ViewInfo.w);
 
-	#if defined(TWO_RAYS_PER_PIXEL)
-		specularOut = traceSSRRay( roughness, N, position, gl_FragCoord.xy * u_ViewInfo.xy, u_ViewInfo.w + 13.7);
-	#endif
+		#if defined(TWO_RAYS_PER_PIXEL)
+			specularOut = traceSSRRay( roughness, N, position, gl_FragCoord.xy * u_ViewInfo.xy, u_ViewInfo.w + 13.7);
+		#endif
+	}
+	else
+		discard;
 
 #elif defined(SSR_RESOLVE)
 	vec3 viewNormal = normalize(mat3(u_NormalMatrix) * N);
@@ -667,10 +681,10 @@ void main()
 		offsetUV *= rotationMat;
 		ivec2 neighborUV = ivec2(windowCoord + offsetUV);
 
-		diffuseOut += resolveSSRRay(u_ScreenOffsetMap, neighborUV, viewPos, viewNormal, specularAndGloss.rgb, roughness, weightSum);
+		diffuseOut += resolveSSRRay(u_ScreenOffsetMap, neighborUV, u_ShadowMap, viewPos, viewNormal, specularAndGloss.rgb, roughness, weightSum);
 
 		#if defined(TWO_RAYS_PER_PIXEL)
-			diffuseOut += resolveSSRRay(u_ScreenOffsetMap2, neighborUV, viewPos, viewNormal, specularAndGloss.rgb, roughness, weightSum);
+			diffuseOut += resolveSSRRay(u_ScreenOffsetMap2, neighborUV, u_ShadowMap, viewPos, viewNormal, specularAndGloss.rgb, roughness, weightSum);
 		#endif
 	}
 
@@ -712,10 +726,11 @@ SOFTWARE.
 
 	ivec2 uv = windowCoord;
 
-	vec2 velocity = texelFetch(u_ShadowMap, uv, 0).xy / r_FBufScale;
-	uv -= ivec2(velocity);
-	
 	vec4 current = texelFetch(u_ScreenImageMap, uv, 0);
+
+	vec2 velocity = texelFetch(u_ShadowMap, uv, 0).xy * vec2(1.0, -1.0);;
+	uv -= ivec2(velocity);
+
 	vec4 previous = texelFetch(u_ScreenOffsetMap, uv, 0);
 
 	ivec2 du = ivec2(1.0,	0.0);
@@ -740,7 +755,7 @@ SOFTWARE.
 
 	previous = clamp(previous, currentMin, currentMax);
 
-	float temp = clamp(32.0 * (1.0 - (length(velocity) * 0.1)), 0.0, 1.0);
+	float temp = clamp(0.96875 * (1.0 - (length(velocity / r_FBufScale) * 0.1)), 0.0, 1.0);
 
 	specularOut		= mix(current, previous, temp);
 	diffuseOut.rgb	= specularOut.rgb * (specularAndGloss.rgb * EnvBRDF.x + EnvBRDF.y);

@@ -1168,7 +1168,7 @@ void RB_StoreFrameImage()
 
 		FBO_FastBlitIndexed(tr.renderFbo, tr.refractiveFbo, 0, 0, GL_COLOR_BUFFER_BIT, GL_LINEAR);
 
-		if (r_ssr->integer)
+		if (0)//r_ssr->integer)
 		{
 			FBO_Bind(NULL);
 			GL_SelectTexture(TB_COLORMAP);
