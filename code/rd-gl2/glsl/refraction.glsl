@@ -394,9 +394,9 @@ void main()
 	{
 		vec2 windowCoord = gl_FragCoord.xy * r_FBufScale;
 
-		refractColor.r = texture(u_ScreenImageMap, windowCoord + n.xy * etaR).r;
-		refractColor.g = texture(u_ScreenImageMap, windowCoord + n.xy * etaG).g;
-		refractColor.b = texture(u_ScreenImageMap, windowCoord + n.xy * etaB).b;
+		refractColor.r = texture(u_ScreenImageMap, clamp(windowCoord + n.xy * etaR * 0.5, 0.0, 1.0)).r;
+		refractColor.g = texture(u_ScreenImageMap, clamp(windowCoord + n.xy * etaG * 0.5, 0.0, 1.0)).g;
+		refractColor.b = texture(u_ScreenImageMap, clamp(windowCoord + n.xy * etaB * 0.5, 0.0, 1.0)).b;
 
 		alpha = u_ViewInfo.w;
 	}

@@ -576,7 +576,6 @@ void G2_TransformModel(CGhoul2Info_v &ghoul2, const int frameNum, vec3_t scale, 
 
 #if defined(_G2_GORE)
 	qboolean		firstModelOnly = qfalse;
-#endif // _G2_GORE
 
 	if (cg_g2MarksAllModels == NULL)
 	{
@@ -589,7 +588,6 @@ void G2_TransformModel(CGhoul2Info_v &ghoul2, const int frameNum, vec3_t scale, 
 		firstModelOnly = qtrue;
 	}
 
-#ifdef _G2_GORE
 	if (gore
 		&& gore->firstModel > 0)
 	{
@@ -1563,7 +1561,6 @@ void G2_TraceModels(CGhoul2Info_v &ghoul2, vec3_t rayStart, vec3_t rayEnd, CColl
 	shader_t		*cust_shader;
 #if defined(_G2_GORE)
 	qboolean		firstModelOnly = qfalse;
-#endif
 	int				firstModel = 0;
 
 	if (cg_g2MarksAllModels == NULL)
@@ -1577,13 +1574,14 @@ void G2_TraceModels(CGhoul2Info_v &ghoul2, vec3_t rayStart, vec3_t rayEnd, CColl
 		firstModelOnly = qtrue;
 	}
 
-#ifdef _G2_GORE
 	if (gore
 		&& gore->firstModel > 0)
 	{
 		firstModel = gore->firstModel;
 		firstModelOnly = qfalse;
 	}
+#else
+	int firstModel = 0;
 #endif
 
 	// walk each possible model for this entity and try tracing against it
@@ -1631,6 +1629,7 @@ void G2_TraceModels(CGhoul2Info_v &ghoul2, vec3_t rayStart, vec3_t rayEnd, CColl
 
 		lod = G2_DecideTraceLod(g, useLod);
 
+#ifdef _G2_GORE
 		if (skipIfLODNotMatch)
 		{//we only want to hit this SPECIFIC LOD...
 			if (lod != useLod)
@@ -1638,6 +1637,7 @@ void G2_TraceModels(CGhoul2Info_v &ghoul2, vec3_t rayStart, vec3_t rayEnd, CColl
 				continue;
 			}
 		}
+#endif
 
 		//reset the quick surface override lookup
 		G2_FindOverrideSurface(-1, g.mSlist);

@@ -1065,7 +1065,7 @@ Returns NULL if it fails, not a default image.
 */
 image_t	*R_FindImageFile( const char *name, qboolean mipmap, qboolean allowPicmip, qboolean allowTC, int glWrapClampMode ) {
 	image_t	*image;
-	int		width, height;
+	int		width, height, bppc;
 	byte	*pic;
 
 	if (!name) {
@@ -1087,7 +1087,7 @@ image_t	*R_FindImageFile( const char *name, qboolean mipmap, qboolean allowPicmi
 	//
 	// load the pic from disk
 	//
-	R_LoadImage( name, &pic, &width, &height );
+	R_LoadImage( name, &pic, &width, &height, &bppc );
 	if ( !pic ) {
         return NULL;
 	}
@@ -1140,10 +1140,10 @@ static void R_CreateDlightImage( void )
 	}
 	tr.dlightImage = R_CreateImage("*dlight", (byte *)data, DLIGHT_SIZE, DLIGHT_SIZE, GL_RGBA, qfalse, qfalse, qfalse, GL_CLAMP );
 #else
-	int		width, height;
+	int		width, height, bppc;
 	byte	*pic;
 
-	R_LoadImage("gfx/2d/dlight", &pic, &width, &height);
+	R_LoadImage("gfx/2d/dlight", &pic, &width, &height, &bppc);
 	if (pic)
 	{
 		tr.dlightImage = R_CreateImage("*dlight", pic, width, height, GL_RGBA, qfalse, qfalse, qfalse, GL_CLAMP );

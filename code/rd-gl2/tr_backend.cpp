@@ -534,12 +534,16 @@ void RB_BeginDrawingView (void) {
 		// FIXME: hack for cubemap testing
 		if (tr.renderCubeFbo != NULL && backEnd.viewParms.targetFbo == tr.renderCubeFbo)
 		{
-			cubemap_t *cubemap = &backEnd.viewParms.cubemapSelection[backEnd.viewParms.targetFboCubemapIndex];
-			qglFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_CUBE_MAP_POSITIVE_X + backEnd.viewParms.targetFboLayer, cubemap->image->texnum, 0);
+			image_t *cubemap = backEnd.viewParms.cubemap->image;
+
+			if (r_cubeMapping->integer > 1)
+				cubemap = tr.renderCubeImage;
+
+			qglFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_CUBE_MAP_POSITIVE_X + backEnd.viewParms.targetFboLayer, cubemap->texnum, 0);
 		}
 		else if (tr.shadowCubeFbo != NULL && backEnd.viewParms.targetFbo == tr.shadowCubeFbo)
 		{
-			cubemap_t *cubemap = &backEnd.viewParms.cubemapSelection[backEnd.viewParms.targetFboCubemapIndex];
+			cubemap_t *cubemap = backEnd.viewParms.cubemap;
 			qglFramebufferTexture(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, cubemap->image->texnum, 0);
 		}
 	}
@@ -1137,8 +1141,14 @@ static Pass *RB_CreatePass( Allocator& allocator, int capacity )
 
 void RB_StoreFrameImage()
 {
+	if ((backEnd.viewParms.flags & VPF_DEPTHSHADOW) ||
+		(backEnd.refdef.rdflags & RDF_NOWORLDMODEL) ||
+		(backEnd.refdef.rdflags & RDF_SKYBOXPORTAL) ||
+		(tr.shadowCubeFbo != NULL && backEnd.viewParms.targetFbo == tr.shadowCubeFbo))
+		return;
+
 	//store image for use in next frame, used for ssr and refraction rendering
-	if ((r_refraction->integer || r_ssr->integer) && !(backEnd.refdef.rdflags & RDF_SKYBOXPORTAL))
+	if (r_refraction->integer || r_ssr->integer)
 	{
 		FBO_t *srcFbo;
 
@@ -1162,7 +1172,7 @@ void RB_StoreFrameImage()
 
 		FBO_FastBlitIndexed(tr.renderFbo, tr.refractiveFbo, 0, 0, GL_COLOR_BUFFER_BIT, GL_LINEAR);
 
-		if (r_ssr->integer)
+		if (0)//r_ssr->integer)
 		{
 			FBO_Bind(NULL);
 			GL_SelectTexture(TB_COLORMAP);
@@ -2022,10 +2032,43 @@ const void *RB_Scissor(const void *data)
 
 /*
 =============
+RB_ProjectCubeMap
+=============
+*/
+static const void *RB_ProjectCubeMap(const void *data) {
+
+	const projectCubemapCommand_t *cmd = (const projectCubemapCommand_t *)data;
+
+	// finish any 2D drawing if needed
+	if (tess.numIndexes)
+		RB_EndSurface();
+
+	RB_SetGL2D();
+
+	cubemap_t *cubemap = cmd->cubemap;
+
+	int width = cubemap->image->width;
+	int height = cubemap->image->height;
+	
+	FBO_Bind(tr.renderEquirectangularFbo);
+	qglFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, cubemap->image->texnum, 0);
+	qglViewport(0, 0, width, height);
+	qglScissor(0, 0, width, height);
+	GL_BindToTMU(tr.renderCubeImage, TB_CUBEMAP);
+	GLSL_BindProgram(&tr.equirectangularShader);
+	qglDrawArrays(GL_TRIANGLES, 0, 3);
+
+	qglViewport(0, 0, r_cubemapSize->integer, r_cubemapSize->integer);
+	qglScissor(0, 0, r_cubemapSize->integer, r_cubemapSize->integer);
+
+	return (const void *)(cmd + 1);
+}
+
+/*
+=============
 RB_PrefilterEnvMap
 =============
 */
-
 static const void *RB_PrefilterEnvMap(const void *data) {
 
 	const convolveCubemapCommand_t *cmd = (const convolveCubemapCommand_t *)data;
@@ -2036,13 +2079,14 @@ static const void *RB_PrefilterEnvMap(const void *data) {
 
 	RB_SetGL2D();
 
-	cubemap_t *cubemap = &cmd->cubemaps[cmd->cubemap];
+	cubemap_t *cubemap = cmd->cubemap;
 
 	if (!cubemap || !cmd)
 		return (const void *)(cmd + 1);
 
-	int cubeMipSize = cubemap->image->width;
+	int cubeMipSize = r_cubemapSize->integer;
 	int numMips = 0;
+	float numRoughnessMips = 0.0f;
 	
 	int width = cubemap->image->width;
 	int height = cubemap->image->height;
@@ -2052,28 +2096,34 @@ static const void *RB_PrefilterEnvMap(const void *data) {
 		cubeMipSize >>= 1;
 		numMips++;
 	}
-	numMips = MAX(1, numMips);
+	numRoughnessMips = MAX(1.0f, numMips - 4.0f);
 
 	FBO_Bind(tr.preFilterEnvMapFbo);
-	GL_BindToTMU(cubemap->image, TB_CUBEMAP);
+
+	if (r_cubeMapping->integer > 1)
+		GL_BindToTMU(tr.renderCubeImage, TB_CUBEMAP);
+	else
+		GL_BindToTMU(cubemap->image, TB_CUBEMAP);
 	
 	GLSL_BindProgram(&tr.prefilterEnvMapShader);
 
-	for (int level = 1; level <= numMips; level++) 
+	for (int level = 1; level <= numMips - 4; level++)
 	{
-		width = width / 2.0;
-		height = height / 2.0;
+		width = width / 2;
+		height = height / 2;
 		qglViewport(0, 0, width, height);
 		qglScissor(0, 0, width, height);
 
 		vec4_t viewInfo;
-		VectorSet4(viewInfo, cmd->cubeSide, level, numMips - 4, 0.0f);
+		VectorSet4(viewInfo, cmd->cubeSide, level, numRoughnessMips, level / numRoughnessMips);
 		GLSL_SetUniformVec4(&tr.prefilterEnvMapShader, UNIFORM_VIEWINFO, viewInfo);
-		RB_InstantScreenQuad();
-		qglCopyTexSubImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + cmd->cubeSide, level, 0, 0, 0, 0, width, height);
-	}
+		qglDrawArrays(GL_TRIANGLES, 0, 3);
 
-	GL_SelectTexture(0);
+		if (r_cubeMapping->integer > 1)
+			qglCopyTexSubImage2D(GL_COLOR_ATTACHMENT0, level, 0, 0, 0, 0, width, height);
+		else
+			qglCopyTexSubImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + cmd->cubeSide, level, 0, 0, 0, 0, width, height);
+	}
 
 	return (const void *)(cmd + 1);
 }
@@ -2215,17 +2265,17 @@ static void RB_RenderSSAO()
 
 	qglDrawArrays(GL_TRIANGLES, 0, 3);
 
-	/*FBO_Bind(tr.quarterFbo[1]);
+	FBO_Bind(tr.quarterFbo[1]);
 	GLSL_BindProgram(&tr.depthBlurShader[0]);
 	GL_BindToTMU(tr.quarterImage[0], TB_COLORMAP);
 	GL_BindToTMU(tr.hdrDepthImage, TB_LIGHTMAP);
-	VectorSet4(viewInfo, zmax / zmin, zmax, 1.0f, -1.0f );
+	VectorSet4(viewInfo, zmax / zmin, zmax, 2.0f, -2.0f );
 	GLSL_SetUniformVec4(&tr.depthBlurShader[0], UNIFORM_VIEWINFO, viewInfo);
 	qglDrawArrays(GL_TRIANGLES, 0, 3);
 
 	FBO_Bind(tr.quarterFbo[0]);
 	GL_BindToTMU(tr.quarterImage[1], TB_COLORMAP);
-	VectorSet4(viewInfo, zmax / zmin, zmax, 1.0f, 1.0f);
+	VectorSet4(viewInfo, zmax / zmin, zmax, 2.0f, 2.0f);
 	GLSL_SetUniformVec4(&tr.depthBlurShader[0], UNIFORM_VIEWINFO, viewInfo);
 	qglDrawArrays(GL_TRIANGLES, 0, 3);
 
@@ -2233,12 +2283,12 @@ static void RB_RenderSSAO()
 	GL_BindToTMU(tr.quarterImage[0], TB_COLORMAP);
 	VectorSet4(viewInfo, zmax / zmin, zmax, 1.0f, 0.0f);
 	GLSL_SetUniformVec4(&tr.depthBlurShader[0], UNIFORM_VIEWINFO, viewInfo);
-	qglDrawArrays(GL_TRIANGLES, 0, 3);*/
+	qglDrawArrays(GL_TRIANGLES, 0, 3);
 
 	GLSL_BindProgram(&tr.depthBlurShader[0]);
 
 	FBO_Bind(tr.screenSsaoFbo);
-	GL_BindToTMU(tr.quarterImage[0], TB_COLORMAP);
+	GL_BindToTMU(tr.quarterImage[1], TB_COLORMAP);
 	GL_BindToTMU(tr.hdrDepthImage, TB_LIGHTMAP);
 	VectorSet4(viewInfo, zmax / zmin, zmax, 0.0f, 1.0f);
 	GLSL_SetUniformVec4(&tr.depthBlurShader[0], UNIFORM_VIEWINFO, viewInfo);
@@ -2414,9 +2464,9 @@ static void RB_RenderAllDepthRelatedPasses(drawSurf_t *drawSurfs, int numDrawSur
 
 void RB_RenderAllRealTimeLightTypes()
 {
-
 	if ((backEnd.viewParms.flags & VPF_DEPTHSHADOW) || 
 		(backEnd.refdef.rdflags & RDF_NOWORLDMODEL) ||
+		(backEnd.refdef.rdflags & RDF_SKYBOXPORTAL) ||
 		(tr.shadowCubeFbo != NULL && backEnd.viewParms.targetFbo == tr.shadowCubeFbo))
 		return;
 
@@ -2431,6 +2481,11 @@ void RB_RenderAllRealTimeLightTypes()
 	qglClear(GL_COLOR_BUFFER_BIT);
 	FBO_Bind(tr.preLightFbo[PRELIGHT_PRE_SSR_FBO]);
 	qglClear(GL_COLOR_BUFFER_BIT);
+
+	// only compute lighting for non sky pixels
+	qglEnable(GL_STENCIL_TEST);
+	qglStencilFunc(GL_EQUAL, 1, 0xff);
+	qglStencilMask(0);
 
 	GL_DepthRange(0.0, 1.0);
 
@@ -2478,7 +2533,7 @@ void RB_RenderAllRealTimeLightTypes()
 		GLSL_SetUniformVec3(sp, UNIFORM_VIEWUP, viewBasis[2]);
 		GLSL_SetUniformVec3(sp, UNIFORM_VIEWORIGIN, backEnd.viewParms.ori.origin);
 		
-		vec4_t viewInfo = { 1.f / (float)tr.preSSRImage[0]->width, 1.f / (float)tr.preSSRImage[0]->height, Q_flrand(1.0f, 3.0f), tr.frameCount % 32 };
+		vec4_t viewInfo = { 1.f / (float)tr.preSSRImage[0]->width, 1.f / (float)tr.preSSRImage[0]->height, Q_flrand(1.0f, 3.0f), float(tr.frameCount % 32) };
 		GLSL_SetUniformVec4(sp, UNIFORM_VIEWINFO, viewInfo);
 		
 		matrix_t invModelViewMatrix;
@@ -2496,16 +2551,15 @@ void RB_RenderAllRealTimeLightTypes()
 		GLSL_SetUniformMatrix4x4(sp, UNIFORM_MODELVIEWPROJECTIONMATRIX, backEnd.viewParms.world.modelViewMatrix);
 		qglViewport(0, 0, tr.preSSRImage[0]->width , tr.preSSRImage[0]->height);
 		qglScissor(0, 0, tr.preSSRImage[0]->width, tr.preSSRImage[0]->height);
-		//qglDrawElementsInstanced(GL_TRIANGLES, 3, GL_UNSIGNED_INT, 0, 1);
+
 		qglDrawArrays(GL_TRIANGLES, 0, 3);
 		qglViewport(0, 0, tr.renderImage->width, tr.renderImage->height);
 		qglScissor(0, 0, tr.renderImage->width, tr.renderImage->height);
-		// only compute lighting for non sky pixels
-		qglEnable(GL_STENCIL_TEST);
-		qglStencilFunc(GL_EQUAL, 1, 0xff);
-		qglStencilMask(0);
+		
 
 		// ssr resolve
+		//GL_State(GLS_SRCBLEND_SRC_ALPHA | GLS_DSTBLEND_ONE_MINUS_SRC_ALPHA | GLS_DEPTHTEST_DISABLE);
+		GL_State(GLS_SRCBLEND_SRC_ALPHA | GLS_DSTBLEND_ONE_MINUS_SRC_ALPHA | GLS_DEPTHTEST_DISABLE);
 		FBO_Bind(tr.preLightFbo[PRELIGHT_DIFFUSE_FBO]);
 		GL_BindToTMU(tr.prevRenderImage, 0);
 		GL_BindToTMU(tr.preSSRImage[0], 4);
@@ -2524,13 +2578,16 @@ void RB_RenderAllRealTimeLightTypes()
 		GLSL_SetUniformMatrix4x4(sp, UNIFORM_MODELVIEWPROJECTIONMATRIX, backEnd.viewParms.world.modelViewMatrix);
 
 		qglDrawArrays(GL_TRIANGLES, 0, 3);
-		//qglDrawElementsInstanced(GL_TRIANGLES, 3, GL_UNSIGNED_INT, 0, 1);
 
 		// temporal filter
 		FBO_Bind(tr.preLightFbo[PRELIGHT_TEMP_FBO]);
 		//GL_State(GLS_SRCBLEND_ONE | GLS_DSTBLEND_SRC_ALPHA | GLS_DEPTHTEST_DISABLE);
+		//GL_State(GLS_SRCBLEND_SRC_ALPHA | GLS_DSTBLEND_ONE_MINUS_SRC_ALPHA | GLS_DEPTHTEST_DISABLE);
 		GL_BindToTMU(tr.diffuseLightingImage, 0);
-		GL_BindToTMU(tr.tempFilterBufferImage, 4);
+		GL_BindToTMU(tr.tempFilterBufferImage, 1);
+
+		GL_BindToTMU(tr.preSSRImage[0], 4);
+		GL_BindToTMU(tr.preSSRImage[1], 5);
 
 		index = PRELIGHT_TEMPORAL_FILTER;
 		sp = &tr.prelightShader[index];
@@ -2538,16 +2595,14 @@ void RB_RenderAllRealTimeLightTypes()
 
 		if (tr.envBrdfImage != NULL)
 			GL_BindToTMU(tr.envBrdfImage, 7);
-		//qglDrawElementsInstanced(GL_TRIANGLES, 3, GL_UNSIGNED_INT, 0, 1);
+
 		qglDrawArrays(GL_TRIANGLES, 0, 3);
 		FBO_Bind(tr.preLightFbo[PRELIGHT_DIFFUSE_FBO]);
 		qglClear(GL_COLOR_BUFFER_BIT);
-	}
 
-	// only compute lighting for non sky pixels
-	qglEnable(GL_STENCIL_TEST);
-	qglStencilFunc(GL_EQUAL, 1, 0xff);
-	qglStencilMask(0);
+		GL_BindToTMU(NULL, 4);
+		GL_BindToTMU(NULL, 5);
+	}
 
 	//render cubemaps where SSR  didn't render
 	//buggy! don't enable for now, finish when cubemap arrarys or bindless textures are available
@@ -2585,10 +2640,10 @@ void RB_RenderAllRealTimeLightTypes()
 		GLSL_SetUniformVec4(sp, UNIFORM_VIEWINFO, viewInfo);
 		GLSL_SetUniformVec3(sp, UNIFORM_VIEWORIGIN, backEnd.viewParms.ori.origin);
 		GLSL_SetUniformMatrix4x4(sp, UNIFORM_MODELVIEWPROJECTIONMATRIX, viewProjectionMatrix);
-
+		
 		matrix_t invProjectionMatrix;
 		Matrix16Inverse(viewProjectionMatrix, invProjectionMatrix);
-		
+
 		GLSL_SetUniformMatrix4x4(sp, UNIFORM_INVVIEWPROJECTIONMATRIX, invProjectionMatrix);
 
 		GLSL_SetUniformInt(sp, UNIFORM_NUMCUBEMAPS, numCubemaps);
@@ -2653,10 +2708,11 @@ void RB_RenderAllRealTimeLightTypes()
 	if (numDlights)
 	{
 		FBO_Bind(tr.preLightFbo[PRELIGHT_DIFFUSE_SPECULAR_FBO]);
-
+		GL_BindToTMU(tr.renderDepthImage, 1);
+		
 		vec4_t dlightTransforms[MAX_DLIGHTS];
 		vec3_t dlightColors[MAX_DLIGHTS];
-		
+
 		tess.useInternalVBO = qfalse;
 		R_BindVBO(tr.lightSphereVolume.vbo);
 		R_BindIBO(tr.lightSphereVolume.ibo);
@@ -2981,6 +3037,12 @@ static const void	*RB_SwapBuffers( const void *data ) {
 
 void RB_StoreFrameData() {
 
+	if ((backEnd.viewParms.flags & VPF_DEPTHSHADOW) ||
+		(backEnd.refdef.rdflags & RDF_NOWORLDMODEL) ||
+		(backEnd.refdef.rdflags & RDF_SKYBOXPORTAL) ||
+		(tr.shadowCubeFbo != NULL && backEnd.viewParms.targetFbo == tr.shadowCubeFbo))
+		return;
+
 	// finish any 2D drawing if needed
 	if (tess.numIndexes) {
 		RB_EndSurface();
@@ -2995,6 +3057,9 @@ void RB_StoreFrameData() {
 
 	//store viewProjectionMatrix for reprojecting
 	Matrix16Multiply(backEnd.viewParms.projectionMatrix, backEnd.ori.modelViewMatrix, tr.preViewProjectionMatrix);
+
+	//store renderDepth for reprojecting
+	//FBO_BlitFromTexture(tr.renderDepthImage, NULL, NULL, tr.prevDepthFbo, NULL, NULL, NULL, 0);
 
 	// build blured image buffer for ssr
 	int width = tr.renderImage->width;
@@ -3039,6 +3104,9 @@ void RB_StoreFrameData() {
 
 	FBO_Bind(tr.refractiveFbo);
 	qglFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, tr.prevRenderImage->texnum, 0);
+
+	qglViewport(0, 0, tr.renderImage->width, tr.renderImage->height);
+	qglScissor(0, 0, tr.renderImage->width, tr.renderImage->height);
 }
 
 /*
@@ -3103,7 +3171,7 @@ const void *RB_PostProcess(const void *data)
 		FBO_Blit(tr.screenSsaoFbo, srcBox, NULL, srcFbo, dstBox, NULL, NULL, GLS_SRCBLEND_DST_COLOR | GLS_DSTBLEND_ZERO);
 	}
 
-	if (r_ssr->integer && !(backEnd.refdef.rdflags & RDF_SKYBOXPORTAL))
+	if (r_ssr->integer)
 		RB_StoreFrameData();
 
 	if (r_dynamicGlow->integer)
@@ -3175,16 +3243,33 @@ const void *RB_PostProcess(const void *data)
 	if (0)
 	{
 		vec4i_t dstBox;
-		VectorSet4(dstBox, 0, glConfig.vidHeight - 256, 256, 256);
-		FBO_BlitFromTexture(tr.prevRenderImage, NULL, NULL, NULL, dstBox, NULL, NULL, 0);
 		VectorSet4(dstBox, 256, glConfig.vidHeight - 256, 256, 256);
-		FBO_BlitFromTexture(tr.normalBufferImage, NULL, NULL, NULL, dstBox, NULL, NULL, 0);
+		FBO_BlitFromTexture(tr.quarterImage[0], NULL, NULL, NULL, dstBox, NULL, NULL, 0);
+		VectorSet4(dstBox, 512, glConfig.vidHeight - 256, 256, 256);
+		FBO_BlitFromTexture(tr.quarterImage[1], NULL, NULL, NULL, dstBox, NULL, NULL, 0);
+	}
+
+	if (r_debugVisuals->integer)
+	{
+		vec4i_t dstBox;
+		VectorSet4(dstBox, 0, glConfig.vidHeight - 256, 256, 256);
+		FBO_BlitFromTexture(tr.preSSRImage[0], NULL, NULL, NULL, dstBox, NULL, NULL, 0);
+		VectorSet4(dstBox, 0, glConfig.vidHeight - 512, 256, 256);
+		FBO_BlitFromTexture(tr.preSSRImage[1], NULL, NULL, NULL, dstBox, NULL, NULL, 0);
+		VectorSet4(dstBox, 256, glConfig.vidHeight - 256, 256, 256);
+		FBO_BlitFromTexture(tr.prevRenderImage, NULL, NULL, NULL, dstBox, NULL, NULL, 0);
+		VectorSet4(dstBox, 256, glConfig.vidHeight - 512, 256, 256);
+		FBO_BlitFromTexture(tr.velocityImage, NULL, NULL, NULL, dstBox, NULL, NULL, 0);
 		VectorSet4(dstBox, 512, glConfig.vidHeight - 256, 256, 256);
 		FBO_BlitFromTexture(tr.specBufferImage, NULL, NULL, NULL, dstBox, NULL, NULL, 0);
 		VectorSet4(dstBox, 768, glConfig.vidHeight - 256, 256, 256);
 		FBO_BlitFromTexture(tr.diffuseLightingImage, NULL, NULL, NULL, dstBox, NULL, NULL, 0);
 		VectorSet4(dstBox, 1024, glConfig.vidHeight - 256, 256, 256);
 		FBO_BlitFromTexture(tr.specularLightingImage, NULL, NULL, NULL, dstBox, NULL, NULL, 0);
+		VectorSet4(dstBox, 1280, glConfig.vidHeight - 256, 256, 256);
+		FBO_BlitFromTexture(tr.tempFilterBufferImage, NULL, NULL, NULL, dstBox, NULL, NULL, 0);
+		VectorSet4(dstBox, 1536, glConfig.vidHeight - 256, 256, 256);
+		FBO_BlitFromTexture(tr.swapTempFilterBufferImage, NULL, NULL, NULL, dstBox, NULL, NULL, 0);
 	}
 
 	if (0)
@@ -3192,6 +3277,18 @@ const void *RB_PostProcess(const void *data)
 		vec4i_t dstBox;
 		VectorSet4(dstBox, 256, glConfig.vidHeight - 256, 256, 256);
 		FBO_BlitFromTexture(tr.sunRaysImage, NULL, NULL, NULL, dstBox, NULL, NULL, 0);
+	}
+	
+	/*ri.Printf(PRINT_ALL, " axis_0 %f %f %f \n axis_1 %f %f %f \n axis_2 %f %f %f \n", 
+		tr.viewParms.ori.axis[0][0], tr.viewParms.ori.axis[0][1], tr.viewParms.ori.axis[0][2],\
+		tr.viewParms.ori.axis[1][0], tr.viewParms.ori.axis[1][1], tr.viewParms.ori.axis[1][2],
+		tr.viewParms.ori.axis[2][0], tr.viewParms.ori.axis[2][1], tr.viewParms.ori.axis[2][2]);*/
+
+	if (0)
+	{
+		vec4i_t dstBox;
+		VectorSet4(dstBox, 256, glConfig.vidHeight - 512, 512, 512);
+		FBO_BlitFromTexture(tr.weatherDepthImage, NULL, NULL, NULL, dstBox, NULL, NULL, 0);
 	}
 
 #if 0
@@ -3428,7 +3525,7 @@ const void *RB_BuildSphericalHarmonics(const void *data)
 			for (int j = 0; j < 6; j++)
 			{
 				RE_ClearScene();
-				R_RenderCubemapSide(currentSH, 0, j, qfalse, qtrue);
+				R_RenderCubemapSide(currentSH, j, qfalse, qtrue);
 				R_IssuePendingRenderCommands();
 				R_InitNextFrame();
 			}
@@ -3557,6 +3654,9 @@ void RB_ExecuteRenderCommands( const void *data ) {
 			break;
 		case RC_CONVOLVECUBEMAP:
 			data = RB_PrefilterEnvMap(data);
+			break;
+		case RC_PROJECTCUBEMAP:
+			data = RB_ProjectCubeMap(data);
 			break;
 		case RC_POSTPROCESS:
 			data = RB_PostProcess(data);

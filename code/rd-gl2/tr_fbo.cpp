@@ -742,6 +742,15 @@ void FBO_Init(void)
 		R_CheckFBO(tr.renderEquirectangularFbo);
 	}
 
+	if (tr.prevRenderDepthImage != NULL)
+	{
+		tr.prevDepthFbo = FBO_Create("_prevRenderDepthFbo", tr.prevRenderDepthImage->width, tr.prevRenderDepthImage->height);
+		FBO_Bind(tr.prevDepthFbo);
+		FBO_AttachTextureImage(tr.prevRenderDepthImage, 0);
+		FBO_SetupDrawBuffers();
+		R_CheckFBO(tr.prevDepthFbo);
+	}
+
 	if (tr.weatherDepthImage != NULL)
 	{
 		tr.weatherDepthFbo = FBO_Create(
@@ -1038,7 +1047,10 @@ void FBO_FastBlitIndexed(FBO_t *src, FBO_t *dst, int srcReadBuffer, int dstDrawB
 	                      0, 0, dst->width, dst->height,
 						  buffers, filter);
 
+	qglBindFramebuffer(GL_READ_FRAMEBUFFER, src->frameBuffer);
 	qglReadBuffer (GL_COLOR_ATTACHMENT0);
+	qglBindFramebuffer(GL_DRAW_FRAMEBUFFER, dst->frameBuffer);
+	qglDrawBuffer(GL_COLOR_ATTACHMENT0);
 
 	glState.currentFBO = dst;
 	FBO_SetupDrawBuffers();

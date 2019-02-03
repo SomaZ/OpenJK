@@ -51,7 +51,7 @@ void main()
 {
 #if defined(CREATE_EQUIRECTANGULAR)
     vec2 thetaphi = ((var_Tex1 * 2.0) - vec2(1.0)) * vec2(M_PI, M_PI / 2.0); 
-    vec3 rayDirection = vec3(-cos(thetaphi.y) * cos(thetaphi.x), cos(thetaphi.y) * sin(thetaphi.x), -sin(thetaphi.y));
+    vec3 rayDirection = vec3(cos(thetaphi.y) * cos(thetaphi.x), cos(thetaphi.y) * sin(thetaphi.x), sin(thetaphi.y));
 	out_Color = textureLod(u_CubeMap, rayDirection, 0);
 #elif defined(CREATE_CUBEMAP) || defined(CREATE_CUBEFACE)
 	out_Color = texture(u_DiffuseMap, var_Tex1) * u_Color;

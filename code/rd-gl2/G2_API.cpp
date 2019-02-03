@@ -1277,7 +1277,11 @@ qboolean G2API_StopBoneAnim(CGhoul2Info *ghlInfo, const char *boneName)
 	return ret;
 }
 
-qboolean G2API_SetBoneAnglesIndex(CGhoul2Info *ghlInfo, const int index, const vec3_t angles, const int flags,
+extern qboolean G2_Set_Bone_Angles_Index(CGhoul2Info *ghlInfo, boneInfo_v &blist, const int index,
+	const float *angles, const int flags, const Eorientations yaw,
+	const Eorientations pitch, const Eorientations roll,
+	const int blendTime, const int currentTime);
+qboolean G2API_SetBoneAnglesOffsetIndex(CGhoul2Info *ghlInfo, const int index, const vec3_t angles, const int flags,
 	const Eorientations yaw, const Eorientations pitch, const Eorientations roll,
 	qhandle_t *, int blendTime, int AcurrentTime)
 {
@@ -1304,9 +1308,19 @@ qboolean G2API_SetBoneAnglesIndex(CGhoul2Info *ghlInfo, const int index, const v
 	return ret;
 }
 
-qboolean G2API_SetBoneAngles(CGhoul2Info *ghlInfo, const char *boneName, const vec3_t angles, const int flags,
-	const Eorientations up, const Eorientations left, const Eorientations forward,
+qboolean G2API_SetBoneAnglesIndex(CGhoul2Info *ghlInfo, const int index, const vec3_t angles, const int flags,
+	const Eorientations yaw, const Eorientations pitch, const Eorientations roll,
 	qhandle_t *, int blendTime, int AcurrentTime)
+{
+	return G2API_SetBoneAnglesOffsetIndex(ghlInfo, index, angles, flags, yaw, pitch, roll, 0, blendTime, AcurrentTime);
+}
+
+extern qboolean G2_Set_Bone_Angles(CGhoul2Info *ghlInfo, boneInfo_v &blist, const char *boneName, const float *angles,
+	const int flags, const Eorientations up, const Eorientations left, const Eorientations forward,
+	const int blendTime, const int currentTime);
+qboolean G2API_SetBoneAnglesOffset(CGhoul2Info *ghlInfo, const char *boneName, const vec3_t angles, const int flags,
+	const Eorientations up, const Eorientations left, const Eorientations forward,
+	qhandle_t *, int blendTime, int AcurrentTime, const vec3_t offset)
 {
 	//rww - RAGDOLL_BEGIN
 	if (ghlInfo && ghlInfo->mFlags & GHOUL2_RAG_STARTED)
@@ -1326,6 +1340,13 @@ qboolean G2API_SetBoneAngles(CGhoul2Info *ghlInfo, const char *boneName, const v
 	}
 	G2WARNING(ret, "G2API_SetBoneAngles Failed");
 	return ret;
+}
+
+qboolean G2API_SetBoneAngles(CGhoul2Info *ghlInfo, const char *boneName, const vec3_t angles, const int flags,
+	const Eorientations up, const Eorientations left, const Eorientations forward,
+	qhandle_t *, int blendTime, int AcurrentTime)
+{
+	return G2API_SetBoneAnglesOffset(ghlInfo, boneName, angles, flags, up, left, forward, 0, blendTime, AcurrentTime, 0);
 }
 
 qboolean G2API_SetBoneAnglesMatrixIndex(CGhoul2Info *ghlInfo, const int index, const mdxaBone_t &matrix,
@@ -2214,7 +2235,7 @@ bool G2_TestModelPointers(CGhoul2Info *ghlInfo) // returns true if the model is 
 		ghlInfo->currentModel = R_GetModelByHandle(ghlInfo->mModel);
 		if (ghlInfo->currentModel)
 		{
-			//Rend2 - Not sure why, but we need MOD_MDXM here to stop ghoul2 crashes.
+			//DT EDIT: Not sure why, but we need MOD_MDXM here to stop ghoul2 crashes.
 			if (ghlInfo->currentModel->type == MOD_MDXM && ghlInfo->currentModel->data.glm &&
 				ghlInfo->currentModel->data.glm->header)
 			{
@@ -2338,4 +2359,13 @@ bool G2_SetupModelPointers(CGhoul2Info_v &ghoul2) // returns true if any model i
 	return ret;
 }
 
+#ifdef JK2_MODE
+void G2API_SetTintType(CGhoul2Info *ghlInfo, g2Tints_t tintType)
+{
+	if (G2_SetupModelPointers(ghlInfo))
+	{
+		ghlInfo->tintType = tintType;
+	}
+}
+#endif
 

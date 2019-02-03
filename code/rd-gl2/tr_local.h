@@ -211,7 +211,6 @@ extern cvar_t	*r_flareSize;
 extern cvar_t	*r_flareFade;
 extern cvar_t	*r_flareCoeff;
 extern cvar_t   *r_ext_framebuffer_multisample;
-extern cvar_t   *r_arb_seamless_cube_map;
 extern cvar_t   *r_mergeMultidraws;
 extern cvar_t   *r_mergeLeafSurfaces;
 extern cvar_t   *r_cameraExposure;
@@ -1532,9 +1531,8 @@ typedef struct {
 	int			viewportX, viewportY, viewportWidth, viewportHeight;
 	int			scissorX, scissorY, scissorWidth, scissorHeight;
 	FBO_t		*targetFbo;
-	cubemap_t	*cubemapSelection;
+	cubemap_t	*cubemap;
 	int         targetFboLayer;
-	int         targetFboCubemapIndex;
 	float		fovX, fovY;
 	float		projectionMatrix[16];
 	cplane_t	frustum[5];
@@ -2408,6 +2406,7 @@ typedef struct trGlobals_s {
 	image_t					*preSSRImage[2];
 	image_t					*sunRaysImage;
 	image_t					*renderDepthImage;
+	image_t					*prevRenderDepthImage;
 	image_t					*velocityImage;
 	image_t					*pshadowMaps[MAX_DRAWN_PSHADOWS];
 	image_t					*textureScratchImage[2];
@@ -2434,6 +2433,7 @@ typedef struct trGlobals_s {
 	FBO_t					*msaaResolveFbo;
 	FBO_t					*sunRaysFbo;
 	FBO_t					*depthFbo;
+	FBO_t					*prevDepthFbo;
 	FBO_t					*preBuffersFbo;
 	FBO_t					*preLightFbo[PRELIGHT_FBO_COUNT];
 	FBO_t					*pshadowFbos[MAX_DRAWN_PSHADOWS];
@@ -2670,7 +2670,7 @@ void R_SetupProjectionZ(viewParms_t *dest);
 void R_RenderDlightCubemaps(const refdef_t *fd);
 void R_RenderPshadowMaps(const refdef_t *fd);
 void R_RenderSunShadowMaps(const refdef_t *fd, int level);
-void R_RenderCubemapSide(cubemap_t *cubemaps, int cubemapIndex, int cubemapSide, qboolean subscene, qboolean bounce );
+void R_RenderCubemapSide(cubemap_t *cubemaps, int cubemapSide, qboolean subscene, qboolean bounce );
 
 void R_AddMD3Surfaces( trRefEntity_t *e, int entityNum );
 void R_AddPolygonSurfaces(const trRefdef_t *refdef);
@@ -3080,6 +3080,13 @@ public:
 
 		return *this;
 	}
+#else
+	void Init()
+	{
+		boneCache = 0;
+		surfaceData = 0;
+		vboMesh = NULL;
+	}
 #endif
 
 CRenderableSurface():	
@@ -3265,10 +3272,14 @@ typedef struct capShadowmapCommand_s {
 
 typedef struct convolveCubemapCommand_s {
 	int commandId;
-	int cubemap;
+	cubemap_t *cubemap;
 	int cubeSide;
-	cubemap_t *cubemaps;
 } convolveCubemapCommand_t;
+
+typedef struct projectCubemapCommand_s {
+	int commandId;
+	cubemap_t *cubemap;
+} projectCubemapCommand_t;
 
 typedef struct postProcessCommand_s {
 	int		commandId;
@@ -3315,6 +3326,7 @@ typedef enum {
 	RC_COLORMASK,
 	RC_CLEARDEPTH,
 	RC_CONVOLVECUBEMAP,
+	RC_PROJECTCUBEMAP,
 	RC_POSTPROCESS,
 	RC_EXPORT_CUBEMAPS,
 	RC_BUILD_SPHERICAL_HARMONICS,
@@ -3391,7 +3403,8 @@ void RB_ExecuteRenderCommands( const void *data );
 void R_IssuePendingRenderCommands( void );
 
 void R_AddDrawSurfCmd( drawSurf_t *drawSurfs, int numDrawSurfs );
-void R_AddConvolveCubemapCmd(cubemap_t *cubemaps, int cubemap, int cubeSide);
+void R_AddConvolveCubemapCmd(cubemap_t *cubemap, int cubeSide);
+void R_AddProjectCubemapCmd(cubemap_t *cubemap);
 void R_AddBuildSphericalHarmonicsCmd();
 void R_AddPostProcessCmd (void);
 qhandle_t R_BeginTimedBlockCmd( const char *name );

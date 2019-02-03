@@ -180,7 +180,6 @@ cvar_t	*r_flareSize;
 cvar_t	*r_flareFade;
 cvar_t	*r_flareCoeff;
 cvar_t  *r_ext_framebuffer_multisample;
-cvar_t  *r_arb_seamless_cube_map;
 cvar_t  *r_mergeMultidraws;
 cvar_t  *r_mergeLeafSurfaces;
 cvar_t  *r_cameraExposure;
@@ -1305,7 +1304,7 @@ void R_Register(void)
 	// latched and archived variables
 	//
 	r_allowExtensions = ri.Cvar_Get("r_allowExtensions", "1", CVAR_ARCHIVE | CVAR_LATCH);
-	r_ext_compressed_textures = ri.Cvar_Get("r_ext_compress_textures", "0", CVAR_ARCHIVE | CVAR_LATCH);
+	r_ext_compressed_textures = ri.Cvar_Get("r_ext_compress_textures", "1", CVAR_ARCHIVE | CVAR_LATCH);
 	r_ext_multitexture = ri.Cvar_Get("r_ext_multitexture", "1", CVAR_ARCHIVE | CVAR_LATCH);
 	r_ext_compiled_vertex_array = ri.Cvar_Get("r_ext_compiled_vertex_array", "1", CVAR_ARCHIVE | CVAR_LATCH);
 	r_ext_texture_env_add = ri.Cvar_Get("r_ext_texture_env_add", "1", CVAR_ARCHIVE | CVAR_LATCH);
@@ -1315,7 +1314,6 @@ void R_Register(void)
 	r_ext_texture_float = ri.Cvar_Get("r_ext_texture_float", "1", CVAR_ARCHIVE | CVAR_LATCH);
 	r_arb_half_float_pixel = ri.Cvar_Get("r_arb_half_float_pixel", "1", CVAR_ARCHIVE | CVAR_LATCH);
 	r_ext_framebuffer_multisample = ri.Cvar_Get("r_ext_framebuffer_multisample", "0", CVAR_ARCHIVE | CVAR_LATCH);
-	r_arb_seamless_cube_map = ri.Cvar_Get("r_arb_seamless_cube_map", "0", CVAR_ARCHIVE | CVAR_LATCH);
 	r_arb_vertex_type_2_10_10_10_rev = ri.Cvar_Get("r_arb_vertex_type_2_10_10_10_rev", "1", CVAR_ARCHIVE | CVAR_LATCH);
 	r_arb_buffer_storage = ri.Cvar_Get("r_arb_buffer_storage", "0", CVAR_ARCHIVE | CVAR_LATCH);
 	r_ext_texture_filter_anisotropic = ri.Cvar_Get("r_ext_texture_filter_anisotropic", "16", CVAR_ARCHIVE);
@@ -1347,7 +1345,8 @@ void R_Register(void)
 	r_externalGLSL = ri.Cvar_Get("r_externalGLSL", "0", CVAR_LATCH);
 	r_hdr = ri.Cvar_Get("r_hdr", "1", CVAR_ARCHIVE | CVAR_LATCH);
 	r_floatLightmap = ri.Cvar_Get("r_floatLightmap", "0", CVAR_ARCHIVE | CVAR_LATCH);
-	r_toneMap = ri.Cvar_Get("r_toneMap", "1", CVAR_ARCHIVE);
+	r_toneMap = ri.Cvar_Get("r_toneMap", "1", CVAR_ARCHIVE | CVAR_LATCH);
+	ri.Cvar_CheckRange(r_toneMap, 0, 3, qfalse);
 	r_forceToneMap = ri.Cvar_Get("r_forceToneMap", "0", CVAR_CHEAT);
 	r_forceToneMapMin = ri.Cvar_Get("r_forceToneMapMin", "-8.0", CVAR_CHEAT);
 	r_forceToneMapAvg = ri.Cvar_Get("r_forceToneMapAvg", "-2.0", CVAR_CHEAT);
@@ -1473,7 +1472,7 @@ void R_Register(void)
 	r_drawBuffer = ri.Cvar_Get("r_drawBuffer", "GL_BACK", CVAR_CHEAT);
 	r_lockpvs = ri.Cvar_Get("r_lockpvs", "0", CVAR_CHEAT);
 	r_noportals = ri.Cvar_Get("r_noportals", "0", CVAR_CHEAT);
-	r_shadows = ri.Cvar_Get("cg_shadows", "4", 0);
+	r_shadows = ri.Cvar_Get("cg_shadows", "1", 0);
 	r_marksOnTriangleMeshes = ri.Cvar_Get("r_marksOnTriangleMeshes", "1", CVAR_ARCHIVE);
 	com_buildScript = ri.Cvar_Get("com_buildScript", "0", 0);
 	r_screenshotJpegQuality = ri.Cvar_Get("r_screenshotJpegQuality", "90", CVAR_ARCHIVE);
@@ -1929,6 +1928,13 @@ extern qboolean G2API_RagPCJGradientSpeed(CGhoul2Info_v &ghoul2, const char *bon
 extern qboolean G2API_SetBoneIKState(CGhoul2Info_v &ghoul2, int time, const char *boneName, int ikState, sharedSetBoneIKStateParams_t *params);
 extern void G2API_SetRagDoll(CGhoul2Info_v &ghoul2, CRagDollParams *parms);
 extern IGhoul2InfoArray &TheGhoul2InfoArray();
+
+#ifdef JK2_MODE
+unsigned int AnyLanguage_ReadCharFromString_JK2(char **text, qboolean *pbIsTrailingPunctuation) {
+	return AnyLanguage_ReadCharFromString(text, pbIsTrailingPunctuation);
+}
+#endif
+
 extern "C" Q_EXPORT refexport_t* QDECL GetRefAPI(int apiVersion, refimport_t *rimp) {
 	static refexport_t	re;
 
@@ -2022,6 +2028,9 @@ extern "C" Q_EXPORT refexport_t* QDECL GetRefAPI(int apiVersion, refimport_t *ri
 	re.Language_IsAsian = Language_IsAsian;
 	re.Language_UsesSpaces = Language_UsesSpaces;
 	re.AnyLanguage_ReadCharFromString = AnyLanguage_ReadCharFromString;
+#ifdef JK2_MODE
+	re.AnyLanguage_ReadCharFromString2 = AnyLanguage_ReadCharFromString_JK2;
+#endif
 		
 	re.R_InitWorldEffects = stub_R_InitWorldEffects;
 	re.R_ClearStuffToStopGhoul2CrashingThings = R_ClearStuffToStopGhoul2CrashingThings;
@@ -2122,6 +2131,12 @@ extern "C" Q_EXPORT refexport_t* QDECL GetRefAPI(int apiVersion, refimport_t *ri
 	G2EX(StopBoneAnimIndex);
 	G2EX(StopBoneAngles);
 	G2EX(StopBoneAnglesIndex);
+
+#ifdef JK2_MODE
+	G2EX(SetTintType);
+	G2EX(SetBoneAnglesOffset);
+#endif
+
 #ifdef _G2_GORE
 	G2EX(AddSkinGore);
 	G2EX(ClearSkinGore);
@@ -2133,6 +2148,13 @@ extern "C" Q_EXPORT refexport_t* QDECL GetRefAPI(int apiVersion, refimport_t *ri
 #endif
 
 	//Swap_Init();
+
+#ifdef JK2_MODE
+	re.TempRawImage_CleanUp = []() {};
+	re.TempRawImage_ReadFromFile = [](const char* psLocalFileNmae, int *piWidth, int *piHeight, byte* pbReSampleBuffer, qboolean qbVertFlip) -> byte* { return NULL; };
+	re.LoadJPGFromBuffer = [](byte *inputBuffer, size_t len, byte **pic, int *width, int *height) {};
+	re.SaveJPGToBuffer = [](byte* buffer, size_t bufSize, int quality, int image_width, int image_height, byte* image_buffer, int padding, bool flip_vertical) -> size_t { return 0; };
+#endif
 
 	return &re;
 }

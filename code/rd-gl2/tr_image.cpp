@@ -2621,7 +2621,7 @@ void R_CreateDiffuseAndSpecMapsFromBaseColorAndRMO(shaderStage_t *stage, const c
 {
 	char	diffuseName[MAX_QPATH];
 	char	specularName[MAX_QPATH];
-	int		width, height, depth, rmoWidth, rmoHeight, rmoDepth;
+	int		width, height, bppc, rmoWidth, rmoHeight, rmoBppc;
 	byte	*rmoPic, *baseColorPic, *specGlossPic, *diffusePic;
 	image_t *image;
 
@@ -2655,12 +2655,12 @@ void R_CreateDiffuseAndSpecMapsFromBaseColorAndRMO(shaderStage_t *stage, const c
 	//
 	// load the pics from disk
 	//
-	R_LoadImage(name, &baseColorPic, &width, &height, &depth);
+	R_LoadImage(name, &baseColorPic, &width, &height, &bppc);
 	if (baseColorPic == NULL) {
 		return;
 	}
 
-	R_LoadImage(rmoName, &rmoPic, &rmoWidth, &rmoHeight, &rmoDepth);
+	R_LoadImage(rmoName, &rmoPic, &rmoWidth, &rmoHeight, &rmoBppc);
 	if (rmoPic == NULL) {
 		R_Free(baseColorPic);
 		return;
@@ -2751,8 +2751,8 @@ void R_CreateDiffuseAndSpecMapsFromBaseColorAndRMO(shaderStage_t *stage, const c
 		specGlossPic[i + 3] = FloatToByte(gloss);
 	}
 
-	stage->bundle[TB_COLORMAP].image[0] = R_CreateImage(diffuseName, diffusePic, width, height, depth, IMGTYPE_COLORALPHA, flags, 0);
-	stage->bundle[TB_SPECULARMAP].image[0] = R_CreateImage(specularName, specGlossPic, width, height, depth, IMGTYPE_COLORALPHA, flags, 0);
+	stage->bundle[TB_COLORMAP].image[0] = R_CreateImage(diffuseName, diffusePic, width, height, bppc, IMGTYPE_COLORALPHA, flags, 0);
+	stage->bundle[TB_SPECULARMAP].image[0] = R_CreateImage(specularName, specGlossPic, width, height, bppc, IMGTYPE_COLORALPHA, flags, 0);
 
 	R_Free(diffusePic);
 	R_Free(specGlossPic);
@@ -2876,7 +2876,7 @@ Returns NULL if it fails, not a default image.
 image_t	*R_FindImageFile(const char *name, imgType_t type, int flags)
 {
 	image_t	*image;
-	int		width, height, depth;
+	int		width, height, bppc;
 	byte	*pic;
 
 	if (!name) {
@@ -2889,7 +2889,7 @@ image_t	*R_FindImageFile(const char *name, imgType_t type, int flags)
 	//
 	// load the pic from disk
 	//
-	R_LoadImage(name, &pic, &width, &height, &depth);
+	R_LoadImage(name, &pic, &width, &height, &bppc);
 	if (pic == NULL) {
 		return NULL;
 	}
@@ -2901,7 +2901,7 @@ image_t	*R_FindImageFile(const char *name, imgType_t type, int flags)
 		R_CreateNormalMap(name, pic, width, height, flags);
 	}
 
-	image = R_CreateImage(name, pic, width, height, depth, type, flags, 0);
+	image = R_CreateImage(name, pic, width, height, bppc, type, flags, 0);
 	R_Free(pic);
 
 	return image;
@@ -2915,13 +2915,13 @@ R_CreateDlightImage
 */
 #define	DLIGHT_SIZE	16
 static void R_CreateDlightImage(void) {
-	int		width, height, depth;
+	int		width, height, bppc;
 	byte	*pic;
 
-	R_LoadImage("gfx/2d/dlight", &pic, &width, &height, &depth);
+	R_LoadImage("gfx/2d/dlight", &pic, &width, &height, &bppc);
 	if (pic)
 	{
-		tr.dlightImage = R_CreateImage("*dlight", pic, width, height, depth, IMGTYPE_COLORALPHA, IMGFLAG_NO_COMPRESSION | IMGFLAG_CLAMPTOEDGE, 0);
+		tr.dlightImage = R_CreateImage("*dlight", pic, width, height, bppc, IMGTYPE_COLORALPHA, IMGFLAG_NO_COMPRESSION | IMGFLAG_CLAMPTOEDGE, 0);
 		R_Free(pic);
 	}
 	else
@@ -2950,7 +2950,7 @@ static void R_CreateDlightImage(void) {
 				data[y][x][3] = 255;
 			}
 		}
-		tr.dlightImage = R_CreateImage("*dlight", (byte *)data, DLIGHT_SIZE, DLIGHT_SIZE, depth, IMGTYPE_COLORALPHA, IMGFLAG_NO_COMPRESSION | IMGFLAG_CLAMPTOEDGE, 0);
+		tr.dlightImage = R_CreateImage("*dlight", (byte *)data, DLIGHT_SIZE, DLIGHT_SIZE, bppc, IMGTYPE_COLORALPHA, IMGFLAG_NO_COMPRESSION | IMGFLAG_CLAMPTOEDGE, 0);
 	}
 }
 
@@ -3060,38 +3060,36 @@ static void R_CreateEnvBrdfLUT(void) {
 	static const int LUT_WIDTH = 128;
 	static const int LUT_HEIGHT = 128;
 
-	if (!r_cubeMapping->integer && !1)
+	if (!(r_cubeMapping->integer || r_ssr->integer))
 		return;
 
-	uint16_t	data[LUT_WIDTH][LUT_HEIGHT][2];
+	uint16_t data[LUT_WIDTH][LUT_HEIGHT][2];
 
-	float const MATH_PI = 3.14159f;
-	unsigned const sampleNum = 1024;
+	unsigned const numSamples = 1024;
 
 	for (unsigned y = 0; y < LUT_HEIGHT; ++y)
 	{
-		float const ndotv = (y + 0.5f) / LUT_HEIGHT;
+		float const NdotV = (y + 0.5f) / LUT_HEIGHT;
+		float const vx = sqrtf(1.0f - NdotV * NdotV);
+		float const vy = 0.0f;
+		float const vz = NdotV;
 
 		for (unsigned x = 0; x < LUT_WIDTH; ++x)
 		{
 			float const roughness = (x + 0.5f) / LUT_WIDTH;
-
-			float const vx = sqrtf(1.0f - ndotv * ndotv);
-			float const vy = 0.0f;
-			float const vz = ndotv;
+			float const m = roughness * roughness;
+			float const m2 = m * m;
 
 			float scale = 0.0f;
 			float bias = 0.0f;
 
-			for (unsigned i = 0; i < sampleNum; ++i)
+			for (unsigned i = 0; i < numSamples; ++i)
 			{
-				float const e1 = (float)i / sampleNum;
+				float const e1 = (float)i / numSamples;
 				float const e2 = (float)((double)ReverseBits(i) / (double)0x100000000LL);
 
-				float const phi = 2.0f * MATH_PI * e1;
-				float const cosPhi = cosf(phi);
-				float const sinPhi = sinf(phi);
-				float const cosTheta = sqrtf((1.0f - e2) / (1.0f + (roughness * roughness * roughness * roughness - 1.0f) * e2));
+				float const phi = 2.0f * M_PI * e1;
+				float const cosTheta = sqrtf((1.0f - e2) / (1.0f + (m2 - 1.0f) * e2));
 				float const sinTheta = sqrtf(1.0f - cosTheta * cosTheta);
 
 				float const hx = sinTheta * cosf(phi);
@@ -3099,34 +3097,40 @@ static void R_CreateEnvBrdfLUT(void) {
 				float const hz = cosTheta;
 
 				float const vdh = vx * hx + vy * hy + vz * hz;
-				float const lx = 2.0f * vdh * hx - vx;
-				float const ly = 2.0f * vdh * hy - vy;
 				float const lz = 2.0f * vdh * hz - vz;
 
-				float const ndotl = MAX(lz,0.0f);
-				float const ndoth = MAX(hz,0.0f);
-				float const vdoth = MAX(vdh,0.0f);
+				float const NdotL = MAX(lz, 0.0f);
+				float const NdotH = MAX(hz, 0.0f);
+				float const VdotH = MAX(vdh, 0.0f);
 
-				if (ndotl > 0.0f)
+				if (NdotL > 0.0f)
 				{
-					float const gsmith = GSmithCorrelated(roughness, ndotv, ndotl);
-					float const ndotlVisPDF = ndotl * gsmith * (4.0f * vdoth / ndoth);
-					float const fc = powf(1.0f - vdoth, 5.0f);
+					float const visibility = GSmithCorrelated(roughness, NdotV, NdotL);
+					float const NdotLVisPDF = NdotL * visibility * (4.0f * VdotH / NdotH);
+					float const fresnel = powf(1.0f - VdotH, 5.0f);
 
-					scale += ndotlVisPDF * (1.0f - fc);
-					bias += ndotlVisPDF * fc;
+					scale += NdotLVisPDF * (1.0f - fresnel);
+					bias += NdotLVisPDF * fresnel;
 				}
 			}
-			scale /= sampleNum;
-			bias /= sampleNum;
 
-			data[x][y][0] = FloatToHalf(scale);
-			data[x][y][1] = FloatToHalf(bias);
+			scale /= numSamples;
+			bias /= numSamples;
+
+			data[y][x][0] = FloatToHalf(scale);
+			data[y][x][1] = FloatToHalf(bias);
 		}
 	}
 
-	tr.envBrdfImage = R_CreateImage("*envBrdfLUT", (byte*)data, LUT_WIDTH, LUT_HEIGHT, 0, IMGTYPE_COLORALPHA, IMGFLAG_NO_COMPRESSION | IMGFLAG_CLAMPTOEDGE, GL_RG16F);
-	return;
+	tr.envBrdfImage = R_CreateImage(
+		"*envBrdfLUT",
+		(byte*)data,
+		LUT_WIDTH,
+		LUT_HEIGHT,
+		0,
+		IMGTYPE_COLORALPHA,
+		IMGFLAG_NO_COMPRESSION | IMGFLAG_CLAMPTOEDGE,
+		GL_RG16F);
 }
 
 /*
@@ -3233,7 +3237,7 @@ void R_CreateBuiltinImages(void) {
 	tr.renderImage = R_CreateImage("_render", NULL, width, height, 0, IMGTYPE_COLORALPHA, IMGFLAG_NO_COMPRESSION | IMGFLAG_CLAMPTOEDGE, hdrFormat);
 
 	tr.specBufferImage = R_CreateImage("_specBuffer", NULL, width, height, 0, IMGTYPE_COLORALPHA, IMGFLAG_NO_COMPRESSION | IMGFLAG_CLAMPTOEDGE, GL_RGBA8);
-	tr.normalBufferImage = R_CreateImage("_normalBuffer", NULL, width, height, 0, IMGTYPE_COLORALPHA, IMGFLAG_NO_COMPRESSION | IMGFLAG_CLAMPTOEDGE | IMGFLAG_NPOT_MIP, GL_RGBA16F);
+	tr.normalBufferImage = R_CreateImage("_normalBuffer", NULL, width, height, 0, IMGTYPE_COLORALPHA, IMGFLAG_NO_COMPRESSION | IMGFLAG_CLAMPTOEDGE, GL_RGBA16F);
 
 	tr.diffuseLightingImage = R_CreateImage("_diffuseLighting", NULL, width, height, 0, IMGTYPE_COLORALPHA, IMGFLAG_NO_COMPRESSION | IMGFLAG_CLAMPTOEDGE, GL_RGBA16F);
 	tr.specularLightingImage = R_CreateImage("_specularLighting", NULL, width, height, 0, IMGTYPE_COLORALPHA, IMGFLAG_NO_COMPRESSION | IMGFLAG_CLAMPTOEDGE, GL_RGBA16F);
@@ -3252,14 +3256,14 @@ void R_CreateBuiltinImages(void) {
 	if (r_drawSunRays->integer)
 		tr.sunRaysImage = R_CreateImage("*sunRays", NULL, width, height, 0, IMGTYPE_COLORALPHA, IMGFLAG_NO_COMPRESSION | IMGFLAG_CLAMPTOEDGE, rgbFormat);
 
-	tr.renderDepthImage = R_CreateImage("*renderdepth", NULL, width, height, 0, IMGTYPE_COLORALPHA, IMGFLAG_NO_COMPRESSION | IMGFLAG_CLAMPTOEDGE | IMGFLAG_NPOT_MIP, GL_DEPTH24_STENCIL8);
+	tr.renderDepthImage = R_CreateImage("*renderdepth", NULL, width, height, 0, IMGTYPE_COLORALPHA, IMGFLAG_NO_COMPRESSION | IMGFLAG_CLAMPTOEDGE, GL_DEPTH24_STENCIL8);
 
 	tr.cubeDepthImage = R_CreateImage("*cubedepth", NULL, PSHADOW_MAP_SIZE, PSHADOW_MAP_SIZE, 0, IMGTYPE_COLORALPHA, IMGFLAG_NO_COMPRESSION | IMGFLAG_CLAMPTOEDGE | IMGFLAG_CUBEMAP, GL_DEPTH_COMPONENT24);
 
 	if (r_ssr->integer)
 	{
 		tr.velocityImage = R_CreateImage("*velocity", NULL, width, height, 0, IMGTYPE_COLORALPHA, IMGFLAG_NO_COMPRESSION | IMGFLAG_CLAMPTOEDGE, GL_RG16F);
-
+		tr.prevRenderDepthImage = R_CreateImage("*prevRenderDepth", NULL, width, height, 0, IMGTYPE_COLORALPHA, IMGFLAG_NO_COMPRESSION | IMGFLAG_CLAMPTOEDGE, GL_DEPTH24_STENCIL8);
 		tr.preSSRImage[0] = R_CreateImage("*preSSR_0", NULL, width / 2, height / 2, 0, IMGTYPE_COLORALPHA, IMGFLAG_NO_COMPRESSION | IMGFLAG_CLAMPTOEDGE, hdrFormat);
 		tr.preSSRImage[1] = R_CreateImage("*preSSR_1", NULL, width / 2, height / 2, 0, IMGTYPE_COLORALPHA, IMGFLAG_NO_COMPRESSION | IMGFLAG_CLAMPTOEDGE, hdrFormat);
 
@@ -3342,11 +3346,10 @@ void R_CreateBuiltinImages(void) {
 
 	if (r_cubeMapping->integer)
 	{
-		tr.renderCubeImage = R_CreateImage("*renderCube", NULL, r_cubemapSize->integer, r_cubemapSize->integer, 0, IMGTYPE_COLORALPHA, IMGFLAG_NO_COMPRESSION | IMGFLAG_CLAMPTOEDGE | IMGFLAG_MIPMAP | IMGFLAG_CUBEMAP, hdrFormat);
+		tr.renderCubeImage = R_CreateImage("*renderCube", NULL, r_cubemapSize->integer, r_cubemapSize->integer, 0, IMGTYPE_COLORALPHA, IMGFLAG_MIPMAP | IMGFLAG_CUBEMAP, hdrFormat);
 		tr.prefilterEnvMapImage = R_CreateImage("*prefilterEnvMap", NULL, r_cubemapSize->integer / 2, r_cubemapSize->integer / 2, 0, IMGTYPE_COLORALPHA, IMGFLAG_NO_COMPRESSION | IMGFLAG_CLAMPTOEDGE, hdrFormat);
-		tr.equirectangularCubeImage = R_CreateImage("*renderEquirectangular", NULL, r_cubemapSize->integer * 4, r_cubemapSize->integer * 2, 0, IMGTYPE_COLORALPHA, IMGFLAG_NO_COMPRESSION | IMGFLAG_CLAMPTOEDGE, hdrFormat);
+		tr.equirectangularCubeImage = R_CreateImage("*renderEquirectangular", NULL, r_cubemapSize->integer * 4, r_cubemapSize->integer * 2, 0, IMGTYPE_COLORALPHA, IMGFLAG_CLAMPTOEDGE, hdrFormat);
 	}
-
 		
 	tr.weatherDepthImage = R_CreateImage(
 		"*weatherDepth",

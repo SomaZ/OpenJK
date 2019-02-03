@@ -44,7 +44,7 @@ float getLinearDepth(sampler2D depthMap, vec2 tex, const float zFarDivZNear)
 vec4 depthGaussian1D(sampler2D imageMap, sampler2D depthMap, vec2 tex, float zFarDivZNear, float zFar, vec2 direction)
 {
 	const vec2 scale = r_FBufScale * 2.0;
-	const float depthBias = 20.0;
+	const float depthBias = 200.0;
 	float depthCenter = zFar * getLinearDepth(depthMap, tex, zFarDivZNear);
 	vec2 centerSlope = vec2(dFdx(depthCenter), dFdy(depthCenter)) / vec2(dFdx(tex.x), dFdy(tex.y));
 		
@@ -138,5 +138,5 @@ vec4 bilateralFilter(sampler2D imageMap, sampler2D depthMap, vec2 tex, float zFa
 
 void main()
 {		
-	out_Color = bilateralFilter(u_ScreenImageMap, u_ScreenDepthMap, var_ScreenTex, u_ViewInfo.x, u_ViewInfo.y, u_ViewInfo.zw);
+	out_Color = depthGaussian1D(u_ScreenImageMap, u_ScreenDepthMap, var_ScreenTex, u_ViewInfo.x, u_ViewInfo.y, u_ViewInfo.zw);
 }

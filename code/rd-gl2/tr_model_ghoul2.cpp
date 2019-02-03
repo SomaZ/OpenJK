@@ -296,60 +296,6 @@ public:
 	}
 	const mdxaBone_t &Eval(int index)
 	{
-		/*
-		bool wasEval=EvalLow(index);
-		if (mSmoothingActive)
-		{
-		if (mSmoothBones[index].touch!=incomingTime||wasEval)
-		{
-		float dif=float(incomingTime)-float(mSmoothBones[index].touch);
-		if (mSmoothBones[index].touch&&dif<300.0f)
-		{
-
-		if (dif<16.0f)  // 60 fps
-		{
-		dif=16.0f;
-		}
-		if (dif>100.0f) // 10 fps
-		{
-		dif=100.0f;
-		}
-		float f=1.0f-pow(1.0f-mSmoothFactor,16.0f/dif);
-
-		int i;
-		float *oldM=&mSmoothBones[index].boneMatrix.matrix[0][0];
-		float *newM=&mFinalBones[index].boneMatrix.matrix[0][0];
-		for (i=0;i<12;i++,oldM++,newM++)
-		{
-		*oldM=f*(*oldM-*newM)+*newM;
-		}
-		if (mUnsquash)
-		{
-		mdxaBone_t tempMatrix;
-		Multiply_3x4Matrix(&tempMatrix,&mSmoothBones[index].boneMatrix, &mSkels[index]->BasePoseMat);
-		float maxl;
-		maxl=VectorLength(&mSkels[index]->BasePoseMat.matrix[0][0]);
-		VectorNormalizeFast(&tempMatrix.matrix[0][0]);
-		VectorNormalizeFast(&tempMatrix.matrix[1][0]);
-		VectorNormalizeFast(&tempMatrix.matrix[2][0]);
-
-		VectorScale(&tempMatrix.matrix[0][0],maxl,&tempMatrix.matrix[0][0]);
-		VectorScale(&tempMatrix.matrix[1][0],maxl,&tempMatrix.matrix[1][0]);
-		VectorScale(&tempMatrix.matrix[2][0],maxl,&tempMatrix.matrix[2][0]);
-		Multiply_3x4Matrix(&mSmoothBones[index].boneMatrix,&tempMatrix,&mSkels[index]->BasePoseMatInv);
-		}
-		}
-		else
-		{
-		memcpy(&mSmoothBones[index].boneMatrix,&mFinalBones[index].boneMatrix,sizeof(mdxaBone_t));
-		}
-		mSmoothBones[index].touch=incomingTime;
-		}
-		return mSmoothBones[index].boneMatrix;
-		}
-		return mFinalBones[index].boneMatrix;
-		*/
-		//all above is not necessary, smoothing is taken care of when we want to use smoothlow (only when evalrender)
 		assert(index >= 0 && index<mNumBones);
 		if (mFinalBones[index].touch != mCurrentTouch)
 		{
@@ -399,8 +345,14 @@ public:
 	// Need to add in smoothing step?
 	CTransformBone *EvalFull(int index)
 	{
-		EvalRender(index);
+#ifdef JK2_MODE
+		//		Eval(index);
 
+		// FIXME BBi Was commented
+		Eval(index);
+#else
+		EvalRender(index);
+#endif // JK2_MODE
 		if (mSmoothingActive)
 		{
 			return mSmoothBones + index;
@@ -2374,7 +2326,7 @@ void RenderSurfaces(CRenderSurface &RS, const trRefEntity_t *ent, int entityNum)
 
 						last->goreChain = newSurf2;
 						last = newSurf2;
-						R_AddDrawSurf((surfaceType_t *)newSurf2, entityNum, gshader, RS.fogNum, qfalse, R_IsPostRenderEntity(tr.currentEntity), cubemapIndex, distance);
+						R_AddDrawSurf((surfaceType_t *)newSurf2, entityNum, gshader, RS.fogNum, qfalse, R_IsPostRenderEntity(ent), cubemapIndex, distance);
 					}
 				}
 			}
@@ -3230,6 +3182,7 @@ qboolean R_LoadMDXM(model_t *mod, void *buffer, const char *mod_name, qboolean &
 	mod->dataSize += size;
 
 	qboolean bAlreadyFound = qfalse;
+
 	mdxm = (mdxmHeader_t*)CModelCache->Allocate(size, buffer, mod_name, &bAlreadyFound, TAG_MODEL_GLM);
 	mod->data.glm = (mdxmData_t*)R_Hunk_Alloc(sizeof(mdxmData_t), qtrue);
 	mod->data.glm->header = mdxm;
@@ -3282,19 +3235,20 @@ qboolean R_LoadMDXM(model_t *mod, void *buffer, const char *mod_name, qboolean &
 		//-----------------------
 		//RE_RegisterModel("models/players/_humanoid_df2/_humanoid_df2.gla");
 	}
-
+#ifndef JK2_MODE
 	bool isAnOldModelFile = false;
 
 	if (mdxm->numBones == 72 && strstr(mdxm->animName, "_humanoid"))
 	{
 		isAnOldModelFile = true;
 	}
-
+#endif
 	if (!mdxm->animIndex)
 	{
 		ri.Printf(PRINT_WARNING, "R_LoadMDXM: missing animation file %s for mesh %s\n", mdxm->animName, mdxm->name);
 		return qfalse;
 	}
+#ifndef JK2_MODE
 	else
 	{
 		assert(tr.models[mdxm->animIndex]->data.gla->numBones == mdxm->numBones);
@@ -3318,12 +3272,13 @@ qboolean R_LoadMDXM(model_t *mod, void *buffer, const char *mod_name, qboolean &
 			}
 		}
 	}
-
+#endif
 	mod->numLods = mdxm->numLODs - 1;	//copy this up to the model for ease of use - it wil get inced after this.
 
 	if (bAlreadyFound)
 	{
-		return qtrue;	// All done. Stop, go no further, do not LittleLong(), do not pass Go...
+		//FIXME: caching seems to be non functional, gpu data is null if we return here
+		//return qtrue;	// All done. Stop, go no further, do not LittleLong(), do not pass Go...
 	}
 
 	surfInfo = (mdxmSurfHierarchy_t *)((byte *)mdxm + mdxm->ofsSurfHierarchy);
@@ -3336,11 +3291,13 @@ qboolean R_LoadMDXM(model_t *mod, void *buffer, const char *mod_name, qboolean &
 		LL(surfInfo->numChildren);
 		LL(surfInfo->parentIndex);
 
+#ifndef JK2_MODE
 		Q_strlwr(surfInfo->name);	//just in case
 		if (!strcmp(&surfInfo->name[strlen(surfInfo->name) - 4], "_off"))
 		{
 			surfInfo->name[strlen(surfInfo->name) - 4] = 0;	//remove "_off" from name
 		}
+#endif
 
 		if (surfInfo->shader[0] == '[')
 		{
@@ -3463,7 +3420,7 @@ qboolean R_LoadMDXM(model_t *mod, void *buffer, const char *mod_name, qboolean &
 				v++;
 			}
 #endif
-
+#ifndef JK2_MODE
 			if (isAnOldModelFile)
 			{
 				int *boneRef = (int *)((byte *)surf + surf->ofsBoneReferences);
@@ -3480,6 +3437,7 @@ qboolean R_LoadMDXM(model_t *mod, void *buffer, const char *mod_name, qboolean &
 					}
 				}
 			}
+#endif
 			// find the next surface
 			surf = (mdxmSurface_t *)((byte *)surf + surf->ofsEnd);
 		}
@@ -3489,6 +3447,7 @@ qboolean R_LoadMDXM(model_t *mod, void *buffer, const char *mod_name, qboolean &
 
 	// Make a copy on the GPU
 	lod = (mdxmLOD_t *)((byte *)mdxm + mdxm->ofsLODs);
+	//ri.Printf(PRINT_WARNING, "R_LoadMDXM: %s has %i lods\n", mod_name, mdxm->numLODs);
 
 	mod->data.glm->vboModels = (mdxmVBOModel_t *)R_Hunk_Alloc(sizeof(mdxmVBOModel_t) * mdxm->numLODs, qtrue);
 	for (l = 0; l < mdxm->numLODs; l++)
@@ -3519,6 +3478,9 @@ qboolean R_LoadMDXM(model_t *mod, void *buffer, const char *mod_name, qboolean &
 		int *indexOffsets = (int *)R_Malloc(sizeof(int)* mdxm->numSurfaces, TAG_TEMP_WORKSPACE, qfalse);
 
 		vboModel->numVBOMeshes = mdxm->numSurfaces;
+
+		//ri.Printf(PRINT_WARNING, "R_LoadMDXM: %s lod %i has %i surfaces\n", mod_name, l, mdxm->numSurfaces);
+
 		vboModel->vboMeshes = (mdxmVBOMesh_t *)R_Hunk_Alloc(sizeof(mdxmVBOMesh_t) * mdxm->numSurfaces, qtrue);
 		vboMeshes = vboModel->vboMeshes;
 
@@ -3770,6 +3732,7 @@ qboolean R_LoadMDXM(model_t *mod, void *buffer, const char *mod_name, qboolean &
 
 		surf = (mdxmSurface_t *)((byte *)lod + sizeof(mdxmLOD_t) + (mdxm->numSurfaces * sizeof(mdxmLODSurfOffset_t)));
 
+		//ri.Printf(PRINT_WARNING, "R_LoadMDXM 2: %s lod %i has %i surfaces\n", mod_name, l, mdxm->numSurfaces);
 		for (int n = 0; n < mdxm->numSurfaces; n++)
 		{
 			vboMeshes[n].vbo = vbo;
@@ -3781,11 +3744,16 @@ qboolean R_LoadMDXM(model_t *mod, void *buffer, const char *mod_name, qboolean &
 			vboMeshes[n].numVertexes = surf->numVerts;
 			vboMeshes[n].numIndexes = surf->numTriangles * 3;
 
+			//ri.Printf(PRINT_WARNING, "R_LoadMDXM 2: %s lod %i surface %i has %i indexes\n", mod_name, l, n, vboMeshes[n].numIndexes);
+
 			surf = (mdxmSurface_t *)((byte *)surf + surf->ofsEnd);
 		}
 
 		vboModel->vbo = vbo;
 		vboModel->ibo = ibo;
+
+		assert(vboModel->vbo);
+		assert(vboModel->ibo);
 
 		R_Free(indexOffsets);
 		R_Free(baseVertexes);
