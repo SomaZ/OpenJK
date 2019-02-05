@@ -2729,7 +2729,7 @@ R_LoadLightGridArray
 void R_LoadLightGridArray( world_t *worldData, lump_t *l ) {
 	worldData->numGridArrayElements = worldData->lightGridBounds[0] * worldData->lightGridBounds[1] * worldData->lightGridBounds[2];
 
-	if ( (unsigned)l->filelen != worldData->numGridArrayElements * sizeof(*worldData->lightGridArray) ) {
+	if ( l->filelen != (int)(worldData->numGridArrayElements * sizeof(*worldData->lightGridArray)) ) {
 		Com_Printf (S_COLOR_YELLOW  "WARNING: light grid array mismatch\n" );
 		worldData->lightGridData = NULL;
 		return;
@@ -3219,20 +3219,20 @@ void R_RenderMissingCubemaps()
 		cubemapFormat = GL_RGBA16F;
 	}
 
-	/*tr.skyboxCubemapped = qfalse;
+	tr.skyboxCubemapped = qfalse;
 
 	if (!tr.skyboxCubemap.image)
 	{
-		tr.skyboxCubemap.image = R_CreateImage("*skyboxCubemap", NULL, r_cubemapSize->integer, r_cubemapSize->integer, IMGTYPE_COLORALPHA, IMGFLAG_NO_COMPRESSION | IMGFLAG_CLAMPTOEDGE | IMGFLAG_MIPMAP | IMGFLAG_CUBEMAP, cubemapFormat);
+		tr.skyboxCubemap.image = R_CreateImage("*skyboxCubemap", NULL, r_cubemapSize->integer, r_cubemapSize->integer, 0, IMGTYPE_COLORALPHA, IMGFLAG_MIPMAP | IMGFLAG_CUBEMAP, cubemapFormat);
 		for (int j = 0; j < 6; j++)
 		{
 			RE_ClearScene();
-			R_RenderCubemapSide(&tr.skyboxCubemap, 0, j, qfalse, qfalse);
+			R_RenderCubemapSide(&tr.skyboxCubemap, j, qfalse, qfalse);
 			R_IssuePendingRenderCommands();
 			R_InitNextFrame();
 		}
 		tr.skyboxCubemapped = qtrue;
-	}*/
+	}
 
 	if (tr.cubemaps[0].image)
 	{
@@ -3246,22 +3246,51 @@ void R_RenderMissingCubemaps()
 		for (int i = 0; i < tr.numCubemaps; i++)
 		{
 			if (!bounce)
-				tr.cubemaps[i].image = R_CreateImage(va("*cubeMap%d", i), NULL, r_cubemapSize->integer, r_cubemapSize->integer, 0, IMGTYPE_COLORALPHA, IMGFLAG_NO_COMPRESSION | IMGFLAG_CLAMPTOEDGE | IMGFLAG_MIPMAP | IMGFLAG_CUBEMAP, cubemapFormat);
+				tr.cubemaps[i].image = r_cubeMapping->integer > 1 ?
+										R_CreateImage(
+											va("*cubeMap%d", i), 
+											NULL, 
+											r_cubemapSize->integer * 4, 
+											r_cubemapSize->integer * 2, 
+											0, 
+											IMGTYPE_COLORALPHA, 
+											IMGFLAG_MIPMAP, 
+											cubemapFormat) :
+										R_CreateImage(
+											va("*cubeMap%d", i), 
+											NULL, 
+											r_cubemapSize->integer, 
+											r_cubemapSize->integer, 
+											0, 
+											IMGTYPE_COLORALPHA, 
+											IMGFLAG_CLAMPTOEDGE | IMGFLAG_MIPMAP | IMGFLAG_CUBEMAP, 
+											cubemapFormat);
 
 			for (int j = 0; j < 6; j++)
 			{
 				RE_ClearScene();
-				R_RenderCubemapSide(tr.cubemaps, i, j, qfalse, bounce);
+				R_RenderCubemapSide(&tr.cubemaps[i], j, qfalse, bounce);
 				R_IssuePendingRenderCommands();
 				R_InitNextFrame();
 			}
 
-			for (int j = 0; j < 6; j++)
+			if (r_cubeMapping->integer > 1)
 			{
 				RE_ClearScene();
-				R_AddConvolveCubemapCmd(tr.cubemaps, i, j);
+				R_AddProjectCubemapCmd(&tr.cubemaps[i]);
+				//R_AddConvolveCubemapCmd(&tr.cubemaps[i], 0);
 				R_IssuePendingRenderCommands();
 				R_InitNextFrame();
+			}
+			else
+			{
+				for (int j = 0; j < 6; j++)
+				{
+					RE_ClearScene();
+					R_AddConvolveCubemapCmd(&tr.cubemaps[i], j);
+					R_IssuePendingRenderCommands();
+					R_InitNextFrame();
+				}
 			}
 		}
 	}

@@ -333,7 +333,11 @@ uniform sampler2D u_ShadowMap;
 #endif
 
 #if defined(USE_CUBEMAP)
+#if defined(EQUIRECTANGULAR_CUBEMAPS)
+uniform sampler2D u_CubeMap;
+#else
 uniform samplerCube u_CubeMap;
+#endif
 #endif
 
 #if defined(USE_NORMALMAP) || defined(USE_DELUXEMAP) || defined(USE_SPECULARMAP) || defined(USE_CUBEMAP)
@@ -523,7 +527,7 @@ float spec_G(float NL, float NE, float roughness )
   return G1(NL,k)*G1(NE,k);
 }
 
-vec3 CalcDiffuse(vec3 diffuseAlbedo, float NH, float EH, float roughness)
+vec3 CalcDiffuse(vec3 diffuseAlbedo, vec3 fresnel, float roughness)
 {
 #if defined(USE_BURLEY)
 	// modified from https://disney-animation.s3.amazonaws.com/library/s2012_pbs_disney_brdf_notes_v2.pdf
@@ -532,7 +536,7 @@ vec3 CalcDiffuse(vec3 diffuseAlbedo, float NH, float EH, float roughness)
 	burley *= burley;
 	return diffuseAlbedo * burley;
 #else
-	return diffuseAlbedo ;
+	return diffuseAlbedo * (vec3(1.0) - fresnel);
 #endif
 }
 
@@ -541,12 +545,12 @@ vec3 CalcSpecular(
 	in float NH,
 	in float NL,
 	in float NE,
-	in float EH,
+	in vec3  fresnel,
 	in float roughness
 )
 {
 	float distrib = spec_D(NH,roughness);
-	vec3 fresnel = spec_F(EH,specular);
+	//vec3 fresnel = spec_F(EH,specular);
 	float vis = spec_G(NL, NE, roughness);
 	float denominator = max((4.0 * max(NE,0.0) * max(NL,0.0)),0.001);
 	return (distrib * fresnel * vis) / denominator;
@@ -780,12 +784,8 @@ void main()
   #endif
 	specular *= u_SpecularScale;
 
-
 	diffuse.rgb *= diffuse.rgb;
 	specular.rgb *= specular.rgb;
-	// energy conservation
-	//diffuse.rgb *= (vec3(1.0) - specular.rgb);
-
 
 	// diffuse rgb is diffuse
 	// specular rgb is specular reflectance at normal incidence
@@ -796,16 +796,18 @@ void main()
     EH = max(1e-8, dot(E, H));
 	NH = max(1e-8, dot(N, H));
 	NL = clamp(dot(N, L), 1e-8, 1.0);
+
+	vec3 fresnel = spec_F(EH, specular.rgb);
 	
-	reflectance = CalcDiffuse(diffuse.rgb, NH, EH, roughness);
+	reflectance = CalcDiffuse(diffuse.rgb, fresnel, roughness);
 
   #if (defined(USE_LIGHTMAP) || defined(USE_LIGHT_VERTEX)) && defined(USE_DELUXEMAP)
 	NE = abs(dot(N, E)) + 1e-5;
-	reflectance += CalcSpecular(specular.rgb, NH, NL, NE, EH, roughness) * 1.0;
+	reflectance += CalcSpecular(specular.rgb, NH, NL, NE, fresnel, roughness) * 1.0;
   #endif
   #if defined(USE_LIGHT_VECTOR)
 	NE = abs(dot(N, E)) + 1e-5;
-	reflectance += CalcSpecular(specular.rgb, NH, NL, NE, EH, roughness);
+	reflectance += CalcSpecular(specular.rgb, NH, NL, NE, fresnel, roughness);
   #endif
 
 	out_Color.rgb  = lightColor   * reflectance * (attenuation * NL);
@@ -822,7 +824,7 @@ void main()
 	out_Color.rgb += specBufferColor.rgb;
 
   #if defined(USE_CUBEMAP)
-	NE = clamp(dot(N, E), 0.0, 1.0);
+	NE = abs(dot(N, E)) + 1e-5;
 	vec3 EnvBRDF = texture(u_EnvBrdfMap, vec2(roughness, NE)).rgb;
 
 	vec3 R = reflect(E, N);
@@ -831,7 +833,14 @@ void main()
 	// from http://seblagarde.wordpress.com/2012/09/29/image-based-lighting-approaches-and-parallax-corrected-cubemap/
 	vec3 parallax = u_CubeMapInfo.xyz + u_CubeMapInfo.w * viewDir;
 
-	vec3 cubeLightColor = textureLod(u_CubeMap, R + parallax, ROUGHNESS_MIPS * roughness).rgb * u_EnableTextures.w;
+	#if defined(EQUIRECTANGULAR_CUBEMAPS)
+		vec3 rayDirection = normalize(R + parallax);
+		vec2 cubeTC = vec2((atan(rayDirection.y, rayDirection.x) / 6.283185307179586476925286766559), acos(rayDirection.z) / 3.1415926535897932384626433832795);
+		vec3 cubeLightColor = textureLod(u_CubeMap, cubeTC, ROUGHNESS_MIPS * roughness).rgb * u_EnableTextures.w;
+	#else
+		vec3 cubeLightColor = textureLod(u_CubeMap, R + parallax, ROUGHNESS_MIPS * roughness).rgb * u_EnableTextures.w;
+	#endif
+
 	cubeLightColor *= cubeLightColor;
 	vec3 shColor = CalcSHColor(-N) * u_EnableTextures.x;
 
@@ -860,12 +869,14 @@ void main()
     NL2 = max(1e-8, abs(NL2) );
     EH2 = max(1e-8, dot(E, H2));
     NH2 = max(1e-8, dot(N, H2));
+
+	vec3 fresnel2 = spec_F(EH2, specular.rgb);
 	
-	reflectance  = CalcSpecular(specular.rgb, NH2, NL2, NE, EH2, roughness);
+	reflectance  = CalcSpecular(specular.rgb, NH2, NL2, NE, fresnel2, roughness);
 
 	// bit of a hack, with modulated shadowmaps, ignore diffuse
     #if !defined(SHADOWMAP_MODULATE)
-	reflectance += CalcDiffuse(diffuse.rgb, NH2, EH2, roughness);
+	reflectance += CalcDiffuse(diffuse.rgb, fresnel2, roughness);
     #endif
 
 	lightColor = u_PrimaryLightColor * var_Color.rgb;

@@ -6,13 +6,14 @@ out vec2 var_ScreenTex;
 
 void main()
 {
-	gl_Position = attr_Position;
-	vec2 screenCoords = gl_Position.xy / gl_Position.w;
+	vec2 position = vec2(2.0 * float(gl_VertexID & 2) - 1.0, 4.0 * float(gl_VertexID & 1) - 1.0);
+	gl_Position = vec4(position, 0.0, 1.0);
+	vec2 screenCoords = gl_Position.xy;
 	var_ScreenTex = screenCoords * 0.5 + 0.5;
 }
 
 /*[Fragment]*/
-uniform vec4 u_ViewInfo; // cubeface, mip_level, max_mip_level, 0.0
+uniform vec4 u_ViewInfo; // cubeface, mip_level, max_mip_level, roughness
 uniform samplerCube u_CubeMap;
 in vec2 var_ScreenTex;
 
@@ -35,10 +36,9 @@ vec2 hammersley2D(uint i, uint N) {
 vec3 ImportanceSampleGGX(vec2 Xi, float Roughness, vec3 N)
 {
 	float a = Roughness * Roughness;
-
 	float Phi = 2.0 * M_PI * Xi.x;
 	float CosTheta = sqrt((1.0 - Xi.y) / (1.0 + (a*a - 1.0) * Xi.y));
-	float SinTheta = sqrt( 1.0 - CosTheta * CosTheta );
+	float SinTheta = sqrt( 1.0 - CosTheta * CosTheta);
 
 	vec3 H;
 	H.x = SinTheta * cos( Phi );
@@ -46,10 +46,10 @@ vec3 ImportanceSampleGGX(vec2 Xi, float Roughness, vec3 N)
 	H.z = CosTheta;
 
 	vec3 UpVector = abs(N.z) < 0.999 ? vec3(0.0,0.0,1.0) : vec3(1.0,0.0,0.0);
-	vec3 TangentX = normalize(cross(UpVector , N));
-	vec3 TangentY = cross(N , TangentX);
+	vec3 TangentX = normalize(cross(UpVector, N));
+	vec3 TangentY = cross(N, TangentX);
 
-	return TangentX * H.x + TangentY * H.y + N * H.z;
+	return normalize(TangentX * H.x + TangentY * H.y + N * H.z);
 }
 
 vec3 PrefilterEnvMap( float Roughness, vec3 R )
@@ -57,17 +57,19 @@ vec3 PrefilterEnvMap( float Roughness, vec3 R )
 	vec3 N = R;
 	vec3 V = R;
 	vec3 PrefilteredColor = vec3(0.0);
+	vec3 TextureColor = vec3(0.0);
 	float TotalWeight = 0.0;
-	uint NumSamples = 1024u;
+	const uint NumSamples = 1024u;
 	for ( uint i = 0u; i < NumSamples; i++ )
 	{
 		vec2 Xi = hammersley2D( i, NumSamples );
 		vec3 H = ImportanceSampleGGX( Xi, Roughness, N );
-		vec3 L = 2.0 * dot( V, H ) * H - V;
-		float NoL = clamp((dot( N, L )),0.0,1.0);
-		if ( NoL > 0 )
+		vec3 L = normalize(2.0 * dot( V, H ) * H - V);
+		float NoL = max((dot( N, L )), 0.0);
+		if ( NoL > 0.0 )
 		{
-			PrefilteredColor += textureLod(u_CubeMap, L, 0.0).rgb * NoL;
+			TextureColor = textureLod(u_CubeMap, L, 0.0).rgb;
+			PrefilteredColor += TextureColor * TextureColor * NoL;
 			TotalWeight += NoL;
 		}
 	}
@@ -77,24 +79,25 @@ vec3 PrefilterEnvMap( float Roughness, vec3 R )
 void main()
 {
 	float cubeFace = u_ViewInfo.x;
-	vec2 vector;
-	vector.x = (var_ScreenTex.x - 0.5) * 2.0;
-	vector.y = (var_ScreenTex.y - 0.5) * 2.0;
+	vec2 vector = (var_ScreenTex - vec2(0.5)) * 2.0;
 	// from http://www.codinglabs.net/article_physically_based_rendering.aspx
 
-	vec3 normal = normalize(	vec3(vector.x, -vector.y,	1.0) );
-    if(cubeFace==2)
-        normal = normalize(		vec3(vector.x,		 1.0,		vector.y) );
-    else if(cubeFace==3)
-        normal = normalize(		vec3(vector.x,		-1.0,		-vector.y) );
-    else if(cubeFace==0)
-        normal = normalize(		vec3(  1.0,		-vector.y,	-vector.x) );
-    else if(cubeFace==1)
-        normal = normalize(		vec3( -1.0,		-vector.y,	vector.x) );
-    else if(cubeFace==5)
-        normal = normalize(		vec3(-vector.x, -vector.y,	-1.0) );
+	vec3 normal = normalize(vec3(-vector.x, -vector.y, -1.0));
+	
+	if (cubeFace == 0)
+		normal = normalize(vec3(1.0, -vector.y, -vector.x));
+	else if (cubeFace == 1)
+		normal = normalize(vec3(-1.0, -vector.y, vector.x));
+	else if (cubeFace == 2)
+		normal = normalize(vec3(vector.x, 1.0, vector.y));
+	else if (cubeFace == 3)
+		normal = normalize(vec3(vector.x, -1.0, -vector.y));
+	else if (cubeFace == 4)
+		normal = normalize(vec3(vector.x, -vector.y, 1.0)); 
 
-	float roughness = u_ViewInfo.y / u_ViewInfo.z;
+	float roughness = u_ViewInfo.w;
+
 	vec3 result = PrefilterEnvMap(roughness, normal);
-	out_Color = vec4(result, 1.0);
+			
+	out_Color = vec4(sqrt(result), 1.0);
 }

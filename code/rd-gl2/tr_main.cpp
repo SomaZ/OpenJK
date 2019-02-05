@@ -2222,7 +2222,7 @@ void R_RenderDlightCubemaps(const refdef_t *fd)
 		shadowParms.viewportWidth = PSHADOW_MAP_SIZE;
 		shadowParms.viewportHeight = PSHADOW_MAP_SIZE;
 		shadowParms.isPortal = qfalse;
-		shadowParms.isMirror = qtrue; // because it is
+		shadowParms.isMirror = qtrue;
 
 		shadowParms.fovX = 90;
 		shadowParms.fovY = 90;
@@ -2237,9 +2237,8 @@ void R_RenderDlightCubemaps(const refdef_t *fd)
 		*data = {};
 
 		shadowParms.targetFbo = tr.shadowCubeFbo;
-		shadowParms.cubemapSelection = tr.shadowCubemaps;
+		shadowParms.cubemap = &tr.shadowCubemaps[i];
 		shadowParms.targetFboLayer = 0;
-		shadowParms.targetFboCubemapIndex = i;
 
 		tr.viewParms = shadowParms;
 		tr.viewParms.frameSceneNum = tr.frameSceneNum;
@@ -2930,7 +2929,7 @@ void R_RenderSunShadowMaps(const refdef_t *fd, int level)
 		tr.refdef.sunShadowMvp[level]);
 }
 
-void R_RenderCubemapSide( cubemap_t *cubemaps, int cubemapIndex, int cubemapSide, qboolean subscene, qboolean bounce )
+void R_RenderCubemapSide( cubemap_t *cubemap, int cubemapSide, qboolean subscene, qboolean bounce )
 {
 	refdef_t refdef;
 	viewParms_t	parms;
@@ -2938,7 +2937,7 @@ void R_RenderCubemapSide( cubemap_t *cubemaps, int cubemapIndex, int cubemapSide
 
 	memset( &refdef, 0, sizeof( refdef ) );
 	refdef.rdflags = 0;
-	VectorCopy(cubemaps[cubemapIndex].origin, refdef.vieworg);
+	VectorCopy(cubemap->origin, refdef.vieworg);
 
 	switch(cubemapSide)
 	{
@@ -2987,7 +2986,7 @@ void R_RenderCubemapSide( cubemap_t *cubemaps, int cubemapIndex, int cubemapSide
 	refdef.y = 0;
 	refdef.width = tr.renderCubeFbo->width;
 	refdef.height = tr.renderCubeFbo->height;
-
+	
 	refdef.time = 0;
 
 	if (!subscene)
@@ -3039,9 +3038,8 @@ void R_RenderCubemapSide( cubemap_t *cubemaps, int cubemapIndex, int cubemapSide
 	}
 
 	parms.targetFbo = tr.renderCubeFbo;
-	parms.cubemapSelection = cubemaps;
+	parms.cubemap = cubemap;
 	parms.targetFboLayer = cubemapSide;
-	parms.targetFboCubemapIndex = cubemapIndex;
 
 	R_RenderView(&parms);
 

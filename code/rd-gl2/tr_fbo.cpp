@@ -742,6 +742,15 @@ void FBO_Init(void)
 		R_CheckFBO(tr.renderEquirectangularFbo);
 	}
 
+	if (tr.prevRenderDepthImage != NULL)
+	{
+		tr.prevDepthFbo = FBO_Create("_prevRenderDepthFbo", tr.prevRenderDepthImage->width, tr.prevRenderDepthImage->height);
+		FBO_Bind(tr.prevDepthFbo);
+		FBO_AttachTextureImage(tr.prevRenderDepthImage, 0);
+		FBO_SetupDrawBuffers();
+		R_CheckFBO(tr.prevDepthFbo);
+	}
+
 	if (tr.weatherDepthImage != NULL)
 	{
 		tr.weatherDepthFbo = FBO_Create(

@@ -322,10 +322,6 @@ void main()
 		var_Normal    = vec4(normal,    viewDir.x);
 		var_Tangent   = vec4(tangent,   viewDir.y);
 		var_Bitangent = vec4(bitangent, viewDir.z);
-		
-		#if defined(USE_SKELETAL_ANIMATION)
-		var_OldPosition = vec4(vec3(0.0), 1.0);
-		#endif
 	#endif
 
 }

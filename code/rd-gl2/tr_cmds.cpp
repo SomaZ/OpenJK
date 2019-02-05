@@ -230,7 +230,7 @@ R_AddConvolveCubemapsCmd
 
 =============
 */
-void	R_AddConvolveCubemapCmd(cubemap_t *cubemaps, int cubemap, int cubeSide) 
+void	R_AddConvolveCubemapCmd(cubemap_t *cubemap, int cubeSide) 
 {
 	convolveCubemapCommand_t	*cmd;
 
@@ -242,7 +242,25 @@ void	R_AddConvolveCubemapCmd(cubemap_t *cubemaps, int cubemap, int cubeSide)
 	
 	cmd->cubemap = cubemap;
 	cmd->cubeSide = cubeSide;
-	cmd->cubemaps = cubemaps;
+}
+
+/*
+=============
+R_AddProjectCubemapCmd
+
+=============
+*/
+void	R_AddProjectCubemapCmd(cubemap_t *cubemap)
+{
+	projectCubemapCommand_t	*cmd;
+
+	cmd = (projectCubemapCommand_t *)R_GetCommandBuffer(sizeof(*cmd));
+	if (!cmd) {
+		return;
+	}
+	cmd->commandId = RC_PROJECTCUBEMAP;
+
+	cmd->cubemap = cubemap;
 }
 
 void R_AddBuildSphericalHarmonicsCmd()
