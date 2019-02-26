@@ -1332,7 +1332,7 @@ static shaderProgram_t *SelectShaderProgram( int stageIndex, shaderStage_t *stag
 			index |= PREPASS_USE_G_BUFFERS;
 
 		//FIX ME: UGLY, find better way of handling this
-		if (stage->bundle[TB_NORMALMAP].image[0] != 0)
+		if (stage->bundle[TB_NORMALMAP].image[0] != 0 && r_parallaxMapping->integer)
 			if (stage->bundle[TB_NORMALMAP].image[0]->type == IMGTYPE_NORMALHEIGHT)
 				index |= PREPASS_USE_PARALLAX;
 

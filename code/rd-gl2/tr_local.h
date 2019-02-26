@@ -1171,9 +1171,10 @@ enum
 	PRELIGHT_SPECULAR_FBO = 0x0001,
 	PRELIGHT_DIFFUSE_SPECULAR_FBO = 0x0002,
 	PRELIGHT_PRE_SSR_FBO = 0x0003,
-	PRELIGHT_TEMP_FBO = 0x0004,
-	PRELIGHT_SWAP_TEMP_FBO = 0x0005,
-	PRELIGHT_FBO_COUNT	= 0x0006
+	PRELIGHT_RESOLVE_FBO = 0x0004,
+	PRELIGHT_TEMP_EVEN_FBO = 0x0005,
+	PRELIGHT_TEMP_ODD_FBO = 0x0006,
+	PRELIGHT_FBO_COUNT	= 0x0007
 
 };
 
@@ -2401,8 +2402,8 @@ typedef struct trGlobals_s {
 	image_t					*glowImage;
 	image_t					*glowImageScaled[6];
 	image_t					*prevRenderImage;
-	image_t					*tempFilterBufferImage;
-	image_t					*swapTempFilterBufferImage;
+	image_t					*tempFilterOddBufferImage;
+	image_t					*tempFilterEvenBufferImage;
 	image_t					*preSSRImage[2];
 	image_t					*sunRaysImage;
 	image_t					*renderDepthImage;
@@ -2518,6 +2519,7 @@ typedef struct trGlobals_s {
 	shaderProgram_t glowCompositeShader;
 	shaderProgram_t dglowDownsample;
 	shaderProgram_t dglowUpsample;
+	shaderProgram_t hiZDownsample;
 	shaderProgram_t spriteShader[SSDEF_COUNT];
 	shaderProgram_t weatherShader;
 	shaderProgram_t weatherUpdateShader;

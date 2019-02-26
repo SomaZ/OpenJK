@@ -895,6 +895,10 @@ void main()
 		out_Color.rgb = specular.rgb;
 	if (USE_DEBUG == 3)
 		out_Color.rgb = N.rgb * 0.5 + 0.5;
+	#if defined(USE_CUBEMAP)
+	if (USE_DEBUG == 4)
+		out_Color.rgb = sqrt(cubeLightColor);
+	#endif
   #endif
 
 	out_Color.rgb = sqrt(out_Color.rgb);

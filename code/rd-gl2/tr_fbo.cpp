@@ -514,19 +514,24 @@ void FBO_Init(void)
 					FBO_AttachTextureImage(tr.preSSRImage[0], 0); //out_Color
 					FBO_AttachTextureImage(tr.preSSRImage[1], 1); //out_Glow
 				}
-				if (i == PRELIGHT_TEMP_FBO)
+				if (i == PRELIGHT_RESOLVE_FBO)
+				{
+					FBO_AttachTextureImage(tr.diffuseLightingImage, 0); //out_Color
+				}
+				if (i == PRELIGHT_TEMP_ODD_FBO)
 				{
 					FBO_AttachTextureImage(tr.specularLightingImage, 0); //out_Color
-					FBO_AttachTextureImage(tr.swapTempFilterBufferImage, 1); //out_Color
+					FBO_AttachTextureImage(tr.tempFilterOddBufferImage, 1); //out_Glow
 				}
-				if (i == PRELIGHT_SWAP_TEMP_FBO)
+				if (i == PRELIGHT_TEMP_EVEN_FBO)
 				{
-					FBO_AttachTextureImage(tr.tempFilterBufferImage, 0); //out_Color
+					FBO_AttachTextureImage(tr.specularLightingImage, 0); //out_Color
+					FBO_AttachTextureImage(tr.tempFilterEvenBufferImage, 1); //out_Glow
 				}
 			}
 			else
 			{
-				if ((i == PRELIGHT_PRE_SSR_FBO) || (i == PRELIGHT_TEMP_FBO) || (i == PRELIGHT_SWAP_TEMP_FBO))
+				if ((i == PRELIGHT_PRE_SSR_FBO) || (i == PRELIGHT_TEMP_ODD_FBO) || (i == PRELIGHT_TEMP_EVEN_FBO))
 					continue;
 			}
 
@@ -679,15 +684,6 @@ void FBO_Init(void)
 
 	if (r_ssao->integer)
 	{
-		tr.hdrDepthFbo = FBO_Create("_hdrDepth", tr.hdrDepthImage->width, tr.hdrDepthImage->height);
-		FBO_Bind(tr.hdrDepthFbo);
-
-		FBO_AttachTextureImage(tr.hdrDepthImage, 0);
-
-		FBO_SetupDrawBuffers();
-
-		R_CheckFBO(tr.hdrDepthFbo);
-
 		tr.screenSsaoFbo = FBO_Create("_screenssao", tr.screenSsaoImage->width, tr.screenSsaoImage->height);
 		FBO_Bind(tr.screenSsaoFbo);
 		
@@ -696,6 +692,18 @@ void FBO_Init(void)
 		FBO_SetupDrawBuffers();
 
 		R_CheckFBO(tr.screenSsaoFbo);
+	}
+
+	if (r_ssao->integer || r_ssr->integer)
+	{
+		tr.hdrDepthFbo = FBO_Create("_hdrDepth", tr.hdrDepthImage->width, tr.hdrDepthImage->height);
+		FBO_Bind(tr.hdrDepthFbo);
+
+		FBO_AttachTextureImage(tr.hdrDepthImage, 0);
+
+		FBO_SetupDrawBuffers();
+
+		R_CheckFBO(tr.hdrDepthFbo);
 	}
 
 	if (r_refraction->integer || r_ssr->integer) 
