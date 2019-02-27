@@ -3263,7 +3263,7 @@ void R_CreateBuiltinImages(void) {
 	if (r_ssr->integer)
 	{
 		tr.velocityImage = R_CreateImage("*velocity", NULL, width, height, 0, IMGTYPE_COLORALPHA, IMGFLAG_NO_COMPRESSION | IMGFLAG_CLAMPTOEDGE, GL_RG16F);
-		tr.prevRenderDepthImage = R_CreateImage("*prevRenderDepth", NULL, width, height, 0, IMGTYPE_COLORALPHA, IMGFLAG_NO_COMPRESSION | IMGFLAG_CLAMPTOEDGE, GL_DEPTH24_STENCIL8);
+		tr.prevRenderDepthImage = R_CreateImage("*prevRenderDepth", NULL, width / 2, height / 2, 0, IMGTYPE_COLORALPHA, IMGFLAG_NO_COMPRESSION | IMGFLAG_CLAMPTOEDGE | IMGFLAG_NPOT_MIP, GL_R32F);
 		tr.preSSRImage[0] = R_CreateImage("*preSSR_0", NULL, width / 2, height / 2, 0, IMGTYPE_COLORALPHA, IMGFLAG_NO_COMPRESSION | IMGFLAG_CLAMPTOEDGE, hdrFormat);
 		tr.preSSRImage[1] = R_CreateImage("*preSSR_1", NULL, width / 2, height / 2, 0, IMGTYPE_COLORALPHA, IMGFLAG_NO_COMPRESSION | IMGFLAG_CLAMPTOEDGE, hdrFormat);
 
@@ -3274,8 +3274,8 @@ void R_CreateBuiltinImages(void) {
 		qglTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 		qglTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 
-		tr.tempFilterBufferImage = R_CreateImage("*tempFilterBuffer", NULL, width, height, 0, IMGTYPE_COLORALPHA, IMGFLAG_NO_COMPRESSION | IMGFLAG_CLAMPTOEDGE, hdrFormat);
-		tr.swapTempFilterBufferImage = R_CreateImage("*swapTempFilterBuffer", NULL, width, height, 0, IMGTYPE_COLORALPHA, IMGFLAG_NO_COMPRESSION | IMGFLAG_CLAMPTOEDGE, hdrFormat);
+		tr.tempFilterEvenBufferImage = R_CreateImage("*tempFilterEvenBuffer", NULL, width, height, 0, IMGTYPE_COLORALPHA, IMGFLAG_NO_COMPRESSION | IMGFLAG_CLAMPTOEDGE, hdrFormat);
+		tr.tempFilterOddBufferImage = R_CreateImage("*tempFilterOddBuffer", NULL, width, height, 0, IMGTYPE_COLORALPHA, IMGFLAG_NO_COMPRESSION | IMGFLAG_CLAMPTOEDGE, hdrFormat);
 	}
 
 	{
@@ -3316,6 +3316,10 @@ void R_CreateBuiltinImages(void) {
 	if (r_ssao->integer)
 	{
 		tr.screenSsaoImage = R_CreateImage("*screenSsao", NULL, width / 2, height / 2, 0, IMGTYPE_COLORALPHA, IMGFLAG_NO_COMPRESSION | IMGFLAG_CLAMPTOEDGE, GL_RGBA8);
+	}
+
+	if (r_ssao->integer || r_ssr->integer)
+	{
 		tr.hdrDepthImage = R_CreateImage("*hdrDepth", NULL, width, height, 0, IMGTYPE_COLORALPHA, IMGFLAG_NO_COMPRESSION | IMGFLAG_CLAMPTOEDGE, GL_R32F);
 	}
 

@@ -1329,7 +1329,7 @@ static bool GLSL_IsValidPermutationForGeneric(int shaderCaps)
 
 static bool GLSL_IsValidPermutationForPrepass(int shaderCaps)
 {
-	if ((shaderCaps & LIGHTDEF_USE_PARALLAXMAP) && !r_parallaxMapping->integer)
+	if ((shaderCaps & PREPASS_USE_PARALLAX) && !r_parallaxMapping->integer)
 		return false;
 
 	if ((shaderCaps & PREPASS_USE_VERTEX_ANIMATION) &&
@@ -2561,6 +2561,25 @@ static int GLSL_LoadGPUProgramDynamicGlowDownsample(
 	return 1;
 }
 
+static int GLSL_LoadGPUProgramHiZDownsample(
+	ShaderProgramBuilder& builder,
+	Allocator& scratchAlloc)
+{
+	GLSL_LoadGPUProgramBasic(
+		builder,
+		scratchAlloc,
+		&tr.hiZDownsample,
+		"hi_z_downsample",
+		fallback_hi_z_downsampleProgram,
+		GPUSHADER_VERTEX | GPUSHADER_FRAGMENT,
+		0);
+
+	GLSL_InitUniforms(&tr.hiZDownsample);
+	GLSL_SetUniformInt(&tr.hiZDownsample, UNIFORM_TEXTUREMAP, TB_DIFFUSEMAP);
+	GLSL_FinishGPUShader(&tr.hiZDownsample);
+	return 1;
+}
+
 static int GLSL_LoadGPUProgramSurfaceSprites(
 	ShaderProgramBuilder& builder,
 	Allocator& scratchAlloc)
@@ -2738,6 +2757,7 @@ void GLSL_LoadGPUShaders()
 	numEtcShaders += GLSL_LoadGPUProgramGaussianBlur(builder, allocator);
 	numEtcShaders += GLSL_LoadGPUProgramDynamicGlowUpsample(builder, allocator);
 	numEtcShaders += GLSL_LoadGPUProgramDynamicGlowDownsample(builder, allocator);
+	numEtcShaders += GLSL_LoadGPUProgramHiZDownsample(builder, allocator);
 	numEtcShaders += GLSL_LoadGPUProgramSurfaceSprites(builder, allocator);
 	numEtcShaders += GLSL_LoadGPUProgramWeather(builder, allocator);
 
@@ -2797,6 +2817,7 @@ void GLSL_ShutdownGPUShaders(void)
 
 	GLSL_DeleteGPUShader(&tr.prefilterEnvMapShader);
 	GLSL_DeleteGPUShader(&tr.testcubeShader);
+	GLSL_DeleteGPUShader(&tr.hiZDownsample);
 	GLSL_DeleteGPUShader(&tr.dglowDownsample);
 	GLSL_DeleteGPUShader(&tr.dglowUpsample);
 

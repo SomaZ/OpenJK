@@ -1332,7 +1332,7 @@ static shaderProgram_t *SelectShaderProgram( int stageIndex, shaderStage_t *stag
 			index |= PREPASS_USE_G_BUFFERS;
 
 		//FIX ME: UGLY, find better way of handling this
-		if (stage->bundle[TB_NORMALMAP].image[0] != 0)
+		if (stage->bundle[TB_NORMALMAP].image[0] != 0 && r_parallaxMapping->integer)
 			if (stage->bundle[TB_NORMALMAP].image[0]->type == IMGTYPE_NORMALHEIGHT)
 				index |= PREPASS_USE_PARALLAX;
 
@@ -1602,6 +1602,17 @@ static void RB_IterateStagesGeneric( shaderCommands_t *input, const VertexArrays
 			{//want to use RGBGen from ent
 				forceRGBGen = CGEN_ENTITY;
 			}
+
+			// pretty bad way of removing sabers from main pass
+			// we do this for ssr, because sabers should be analytical lights
+			if (backEnd.currentEntity->e.reType == RT_SABER_GLOW || 
+				backEnd.currentEntity->e.reType == RT_LINE || 
+				!strcmp(input->shader->name, "gfx/effects/sabers/swordTrail") ||
+				!strcmp(input->shader->name, "gfx/effects/sabers/saberBlur") || 
+				!strcmp(input->shader->name, "gfx/effects/sabers/blackSaberBlur") || 
+				!strcmp(input->shader->name, "SFX_Sabers/saber_trail") || 
+				!strcmp(input->shader->name, "SFX_Sabers/black_trail"))
+				renderPass = backEndData->currentPostPass;
 
 			if ((input->shader == tr.distortionShader) || backEnd.currentEntity->e.renderfx & RF_DISTORTION)
 			{

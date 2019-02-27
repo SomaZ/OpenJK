@@ -75,7 +75,7 @@ uniform sampler2D u_ScreenOffsetMap;	// 4
 uniform sampler2D u_ScreenOffsetMap2;   // 5
 uniform sampler2D u_EnvBrdfMap;			// 7
 
-#if defined(TEMPORAL_FILTER) || defined(SSR_RESOLVE)
+#if defined(TEMPORAL_FILTER) || defined(SSR_RESOLVE) || defined(SSR)
 uniform sampler2D u_ShadowMap;
 #endif
 
@@ -139,10 +139,20 @@ flat in vec3 var_LightColor;
 
 out vec4 out_Color;
 out vec4 out_Glow;
+out vec4 out_Velocity;
 
-float LinearDepth(float zBufferDepth, float zFarDivZNear)
+float linearDepth(in float depthSample, in float zNear, in float zFar)
 {
-	return 1.0 / mix(zFarDivZNear, 1.0, zBufferDepth);
+	depthSample = 2.0 * depthSample - 1.0;
+    float zLinear = 2.0 * zNear * zFar / (zFar + zNear - depthSample * (zFar - zNear));
+    return zLinear;
+}
+
+float depthSample(in float linearDepth, in float zNear, in float zFar)
+{
+    float nonLinearDepth = (zFar + zNear - 2.0 * zNear * zFar / linearDepth) / (zFar - zNear);
+    nonLinearDepth = (nonLinearDepth + 1.0) / 2.0;
+    return nonLinearDepth;
 }
 
 vec3 WorldPosFromDepth(float depth, vec2 TexCoord) {
@@ -408,6 +418,8 @@ const float Noise(vec2 n,float x){
 	return fract(sin(dot(n.xy,vec2(12.9898, 78.233)))*43758.5453);
 }
 
+#if defined(SSR)
+
 //from https://github.com/OpenGLInsights/OpenGLInsightsCode/blob/master/Chapter%2015%20Depth%20of%20Field%20with%20Bokeh%20Rendering/src/glf/ssao.cpp
 const vec2 halton[32] = vec2[32](
 	vec2(-0.353553, 0.612372),
@@ -444,53 +456,36 @@ const vec2 halton[32] = vec2[32](
 	vec2(0.0311802, -0.121049)
 );
 
-vec3 BinarySearch(in vec3 dir, inout vec3 hitCoord, out float dDepth)
+vec3 BinarySearch(in vec3 dir, inout vec3 hitCoord)
 {
+	float dDepth = 0.0;
     for(int i = 0; i < 16; i++)
     {
-        vec4 projectedCoord = u_ModelMatrix * vec4(hitCoord, 1.0);
-        projectedCoord.xy /= projectedCoord.w;
-        projectedCoord.xy = projectedCoord.xy * 0.5 + 0.5;
- 
-        float stupidDepth		= textureLod(u_ScreenDepthMap, projectedCoord.xy, 1).r;
-        float depth             = WorldPosFromDepth(stupidDepth, projectedCoord.xy).z;
- 
-        dDepth = hitCoord.z - depth;
-		
-        if(dDepth >= 0.0)
-            hitCoord += dir;
-
+		dDepth = textureLod(u_ShadowMap, hitCoord.xy, 0).r * hitCoord.z;
+        
 		dir *= 0.5;
-		hitCoord -= dir;
+		if(dDepth >= 1.0)
+			hitCoord += dir;
+		else
+			hitCoord -= dir;
     }
- 
-    vec4 projectedCoord = u_ModelMatrix * vec4(hitCoord, 1.0); 
-    projectedCoord.xy /= projectedCoord.w;
-    projectedCoord.xy = projectedCoord.xy * 0.5 + 0.5;
- 
-    return vec3(projectedCoord.xy, abs(dDepth) < 0.15 ? 1.0 : 0.0);
+	return vec3(hitCoord.xy, abs(dDepth - 1.0) < 0.00015 ? 1.0 : 0.35);
 }
 
-vec3 RayCast(in vec3 dir, inout vec3 hitCoord, out float dDepth)
+vec3 RayCast(in vec3 dir, inout vec3 hitCoord)
 {
+	float dDepth = 0.0;
     for(int i = 0; i < 30; ++i) {
-        hitCoord               += dir; 
+        hitCoord += dir;
 
-        vec4 projectedCoord		= u_ModelMatrix * vec4(hitCoord, 1.0);
-        projectedCoord.xy      /= projectedCoord.w;
-        projectedCoord.xy       = projectedCoord.xy * 0.5 + 0.5; 
+		dDepth = textureLod(u_ShadowMap, hitCoord.xy, 1).r * hitCoord.z;
 
-		float stupidDepth		= textureLod(u_ScreenDepthMap, projectedCoord.xy, 1).r;
-        float depth             = WorldPosFromDepth(stupidDepth, projectedCoord.xy).z;
-        dDepth                  = hitCoord.z - depth; 
-
-        if (dDepth < 0.0)
-			return BinarySearch(dir, hitCoord, dDepth);
-
-		dir *= 1.18;
+		if (dDepth < 1.0)
+			return BinarySearch(dir, hitCoord);
+		
+        dir *= 1.02;
     }
-
-    return vec3(0.0);
+    return vec3(hitCoord.xy, 0.35);
 }
 
 vec3 ImportanceSampleGGX(vec2 Xi, float Roughness, vec3 N)
@@ -513,52 +508,48 @@ vec3 ImportanceSampleGGX(vec2 Xi, float Roughness, vec3 N)
 	return vec3(TangentX * H.x + TangentY * H.y + N * H.z);
 }
 
-vec4 traceSSRRay(in float roughness, in vec3 wsNormal, in vec3 viewPos, in vec2 uv, in float random)
+vec4 traceSSRRay(in float roughness, in vec3 wsNormal, in vec3 V, in vec3 viewPos, in vec3 scspPos, in float random)
 {
-	vec3 hitPos = viewPos;
-
-	float sample = Noise(uv, random) * 32.0;
+	float sample = random;
 
 	vec3 H;
 	vec3 reflection;
-	vec3 V = var_ViewDir;
+	bool NdotR, VdotR;
 
-	for (int i = 0; i < 16; i++) 
+	for (int i = 0; i < 5; i++) 
 	{
-		sample = mod(sample + 3.0, 32.0);
+		sample = mod(sample + 12.0, 32.0);
 		vec2 Xi = halton[int(sample)];
 		Xi.y = mix(Xi.y, 0.0, brdfBias);
 
 		H = ImportanceSampleGGX(Xi, roughness, wsNormal);
+		reflection = reflect(V, H);
+		
+		NdotR = dot(wsNormal, reflection) > 0.0;
+		VdotR = dot(V, reflection) > 0.0;
 
-		reflection = reflect(V, H.xyz);
-		if (dot(wsNormal, reflection) > 0.0)
+		if (NdotR && VdotR)
 			break;
 	}
-	
-	reflection = normalize(mat3(u_ModelViewProjectionMatrix) * reflection);
 
-	float tracedDepth;
-	float minRayStep = 0.05;
-	vec3 screenCoord = RayCast(reflection.xyz * max(minRayStep, -viewPos.z * 0.05), hitPos, tracedDepth).xyz;
+	if (!NdotR || !VdotR)
+		return vec4(0.0);
 
-	#ifndef TWO_RAYS_PER_PIXEL
-	if (length(screenCoord) == 0.0)
-	{
-		sample = mod(sample + 3.0, 32.0);
-		vec2 Xi = halton[int(sample)];
-		Xi.y = mix(Xi.y, 0.0, brdfBias);
-		H = ImportanceSampleGGX(Xi, roughness, wsNormal);
-
-		reflection = reflect(V, H.xyz);
-		reflection = normalize(mat3(u_ModelViewProjectionMatrix) * reflection);
-		screenCoord = RayCast(reflection.xyz * max(minRayStep, -viewPos.z * 0.05), hitPos, tracedDepth).xyz;
-	}
-	#endif
-
-	float EH  = max(1e-8, dot(-V, H.xyz));
-	float NH  = max(1e-8, dot(wsNormal, H.xyz));
+	float EH  = max(1e-8, dot(V, H));
+	float NH  = max(1e-8, dot(wsNormal, H));
 	float pdf = (spec_D(NH,roughness) * NH) / (4.0 * EH);
+	
+	const float minRayStep = 0.05;
+	reflection = normalize(mat3(u_ModelViewProjectionMatrix) * reflection) * max(minRayStep, -viewPos.z * 0.1);
+
+	vec4 scspRefPos = u_ModelMatrix * vec4(viewPos + reflection, 1.0);
+	scspRefPos.xyz /= scspRefPos.w;
+	scspRefPos.xyz = scspRefPos.xyz * 0.5 + 0.5;
+	scspRefPos.z = 1.0 / linearDepth(scspRefPos.z, u_ViewInfo.x, u_ViewInfo.y);
+
+	vec3 scspReflection = vec3(scspRefPos.xyz - scspPos.xyz);
+	
+	vec3 screenCoord = RayCast(scspReflection, scspPos.xyz).xyz;
 
 	vec2 dCoords = smoothstep(0.4, 0.5, abs(vec2(0.5, 0.5) - screenCoord.xy));
 	float screenEdgefactor = clamp(1.0 - (dCoords.x + dCoords.y), 0.0, 1.0);
@@ -567,6 +558,8 @@ vec4 traceSSRRay(in float roughness, in vec3 wsNormal, in vec3 viewPos, in vec2 
 
 	return vec4(screenCoord.xy, pdf, clamp(screenCoord.z, 0.0, 1.0));
 }
+
+#endif
 
 float luma(vec3 color)
 {
@@ -646,12 +639,11 @@ void main()
 	ivec2 windowCoord = ivec2(gl_FragCoord.xy);
 
 #if defined(SSR)
-	vec2 coord = windowCoord * u_ViewInfo.xy;
-	float depth = texture(u_ScreenDepthMap, coord).r;
-	vec3 position = WorldPosFromDepth(depth, coord );
+	vec2 coord = windowCoord / vec2(textureSize(u_ShadowMap, 0));
+	float depth = texture(u_ShadowMap, coord).r;
+	vec3 vsPosition = WorldPosFromDepth(depthSample(depth, u_ViewInfo.x, u_ViewInfo.y), coord);
 	vec4 normal = texture(u_NormalMap, coord);
 	vec4 specularAndGloss = texture(u_SpecularMap, coord);
-	windowCoord *= 2;
 #else
 	vec2 coord = gl_FragCoord.xy * r_FBufScale;
 	float depth = texture(u_ScreenDepthMap, coord).r;
@@ -672,16 +664,19 @@ void main()
 	vec4 specularOut = vec4(0.0, 0.0, 0.0, 0.0);
 
 #if defined(SSR)
-	if (depth < 1.0)
-	{
-		diffuseOut = traceSSRRay( roughness, N, position, gl_FragCoord.xy * u_ViewInfo.xy, u_ViewInfo.w);
 
-		#if defined(TWO_RAYS_PER_PIXEL)
-			specularOut = traceSSRRay( roughness, N, position, gl_FragCoord.xy * u_ViewInfo.xy, u_ViewInfo.w + 16.0);
-		#endif
-	}
-	else
-		discard;
+	vec4 scspPos = u_ModelMatrix * vec4(vsPosition, 1.0);
+	scspPos.xyz /= scspPos.w;
+	scspPos.xyz = scspPos.xyz * 0.5 + 0.5;
+	scspPos.z = 1.0 / linearDepth(scspPos.z, u_ViewInfo.x, u_ViewInfo.y);
+
+	float noise = Noise(scspPos.xy, u_ViewInfo.w) * 32.0;
+
+	diffuseOut = traceSSRRay( roughness, N, E, vsPosition, scspPos.xyz, noise);
+
+	#if defined(TWO_RAYS_PER_PIXEL)
+		specularOut = traceSSRRay( roughness, N, E, vsPosition, scspPos.xyz, noise + 16.0);
+	#endif
 
 #elif defined(SSR_RESOLVE)
 	vec3 viewNormal = normalize(mat3(u_NormalMatrix) * N);
@@ -716,7 +711,7 @@ void main()
 
 	for( int i = 0; i < samples; i++)
 	{
-		vec2 offsetUV = offset[i] * (roughness * 3.0 + 1.0);
+		vec2 offsetUV = offset[i] * (roughness * 2.0 + 1.0);
 		offsetUV *= rotationMat;
 		ivec2 neighborUV = ivec2(windowCoord + offsetUV);
 
@@ -729,7 +724,6 @@ void main()
 
 	diffuseOut /= weightSum;
 	diffuseOut.rgb = sqrt(diffuseOut.rgb);
-	diffuseOut.a *= diffuseOut.a;
 
 #elif defined(TEMPORAL_FILTER)
 /*
@@ -766,17 +760,15 @@ SOFTWARE.
 	vec4 current = texelFetch(u_ScreenImageMap, uv, 0);
 	current.rgb *= current.rgb;
 
-	vec2 ray = texelFetch(u_ScreenOffsetMap, ivec2(uv / 2.0), 0).xy;
+	vec2 velocity = texelFetch(u_ShadowMap, uv, 0).xy / r_FBufScale;
 
-	#ifdef TWO_RAYS_PER_PIXEL
-		ray += texelFetch(u_ScreenOffsetMap2, ivec2(uv / 2.0), 0).xy;
-		ray *= 0.5;
-	#endif
-
-	vec2 velocity = texelFetch(u_ShadowMap, ivec2(ray / r_FBufScale), 0).xy * vec2(1.0, -1.0);
-	uv -= ivec2(velocity);
+	//TODO: properly reprojecting
+	uv -= ivec2(velocity.xy);
 
 	vec4 previous = texelFetch(u_ScreenDepthMap, uv, 0);
+
+	out_Velocity = previous;
+
 	previous.rgb *= previous.rgb;
 
 	ivec2 du = ivec2(1.0,	0.0);
@@ -804,11 +796,11 @@ SOFTWARE.
 
 	vec4 currentMin = min(ctl, min(ctc, min(ctr, min(cml, min(cmc, min(cmr, min(cbl, min(cbc, cbr))))))));
 	vec4 currentMax = max(ctl, max(ctc, max(ctr, max(cml, max(cmc, max(cmr, max(cbl, max(cbc, cbr))))))));
-	vec4 center = (currentMin + currentMax) * 0.5;
+	vec4 average = (ctl+ctc+ctr+cml+cmc+cmr+cbl+cbc+cbr) / 9.0;
 	
-	previous = clip_aabb(currentMin.xyz, currentMax.xyz, clamp(center, currentMin, currentMax), previous);
+	previous = clip_aabb(currentMin.xyz, currentMax.xyz, clamp(average, currentMin, currentMax), previous);
 
-	float velocityWeight = clamp(1.0 - (length(velocity / r_FBufScale) * 0.02), 0.05, 0.985);
+	float velocityWeight = clamp(1.0 - (length(velocity.xy) * 0.02), 0.3, 0.985);
 
 	float lum0 = luma(current.rgb);
     float lum1 = luma(previous.rgb);
