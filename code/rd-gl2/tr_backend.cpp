@@ -2139,7 +2139,15 @@ static void RB_BuildHiZBuffer()
 		GL_State(GLS_DEPTHTEST_DISABLE);
 		GL_Cull(CT_FRONT_SIDED);
 
-		for (int i = 0; i < 10; i++)
+		//FIX ME: maybe store mips count as property of the image?
+		int dim = width > height ? width : height;
+		int levels = 0;
+		while (dim) {
+			levels++;
+			dim /= 2;
+		}
+
+		for (int i = 0; i < levels-1; i++)
 		{
 			FBO_Bind(tr.prevDepthFbo);
 
