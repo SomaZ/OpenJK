@@ -3964,6 +3964,14 @@ static shader_t *FinishShader( void ) {
 		}
 
 		//
+		// mark env mapped stage as unactive when r_environmentMapping == 0 
+		//
+		if (!r_environmentMapping->integer &&
+			pStage->bundle[0].tcGen == TCGEN_ENVIRONMENT_MAPPED)
+		{
+			pStage->active = qfalse;
+		}
+		//
 		// determine sort order and fog color adjustment
 		//
 		if ( ( pStage->stateBits & ( GLS_SRCBLEND_BITS | GLS_DSTBLEND_BITS ) ) &&

@@ -458,7 +458,7 @@ static cvarTable_t cvarTable[] = {
 	{ &cg_hudFiles, "cg_hudFiles", "ui/jahud.txt", CVAR_ARCHIVE},
 
 	{ &cg_VariantSoundCap, "cg_VariantSoundCap", "0", 0 },
-	{ &cg_turnAnims, "cg_turnAnims", "1", 0 },
+	{ &cg_turnAnims, "cg_turnAnims", "0", 0 },
 	{ &cg_motionBoneComp, "cg_motionBoneComp", "2", 0 },
 	{ &cg_distributeMBCorrection, "cg_distributeMBCorrection", "1", 0 },
 	{ &cg_reliableAnimEvents, "cg_reliableAnimEvents", "1", CVAR_ARCHIVE },

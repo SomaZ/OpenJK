@@ -516,7 +516,7 @@ vec4 traceSSRRay(in float roughness, in vec3 wsNormal, in vec3 V, in vec3 viewPo
 	vec3 reflection;
 	bool NdotR, VdotR;
 
-	for (int i = 0; i < 5; i++) 
+	for (int i = 0; i < 12; i++) 
 	{
 		sample = mod(sample + 12.0, 32.0);
 		vec2 Xi = halton[int(sample)];
@@ -670,12 +670,12 @@ void main()
 	scspPos.xyz = scspPos.xyz * 0.5 + 0.5;
 	scspPos.z = 1.0 / linearDepth(scspPos.z, u_ViewInfo.x, u_ViewInfo.y);
 
-	float noise = Noise(scspPos.xy, u_ViewInfo.w) * 32.0;
+	float noise = Noise(scspPos.xy, u_ViewInfo.z) * 32.0;
 
 	diffuseOut = traceSSRRay( roughness, N, E, vsPosition, scspPos.xyz, noise);
 
 	#if defined(TWO_RAYS_PER_PIXEL)
-		specularOut = traceSSRRay( roughness, N, E, vsPosition, scspPos.xyz, noise + 16.0);
+		specularOut = traceSSRRay( roughness, N, E, vsPosition, scspPos.xyz, noise + u_ViewInfo.w);
 	#endif
 
 #elif defined(SSR_RESOLVE)

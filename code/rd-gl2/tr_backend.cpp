@@ -2580,7 +2580,7 @@ void RB_RenderAllRealTimeLightTypes()
 		GLSL_SetUniformVec3(sp, UNIFORM_VIEWUP, viewBasis[2]);
 		GLSL_SetUniformVec3(sp, UNIFORM_VIEWORIGIN, backEnd.viewParms.ori.origin);
 		
-		vec4_t viewInfo = { tr.viewParms.zNear, tr.viewParms.zFar, 0.0f, float(tr.frameCount % 32) };
+		vec4_t viewInfo = { tr.viewParms.zNear, tr.viewParms.zFar, Q_flrand(0.f, 32.f), float(tr.frameCount % 32) };
 		GLSL_SetUniformVec4(sp, UNIFORM_VIEWINFO, viewInfo);
 		
 		matrix_t invModelViewMatrix;

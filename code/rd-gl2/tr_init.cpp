@@ -135,7 +135,7 @@ cvar_t	*r_dynamicGlowIntensity;
 cvar_t	*r_dynamicGlowSoft;
 cvar_t	*r_dynamicGlowWidth;
 cvar_t	*r_dynamicGlowHeight;
-
+cvar_t	*r_environmentMapping;
 cvar_t  *r_debugWeather;
 
 /*
@@ -1395,6 +1395,7 @@ void R_Register(void)
 	r_shadowCascadeZFar = ri.Cvar_Get("r_shadowCascadeZFar", "3072", CVAR_ARCHIVE | CVAR_LATCH);
 	r_shadowCascadeZBias = ri.Cvar_Get("r_shadowCascadeZBias", "64", CVAR_ARCHIVE | CVAR_LATCH);
 	r_ignoreDstAlpha = ri.Cvar_Get("r_ignoreDstAlpha", "0", CVAR_ARCHIVE | CVAR_LATCH);
+	r_environmentMapping = ri.Cvar_Get("r_environmentMapping", "1", CVAR_ARCHIVE | CVAR_LATCH);
 
 	//
 	// temporary latched variables that can only change over a restart

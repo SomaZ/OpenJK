@@ -172,7 +172,7 @@ extern cvar_t	*r_dynamicGlowIntensity;
 extern cvar_t	*r_dynamicGlowSoft;
 extern cvar_t	*r_dynamicGlowWidth;
 extern cvar_t	*r_dynamicGlowHeight;
-
+extern cvar_t	*r_environmentMapping;
 extern cvar_t	*r_debugWeather;
 /*
 Ghoul2 Insert Start
