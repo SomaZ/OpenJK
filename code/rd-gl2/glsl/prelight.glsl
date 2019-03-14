@@ -658,7 +658,7 @@ void main()
 
 	//vec3 N = normalize(DecodeNormal(normal.rg));
 	vec3 N = normalize(normal.rgb);
-	vec3 E = normalize(var_ViewDir);
+	vec3 E = normalize(-var_ViewDir);
 	
 	vec4 diffuseOut = vec4(0.0, 0.0, 0.0, 1.0);
 	vec4 specularOut = vec4(0.0, 0.0, 0.0, 0.0);
@@ -672,10 +672,10 @@ void main()
 
 	float noise = Noise(scspPos.xy, u_ViewInfo.z) * 32.0;
 
-	diffuseOut = traceSSRRay( roughness, N, E, vsPosition, scspPos.xyz, noise);
+	diffuseOut = traceSSRRay( roughness, N, -E, vsPosition, scspPos.xyz, noise);
 
 	#if defined(TWO_RAYS_PER_PIXEL)
-		specularOut = traceSSRRay( roughness, N, E, vsPosition, scspPos.xyz, noise + u_ViewInfo.w);
+		specularOut = traceSSRRay( roughness, N, -E, vsPosition, scspPos.xyz, noise + u_ViewInfo.w);
 	#endif
 
 #elif defined(SSR_RESOLVE)
