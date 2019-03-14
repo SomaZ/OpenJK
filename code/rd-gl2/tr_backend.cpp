@@ -2381,7 +2381,7 @@ static void RB_RenderDepthOnly(drawSurf_t *drawSurfs, int numDrawSurfs)
 			!backEnd.colorMask[2],
 			!backEnd.colorMask[3]);
 
-	if (backEnd.viewParms.targetFbo == tr.renderCubeFbo && tr.msaaResolveFbo)
+	if (tr.renderCubeFbo != NULL && backEnd.viewParms.targetFbo == tr.renderCubeFbo && tr.msaaResolveFbo)
 	{
 		// If we're using multisampling and rendering a cubemap, resolve the depth to correct size first
 		vec4i_t frameBox;
