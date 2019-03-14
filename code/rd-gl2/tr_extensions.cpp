@@ -72,6 +72,7 @@ PFNGLISBUFFERPROC qglIsBuffer;
 PFNGLACTIVETEXTUREPROC qglActiveTexture;
 PFNGLTEXIMAGE3DPROC qglTexImage3D;
 PFNGLTEXSUBIMAGE3DPROC qglTexSubImage3D;
+PFNGLTEXIMAGE2DMULTISAMPLEPROC qglTexImage2DMultisample;
 
 // Shader objects
 PFNGLCREATESHADERPROC qglCreateShader;
@@ -347,6 +348,7 @@ void GLimp_InitCoreFunctions()
 	GetGLFunction (qglActiveTexture, "glActiveTexture", qtrue);
 	GetGLFunction(qglTexImage3D, "glTexImage3D", qtrue);
 	GetGLFunction(qglTexSubImage3D, "glTexSubImage3D", qtrue);
+	GetGLFunction(qglTexImage2DMultisample, "glTexImage2DMultisample", qtrue);
 
 	// Shader objects
 	GetGLFunction (qglCreateShader, "glCreateShader", qtrue);

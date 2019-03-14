@@ -2302,7 +2302,7 @@ R_CreateImage
 This is the only way any image_t are created
 ================
 */
-image_t *R_CreateImage(const char *name, byte *pic, int width, int height, int depth, imgType_t type, int flags, int internalFormat) {
+image_t *R_CreateImage(const char *name, byte *pic, int width, int height, int bitDepth, imgType_t type, int flags, int internalFormat) {
 	image_t		*image;
 	qboolean	isLightmap = qfalse;
 	long		hash;
@@ -2340,7 +2340,7 @@ image_t *R_CreateImage(const char *name, byte *pic, int width, int height, int d
 		if (image->flags & IMGFLAG_CUBEMAP)
 			internalFormat = GL_RGBA8;
 		else
-			internalFormat = RawImage_GetFormat(pic, width * height, depth, isLightmap, image->type, image->flags);
+			internalFormat = RawImage_GetFormat(pic, width * height, bitDepth, isLightmap, image->type, image->flags);
 	}
 
 	image->internalFormat = internalFormat;
@@ -2460,7 +2460,6 @@ image_t *R_CreateImage3D(const char *name, byte *data, int width, int height, in
 
 	if (strlen(name) >= MAX_QPATH) {
 		ri.Error(ERR_DROP, "R_CreateImage3D: \"%s\" is too long", name);
-
 	}
 
 	image = (image_t *)R_Hunk_Alloc(sizeof(image_t), qtrue);
@@ -2494,6 +2493,37 @@ image_t *R_CreateImage3D(const char *name, byte *data, int width, int height, in
 	qglTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
 	qglTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 	qglTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+
+	hash = generateHashValue(name);
+	image->next = hashTable[hash];
+	hashTable[hash] = image;
+
+	return image;
+}
+
+image_t *R_CreateImageMultiSampledDepth(const char *name, int width, int height, int multisample, int internalFormat)
+{
+	image_t *image;
+	long hash;
+
+	if (strlen(name) >= MAX_QPATH) {
+		ri.Error(ERR_DROP, "R_CreateImage3D: \"%s\" is too long", name);
+	}
+
+	image = (image_t *)R_Hunk_Alloc(sizeof(image_t), qtrue);
+	qglGenTextures(1, &image->texnum);
+
+	image->type = IMGTYPE_COLORALPHA;
+	image->flags = IMGFLAG_MULTISAMPLED;
+
+	Q_strncpyz(image->imgName, name, sizeof(image->imgName));
+
+	image->width = width;
+	image->height = height;
+
+	GL_Bind(image);
+
+	qglTexImage2DMultisample(GL_TEXTURE_2D_MULTISAMPLE, multisample, internalFormat, width, height, GL_TRUE);
 
 	hash = generateHashValue(name);
 	image->next = hashTable[hash];
@@ -3175,8 +3205,24 @@ R_CreateBuiltinImages
 ==================
 */
 void R_CreateBuiltinImages(void) {
-	int		x, y;
+	int		x, y, multisample;
 	byte	data[DEFAULT_SIZE][DEFAULT_SIZE][4];
+	
+	qglGetIntegerv(GL_MAX_SAMPLES, &multisample);
+	ri.Printf(PRINT_DEVELOPER, "GL_MAX_SAMPLES: %i\n", multisample);
+
+	if (r_ext_framebuffer_multisample->integer < multisample)
+	{
+		multisample = r_ext_framebuffer_multisample->integer;
+	}
+
+	if (multisample < 2)
+		multisample = 0;
+
+	if (multisample != r_ext_framebuffer_multisample->integer)
+	{
+		ri.Cvar_SetValue("r_ext_framebuffer_multisample", (float)multisample);
+	}
 
 	R_CreateDefaultImage();
 
@@ -3235,6 +3281,10 @@ void R_CreateBuiltinImages(void) {
 	rgbFormat = GL_RGBA8;
 
 	tr.renderImage = R_CreateImage("_render", NULL, width, height, 0, IMGTYPE_COLORALPHA, IMGFLAG_NO_COMPRESSION | IMGFLAG_CLAMPTOEDGE, hdrFormat);
+	tr.renderDepthImage = R_CreateImage("*renderdepth", NULL, width, height, 0, IMGTYPE_COLORALPHA, IMGFLAG_NO_COMPRESSION | IMGFLAG_CLAMPTOEDGE, GL_DEPTH24_STENCIL8);
+
+	if (multisample)
+		tr.renderDepthMSAAImage = R_CreateImageMultiSampledDepth("*renderdepthMSAA", width, height, multisample, GL_DEPTH24_STENCIL8);
 
 	tr.specBufferImage = R_CreateImage("_specBuffer", NULL, width, height, 0, IMGTYPE_COLORALPHA, IMGFLAG_NO_COMPRESSION | IMGFLAG_CLAMPTOEDGE, GL_RGBA8);
 	tr.normalBufferImage = R_CreateImage("_normalBuffer", NULL, width, height, 0, IMGTYPE_COLORALPHA, IMGFLAG_NO_COMPRESSION | IMGFLAG_CLAMPTOEDGE, GL_RGBA16F);
@@ -3256,7 +3306,6 @@ void R_CreateBuiltinImages(void) {
 	if (r_drawSunRays->integer)
 		tr.sunRaysImage = R_CreateImage("*sunRays", NULL, width, height, 0, IMGTYPE_COLORALPHA, IMGFLAG_NO_COMPRESSION | IMGFLAG_CLAMPTOEDGE, rgbFormat);
 
-	tr.renderDepthImage = R_CreateImage("*renderdepth", NULL, width, height, 0, IMGTYPE_COLORALPHA, IMGFLAG_NO_COMPRESSION | IMGFLAG_CLAMPTOEDGE, GL_DEPTH24_STENCIL8);
 
 	tr.cubeDepthImage = R_CreateImage("*cubedepth", NULL, PSHADOW_MAP_SIZE, PSHADOW_MAP_SIZE, 0, IMGTYPE_COLORALPHA, IMGFLAG_NO_COMPRESSION | IMGFLAG_CLAMPTOEDGE | IMGFLAG_CUBEMAP, GL_DEPTH_COMPONENT24);
 

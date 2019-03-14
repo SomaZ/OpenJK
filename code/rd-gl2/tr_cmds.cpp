@@ -714,6 +714,9 @@ void RE_BeginFrame( stereoFrame_t stereoFrame ) {
 				{
 					FBO_Bind(tr.msaaResolveFbo);
 					qglClear(GL_COLOR_BUFFER_BIT);
+
+					FBO_Bind(tr.msaaPreResolveFbo);
+					qglClear(GL_COLOR_BUFFER_BIT);
 				}
 
 				if (tr.renderFbo)
