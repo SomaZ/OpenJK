@@ -4172,6 +4172,9 @@ void RE_LoadWorldMap( const char *name ) {
 	tr.mapLightScale = 1.0f;
 	tr.sunShadowScale = 0.5f;
 
+	// clear the skyboxportal marker
+	skyboxportal = qfalse;
+
 	// set default sun direction to be used if it isn't
 	// overridden by a shader
 	tr.sunDirection[0] = 0.45f;

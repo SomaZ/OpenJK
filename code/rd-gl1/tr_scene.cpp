@@ -39,8 +39,8 @@ int			r_firstScenePoly;
 
 int			r_numpolyverts;
 
-qboolean	skyboxportal;
-qboolean	drawskyboxportal;
+int			skyboxportal;
+int			drawskyboxportal;
 
 /*
 ====================

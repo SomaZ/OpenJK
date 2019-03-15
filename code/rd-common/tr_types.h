@@ -87,8 +87,8 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 #define RDF_doFullbright	0x00040		// Light Amp goggles
 #define RDF_ForceSightOn	0x00080		// using force sight
 
-extern qboolean	skyboxportal;
-extern qboolean	drawskyboxportal;
+extern int	skyboxportal;
+extern int	drawskyboxportal;
 
 typedef byte color4ub_t[4];
 

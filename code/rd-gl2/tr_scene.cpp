@@ -35,8 +35,8 @@ int			r_firstScenePoly;
 
 int			r_numpolyverts;
 
-qboolean	skyboxportal;
-qboolean	drawskyboxportal;
+int			skyboxportal;
+int			drawskyboxportal;
 
 /*
 ====================
@@ -318,10 +318,6 @@ void RE_BeginScene(const refdef_t *fd)
 	if (fd->rdflags & RDF_SKYBOXPORTAL)
 	{
 		skyboxportal = qtrue;
-	}
-	else
-	{
-		skyboxportal = qfalse;
 	}
 
 	if (fd->rdflags & RDF_DRAWSKYBOX)
