@@ -178,7 +178,7 @@ void FBO_CreateBuffer(FBO_t *fbo, int format, int index, int multisample)
 		case GL_DEPTH24_STENCIL8:
 			fbo->packedDepthStencilFormat = format;
 			pRenderBuffer = &fbo->packedDepthStencilBuffer;
-			attachment = 0; // special for stencil and depth
+			attachment = GL_DEPTH_STENCIL_ATTACHMENT;
 			break;
 
 		default:
@@ -202,13 +202,7 @@ void FBO_CreateBuffer(FBO_t *fbo, int format, int index, int multisample)
 
 	if(absent)
 	{
-		if (attachment == 0)
-		{
-			qglFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT,   GL_RENDERBUFFER, *pRenderBuffer);
-			qglFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_STENCIL_ATTACHMENT, GL_RENDERBUFFER, *pRenderBuffer);
-		}
-		else
-			qglFramebufferRenderbuffer(GL_FRAMEBUFFER, attachment, GL_RENDERBUFFER, *pRenderBuffer);
+		qglFramebufferRenderbuffer(GL_FRAMEBUFFER, attachment, GL_RENDERBUFFER, *pRenderBuffer);
 	}
 }
 
@@ -412,20 +406,7 @@ void FBO_Init(void)
 		hdrFormat = GL_RGBA16F;
 	}
 
-	qglGetIntegerv(GL_MAX_SAMPLES, &multisample);
-
-	if (r_ext_framebuffer_multisample->integer < multisample)
-	{
-		multisample = r_ext_framebuffer_multisample->integer;
-	}
-
-	if (multisample < 2)
-		multisample = 0;
-
-	if (multisample != r_ext_framebuffer_multisample->integer)
-	{
-		ri.Cvar_SetValue("r_ext_framebuffer_multisample", (float)multisample);
-	}
+	multisample = r_ext_framebuffer_multisample->integer;
 	
 	// only create a render FBO if we need to resolve MSAA or do HDR
 	// otherwise just render straight to the screen (tr.renderFbo = NULL)
@@ -436,7 +417,8 @@ void FBO_Init(void)
 
 		FBO_CreateBuffer(tr.renderFbo, hdrFormat, 0, multisample);
 		FBO_CreateBuffer(tr.renderFbo, hdrFormat, 1, multisample);
-		FBO_CreateBuffer(tr.renderFbo, GL_DEPTH_COMPONENT24, 0, multisample);
+		qglFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_TEXTURE_2D_MULTISAMPLE, tr.renderDepthMSAAImage->texnum, 0);
+		//FBO_CreateBuffer(tr.renderFbo, GL_DEPTH24_STENCIL8, 0, multisample);
 
 		FBO_SetupDrawBuffers();
 
@@ -479,6 +461,39 @@ void FBO_Init(void)
 		FBO_Bind(NULL);
 	}
 
+	if (multisample)
+	{
+		tr.preBuffersFbo = FBO_Create("_preBuffers", tr.normalBufferImage->width, tr.normalBufferImage->height);
+		FBO_Bind(tr.preBuffersFbo);
+
+		FBO_CreateBuffer(tr.preBuffersFbo, hdrFormat, 0, multisample); // out_Color
+		FBO_CreateBuffer(tr.preBuffersFbo, GL_RGBA8, 1, multisample); // out_Glow
+		if (r_ssr->integer)
+			FBO_CreateBuffer(tr.preBuffersFbo, hdrFormat, 2, multisample);	// out_Velocity
+
+		qglFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_TEXTURE_2D_MULTISAMPLE, tr.renderDepthMSAAImage->texnum, 0);
+		//FBO_CreateBuffer(tr.preBuffersFbo, GL_DEPTH24_STENCIL8, 0, multisample);
+
+		FBO_SetupDrawBuffers();
+
+		R_CheckFBO(tr.preBuffersFbo);
+
+		tr.msaaPreResolveFbo = FBO_Create("_msaaPreResolve", tr.renderDepthImage->width, tr.renderDepthImage->height);
+		FBO_Bind(tr.msaaPreResolveFbo);
+
+		FBO_AttachTextureImage(tr.normalBufferImage, 0);	// out_Color
+		FBO_AttachTextureImage(tr.specBufferImage, 1);		// out_Glow
+
+		if (r_ssr->integer)
+			FBO_AttachTextureImage(tr.velocityImage, 2);	// out_Velocity
+
+		FBO_AttachTexturePackedDepthStencil(tr.renderDepthImage->texnum);
+
+		FBO_SetupDrawBuffers();
+
+		R_CheckFBO(tr.msaaPreResolveFbo);
+	}
+	else
 	{
 		tr.preBuffersFbo = FBO_Create("_preBuffers", tr.normalBufferImage->width, tr.normalBufferImage->height);
 		FBO_Bind(tr.preBuffersFbo);
@@ -494,6 +509,14 @@ void FBO_Init(void)
 		FBO_SetupDrawBuffers();
 
 		R_CheckFBO(tr.preBuffersFbo);
+	}
+
+	if (tr.preBuffersFbo)
+	{
+		FBO_Bind(tr.preBuffersFbo);
+		qglClearColor(1, 0, 0.5, 1);
+		qglClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+		FBO_Bind(NULL);
 	}
 
 	{
@@ -531,7 +554,7 @@ void FBO_Init(void)
 			}
 			else
 			{
-				if ((i == PRELIGHT_PRE_SSR_FBO) || (i == PRELIGHT_TEMP_ODD_FBO) || (i == PRELIGHT_TEMP_EVEN_FBO))
+				if ((i == PRELIGHT_PRE_SSR_FBO) || (i == PRELIGHT_TEMP_ODD_FBO) || (i == PRELIGHT_TEMP_EVEN_FBO) || (i == PRELIGHT_RESOLVE_FBO))
 					continue;
 			}
 
@@ -734,8 +757,8 @@ void FBO_Init(void)
 		R_CheckFBO(tr.renderCubeFbo);
 	}
 
-	if (tr.prefilterEnvMapImage != NULL && tr.renderCubeImage != NULL) {
-		tr.preFilterEnvMapFbo = FBO_Create("_preFilterEnvMapFbo", tr.renderCubeImage->width, tr.renderCubeImage->height);
+	if (tr.prefilterEnvMapImage != NULL) {
+		tr.preFilterEnvMapFbo = FBO_Create("_preFilterEnvMapFbo", tr.prefilterEnvMapImage->width, tr.prefilterEnvMapImage->height);
 		FBO_Bind(tr.preFilterEnvMapFbo);
 		FBO_AttachTextureImage(tr.prefilterEnvMapImage, 0);
 		FBO_SetupDrawBuffers();
@@ -1055,10 +1078,7 @@ void FBO_FastBlitIndexed(FBO_t *src, FBO_t *dst, int srcReadBuffer, int dstDrawB
 	                      0, 0, dst->width, dst->height,
 						  buffers, filter);
 
-	qglBindFramebuffer(GL_READ_FRAMEBUFFER, src->frameBuffer);
 	qglReadBuffer (GL_COLOR_ATTACHMENT0);
-	qglBindFramebuffer(GL_DRAW_FRAMEBUFFER, dst->frameBuffer);
-	qglDrawBuffer(GL_COLOR_ATTACHMENT0);
 
 	glState.currentFBO = dst;
 	FBO_SetupDrawBuffers();

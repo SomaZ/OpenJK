@@ -135,7 +135,7 @@ cvar_t	*r_dynamicGlowIntensity;
 cvar_t	*r_dynamicGlowSoft;
 cvar_t	*r_dynamicGlowWidth;
 cvar_t	*r_dynamicGlowHeight;
-
+cvar_t	*r_environmentMapping;
 cvar_t  *r_debugWeather;
 
 /*
@@ -180,7 +180,6 @@ cvar_t	*r_flareSize;
 cvar_t	*r_flareFade;
 cvar_t	*r_flareCoeff;
 cvar_t  *r_ext_framebuffer_multisample;
-cvar_t  *r_arb_seamless_cube_map;
 cvar_t  *r_mergeMultidraws;
 cvar_t  *r_mergeLeafSurfaces;
 cvar_t  *r_cameraExposure;
@@ -1315,7 +1314,6 @@ void R_Register(void)
 	r_ext_texture_float = ri.Cvar_Get("r_ext_texture_float", "1", CVAR_ARCHIVE | CVAR_LATCH);
 	r_arb_half_float_pixel = ri.Cvar_Get("r_arb_half_float_pixel", "1", CVAR_ARCHIVE | CVAR_LATCH);
 	r_ext_framebuffer_multisample = ri.Cvar_Get("r_ext_framebuffer_multisample", "0", CVAR_ARCHIVE | CVAR_LATCH);
-	r_arb_seamless_cube_map = ri.Cvar_Get("r_arb_seamless_cube_map", "0", CVAR_ARCHIVE | CVAR_LATCH);
 	r_arb_vertex_type_2_10_10_10_rev = ri.Cvar_Get("r_arb_vertex_type_2_10_10_10_rev", "1", CVAR_ARCHIVE | CVAR_LATCH);
 	r_arb_buffer_storage = ri.Cvar_Get("r_arb_buffer_storage", "0", CVAR_ARCHIVE | CVAR_LATCH);
 	r_ext_texture_filter_anisotropic = ri.Cvar_Get("r_ext_texture_filter_anisotropic", "16", CVAR_ARCHIVE);
@@ -1397,6 +1395,7 @@ void R_Register(void)
 	r_shadowCascadeZFar = ri.Cvar_Get("r_shadowCascadeZFar", "3072", CVAR_ARCHIVE | CVAR_LATCH);
 	r_shadowCascadeZBias = ri.Cvar_Get("r_shadowCascadeZBias", "64", CVAR_ARCHIVE | CVAR_LATCH);
 	r_ignoreDstAlpha = ri.Cvar_Get("r_ignoreDstAlpha", "0", CVAR_ARCHIVE | CVAR_LATCH);
+	r_environmentMapping = ri.Cvar_Get("r_environmentMapping", "1", CVAR_ARCHIVE | CVAR_LATCH);
 
 	//
 	// temporary latched variables that can only change over a restart

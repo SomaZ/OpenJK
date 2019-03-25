@@ -112,7 +112,7 @@ static void ClearGlobalShader(void)
 		VectorSet4(stages[i].normalScale, 0.0f, 0.0f, 0.0f, 0.0f);
 		stages[i].specularScale[0] =
 		stages[i].specularScale[1] =
-		stages[i].specularScale[2] = sRGBtoRGB(r_baseSpecular->value);
+		stages[i].specularScale[2] = RGBtosRGB(r_baseSpecular->value);
 		stages[i].specularScale[3] = r_baseGloss->value;
 
 	}
@@ -2420,7 +2420,6 @@ infoParm_t	infoParms[] = {
 	{ "nonopaque",		~CONTENTS_OPAQUE,					SURF_NONE,			CONTENTS_NONE },		// special hack to clear opaque flag
 	{ "lava",			~CONTENTS_SOLID,					SURF_NONE,			CONTENTS_LAVA },		// very damaging
 	{ "slime",			~CONTENTS_SOLID,					SURF_NONE,			CONTENTS_SLIME },		// mildly damaging
-	//{ "batteryacid",	~CONTENTS_SOLID,					SURF_NONE,			CONTENTS_BATTERYACID },	// mildly damaging
 	{ "water",			~CONTENTS_SOLID,					SURF_NONE,			CONTENTS_WATER },		// 
 	{ "fog",			~CONTENTS_SOLID,					SURF_NONE,			CONTENTS_FOG},			// carves surfaces entering
 	{ "shotclip",		~CONTENTS_SOLID,					SURF_NONE,			CONTENTS_SHOTCLIP },	// block shots, but not people
@@ -3133,7 +3132,7 @@ static void CollapseStagesToLightall(shaderStage_t *stage, shaderStage_t *lightm
 			int specularFlags = (diffuseImg->flags & ~(IMGFLAG_GENNORMALMAP | IMGFLAG_SRGB)) | IMGFLAG_NOLIGHTSCALE;
 
 			COM_StripExtension(diffuseImg->imgName, specularName, MAX_QPATH);
-			Q_strcat(specularName, MAX_QPATH, "_spec");
+			Q_strcat(specularName, MAX_QPATH, "_specGloss");
 
 			specularImg = R_FindImageFile(specularName, IMGTYPE_COLORALPHA, specularFlags);
 
@@ -3961,6 +3960,14 @@ static shader_t *FinishShader( void ) {
 			}
 		}
 
+		//
+		// mark env mapped stage as unactive when r_environmentMapping == 0 
+		//
+		if (!r_environmentMapping->integer &&
+			pStage->bundle[0].tcGen == TCGEN_ENVIRONMENT_MAPPED)
+		{
+			pStage->active = qfalse;
+		}
 		//
 		// determine sort order and fog color adjustment
 		//

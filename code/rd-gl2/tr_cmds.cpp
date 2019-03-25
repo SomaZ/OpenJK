@@ -176,21 +176,20 @@ void R_IssuePendingRenderCommands( void ) {
 
 /*
 ============
-R_GetCommandBuffer
-
+R_GetCommandBufferReserved
 make sure there is enough command space
 ============
 */
-void *R_GetCommandBuffer( int bytes ) {
+void *R_GetCommandBufferReserved(int bytes, int reservedBytes) {
 	renderCommandList_t	*cmdList;
 
 	cmdList = &backEndData->commands;
 	bytes = PAD(bytes, sizeof(void *));
 
 	// always leave room for the end of list command
-	if ( cmdList->used + bytes + 4 > MAX_RENDER_COMMANDS ) {
-		if ( bytes > MAX_RENDER_COMMANDS - 4 ) {
-			ri.Error( ERR_FATAL, "R_GetCommandBuffer: bad size %i", bytes );
+	if (cmdList->used + bytes + sizeof(int) + reservedBytes > MAX_RENDER_COMMANDS) {
+		if (bytes > MAX_RENDER_COMMANDS - sizeof(int)) {
+			ri.Error(ERR_FATAL, "R_GetCommandBuffer: bad size %i", bytes);
 		}
 		// if we run out of room, just start dropping commands
 		return NULL;
@@ -199,6 +198,17 @@ void *R_GetCommandBuffer( int bytes ) {
 	cmdList->used += bytes;
 
 	return cmdList->cmds + cmdList->used - bytes;
+}
+
+/*
+============
+R_GetCommandBuffer
+
+make sure there is enough command space
+============
+*/
+void *R_GetCommandBuffer( int bytes ) {
+	return R_GetCommandBufferReserved(bytes, PAD(sizeof(swapBuffersCommand_t), sizeof(void *)));
 }
 
 
@@ -703,6 +713,9 @@ void RE_BeginFrame( stereoFrame_t stereoFrame ) {
 				if (tr.msaaResolveFbo)
 				{
 					FBO_Bind(tr.msaaResolveFbo);
+					qglClear(GL_COLOR_BUFFER_BIT);
+
+					FBO_Bind(tr.msaaPreResolveFbo);
 					qglClear(GL_COLOR_BUFFER_BIT);
 				}
 

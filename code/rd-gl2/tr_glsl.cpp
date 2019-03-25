@@ -1534,7 +1534,7 @@ static int GLSL_LoadGPUProgramPrepass(
 		}
 
 		uint32_t attribs = ATTR_POSITION | ATTR_NORMAL;
-		uint32_t shaderTypes = GPUSHADER_VERTEX ;
+		uint32_t shaderTypes = GPUSHADER_VERTEX | GPUSHADER_FRAGMENT;
 		extradefines[0] = '\0';
 
 		if (i & PREPASS_USE_DEFORM_VERTEXES)
@@ -1562,13 +1562,13 @@ static int GLSL_LoadGPUProgramPrepass(
 			Q_strcat(extradefines, sizeof(extradefines), "#define USE_G_BUFFERS\n");
 			attribs &= ~ATTR_TEXCOORD0;
 			attribs |= ATTR_TEXCOORD0 | ATTR_COLOR | ATTR_TANGENT;
-			shaderTypes |= GPUSHADER_FRAGMENT;
+			//shaderTypes |= GPUSHADER_FRAGMENT;
 		}
 
 		if (i & PREPASS_USE_CUBEMAP_TRANSFORMS)
 		{
 			Q_strcat(extradefines, sizeof(extradefines), "#define USE_CUBEMAP_TRANSFORMS\n");
-			shaderTypes |= GPUSHADER_FRAGMENT | GPUSHADER_GEOMETRY;
+			shaderTypes |= GPUSHADER_GEOMETRY; //| GPUSHADER_FRAGMENT;
 		}
 
 		if (i & PREPASS_USE_PARALLAX)

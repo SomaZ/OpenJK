@@ -401,9 +401,9 @@ static	void R_LoadLightmaps( world_t *worldData, lump_t *l, lump_t *surfs ) {
 
 					R_ColorShiftLightingFloats(color, color, 1.0f );
 
-					color[0] = sqrtf(color[0]);
-					color[1] = sqrtf(color[1]);
-					color[2] = sqrtf(color[2]);
+					//color[0] = sqrtf(color[0]);
+					//color[1] = sqrtf(color[1]);
+					//color[2] = sqrtf(color[2]);
 
 					ColorToRGBA16F(color, (uint16_t *)(&image[j*8]));
 				}
@@ -4171,6 +4171,9 @@ void RE_LoadWorldMap( const char *name ) {
 	// set default map light scale
 	tr.mapLightScale = 1.0f;
 	tr.sunShadowScale = 0.5f;
+
+	// clear the skyboxportal marker
+	skyboxportal = qfalse;
 
 	// set default sun direction to be used if it isn't
 	// overridden by a shader

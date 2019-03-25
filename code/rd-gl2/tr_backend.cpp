@@ -66,6 +66,8 @@ void GL_Bind( image_t *image ) {
 				qglBindTexture(GL_TEXTURE_CUBE_MAP, texnum);
 			else if (image->flags & IMGFLAG_3D)
 				qglBindTexture(GL_TEXTURE_3D, texnum);
+			else if (image->flags & IMGFLAG_MULTISAMPLED)
+				qglBindTexture(GL_TEXTURE_2D_MULTISAMPLE, texnum);
 			else
 				qglBindTexture(GL_TEXTURE_2D, texnum);
 		}
@@ -1163,15 +1165,16 @@ void RB_StoreFrameImage()
 			// Resolve the MSAA before anything else
 			// Can't resolve just part of the MSAA FBO, so multiple views will suffer a performance hit here
 			FBO_FastBlit(tr.renderFbo, NULL, tr.msaaResolveFbo, NULL, GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT, GL_NEAREST);
-			srcFbo = tr.msaaResolveFbo;
-
+#if 0
 			if (r_dynamicGlow->integer)
 			{
 				FBO_FastBlitIndexed(tr.renderFbo, tr.msaaResolveFbo, 1, 1, GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT, GL_NEAREST);
 			}
+#endif
+			FBO_FastBlitIndexed(tr.msaaResolveFbo, tr.refractiveFbo, 0, 0, GL_COLOR_BUFFER_BIT, GL_LINEAR);
 		}
-
-		FBO_FastBlitIndexed(tr.renderFbo, tr.refractiveFbo, 0, 0, GL_COLOR_BUFFER_BIT, GL_LINEAR);
+		else
+			FBO_FastBlitIndexed(tr.renderFbo, tr.refractiveFbo, 0, 0, GL_COLOR_BUFFER_BIT, GL_LINEAR);
 
 		FBO_Bind(srcFbo);
 	}
@@ -2139,7 +2142,15 @@ static void RB_BuildHiZBuffer()
 		GL_State(GLS_DEPTHTEST_DISABLE);
 		GL_Cull(CT_FRONT_SIDED);
 
-		for (int i = 0; i < 10; i++)
+		//FIX ME: maybe store mips count as property of the image?
+		int dim = width > height ? width : height;
+		int levels = 0;
+		while (dim) {
+			levels++;
+			dim /= 2;
+		}
+
+		for (int i = 0; i < levels-1; i++)
 		{
 			FBO_Bind(tr.prevDepthFbo);
 
@@ -2370,9 +2381,7 @@ static void RB_RenderDepthOnly(drawSurf_t *drawSurfs, int numDrawSurfs)
 			!backEnd.colorMask[2],
 			!backEnd.colorMask[3]);
 
-	backEnd.renderPass = MAIN_PASS;
-
-	if (backEnd.viewParms.targetFbo == tr.renderCubeFbo && tr.msaaResolveFbo)
+	if (tr.renderCubeFbo != NULL && backEnd.viewParms.targetFbo == tr.renderCubeFbo && tr.msaaResolveFbo)
 	{
 		// If we're using multisampling and rendering a cubemap, resolve the depth to correct size first
 		vec4i_t frameBox;
@@ -2388,12 +2397,21 @@ static void RB_RenderDepthOnly(drawSurf_t *drawSurfs, int numDrawSurfs)
 	}
 	else if (tr.msaaResolveFbo)
 	{
-		// If we're using multisampling, resolve the depth first
-		FBO_FastBlit(
-			tr.renderFbo, NULL,
-			tr.msaaResolveFbo, NULL,
-			GL_DEPTH_BUFFER_BIT,
-			GL_NEAREST);
+		if (backEnd.renderPass == PRE_PASS)
+		{
+			FBO_FastBlit(tr.preBuffersFbo, NULL, tr.msaaPreResolveFbo, NULL, GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT, GL_NEAREST);
+			FBO_FastBlitIndexed(tr.preBuffersFbo, tr.msaaPreResolveFbo, 1, 1, GL_COLOR_BUFFER_BIT, GL_NEAREST);
+			if (r_ssr->integer)
+				FBO_FastBlitIndexed(tr.preBuffersFbo, tr.msaaPreResolveFbo, 2, 2, GL_COLOR_BUFFER_BIT, GL_NEAREST);
+		}
+		else
+			// If we're using multisampling, resolve the depth first
+			FBO_FastBlit(
+				tr.renderFbo, NULL,
+				tr.msaaResolveFbo, NULL,
+				GL_DEPTH_BUFFER_BIT,
+				GL_NEAREST);
+
 	}
 	else if (tr.renderFbo == NULL)
 	{
@@ -2405,6 +2423,8 @@ static void RB_RenderDepthOnly(drawSurf_t *drawSurfs, int numDrawSurfs)
 			0, glConfig.vidWidth,
 			glConfig.vidHeight, 0);
 	}
+
+	backEnd.renderPass = MAIN_PASS;
 }
 
 static void RB_RenderMainPass(drawSurf_t *drawSurfs, int numDrawSurfs)
@@ -2475,7 +2495,7 @@ static void RB_RenderAllDepthRelatedPasses(drawSurf_t *drawSurfs, int numDrawSur
 
 	RB_RenderDepthOnly(drawSurfs, numDrawSurfs);
 
-	if (r_ssao->integer || r_ssr->integer)
+	if (r_ssao->integer)
 	{
 		// need the depth in a texture we can do GL_LINEAR sampling on, so
 		// copy it to an HDR image
@@ -2580,7 +2600,7 @@ void RB_RenderAllRealTimeLightTypes()
 		GLSL_SetUniformVec3(sp, UNIFORM_VIEWUP, viewBasis[2]);
 		GLSL_SetUniformVec3(sp, UNIFORM_VIEWORIGIN, backEnd.viewParms.ori.origin);
 		
-		vec4_t viewInfo = { tr.viewParms.zNear, tr.viewParms.zFar, 0.0f, float(tr.frameCount % 32) };
+		vec4_t viewInfo = { tr.viewParms.zNear, tr.viewParms.zFar, Q_flrand(0.f, 32.f), float(tr.frameCount % 32) };
 		GLSL_SetUniformVec4(sp, UNIFORM_VIEWINFO, viewInfo);
 		
 		matrix_t invModelViewMatrix;
@@ -3327,7 +3347,7 @@ const void *RB_PostProcess(const void *data)
 		VectorSet4(dstBox, 1024, glConfig.vidHeight - 256, 256, 256);
 		FBO_BlitFromTexture(tr.specularLightingImage, NULL, NULL, NULL, dstBox, NULL, NULL, 0);
 		VectorSet4(dstBox, 1280, glConfig.vidHeight - 256, 256, 256);
-		FBO_BlitFromTexture(tr.tempFilterEvenBufferImage, NULL, NULL, NULL, dstBox, NULL, NULL, 0);
+		FBO_BlitFromTexture(tr.normalBufferImage, NULL, NULL, NULL, dstBox, NULL, NULL, 0);
 		VectorSet4(dstBox, 1536, glConfig.vidHeight - 256, 256, 256);
 		FBO_BlitFromTexture(tr.tempFilterOddBufferImage, NULL, NULL, NULL, dstBox, NULL, NULL, 0);
 	}

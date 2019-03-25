@@ -688,7 +688,8 @@ void main()
   #if defined(RGBM_LIGHTMAP)
 	lightmapColor.rgb *= lightmapColor.a;
   #endif
-	lightmapColor.rgb *= lightmapColor.rgb;
+	//lightmapColor.rgb *= lightmapColor.rgb;
+	//lightmapColor.rgb = sqrt(lightmapColor.rgb);
 #endif
 
 	vec2 texCoords = var_TexCoords.xy;
@@ -708,13 +709,13 @@ void main()
 	L /= lightDist;
 
 	vec3 ambientLight = texture(u_LightGridAmbientLightMap, gridCell).rgb * isLightgrid;
-	ambientLight *= ambientLight;
+	//ambientLight *= ambientLight;
 
 	vertexColor = var_Color.rgb * var_Color.rgb;
 	#if defined(USE_LIGHT_VECTOR)
 	  L -= normalize(texture(u_LightGridDirectionMap, gridCell).rgb * 2.0 - vec3(1.0)) * isLightgrid;
 	  vec3 directedLight = texture(u_LightGridDirectionalLightMap, gridCell).rgb * isLightgrid;
-	  directedLight *= directedLight;
+	  //directedLight *= directedLight;
 	#endif
 
 	ambientColor = ambientLight * vertexColor;

@@ -35,8 +35,8 @@ int			r_firstScenePoly;
 
 int			r_numpolyverts;
 
-int	skyboxportal;
-int	drawskyboxportal;
+int			skyboxportal;
+int			drawskyboxportal;
 
 /*
 ====================
@@ -319,10 +319,6 @@ void RE_BeginScene(const refdef_t *fd)
 	{
 		skyboxportal = qtrue;
 	}
-	else
-	{
-		skyboxportal = qfalse;
-	}
 
 	if (fd->rdflags & RDF_DRAWSKYBOX)
 	{
@@ -494,8 +490,8 @@ void RE_EndScene()
 	// the next scene rendered in this frame will tack on after this one
 	r_firstSceneDrawSurf = tr.refdef.numDrawSurfs;
 	r_firstSceneEntity = r_numentities;
-	r_firstSceneDlight = r_numdlights;
 	r_firstScenePoly = r_numpolys;
+	r_firstSceneDlight = r_numdlights;
 }
 
 /*

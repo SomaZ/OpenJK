@@ -172,7 +172,7 @@ extern cvar_t	*r_dynamicGlowIntensity;
 extern cvar_t	*r_dynamicGlowSoft;
 extern cvar_t	*r_dynamicGlowWidth;
 extern cvar_t	*r_dynamicGlowHeight;
-
+extern cvar_t	*r_environmentMapping;
 extern cvar_t	*r_debugWeather;
 /*
 Ghoul2 Insert Start
@@ -304,6 +304,7 @@ typedef enum
 	IMGFLAG_MUTABLE        = 0x0200,
 	IMGFLAG_3D             = 0x0400,
 	IMGFLAG_NPOT_MIP	   = 0x0800,
+	IMGFLAG_MULTISAMPLED   = 0x1000,
 } imgFlags_t;
 
 typedef enum
@@ -2407,6 +2408,7 @@ typedef struct trGlobals_s {
 	image_t					*preSSRImage[2];
 	image_t					*sunRaysImage;
 	image_t					*renderDepthImage;
+	image_t					*renderDepthMSAAImage;
 	image_t					*prevRenderDepthImage;
 	image_t					*velocityImage;
 	image_t					*pshadowMaps[MAX_DRAWN_PSHADOWS];
@@ -2432,6 +2434,7 @@ typedef struct trGlobals_s {
 	FBO_t					*refractiveFbo;
 	FBO_t					*glowFboScaled[6];
 	FBO_t					*msaaResolveFbo;
+	FBO_t					*msaaPreResolveFbo;
 	FBO_t					*sunRaysFbo;
 	FBO_t					*depthFbo;
 	FBO_t					*prevDepthFbo;
@@ -3445,7 +3448,7 @@ image_t *R_FindImageFile( const char *name, imgType_t type, int flags );
 void R_CreateDiffuseAndSpecMapsFromBaseColorAndRMO(shaderStage_t *stage, const char *name, const char *rmoName, int flags, int type);
 qhandle_t RE_RegisterShader( const char *name );
 qhandle_t RE_RegisterShaderNoMip( const char *name );
-image_t *R_CreateImage( const char *name, byte *pic, int width, int height, int depth, imgType_t type, int flags, int internalFormat );
+image_t *R_CreateImage( const char *name, byte *pic, int width, int height, int bitDepth, imgType_t type, int flags, int internalFormat );
 image_t *R_CreateImage3D(const char *name, byte *data, int width, int height, int depth, int internalFormat);
 
 float ProjectRadius( float r, vec3_t location );
