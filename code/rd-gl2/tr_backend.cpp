@@ -2399,9 +2399,10 @@ static void RB_RenderDepthOnly(drawSurf_t *drawSurfs, int numDrawSurfs)
 	{
 		if (backEnd.renderPass == PRE_PASS)
 		{
-			FBO_FastBlit(tr.preBuffersFbo, NULL, tr.msaaPreResolveFbo, NULL, GL_COLOR_BUFFER_BIT, GL_NEAREST);
+			FBO_FastBlit(tr.preBuffersFbo, NULL, tr.msaaPreResolveFbo, NULL, GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT, GL_NEAREST);
 			FBO_FastBlitIndexed(tr.preBuffersFbo, tr.msaaPreResolveFbo, 1, 1, GL_COLOR_BUFFER_BIT, GL_NEAREST);
-			FBO_FastBlitIndexed(tr.preBuffersFbo, tr.msaaPreResolveFbo, 2, 2, GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT, GL_NEAREST);
+			if (r_ssr->integer)
+				FBO_FastBlitIndexed(tr.preBuffersFbo, tr.msaaPreResolveFbo, 2, 2, GL_COLOR_BUFFER_BIT, GL_NEAREST);
 		}
 		else
 			// If we're using multisampling, resolve the depth first
@@ -2494,7 +2495,7 @@ static void RB_RenderAllDepthRelatedPasses(drawSurf_t *drawSurfs, int numDrawSur
 
 	RB_RenderDepthOnly(drawSurfs, numDrawSurfs);
 
-	if (r_ssao->integer || r_ssr->integer)
+	if (r_ssao->integer)
 	{
 		// need the depth in a texture we can do GL_LINEAR sampling on, so
 		// copy it to an HDR image

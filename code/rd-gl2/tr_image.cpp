@@ -2663,7 +2663,7 @@ void R_CreateDiffuseAndSpecMapsFromBaseColorAndRMO(shaderStage_t *stage, const c
 	Q_strcat(diffuseName, sizeof(diffuseName), "_diffuse");
 
 	COM_StripExtension(name, specularName, sizeof(specularName));
-	Q_strcat(specularName, sizeof(specularName), "_spec");
+	Q_strcat(specularName, sizeof(specularName), "_specGloss");
 
 	//
 	// see if the images are already loaded
@@ -3529,9 +3529,28 @@ void R_DeleteTextures(void) {
 		qglDeleteTextures(1, &tr.images[i]->texnum);
 	}
 	Com_Memset(tr.images, 0, sizeof(tr.images));
-
 	tr.numImages = 0;
 
+	if (tr.numCubemaps)
+	{
+		for (i = 0; i<tr.numImages; i++)
+		{
+			qglDeleteTextures(1, &tr.cubemaps[i].image->texnum);
+		}
+		if (tr.skyboxCubemapped)
+			qglDeleteTextures(1, &tr.skyboxCubemap.image->texnum);
+
+		Com_Memset(tr.cubemaps, 0, sizeof(tr.cubemaps));
+		tr.numCubemaps = 0;
+	}
+
+	if (tr.world)
+	{
+		qglDeleteTextures(1, &tr.world->ambientLightImages[0]->texnum);
+		qglDeleteTextures(1, &tr.world->directionalLightImages[0]->texnum);
+		qglDeleteTextures(1, &tr.world->directionImages->texnum);
+	}
+	
 	Com_Memset(glState.currenttextures, 0, sizeof(glState.currenttextures));
 	GL_SelectTexture(1);
 	qglBindTexture(GL_TEXTURE_2D, 0);

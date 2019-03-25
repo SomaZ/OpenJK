@@ -554,7 +554,7 @@ void FBO_Init(void)
 			}
 			else
 			{
-				if ((i == PRELIGHT_PRE_SSR_FBO) || (i == PRELIGHT_TEMP_ODD_FBO) || (i == PRELIGHT_TEMP_EVEN_FBO))
+				if ((i == PRELIGHT_PRE_SSR_FBO) || (i == PRELIGHT_TEMP_ODD_FBO) || (i == PRELIGHT_TEMP_EVEN_FBO) || (i == PRELIGHT_RESOLVE_FBO))
 					continue;
 			}
 
