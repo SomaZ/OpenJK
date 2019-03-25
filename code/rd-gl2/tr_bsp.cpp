@@ -401,9 +401,9 @@ static	void R_LoadLightmaps( world_t *worldData, lump_t *l, lump_t *surfs ) {
 
 					R_ColorShiftLightingFloats(color, color, 1.0f );
 
-					color[0] = sqrtf(color[0]);
-					color[1] = sqrtf(color[1]);
-					color[2] = sqrtf(color[2]);
+					//color[0] = sqrtf(color[0]);
+					//color[1] = sqrtf(color[1]);
+					//color[2] = sqrtf(color[2]);
 
 					ColorToRGBA16F(color, (uint16_t *)(&image[j*8]));
 				}

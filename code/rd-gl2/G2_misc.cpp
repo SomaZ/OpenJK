@@ -1788,9 +1788,17 @@ void G2_SaveGhoul2Models(
 	{
 		const int zero_size = 0;
 
-		saved_game.write_chunk<int32_t>(
-			INT_ID('G', 'H', 'L', '2'),
-			zero_size); //write out a zero buffer
+#ifdef JK2_MODE
+		saved_game.write<int32_t>(
+			zero_size);
+
+		saved_game.write_chunk_and_size<int32_t>(
+			INT_ID('G', 'L', '2', 'S'),
+			INT_ID('G', 'H', 'L', '2'));
+#else
+		saved_game.write_chunk(
+			INT_ID('G', 'H', 'L', '2'));
+#endif // JK2_MODE
 
 		return;
 	}
@@ -1848,8 +1856,14 @@ void G2_SaveGhoul2Models(
 		}
 	}
 
+#ifdef JK2_MODE
+	saved_game.write_chunk_and_size<int32_t>(
+		INT_ID('G', 'L', '2', 'S'),
+		INT_ID('G', 'H', 'L', '2'));
+#else
 	saved_game.write_chunk(
 		INT_ID('G', 'H', 'L', '2'));
+#endif // JK2_MODE
 }
 
 // FIXME Remove 'buffer' parameter

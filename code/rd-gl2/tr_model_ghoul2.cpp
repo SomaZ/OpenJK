@@ -2758,7 +2758,11 @@ void RB_SurfaceGhoul(CRenderableSurface *surf)
 	int *boneReferences = (int *)((byte *)surfData + surfData->ofsBoneReferences);
 	for (int i = 0; i < surfData->numBoneReferences; i++)
 	{
+#ifdef JK2_MODE
+		const mdxaBone_t& bone = surf->boneCache->Eval(boneReferences[i]);
+#else
 		const mdxaBone_t& bone = surf->boneCache->EvalRender(boneReferences[i]);
+#endif
 		MDXABoneToMatrix(bone, boneMatrices[i]);
 	}
 
@@ -3214,6 +3218,7 @@ qboolean R_LoadMDXM(model_t *mod, void *buffer, const char *mod_name, qboolean &
 
 	mdxm->animIndex = RE_RegisterModel(va("%s.gla", mdxm->animName));
 
+#ifndef JK2_MODE
 	// Register additional GLAs for _humanoid
 	//----------------------------------------
 	if (!strcmp(mdxm->animName, "models/players/_humanoid/_humanoid"))
@@ -3230,12 +3235,11 @@ qboolean R_LoadMDXM(model_t *mod, void *buffer, const char *mod_name, qboolean &
 			}
 			RE_RegisterModel(va("models/players/_humanoid_%s/_humanoid_%s.gla", mapname, mapname));
 		}
-
 		// Register the DF2 GLA
 		//-----------------------
 		//RE_RegisterModel("models/players/_humanoid_df2/_humanoid_df2.gla");
 	}
-#ifndef JK2_MODE
+
 	bool isAnOldModelFile = false;
 
 	if (mdxm->numBones == 72 && strstr(mdxm->animName, "_humanoid"))

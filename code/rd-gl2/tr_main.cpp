@@ -1899,6 +1899,11 @@ static void R_AddEntitySurface(const trRefdef_t *refdef, trRefEntity_t *ent, int
 	case RT_ORIENTED_QUAD:
 	case RT_ELECTRICITY:
 	case RT_LINE:
+	//TODO: implement clouds and Lathe
+#ifdef JK2_MODE
+	case RT_LATHE:
+	case RT_CLOUDS:
+#endif
 	//case RT_ORIENTEDLINE:
 	case RT_CYLINDER:
 	case RT_SABER_GLOW:
