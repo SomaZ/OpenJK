@@ -184,6 +184,7 @@ cvar_t  *r_mergeMultidraws;
 cvar_t  *r_mergeLeafSurfaces;
 cvar_t  *r_cameraExposure;
 cvar_t  *r_floatLightmap;
+cvar_t	*r_lightmapGamma;
 cvar_t  *r_toneMap;
 cvar_t  *r_forceToneMap;
 cvar_t  *r_forceToneMapMin;
@@ -1345,6 +1346,7 @@ void R_Register(void)
 	r_externalGLSL = ri.Cvar_Get("r_externalGLSL", "0", CVAR_LATCH);
 	r_hdr = ri.Cvar_Get("r_hdr", "1", CVAR_ARCHIVE | CVAR_LATCH);
 	r_floatLightmap = ri.Cvar_Get("r_floatLightmap", "0", CVAR_ARCHIVE | CVAR_LATCH);
+	r_lightmapGamma = ri.Cvar_Get("r_lightmapGamma", "1.8", CVAR_ARCHIVE | CVAR_LATCH);
 	r_toneMap = ri.Cvar_Get("r_toneMap", "1", CVAR_ARCHIVE | CVAR_LATCH);
 	ri.Cvar_CheckRange(r_toneMap, 0, 3, qfalse);
 	r_forceToneMap = ri.Cvar_Get("r_forceToneMap", "0", CVAR_CHEAT);

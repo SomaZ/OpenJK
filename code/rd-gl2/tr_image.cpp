@@ -3540,6 +3540,7 @@ void R_DeleteTextures(void) {
 		if (tr.skyboxCubemapped)
 			qglDeleteTextures(1, &tr.skyboxCubemap.image->texnum);
 
+		Com_Memset(&tr.skyboxCubemap, 0, sizeof(tr.skyboxCubemap));
 		Com_Memset(tr.cubemaps, 0, sizeof(tr.cubemaps));
 		tr.numCubemaps = 0;
 	}

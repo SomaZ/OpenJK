@@ -215,6 +215,7 @@ extern cvar_t   *r_mergeMultidraws;
 extern cvar_t   *r_mergeLeafSurfaces;
 extern cvar_t   *r_cameraExposure;
 extern cvar_t   *r_floatLightmap;
+extern cvar_t   *r_lightmapGamma;
 extern cvar_t   *r_toneMap;
 extern cvar_t   *r_forceToneMap;
 extern cvar_t   *r_forceToneMapMin;
