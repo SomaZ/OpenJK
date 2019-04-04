@@ -605,6 +605,7 @@ vec4 resolveSSRRay(	in sampler2D packedTexture,
 	diffuseSample.rgb *= diffuseSample.rgb;
 	diffuseSample.a = packedHitPos.a;
 
+	diffuseSample.rgb /= 1.0 + luma(diffuseSample.rgb);
 	diffuseSample = diffuseSample * weight;
 
 	weightSum += weight;
@@ -723,6 +724,7 @@ void main()
 	}
 
 	diffuseOut /= weightSum;
+	diffuseOut.rgb /= 1.0 - luma(diffuseOut.rgb);
 	diffuseOut.rgb = sqrt(diffuseOut.rgb);
 
 #elif defined(TEMPORAL_FILTER)
