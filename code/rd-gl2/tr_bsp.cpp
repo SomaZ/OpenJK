@@ -125,9 +125,9 @@ static	void R_ColorShiftLightingBytes( byte in[4], byte out[4] ) {
 		b = b * 255 / max;
 	}
 
-	out[0] = r;
-	out[1] = g;
-	out[2] = b;
+	out[0] = (byte)(pow((float)r / 255.f, r_lightmapGamma->value) * 255);
+	out[1] = (byte)(pow((float)g / 255.f, r_lightmapGamma->value) * 255);
+	out[2] = (byte)(pow((float)b / 255.f, r_lightmapGamma->value) * 255);
 	out[3] = in[3];
 }
 
@@ -401,10 +401,6 @@ static	void R_LoadLightmaps( world_t *worldData, lump_t *l, lump_t *surfs ) {
 
 					R_ColorShiftLightingFloats(color, color, 1.0f );
 
-					//color[0] = sqrtf(color[0]);
-					//color[1] = sqrtf(color[1]);
-					//color[2] = sqrtf(color[2]);
-
 					ColorToRGBA16F(color, (uint16_t *)(&image[j*8]));
 				}
 				else if (glRefConfig.floatLightmap)
@@ -427,7 +423,11 @@ static	void R_LoadLightmaps( world_t *worldData, lump_t *l, lump_t *surfs ) {
 					}
 					color[3] = 1.0f;
 
-					R_ColorShiftLightingFloats(color, color, 1.0f/255.0f);
+					R_ColorShiftLightingFloats(color, color, 1.0f / 255.0f);
+
+					color[0] = pow(color[0], r_lightmapGamma->value);
+					color[1] = pow(color[1], r_lightmapGamma->value);
+					color[2] = pow(color[2], r_lightmapGamma->value);
 
 					ColorToRGBA16F(color, (unsigned short *)(&image[j*8]));
 				}
@@ -3062,7 +3062,7 @@ void R_LoadCubemapEntities(char *cubemapEntityName)
 	char spawnVarChars[2048];
 	int numSpawnVars;
 	char *spawnVars[MAX_SPAWN_VARS][2];
-	int numCubemaps = 0;
+	int numCubemaps = tr.numCubemaps;
 
 	if (!Q_strncmp(cubemapEntityName, "misc_skyportal", strlen("misc_skyportal")))
 	{
@@ -3091,7 +3091,7 @@ void R_LoadCubemapEntities(char *cubemapEntityName)
 
 			if (isCubemap && originSet)
 			{
-				cubemap_t *cubemap = &tr.cubemaps[numCubemaps];
+				cubemap_t *cubemap = &tr.skyboxCubemap;
 				Q_strncpyz(cubemap->name, "SKYBOX_CUBEMAP", MAX_QPATH);
 				VectorCopy(origin, cubemap->origin);
 				cubemap->parallaxRadius = parallaxRadius;
@@ -3113,11 +3113,10 @@ void R_LoadCubemapEntities(char *cubemapEntityName)
 				numCubemaps++;
 		}
 	}
-
+	tr.numCubemaps = numCubemaps;
 	if (!numCubemaps)
 		return;
 
-	tr.numCubemaps = numCubemaps;
 	tr.cubemaps = (cubemap_t *)R_Hunk_Alloc(tr.numCubemaps * sizeof(*tr.cubemaps), qtrue);
 	memset(tr.cubemaps, 0, tr.numCubemaps * sizeof(*tr.cubemaps));
 
