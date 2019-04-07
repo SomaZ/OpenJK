@@ -3822,9 +3822,10 @@ static shader_t *FinishShader( void ) {
 	//
 	// set polygon offset
 	//
-	if ( shader.polygonOffset && !shader.sort ) {
-		shader.sort = SS_DECAL;
+	if ( shader.polygonOffset ) {
 		shaderStateBits |= GLS_POLYGON_OFFSET_FILL;
+		if (!shader.sort)
+			shader.sort = SS_DECAL;
 	}
 
 	int lmStage;
@@ -3847,6 +3848,8 @@ static shader_t *FinishShader( void ) {
 				memset(&stages[MAX_SHADER_STAGES-1], 0, sizeof(shaderStage_t));
 				//change blending on the moved down stage
 				stages[lmStage].stateBits = GLS_DEFAULT;
+				if (shader.polygonOffset)
+					stages[lmStage].stateBits |= GLS_POLYGON_OFFSET_FILL;
 			}
 			//change anything that was moved down (or the *white if LM is first) to use vertex color
 			stages[lmStage].rgbGen = CGEN_EXACT_VERTEX;
