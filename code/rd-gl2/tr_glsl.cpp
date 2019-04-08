@@ -2538,8 +2538,8 @@ static int GLSL_LoadGPUProgramDynamicGlowUpsample(
 		GPUSHADER_VERTEX | GPUSHADER_FRAGMENT,
 		0);
 
-	GLSL_InitUniforms(&tr.dglowDownsample);
-	GLSL_FinishGPUShader(&tr.dglowDownsample);
+	GLSL_InitUniforms(&tr.dglowUpsample);
+	GLSL_FinishGPUShader(&tr.dglowUpsample);
 	return 1;
 }
 
@@ -2556,8 +2556,8 @@ static int GLSL_LoadGPUProgramDynamicGlowDownsample(
 		GPUSHADER_VERTEX | GPUSHADER_FRAGMENT,
 		0);
 
-	GLSL_InitUniforms(&tr.dglowUpsample);
-	GLSL_FinishGPUShader(&tr.dglowUpsample);
+	GLSL_InitUniforms(&tr.dglowDownsample);
+	GLSL_FinishGPUShader(&tr.dglowDownsample);
 	return 1;
 }
 
