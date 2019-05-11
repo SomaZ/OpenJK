@@ -235,7 +235,7 @@ float diffuse(vec3 n, vec3 l, float p) {
 
 vec3 specular(vec3 n, vec3 l, vec3 e, float s) {
 
-	vec2 shadowTex = gl_FragCoord.xy * r_FBufScale;
+	vec2 shadowTex = gl_FragCoord.xy * r_FBufInvScale;
 	float shadowValue = texture(u_ShadowMap, shadowTex).r;
 
 	// surfaces not facing the light are always shadowed
@@ -392,7 +392,7 @@ void main()
 	}
 	else
 	{
-		vec2 windowCoord = gl_FragCoord.xy * r_FBufScale;
+		vec2 windowCoord = gl_FragCoord.xy * r_FBufInvScale;
 
 		refractColor.r = texture(u_ScreenImageMap, clamp(windowCoord + n.xy * etaR * 0.5, 0.0, 1.0)).r;
 		refractColor.g = texture(u_ScreenImageMap, clamp(windowCoord + n.xy * etaG * 0.5, 0.0, 1.0)).g;

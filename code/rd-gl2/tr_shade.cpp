@@ -902,9 +902,7 @@ static void ForwardDlight( const shaderCommands_t *input,  VertexArraysPropertie
 	int index;
 	shaderProgram_t *shaderGroup;
 	uint32_t stateBits = 0;
-	/*if ( input->shader->numUnfoggedPasses == 1 &&
-			pStage->glslShaderGroup == tr.lightallShader &&
-			(pStage->glslShaderIndex & LIGHTDEF_LIGHTTYPE_MASK) )*/
+
 	if(1)
 	{
 		index = pStage->glslShaderIndex;
@@ -913,6 +911,9 @@ static void ForwardDlight( const shaderCommands_t *input,  VertexArraysPropertie
 		shaderGroup = tr.lightallShader;
 		index &= ~LIGHTDEF_LIGHTTYPE_MASK;
 		index |= LIGHTDEF_USE_LIGHT_VECTOR;
+
+		if (pStage->stateBits & GLS_POLYGON_OFFSET_FILL)
+			stateBits |= GLS_POLYGON_OFFSET_FILL;
 
 		if (glState.vertexAnimation)
 			index |= LIGHTDEF_USE_VERTEX_ANIMATION;
@@ -1035,6 +1036,11 @@ static void ForwardDlight( const shaderCommands_t *input,  VertexArraysPropertie
 
 		uniformDataWriter.SetUniformInt(UNIFORM_TCGEN0, pStage->bundle[0].tcGen);
 		uniformDataWriter.SetUniformInt(UNIFORM_TCGEN1, pStage->bundle[1].tcGen);
+
+		int alphaTestFunction = pStage->alphaTestCmp;
+		uniformDataWriter.SetUniformInt(UNIFORM_ALPHA_TEST_FUNCTION, alphaTestFunction);
+		float alphaTestValue = pStage->alphaTestValue;
+		uniformDataWriter.SetUniformFloat(UNIFORM_ALPHA_TEST_VALUE, alphaTestValue);
 
 		CaptureDrawData(input, pStage, 0, 0);
 
@@ -1238,6 +1244,9 @@ static void RB_FogPass( shaderCommands_t *input, const fog_t *fog, const VertexA
 	uint32_t stateBits = GLS_SRCBLEND_SRC_ALPHA | GLS_DSTBLEND_ONE_MINUS_SRC_ALPHA;
 	if ( tess.shader->fogPass == FP_EQUAL )
 		stateBits |= GLS_DEPTHFUNC_EQUAL;
+
+	if (tess.shader->polygonOffset)
+		stateBits |= GLS_POLYGON_OFFSET_FILL;
 
 	DrawItem item = {};
 	item.renderState.stateBits = stateBits;
@@ -1638,8 +1647,7 @@ static void RB_IterateStagesGeneric( shaderCommands_t *input, const VertexArrays
 
 		uniformDataWriter.Start(sp);
 		
-		int alphaTestFunction = useAlphaTestGE192 ? ATEST_CMP_GE : pStage->alphaTestCmp;
-		uniformDataWriter.SetUniformInt(UNIFORM_ALPHA_TEST_FUNCTION, alphaTestFunction);
+		
 
 		uniformDataWriter.SetUniformMatrix4x4( UNIFORM_MODELVIEWPROJECTIONMATRIX, glState.modelviewProjection);
 		uniformDataWriter.SetUniformVec3(UNIFORM_VIEWORIGIN, backEnd.viewParms.ori.origin);
@@ -1762,6 +1770,8 @@ static void RB_IterateStagesGeneric( shaderCommands_t *input, const VertexArrays
 			uniformDataWriter.SetUniformVec4(UNIFORM_SPECULARSCALE, specularScale);
 		}
 
+		int alphaTestFunction = useAlphaTestGE192 ? ATEST_CMP_GE : pStage->alphaTestCmp;
+		uniformDataWriter.SetUniformInt(UNIFORM_ALPHA_TEST_FUNCTION, alphaTestFunction);
 		float alphaTestValue = useAlphaTestGE192 ? 0.75f : pStage->alphaTestValue;
 		uniformDataWriter.SetUniformFloat(UNIFORM_ALPHA_TEST_VALUE, alphaTestValue);
 

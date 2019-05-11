@@ -121,7 +121,7 @@ void main()
 		discard;
 #endif
 
-	vec2 shadowTex = gl_FragCoord.xy * r_FBufScale;
+	vec2 shadowTex = gl_FragCoord.xy * r_FBufInvScale;
 	float shadowValue = texture(u_ShadowMap, shadowTex).r;
 
 	out_Color.rgb *= clamp(shadowValue + .3, 0.0, 1.0);

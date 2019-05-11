@@ -762,7 +762,7 @@ void main()
 	N = CalcNormal(var_Normal.xyz, texCoords, tangentToWorld);
 
   #if defined(USE_SHADOWMAP) 
-	vec2 shadowTex = gl_FragCoord.xy * r_FBufScale;
+	vec2 shadowTex = gl_FragCoord.xy * r_FBufInvScale;
 	float shadowValue = texture(u_ShadowMap, shadowTex).r;
 
 	// surfaces not facing the light are always shadowed
