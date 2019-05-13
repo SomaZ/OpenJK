@@ -1147,7 +1147,8 @@ void RB_StoreFrameImage()
 		(backEnd.refdef.rdflags & RDF_NOWORLDMODEL) ||
 		(backEnd.refdef.rdflags & RDF_SKYBOXPORTAL) ||
 		(tr.renderCubeFbo != NULL && backEnd.viewParms.targetFbo == tr.renderCubeFbo) ||
-		(tr.shadowCubeFbo != NULL && backEnd.viewParms.targetFbo == tr.shadowCubeFbo))
+		(tr.shadowCubeFbo != NULL && backEnd.viewParms.targetFbo == tr.shadowCubeFbo) &&
+		!backEnd.viewParms.isPortal)
 		return;
 
 	//store image for use in next frame, used for ssr and refraction rendering
@@ -2531,24 +2532,25 @@ static void RB_RenderAllDepthRelatedPasses(drawSurf_t *drawSurfs, int numDrawSur
 
 void RB_RenderAllRealTimeLightTypes()
 {
-	if ((backEnd.viewParms.flags & VPF_DEPTHSHADOW) || 
-		(backEnd.refdef.rdflags & RDF_NOWORLDMODEL) ||
-		(backEnd.refdef.rdflags & RDF_SKYBOXPORTAL) ||
-		(tr.shadowCubeFbo != NULL && backEnd.viewParms.targetFbo == tr.shadowCubeFbo))
-		return;
-
-	const float zmax = backEnd.viewParms.zFar;
-	const float zmin = backEnd.viewParms.zNear;
-	vec4_t viewInfo = { zmax / zmin, zmax, zmin, 0.0f };
 	FBO_t *fbo = glState.currentFBO;
-
 	// clear all content of lighting buffers
 	FBO_Bind(tr.preLightFbo[PRELIGHT_DIFFUSE_SPECULAR_FBO]);
 	qglClearColor(0.f, 0.f, 0.f, 0.0f);
 	qglClear(GL_COLOR_BUFFER_BIT);
-	FBO_Bind(tr.preLightFbo[PRELIGHT_PRE_SSR_FBO]);
-	qglClear(GL_COLOR_BUFFER_BIT);
 
+	if ((backEnd.viewParms.flags & VPF_DEPTHSHADOW) ||
+		(backEnd.refdef.rdflags & RDF_NOWORLDMODEL) ||
+		(backEnd.refdef.rdflags & RDF_SKYBOXPORTAL) ||
+		(tr.shadowCubeFbo != NULL && backEnd.viewParms.targetFbo == tr.shadowCubeFbo))
+	{
+		FBO_Bind(fbo);
+		return;
+	}
+
+	const float zmax = backEnd.viewParms.zFar;
+	const float zmin = backEnd.viewParms.zNear;
+	vec4_t viewInfo = { zmax / zmin, zmax, zmin, 0.0f };
+	
 	// only compute lighting for non sky pixels
 	qglEnable(GL_STENCIL_TEST);
 	qglStencilFunc(GL_EQUAL, 1, 0xff);
@@ -2577,12 +2579,15 @@ void RB_RenderAllRealTimeLightTypes()
 
 	if (!((tr.buildingSphericalHarmonics) ||
 		(tr.renderCubeFbo != NULL && backEnd.viewParms.targetFbo == tr.renderCubeFbo)) &&
-		r_ssr->integer)
+		r_ssr->integer &&
+		!backEnd.viewParms.isPortal
+		)
 	{
 		GL_BindToTMU(tr.prevRenderDepthImage, 6);
 		GL_BindToTMU(tr.prevRenderImage, 0);
 
 		FBO_Bind(tr.preLightFbo[PRELIGHT_PRE_SSR_FBO]);
+		qglClear(GL_COLOR_BUFFER_BIT);
 
 		tess.useInternalVBO = qfalse;
 		R_BindVBO(tr.screenQuad.vbo);
@@ -2600,7 +2605,7 @@ void RB_RenderAllRealTimeLightTypes()
 		GLSL_SetUniformVec3(sp, UNIFORM_VIEWUP, viewBasis[2]);
 		GLSL_SetUniformVec3(sp, UNIFORM_VIEWORIGIN, backEnd.viewParms.ori.origin);
 		
-		vec4_t viewInfo = { tr.viewParms.zNear, tr.viewParms.zFar, Q_flrand(0.f, 32.f), float(tr.frameCount % 32) };
+		vec4_t viewInfo = { tr.viewParms.zNear, tr.viewParms.zFar, float(tr.frameCount % 32), Q_flrand(0.f, 32.f) };
 		GLSL_SetUniformVec4(sp, UNIFORM_VIEWINFO, viewInfo);
 		
 		matrix_t invModelViewMatrix;
@@ -2627,6 +2632,7 @@ void RB_RenderAllRealTimeLightTypes()
 		// ssr resolve
 		GL_State(GLS_SRCBLEND_SRC_ALPHA | GLS_DSTBLEND_ONE_MINUS_SRC_ALPHA | GLS_DEPTHTEST_DISABLE);
 		FBO_Bind(tr.preLightFbo[PRELIGHT_RESOLVE_FBO]);
+
 		GL_BindToTMU(tr.prevRenderImage, 0);
 		GL_BindToTMU(tr.renderDepthImage, 1);
 		GL_BindToTMU(tr.preSSRImage[0], 4);
@@ -2653,10 +2659,9 @@ void RB_RenderAllRealTimeLightTypes()
 		qglDrawArrays(GL_TRIANGLES, 0, 3);
 
 		// temporal filter
-
 		bool oddFrame = tr.frameCount % 2 == 1;
-
 		FBO_Bind(tr.preLightFbo[oddFrame ? PRELIGHT_TEMP_ODD_FBO : PRELIGHT_TEMP_EVEN_FBO]);
+		
 		GL_BindToTMU(tr.diffuseLightingImage, 0);
 		GL_BindToTMU(oddFrame ? tr.tempFilterEvenBufferImage : tr.tempFilterOddBufferImage, 1);
 
@@ -2677,6 +2682,7 @@ void RB_RenderAllRealTimeLightTypes()
 			GL_BindToTMU(tr.envBrdfImage, 7);
 
 		qglDrawArrays(GL_TRIANGLES, 0, 3);
+
 		FBO_Bind(tr.preLightFbo[PRELIGHT_DIFFUSE_FBO]);
 		qglClear(GL_COLOR_BUFFER_BIT);
 
@@ -3123,7 +3129,8 @@ void RB_StoreFrameData() {
 		(backEnd.refdef.rdflags & RDF_NOWORLDMODEL) ||
 		(backEnd.refdef.rdflags & RDF_SKYBOXPORTAL) ||
 		(tr.renderCubeFbo != NULL && backEnd.viewParms.targetFbo == tr.renderCubeFbo) ||
-		(tr.shadowCubeFbo != NULL && backEnd.viewParms.targetFbo == tr.shadowCubeFbo))
+		(tr.shadowCubeFbo != NULL && backEnd.viewParms.targetFbo == tr.shadowCubeFbo) &&
+		!backEnd.viewParms.isPortal)
 		return;
 
 	// finish any 2D drawing if needed
@@ -3150,16 +3157,19 @@ void RB_StoreFrameData() {
 	vec4_t viewInfo;
 
 	for (int level = 1; level <= 4; level++) {
-		width = width / 2.0;
-		height = height / 2.0;
-		qglViewport(0, 0, width, height);
-		qglScissor(0, 0, width, height);
 
 		VectorSet2(texRes, 1.0f / (float)width, 1.0f / (float)height);
 		VectorSet4(viewInfo, level - 1, 0.0, 0.0, 0.0);
 
+		width = width / 2.0;
+		height = height / 2.0;
+		
+		
 		FBO_Bind(tr.quarterFbo[1]);
 		GLSL_BindProgram(&tr.gaussianBlurShader[0]);
+		qglViewport(0, 0, width, height);
+		qglScissor(0, 0, width, height);
+
 
 		GL_BindToTMU(tr.prevRenderImage, TB_COLORMAP);
 		GLSL_SetUniformVec4(&tr.gaussianBlurShader[0], UNIFORM_COLOR, color);

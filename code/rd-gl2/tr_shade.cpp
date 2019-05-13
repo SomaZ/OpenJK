@@ -1614,11 +1614,13 @@ static void RB_IterateStagesGeneric( shaderCommands_t *input, const VertexArrays
 
 			// pretty bad way of removing sabers from main pass
 			// we do this for ssr, because sabers should be analytical lights
-			if ((backEnd.currentEntity->e.reType == RT_SABER_GLOW || 
+			if (backEnd.currentEntity->e.reType == RT_SABER_GLOW || 
 				backEnd.currentEntity->e.reType == RT_LINE || 
 				!strcmp(input->shader->name, "gfx/effects/sabers/swordTrail") ||
-				!strcmp(input->shader->name, "gfx/effects/sabers/saberBlur")) && 
-				r_ssr->integer)
+				!strcmp(input->shader->name, "gfx/effects/sabers/saberBlur") || 
+				!strcmp(input->shader->name, "gfx/effects/sabers/blackSaberBlur") || 
+				!strcmp(input->shader->name, "SFX_Sabers/saber_trail") || 
+				!strcmp(input->shader->name, "SFX_Sabers/black_trail"))
 				renderPass = backEndData->currentPostPass;
 
 			if ((input->shader == tr.distortionShader) || backEnd.currentEntity->e.renderfx & RF_DISTORTION)

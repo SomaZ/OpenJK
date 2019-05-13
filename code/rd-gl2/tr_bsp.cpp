@@ -124,10 +124,9 @@ static	void R_ColorShiftLightingBytes( byte in[4], byte out[4] ) {
 		g = g * 255 / max;
 		b = b * 255 / max;
 	}
-
-	out[0] = (byte)(pow((float)r / 255.f, r_lightmapGamma->value) * 255);
-	out[1] = (byte)(pow((float)g / 255.f, r_lightmapGamma->value) * 255);
-	out[2] = (byte)(pow((float)b / 255.f, r_lightmapGamma->value) * 255);
+	out[0] = (byte)(sRGBtoRGB((float)r / 255.f) * 255);
+	out[1] = (byte)(sRGBtoRGB((float)g / 255.f) * 255);
+	out[2] = (byte)(sRGBtoRGB((float)b / 255.f) * 255);
 	out[3] = in[3];
 }
 

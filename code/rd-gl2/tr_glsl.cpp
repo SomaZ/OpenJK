@@ -376,11 +376,18 @@ static size_t GLSL_GetShaderHeader(
 	fbufWidthScale = 1.0f / ((float)glConfig.vidWidth);
 	fbufHeightScale = 1.0f / ((float)glConfig.vidHeight);
 	Q_strcat(dest, size,
-		va("#ifndef r_FBufScale\n"
-			"#define r_FBufScale vec2(%f, %f)\n"
+		va("#ifndef r_FBufInvScale\n"
+			"#define r_FBufInvScale vec2(%f, %f)\n"
 			"#endif\n",
 			fbufWidthScale,
 			fbufHeightScale));
+
+	Q_strcat(dest, size,
+		va("#ifndef r_FBufScale\n"
+			"#define r_FBufScale vec2(%f, %f)\n"
+			"#endif\n",
+			(float)glConfig.vidWidth,
+			(float)glConfig.vidHeight));
 
 	if (r_debugVisuals->integer)
 		Q_strcat(dest, size, 

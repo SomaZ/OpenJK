@@ -71,7 +71,7 @@ float PCF(const sampler2DShadow shadowmap, const vec2 st, const float dist)
 
 #if 0
 	// from http://http.developer.nvidia.com/GPUGems/gpugems_ch11.html
-	vec2 offset = vec2(greaterThan(fract(var_DepthTex.xy * r_FBufScale * 0.5), vec2(0.25)));
+	vec2 offset = vec2(greaterThan(fract(var_DepthTex.xy * r_FBufInvScale * 0.5), vec2(0.25)));
 	offset.y += offset.x;
 	if (offset.y > 1.1) offset.y = 0.0;
 
