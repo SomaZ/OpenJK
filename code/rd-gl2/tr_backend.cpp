@@ -2550,11 +2550,6 @@ void RB_RenderAllRealTimeLightTypes()
 	const float zmax = backEnd.viewParms.zFar;
 	const float zmin = backEnd.viewParms.zNear;
 	vec4_t viewInfo = { zmax / zmin, zmax, zmin, 0.0f };
-	
-	// only compute lighting for non sky pixels
-	qglEnable(GL_STENCIL_TEST);
-	qglStencilFunc(GL_EQUAL, 1, 0xff);
-	qglStencilMask(0);
 
 	GL_DepthRange(0.0, 1.0);
 
@@ -2757,6 +2752,12 @@ void RB_RenderAllRealTimeLightTypes()
 			qglDrawElementsInstanced(GL_TRIANGLES, tr.lightSphereVolume.numIndexes, GL_UNSIGNED_INT, 0, rest);
 		}
 	}
+
+	// only compute lighting for non sky pixels
+	qglEnable(GL_STENCIL_TEST);
+	qglStencilFunc(GL_EQUAL, 1, 0xff);
+	qglStencilMask(0);
+
 	//render sun lights or maybe not, can also be rendered forward, shouldn't make a difference, only invest time when multiple suns are needed
 	if (0)//(r_sunlightMode->integer)
 	{
