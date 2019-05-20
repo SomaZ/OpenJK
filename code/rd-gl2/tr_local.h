@@ -2209,6 +2209,7 @@ typedef struct glstate_s {
 	int				vertexAttribsTexCoordOffset[2];
 	qboolean        vertexAnimation;
 	qboolean		skeletalAnimation;
+	qboolean		blend;
 	mat4x3_t       *boneMatrices;
 	int				numBones;
 	shaderProgram_t *currentProgram;

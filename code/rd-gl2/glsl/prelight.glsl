@@ -139,7 +139,6 @@ flat in vec3 var_LightColor;
 
 out vec4 out_Color;
 out vec4 out_Glow;
-out vec4 out_Velocity;
 
 float linearDepth(in float depthSample, in float zNear, in float zFar)
 {

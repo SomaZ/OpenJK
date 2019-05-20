@@ -100,7 +100,7 @@ void GL_SelectTexture( int unit )
 void GL_BindToTMU( image_t *image, int tmu )
 {
 	int		texnum;
-	int     oldtmu = glState.currenttmu;
+	//int     oldtmu = glState.currenttmu;
 
 	if (!image)
 		texnum = 0;
@@ -124,7 +124,7 @@ void GL_BindToTMU( image_t *image, int tmu )
 		}
 		else
 			qglBindTexture( GL_TEXTURE_2D, texnum );
-		GL_SelectTexture( oldtmu );
+		//GL_SelectTexture( oldtmu );
 	}
 }
 
@@ -276,13 +276,20 @@ void GL_State( uint32_t stateBits )
 				ri.Error( ERR_DROP, "GL_State: invalid dst blend state bits" );
 				break;
 			}
-
-			qglEnable( GL_BLEND );
+			if (glState.blend == qfalse)
+			{
+				qglEnable(GL_BLEND);
+				glState.blend = qtrue;
+			}
 			qglBlendFunc( srcFactor, dstFactor );
 		}
 		else
 		{
-			qglDisable( GL_BLEND );
+			if (glState.blend == qtrue)
+			{
+				glState.blend = qfalse;
+				qglDisable(GL_BLEND);
+			}
 		}
 	}
 
@@ -2625,7 +2632,7 @@ void RB_RenderAllRealTimeLightTypes()
 		
 
 		// ssr resolve
-		GL_State(GLS_SRCBLEND_SRC_ALPHA | GLS_DSTBLEND_ONE_MINUS_SRC_ALPHA | GLS_DEPTHTEST_DISABLE);
+		//GL_State(GLS_SRCBLEND_SRC_ALPHA | GLS_DSTBLEND_ONE_MINUS_SRC_ALPHA | GLS_DEPTHTEST_DISABLE);
 		FBO_Bind(tr.preLightFbo[PRELIGHT_RESOLVE_FBO]);
 
 		GL_BindToTMU(tr.prevRenderImage, 0);
@@ -3156,6 +3163,9 @@ void RB_StoreFrameData() {
 	vec4_t color = { 1.0f, 1.0f, 1.0f, 1.0f };
 	vec2_t texRes = { 1.0f / (float)width, 1.0f / (float)height };
 	vec4_t viewInfo;
+
+	GL_State(GLS_SRCBLEND_ONE | GLS_DSTBLEND_ZERO | GLS_DEPTHTEST_DISABLE);
+	GL_Cull(CT_FRONT_SIDED);
 
 	for (int level = 1; level <= 4; level++) {
 

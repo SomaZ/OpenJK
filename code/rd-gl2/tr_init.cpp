@@ -1077,6 +1077,7 @@ void GL_SetDefaultState(void)
 	//
 	glState.glStateBits = GLS_DEPTHTEST_DISABLE | GLS_DEPTHMASK_TRUE;
 	glState.maxDepth = 1.0f;
+	glState.blend = qfalse;
 	qglDepthRange(0.0f, 1.0f);
 
 	qglUseProgram(0);
