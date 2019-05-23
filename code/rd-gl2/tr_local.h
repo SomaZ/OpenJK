@@ -2405,6 +2405,7 @@ typedef struct trGlobals_s {
 	image_t					*glowImage;
 	image_t					*glowImageScaled[6];
 	image_t					*prevRenderImage;
+	image_t					*resolveImage;
 	image_t					*tempFilterOddBufferImage;
 	image_t					*tempFilterEvenBufferImage;
 	image_t					*preSSRImage[2];

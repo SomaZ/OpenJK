@@ -2158,7 +2158,7 @@ static void RB_BuildHiZBuffer()
 			dim /= 2;
 		}
 
-		for (int i = 0; i < levels-1; i++)
+		for (int i = 0; i < 1; i++)
 		{
 			FBO_Bind(tr.prevDepthFbo);
 
@@ -2579,6 +2579,11 @@ void RB_RenderAllRealTimeLightTypes()
 	GL_BindToTMU(tr.specBufferImage, 3);
 	GL_BindToTMU(NULL, 4);
 
+	// only compute lighting for non sky pixels
+	qglEnable(GL_STENCIL_TEST);
+	qglStencilFunc(GL_EQUAL, 1, 0xff);
+	qglStencilMask(0);
+
 	if (!((tr.buildingSphericalHarmonics) ||
 		(tr.renderCubeFbo != NULL && backEnd.viewParms.targetFbo == tr.renderCubeFbo)) &&
 		r_ssr->integer &&
@@ -2591,9 +2596,6 @@ void RB_RenderAllRealTimeLightTypes()
 		FBO_Bind(tr.preLightFbo[PRELIGHT_PRE_SSR_FBO]);
 		qglClear(GL_COLOR_BUFFER_BIT);
 
-		tess.useInternalVBO = qfalse;
-		R_BindVBO(tr.screenQuad.vbo);
-		R_BindIBO(tr.screenQuad.ibo);
 		GLSL_VertexAttribsState(ATTR_POSITION, NULL);
 		GL_State(GLS_SRCBLEND_ONE | GLS_DSTBLEND_ZERO | GLS_DEPTHTEST_DISABLE);
 		GL_Cull(CT_FRONT_SIDED);
@@ -2606,8 +2608,8 @@ void RB_RenderAllRealTimeLightTypes()
 		GLSL_SetUniformVec3(sp, UNIFORM_VIEWLEFT, viewBasis[1]);
 		GLSL_SetUniformVec3(sp, UNIFORM_VIEWUP, viewBasis[2]);
 		GLSL_SetUniformVec3(sp, UNIFORM_VIEWORIGIN, backEnd.viewParms.ori.origin);
-		
-		vec4_t viewInfo = { tr.viewParms.zNear, tr.viewParms.zFar, float(tr.frameCount % 32), Q_flrand(0.f, 32.f) };
+		const float samples = 64.0f;
+		vec4_t viewInfo = { tr.viewParms.zNear, tr.viewParms.zFar, Q_flrand(0.f, samples), Q_flrand(32.f, samples) };
 		GLSL_SetUniformVec4(sp, UNIFORM_VIEWINFO, viewInfo);
 		
 		matrix_t invModelViewMatrix;
@@ -2630,9 +2632,7 @@ void RB_RenderAllRealTimeLightTypes()
 		qglViewport(0, 0, tr.renderImage->width, tr.renderImage->height);
 		qglScissor(0, 0, tr.renderImage->width, tr.renderImage->height);
 		
-
 		// ssr resolve
-		//GL_State(GLS_SRCBLEND_SRC_ALPHA | GLS_DSTBLEND_ONE_MINUS_SRC_ALPHA | GLS_DEPTHTEST_DISABLE);
 		FBO_Bind(tr.preLightFbo[PRELIGHT_RESOLVE_FBO]);
 
 		GL_BindToTMU(tr.prevRenderImage, 0);
@@ -2650,7 +2650,7 @@ void RB_RenderAllRealTimeLightTypes()
 		GLSL_SetUniformVec3(sp, UNIFORM_VIEWUP, viewBasis[2]);
 		GLSL_SetUniformVec3(sp, UNIFORM_VIEWORIGIN, backEnd.viewParms.ori.origin);
 
-		VectorSet4(viewInfo, 1.f / (float)tr.renderImage->width, 1.f / (float)tr.renderImage->height, sin(Q_flrand(0.f, 360.f)), cos(Q_flrand(0.f, 360.f)));
+		VectorSet4(viewInfo, 1.f / (float)tr.renderImage->width, 1.f / (float)tr.renderImage->height, Q_flrand(0.f, 8.f), cos(Q_flrand(0.f, 360.f)));
 		GLSL_SetUniformVec4(sp, UNIFORM_VIEWINFO, viewInfo);
 		
 		GLSL_SetUniformMatrix4x4(sp, UNIFORM_INVVIEWPROJECTIONMATRIX, invProjectionMatrix);
@@ -2664,7 +2664,7 @@ void RB_RenderAllRealTimeLightTypes()
 		bool oddFrame = tr.frameCount % 2 == 1;
 		FBO_Bind(tr.preLightFbo[oddFrame ? PRELIGHT_TEMP_ODD_FBO : PRELIGHT_TEMP_EVEN_FBO]);
 		
-		GL_BindToTMU(tr.diffuseLightingImage, 0);
+		GL_BindToTMU(tr.resolveImage, 0);
 		GL_BindToTMU(oddFrame ? tr.tempFilterEvenBufferImage : tr.tempFilterOddBufferImage, 1);
 
 		GL_BindToTMU(tr.preSSRImage[0], 4);
@@ -2684,9 +2684,6 @@ void RB_RenderAllRealTimeLightTypes()
 			GL_BindToTMU(tr.envBrdfImage, 7);
 
 		qglDrawArrays(GL_TRIANGLES, 0, 3);
-
-		FBO_Bind(tr.preLightFbo[PRELIGHT_DIFFUSE_FBO]);
-		qglClear(GL_COLOR_BUFFER_BIT);
 
 		GL_BindToTMU(NULL, 4);
 		GL_BindToTMU(NULL, 5);
@@ -2759,11 +2756,6 @@ void RB_RenderAllRealTimeLightTypes()
 			qglDrawElementsInstanced(GL_TRIANGLES, tr.lightSphereVolume.numIndexes, GL_UNSIGNED_INT, 0, rest);
 		}
 	}
-
-	// only compute lighting for non sky pixels
-	qglEnable(GL_STENCIL_TEST);
-	qglStencilFunc(GL_EQUAL, 1, 0xff);
-	qglStencilMask(0);
 
 	//render sun lights or maybe not, can also be rendered forward, shouldn't make a difference, only invest time when multiple suns are needed
 	if (0)//(r_sunlightMode->integer)

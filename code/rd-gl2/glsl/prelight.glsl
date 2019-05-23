@@ -60,7 +60,7 @@ void main()
 #endif
 
 #if defined(TWO_RAYS_PER_PIXEL)
-#define brdfBias 0.7
+#define brdfBias 0.6
 #else
 #define brdfBias 0.8
 #endif
@@ -455,7 +455,7 @@ vec3 RayCast(in vec3 dir, inout vec3 hitCoord)
 		
         dir *= 1.02;
     }
-    return vec3(hitCoord.xy, 0.35);
+    return vec3(hitCoord.xy, 0.0);
 }
 
 vec3 ImportanceSampleGGX(vec2 Xi, float Roughness, vec3 N)
@@ -478,34 +478,97 @@ vec3 ImportanceSampleGGX(vec2 Xi, float Roughness, vec3 N)
 	return vec3(TangentX * H.x + TangentY * H.y + N * H.z);
 }
 
-// from http://holger.dammertz.org/stuff/notes_HammersleyOnHemisphere.html
-float radicalInverse_VdC(uint bits) {
-     bits = (bits << 16u) | (bits >> 16u);
-     bits = ((bits & 0x55555555u) << 1u) | ((bits & 0xAAAAAAAAu) >> 1u);
-     bits = ((bits & 0x33333333u) << 2u) | ((bits & 0xCCCCCCCCu) >> 2u);
-     bits = ((bits & 0x0F0F0F0Fu) << 4u) | ((bits & 0xF0F0F0F0u) >> 4u);
-     bits = ((bits & 0x00FF00FFu) << 8u) | ((bits & 0xFF00FF00u) >> 8u);
-     return float(bits) * 2.3283064365386963e-10; // / 0x100000000
-}
+#define SAMPLES 64
+const vec2 halton[64] = vec2[64](
+	vec2(0.641114, 0.371748),
+	vec2(0.282228, 0.743496),
+	vec2(0.923343, 0.115243),
+	vec2(0.064457, 0.486991),
+	vec2(0.705571, 0.858739),
+	vec2(0.346685, 0.230487),
+	vec2(0.987800, 0.602234),
+	vec2(0.003914, 0.973982),
+	vec2(0.645028, 0.012396),
+	vec2(0.286142, 0.384144),
+	vec2(0.927257, 0.755892),
+	vec2(0.068371, 0.127640),
+	vec2(0.709485, 0.499388),
+	vec2(0.350599, 0.871135),
+	vec2(0.991714, 0.242883),
+	vec2(0.000015, 0.614631),
+	vec2(0.641129, 0.986379),
+	vec2(0.282244, 0.024793),
+	vec2(0.923358, 0.396541),
+	vec2(0.064472, 0.768288),
+	vec2(0.705586, 0.140036),
+	vec2(0.346701, 0.511784),
+	vec2(0.987815, 0.883532),
+	vec2(0.003929, 0.255280),
+	vec2(0.645043, 0.627027),
+	vec2(0.286158, 0.998775),
+	vec2(0.927272, 0.000152),
+	vec2(0.068386, 0.371900),
+	vec2(0.709500, 0.743648),
+	vec2(0.350615, 0.115396),
+	vec2(0.991729, 0.487143),
+	vec2(0.000000, 0.858891),
+	vec2(0.641114, 0.230639),
+	vec2(0.282228, 0.602387),
+	vec2(0.923343, 0.974134),
+	vec2(0.064457, 0.012549),
+	vec2(0.705571, 0.384297),
+	vec2(0.346685, 0.756044),
+	vec2(0.987800, 0.127792),
+	vec2(0.003914, 0.499540),
+	vec2(0.645028, 0.871288),
+	vec2(0.286142, 0.243035),
+	vec2(0.927257, 0.614783),
+	vec2(0.068371, 0.986531),
+	vec2(0.709485, 0.024945),
+	vec2(0.350599, 0.396693),
+	vec2(0.991714, 0.768441),
+	vec2(0.000015, 0.140189),
+	vec2(0.641129, 0.511936),
+	vec2(0.282244, 0.883684),
+	vec2(0.923358, 0.255432),
+	vec2(0.064472, 0.627180),
+	vec2(0.705586, 0.998927),
+	vec2(0.346701, 0.000305),
+	vec2(0.987815, 0.372053),
+	vec2(0.003929, 0.743800),
+	vec2(0.645043, 0.115548),
+	vec2(0.286158, 0.487296),
+	vec2(0.927272, 0.859044),
+	vec2(0.068386, 0.230791),
+	vec2(0.709500, 0.602539),
+	vec2(0.350615, 0.974287),
+	vec2(0.991729, 0.012701),
+	vec2(0.000000, 0.384449)
+);
 
-vec2 hammersley2D(uint i, uint N) {
-     return vec2(float(i)/float(N), radicalInverse_VdC(i));
-}
+int bayer[64] = int[64](
+	 0, 32,  8, 40,  2, 34, 10, 42,
+	48, 16, 56, 24, 50, 18, 58, 26,
+	12, 44,  4, 36, 14, 46,  6, 38,
+	60, 28, 52, 20, 62, 30, 54, 22,
+	 3, 35, 11, 43,  1, 33,  9, 41,
+	51, 19, 59, 27, 49, 17, 57, 25,
+	15, 47,  7, 39, 13, 45,  5, 37,
+	63, 31, 55, 23, 61, 29, 53, 21 
+); 
 
-#define SAMPLES 4096
-
-vec4 traceSSRRay(in float roughness, in vec3 wsNormal, in vec3 E, in vec3 viewPos, in vec3 scspPos, in float random)
+vec4 traceSSRRay(in float roughness, in vec3 wsNormal, in vec3 E, in vec3 viewPos, in vec3 scspPos, in int random)
 {
-	float sample = random;
+	int sample = random;
 
 	vec3 H;
 	vec3 reflection;
 	bool NdotR, VdotR;
 
-	for (int i = 0; i < 8; i++) 
+	for (int i = 0; i < 6; i++) 
 	{
-		sample = mod(sample + 7.4, SAMPLES);
-		vec2 Xi = hammersley2D(uint(sample), uint(SAMPLES));
+		sample = int(mod(sample + 2, SAMPLES));
+		vec2 Xi = halton[sample];
 		Xi.y = mix(Xi.y, 0.0, brdfBias);
 
 		H = ImportanceSampleGGX(Xi, roughness, wsNormal);
@@ -526,8 +589,8 @@ vec4 traceSSRRay(in float roughness, in vec3 wsNormal, in vec3 E, in vec3 viewPo
 	float pdf = (spec_D(NH,roughness) * NH) / (4.0 * EH);
 	
 	const float minRayStep = 0.05;
-	reflection = normalize(mat3(u_ModelViewProjectionMatrix) * reflection) * max(minRayStep, -viewPos.z * 0.1);
-
+	reflection = normalize(mat3(u_ModelViewProjectionMatrix) * reflection);
+	reflection *= max(minRayStep, -viewPos.z * 0.1);
 	vec4 scspRefPos = u_ModelMatrix * vec4(viewPos + reflection, 1.0);
 	scspRefPos.xyz /= scspRefPos.w;
 	scspRefPos.xyz = scspRefPos.xyz * 0.5 + 0.5;
@@ -557,14 +620,15 @@ vec4 resolveSSRRay(	in sampler2D packedTexture,
 					in sampler2D velocityTexture, 
 					in vec3 viewPos, 
 					in vec3 viewNormal, 
-					in vec3 specular, 
 					in float roughness, 
 					inout float weightSum)
 {
 	const vec2 bufferScale = 2.0 / r_FBufInvScale;
-
+	vec4 diffuseSample	= vec4(0.0);
 	vec4 packedHitPos = texelFetch(packedTexture, coordinate, 0);
 
+	if (packedHitPos.a > 0.01)
+	{
 	float depth = textureLod(u_ScreenDepthMap, packedHitPos.xy , 1.0).r;
 	vec3 hitViewPos = WorldPosFromDepth(depth, packedHitPos.xy);
 
@@ -572,12 +636,11 @@ vec4 resolveSSRRay(	in sampler2D packedTexture,
 	vec3 E  = normalize(-viewPos);
 	vec3 H  = normalize(L + E);
 	
-	float EH = max(1e-8, dot(E, H));
 	float NH = max(1e-8, dot(viewNormal, H));
 	float NE = max(1e-8, dot(viewNormal, E));
 	float NL = max(1e-8, dot(viewNormal, L));
 
-	float weight = (CalcSpecular(specular, NH, NL, NE, EH, roughness).r / packedHitPos.z) * packedHitPos.a;
+	float weight = (CalcSpecular(vec3(1.0), NH, NL, NE, 0.0, roughness).r / packedHitPos.z) * packedHitPos.a;
 
 	float coneTangent = mix(0.0, roughness * (1.0 - brdfBias), NE * sqrt(roughness));
 	coneTangent *= mix(clamp (NE * 2.0, 0.0, 1.0), 1.0, sqrt(roughness));
@@ -586,7 +649,7 @@ vec4 resolveSSRRay(	in sampler2D packedTexture,
 	float mip = clamp(log2( intersectionCircleRadius ), 0.0, 4.0);
 
 	vec2 velocity		= texture(velocityTexture, packedHitPos.xy).rg;
-	vec4 diffuseSample	= textureLod(u_ScreenImageMap, packedHitPos.xy - velocity, mip);
+	diffuseSample		= textureLod(u_ScreenImageMap, packedHitPos.xy - velocity, mip);
 
 	diffuseSample.rgb *= diffuseSample.rgb;
 	diffuseSample.a = packedHitPos.a;
@@ -595,7 +658,7 @@ vec4 resolveSSRRay(	in sampler2D packedTexture,
 	diffuseSample = diffuseSample * weight;
 
 	weightSum += weight;
-
+	}
 	return diffuseSample;
 }
 
@@ -637,11 +700,10 @@ void main()
 	vec3 position = WorldPosFromDepth(depth, coord);
 	vec4 normal = texture(u_NormalMap, coord);
 	vec4 specularAndGloss = texture(u_SpecularMap, coord);
+	specularAndGloss.rgb *= specularAndGloss.rgb;
 #endif	
 	
 	float roughness = max(1.0 - specularAndGloss.a, 0.01);
-
-	specularAndGloss.rgb *= specularAndGloss.rgb;
 
 	//vec3 N = normalize(DecodeNormal(normal.rg));
 	vec3 N = normalize(normal.rgb);
@@ -657,53 +719,48 @@ void main()
 	scspPos.xyz = scspPos.xyz * 0.5 + 0.5;
 	scspPos.z = 1.0 / linearDepth(scspPos.z, u_ViewInfo.x, u_ViewInfo.y);
 
-	vec2 noise = vec2( Noise(gl_FragCoord.xy, u_ViewInfo.z) * SAMPLES, Noise(gl_FragCoord.xy, u_ViewInfo.w) * SAMPLES);
+	int sample = bayer[int(Noise(gl_FragCoord.xy, u_ViewInfo.z) * SAMPLES)];
 
-	diffuseOut = traceSSRRay( roughness, N, E, vsPosition, scspPos.xyz, noise.x);
+	diffuseOut = traceSSRRay( roughness, N, E, vsPosition, scspPos.xyz, sample);
 
 	#if defined(TWO_RAYS_PER_PIXEL)
-		specularOut = traceSSRRay( roughness, N, E, vsPosition, scspPos.xyz, noise.y);
+		specularOut = traceSSRRay( roughness, N, E, vsPosition, scspPos.xyz, int(sample + u_ViewInfo.w));
 	#endif
 
 #elif defined(SSR_RESOLVE)
-	windowCoord = ivec2(gl_FragCoord.xy * 0.5); 
-	int samples = roughness > 0.1 ? 4 : 1;
+	windowCoord = ivec2((gl_FragCoord.xy + 0.5) * 0.5); 
+	const int samples = 4;
 	float weightSum = 0.0;
 	vec3 viewNormal = normalize(mat3(u_NormalMatrix) * N);
 	vec3 viewPos = position;
 	diffuseOut.a = 0.0;
 
-	const vec2 offset[4] = vec2[4](
+	const vec2 offset[8] = vec2[8](
 		vec2(0.0, 0.0),
 		vec2(-1.0, 1.0),
+		vec2(0.0, 1.0),
 		vec2(1.0, -1.0),
-		vec2(1.0, 1.0)
+		vec2(0.0, 0.0),
+		vec2(0.0, -1.0),
+		vec2(-1.0, 0.0),
+		vec2(-1.0, -1.0)
 	);
 
-	float random1 = Noise(gl_FragCoord.xy, u_ViewInfo.z);
-	float random2 = Noise(gl_FragCoord.xy, u_ViewInfo.w);
-			
-	mat2 rotationMat = mat2(random1, 
-							random2, 
-							-random2, 
-							random1);
-	
 	for( int i = 0; i < samples; i++)
 	{
-		vec2 offsetUV = offset[i] * (roughness * 3.0 + 1.0);
-		offsetUV *= rotationMat;
+		int index = int(mod(i + u_ViewInfo.z, 8.0));
+		vec2 offsetUV = offset[index] * (roughness * 2.0 + 1.0);
 		ivec2 neighborUV = ivec2(windowCoord + offsetUV);
 
-		diffuseOut += resolveSSRRay(u_ScreenOffsetMap, neighborUV, u_ShadowMap, viewPos, viewNormal, specularAndGloss.rgb, roughness, weightSum);
+		diffuseOut += resolveSSRRay(u_ScreenOffsetMap, neighborUV, u_ShadowMap, viewPos, viewNormal, roughness, weightSum);
 
 		#if defined(TWO_RAYS_PER_PIXEL)
-			diffuseOut += resolveSSRRay(u_ScreenOffsetMap2, neighborUV, u_ShadowMap, viewPos, viewNormal, specularAndGloss.rgb, roughness, weightSum);
+			diffuseOut += resolveSSRRay(u_ScreenOffsetMap2, neighborUV, u_ShadowMap, viewPos, viewNormal, roughness, weightSum);
 		#endif
 	}
 
 	diffuseOut /= weightSum;
 	diffuseOut.rgb /= 1.0 - luma(diffuseOut.rgb);
-	diffuseOut.rgb = sqrt(diffuseOut.rgb);
 
 #elif defined(TEMPORAL_FILTER)
 /*
@@ -738,22 +795,18 @@ SOFTWARE.
 	vec2 tc = gl_FragCoord.xy / r_FBufScale;
 
 	vec4 current = texture(u_ScreenImageMap, tc);
-	current.rgb *= current.rgb;
 
-	vec2 velocity1 = texture(u_ShadowMap, tc).xy;
 	vec2 uvTraced1 = texture(u_ScreenOffsetMap, tc).xy;
-	vec2 velocity2 = texture(u_ShadowMap, uvTraced1).xy;
+	vec2 minVelocity = texture(u_ShadowMap, uvTraced1).xy;
 
 	#if defined(TWO_RAYS_PER_PIXEL)
 	vec2 uvTraced2 = texture(u_ScreenOffsetMap2, tc).xy;
-	velocity2 = (velocity2 + texture(u_ShadowMap, uvTraced2).xy) * 0.5;
+	minVelocity = (minVelocity + texture(u_ShadowMap, uvTraced2).xy) * 0.5;
 	#endif
 
-	vec2 minVelocity = length(velocity1) < length(velocity2) ? velocity1 : velocity2;
 	tc -= minVelocity.xy;
 
 	vec4 previous = texture(u_ScreenDepthMap, tc);
-	previous.rgb *= previous.rgb;
 
 	const ivec2 du = ivec2(1.0, 0.0);
 	const ivec2 dv = ivec2(0.0,	1.0);
@@ -768,21 +821,11 @@ SOFTWARE.
 	vec4 cbc = textureOffset(u_ScreenImageMap,	tc.xy, + dv			);
 	vec4 cbr = textureOffset(u_ScreenImageMap,	tc.xy, + dv + du	);
 
-	ctl.rgb *= ctl.rgb;
-	ctc.rgb *= ctc.rgb;
-	ctr.rgb *= ctr.rgb;
-	cml.rgb *= cml.rgb;
-	cmc.rgb *= cmc.rgb;
-	cmr.rgb *= cmr.rgb;
-	cbl.rgb *= cbl.rgb;
-	cbc.rgb *= cbc.rgb;
-	cbr.rgb *= cbr.rgb;
-
 	vec4 currentMin = min(ctl, min(ctc, min(ctr, min(cml, min(cmc, min(cmr, min(cbl, min(cbc, cbr))))))));
 	vec4 currentMax = max(ctl, max(ctc, max(ctr, max(cml, max(cmc, max(cmr, max(cbl, max(cbc, cbr))))))));
 	vec4 average = (ctl+ctc+ctr+cml+cmc+cmr+cbl+cbc+cbr) / 9.0;
 
-	float velocityWeight = -min(length((minVelocity.xy * r_FBufScale) * 0.2), 2.0);
+	float velocityWeight = -min(length((minVelocity.xy * r_FBufScale) * 0.2), 3.0);
 
 	float lum0 = luma(current.rgb);
     float lum1 = luma(previous.rgb);
@@ -790,9 +833,9 @@ SOFTWARE.
     float unbiased_diff = abs(lum0 - lum1) / max(lum0, max(lum1, 0.2));
     float unbiased_weight = 1.0 - unbiased_diff;
     float unbiased_weight_sqr = unbiased_weight * unbiased_weight;
-	float lumaWeight = mix(0.0, 2.0, unbiased_weight_sqr);
+	float lumaWeight = mix(0.0, 3.0, unbiased_weight_sqr);
 
-	float tScale = max(1.0 + (velocityWeight + lumaWeight), 1.0);
+	float tScale = max(2.0 + (velocityWeight + lumaWeight), 1.0);
 
 	currentMin = (currentMin - average) * tScale + average;
 	currentMax = (currentMax - average) * tScale + average;
@@ -800,7 +843,6 @@ SOFTWARE.
 	specularOut		= clip_aabb(currentMin.xyz, currentMax.xyz, clamp(average, currentMin, currentMax), previous);
 	diffuseOut.rgb	= sqrt(specularOut.rgb * (specularAndGloss.rgb * EnvBRDF.x + EnvBRDF.y));
 	diffuseOut.a	= specularOut.a;
-	specularOut.rgb = sqrt(specularOut.rgb);
 
 #elif defined(POINT_LIGHT)
 	vec4 lightVec		= vec4(var_Position.xyz - position + (N*0.01), var_Position.w);
