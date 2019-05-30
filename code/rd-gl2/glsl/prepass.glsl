@@ -282,7 +282,7 @@ void main()
 	gl_Position = u_ModelViewProjectionMatrix * vec4(position, 1.0);
 
 	#if !defined(USE_CUBEMAP_TRANSFORMS)
-	#if !defined(USE_SKELETAL_ANIMATION) && defined(USE_G_BUFFERS)
+	#if defined(USE_G_BUFFERS)
 	var_CurrentPosition = gl_Position;
 	var_OldPosition = (u_PrevViewProjectionMatrix * u_ModelMatrix) * vec4(position, 1.0);
 	#endif
@@ -551,7 +551,7 @@ void main()
 
 	out_Glow	= specular;
 	//out_Color	= vec4(EncodeNormal(N), offsetDir.xy * 0.5 + 0.5);
-	out_Color	= vec4(N, 1.0);
+	out_Color	= vec4(N, specular.a);
 
 	#if !defined(USE_CUBEMAP_TRANSFORMS)
 		vec2 a = (var_CurrentPosition.xy / var_CurrentPosition.w) * 0.5 + 0.5;

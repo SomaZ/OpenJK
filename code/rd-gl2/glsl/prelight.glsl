@@ -218,7 +218,11 @@ float spec_G(float NL, float NE, float roughness)
 	return G1(NL, k)*G1(NE, k);
 }
 
+#if defined(SSR_RESOLVE) || defined(SSR)
+float CalcSpecular(
+#else
 vec3 CalcSpecular(
+#endif
 	in vec3 specular,
 	in float NH,
 	in float NL,
@@ -229,10 +233,10 @@ vec3 CalcSpecular(
 {
 	float distrib = spec_D(NH,roughness);
 	float vis = spec_G(NL, NE, roughness);
-	float denominator = max((4.0 * max(NE,0.0) * max(NL,0.0)),0.001);
 	#if defined(SSR_RESOLVE) || defined(SSR)
-		return vec3(distrib * vis) / denominator;
+		return distrib * vis;
 	#else
+		float denominator = max((4.0 * max(NE,0.0) * max(NL,0.0)),0.001);
 		vec3 fresnel = spec_F(EH,specular);
 		return (distrib * fresnel * vis) / denominator;
 	#endif
@@ -426,10 +430,10 @@ float Noise(vec2 U, float x) {
 
 #if defined(SSR)
 
-vec3 BinarySearch(in vec3 dir, inout vec3 hitCoord)
+const vec3 BinarySearch(in vec3 dir, in vec3 hitCoord)
 {
 	float dDepth = 0.0;
-    for(int i = 0; i < 16; i++)
+    for(int i = 0; i < 14; i++)
     {
 		dDepth = textureLod(u_ShadowMap, hitCoord.xy, 0).r * hitCoord.z;
         
@@ -439,31 +443,59 @@ vec3 BinarySearch(in vec3 dir, inout vec3 hitCoord)
 		else
 			hitCoord -= dir;
     }
-	return vec3(hitCoord.xy, abs(dDepth - 1.0) < 0.00015 ? 1.0 : 0.35);
+	float hitScore = mix (1.0, 0.0, abs((1.0 / hitCoord.z) - textureLod(u_ShadowMap, hitCoord.xy, 0).r) * 12.0) ;
+
+	return vec3(hitCoord.xy, hitScore);
 }
 
-vec3 RayCast(in vec3 dir, inout vec3 hitCoord)
+const vec3 RayCast(in vec3 dir, in vec3 hitCoord)
 {
-	float dDepth = 0.0;
-    for(int i = 0; i < 30; ++i) {
-        hitCoord += dir;
-
-		dDepth = textureLod(u_ShadowMap, hitCoord.xy, 0).r * hitCoord.z;
-
-		if (dDepth < 1.0)
-			return BinarySearch(dir, hitCoord);
+	vec4 dDepth = vec4(0.0);
+	vec3 samplingPoints[4];
+	samplingPoints[0] = hitCoord + dir;
+	samplingPoints[1] = samplingPoints[0] + dir;
+	samplingPoints[2] = samplingPoints[1] + dir;
+	samplingPoints[3] = samplingPoints[2] + dir;
+    for(int i = 0; i < 14; ++i) {
 		
-        dir *= 1.02;
+		dDepth.x = textureLod(u_ShadowMap, samplingPoints[0].xy, 0).r * samplingPoints[0].z;
+		dDepth.y = textureLod(u_ShadowMap, samplingPoints[1].xy, 0).r * samplingPoints[1].z;
+		dDepth.z = textureLod(u_ShadowMap, samplingPoints[2].xy, 0).r * samplingPoints[2].z;
+		dDepth.w = textureLod(u_ShadowMap, samplingPoints[3].xy, 0).r * samplingPoints[3].z;
+
+		if (dDepth.x < 1.0)
+			return BinarySearch(dir, samplingPoints[0]);
+
+		if (dDepth.y < 1.0)
+			return BinarySearch(dir, samplingPoints[1]);
+
+		if (dDepth.z < 1.0)
+			return BinarySearch(dir, samplingPoints[2]);
+
+		if (dDepth.w < 1.0)
+			return BinarySearch(dir, samplingPoints[3]);
+
+		samplingPoints[0] = samplingPoints[3] + dir;
+		samplingPoints[1] = samplingPoints[0] + dir;
+		samplingPoints[2] = samplingPoints[1] + dir;
+		samplingPoints[3] = samplingPoints[2] + dir;
+
+		if (samplingPoints[0].x < 0.0 || 
+			samplingPoints[0].x > 1.0 || 
+			samplingPoints[0].y < 0.0 || 
+			samplingPoints[0].y > 1.0)
+			break;
     }
-    return vec3(hitCoord.xy, 0.0);
+    return vec3(samplingPoints[3].xy, 0.0);
 }
 
-vec3 ImportanceSampleGGX(vec2 Xi, float Roughness, vec3 N)
+vec4 ImportanceSampleGGX(vec2 Xi, float Roughness, vec3 N)
 {
 	float a = Roughness * Roughness;
+	float a2 = a * a;
 
 	float Phi = 2.0 * M_PI * Xi.x;
-	float CosTheta = sqrt((1.0 - Xi.y) / (1.0 + (a*a - 1.0) * Xi.y));
+	float CosTheta = sqrt((1.0 - Xi.y) / (1.0 + (a2 - 1.0) * Xi.y));
 	float SinTheta = sqrt( 1.0 - CosTheta * CosTheta );
 
 	vec3 H;
@@ -475,7 +507,11 @@ vec3 ImportanceSampleGGX(vec2 Xi, float Roughness, vec3 N)
 	vec3 TangentX = normalize(cross(UpVector , N));
 	vec3 TangentY = cross(N , TangentX);
 
-	return vec3(TangentX * H.x + TangentY * H.y + N * H.z);
+	float d = (CosTheta * a2 - CosTheta) * CosTheta + 1.0;
+	float D = a2 / (M_PI * d * d);
+	float pdf = D * CosTheta;
+
+	return vec4(TangentX * H.x + TangentY * H.y + N * H.z, pdf);
 }
 
 #define SAMPLES 64
@@ -546,36 +582,27 @@ const vec2 halton[64] = vec2[64](
 	vec2(0.000000, 0.384449)
 );
 
-int bayer[64] = int[64](
-	 0, 32,  8, 40,  2, 34, 10, 42,
-	48, 16, 56, 24, 50, 18, 58, 26,
-	12, 44,  4, 36, 14, 46,  6, 38,
-	60, 28, 52, 20, 62, 30, 54, 22,
-	 3, 35, 11, 43,  1, 33,  9, 41,
-	51, 19, 59, 27, 49, 17, 57, 25,
-	15, 47,  7, 39, 13, 45,  5, 37,
-	63, 31, 55, 23, 61, 29, 53, 21 
-); 
-
 vec4 traceSSRRay(in float roughness, in vec3 wsNormal, in vec3 E, in vec3 viewPos, in vec3 scspPos, in int random)
 {
 	int sample = random;
 
-	vec3 H;
+	float fade = 0.0;
+	vec4 H;
 	vec3 reflection;
 	bool NdotR, VdotR;
 
-	for (int i = 0; i < 6; i++) 
+	for (int i = 0; i < 3; i++) 
 	{
-		sample = int(mod(sample + 2, SAMPLES));
+		sample = int(mod(sample + 3, SAMPLES));
 		vec2 Xi = halton[sample];
 		Xi.y = mix(Xi.y, 0.0, brdfBias);
 
 		H = ImportanceSampleGGX(Xi, roughness, wsNormal);
-		reflection = reflect(-E, H);
+		reflection = reflect(-E, H.xyz);
 		
 		NdotR = dot(wsNormal, reflection) > 0.0;
-		VdotR = dot(-E, reflection) > 0.0;
+		fade = min(2.0 * dot(-E, reflection), 1.0);
+		VdotR = fade > 0.0;
 
 		if (NdotR && VdotR)
 			break;
@@ -583,14 +610,10 @@ vec4 traceSSRRay(in float roughness, in vec3 wsNormal, in vec3 E, in vec3 viewPo
 
 	if (!NdotR || !VdotR)
 		return vec4(0.0);
-
-	float EH  = max(1e-8, dot(E, H));
-	float NH  = max(1e-8, dot(wsNormal, H));
-	float pdf = (spec_D(NH,roughness) * NH) / (4.0 * EH);
 	
-	const float minRayStep = 0.05;
 	reflection = normalize(mat3(u_ModelViewProjectionMatrix) * reflection);
-	reflection *= max(minRayStep, -viewPos.z * 0.1);
+	reflection *= max(0.0125, -viewPos.z * 0.025) * (roughness * 2.0 + 1.0);
+
 	vec4 scspRefPos = u_ModelMatrix * vec4(viewPos + reflection, 1.0);
 	scspRefPos.xyz /= scspRefPos.w;
 	scspRefPos.xyz = scspRefPos.xyz * 0.5 + 0.5;
@@ -600,11 +623,13 @@ vec4 traceSSRRay(in float roughness, in vec3 wsNormal, in vec3 E, in vec3 viewPo
 	
 	vec3 screenCoord = RayCast(scspReflection, scspPos.xyz).xyz;
 
-	vec2 dCoords = smoothstep(0.4, 0.5, abs(vec2(0.5, 0.5) - screenCoord.xy));
+	vec2 dCoords = smoothstep(0.35, 0.5, abs(vec2(0.5, 0.5) - screenCoord.xy));
 	float screenEdgefactor = clamp(1.0 - (dCoords.x + dCoords.y), 0.0, 1.0);
 	screenCoord.z *= screenEdgefactor;
-	screenCoord.z *= clamp(-reflection.z, 0.0, 1.0);
+	screenCoord.z *= clamp(fade, 0.0, 1.0);
 
+	float pdf = 1.0 / H.w;
+	// return intersection, pdf and hitScore
 	return vec4(screenCoord.xy, pdf, clamp(screenCoord.z, 0.0, 1.0));
 }
 
@@ -614,7 +639,7 @@ float luma(vec3 color)
 {
 	return dot(color, vec3(0.299, 0.587, 0.114));
 }
-
+#if defined(SSR_RESOLVE)
 vec4 resolveSSRRay(	in sampler2D packedTexture, 
 					in ivec2 coordinate,
 					in sampler2D velocityTexture, 
@@ -629,39 +654,37 @@ vec4 resolveSSRRay(	in sampler2D packedTexture,
 
 	if (packedHitPos.a > 0.01)
 	{
-	float depth = textureLod(u_ScreenDepthMap, packedHitPos.xy , 1.0).r;
-	vec3 hitViewPos = WorldPosFromDepth(depth, packedHitPos.xy);
+		float depth = textureLod(u_ScreenDepthMap, packedHitPos.xy , 1.0).r;
+		vec3 hitViewPos = WorldPosFromDepth(depth, packedHitPos.xy);
 
-	vec3 L  = normalize(hitViewPos - viewPos); 
-	vec3 E  = normalize(-viewPos);
-	vec3 H  = normalize(L + E);
+		vec3 L  = normalize(hitViewPos - viewPos); 
+		vec3 E  = normalize(-viewPos);
+		vec3 H  = normalize(L + E);
 	
-	float NH = max(1e-8, dot(viewNormal, H));
-	float NE = max(1e-8, dot(viewNormal, E));
-	float NL = max(1e-8, dot(viewNormal, L));
+		float NH = max(1e-8, dot(viewNormal, H));
+		float NE = max(1e-8, dot(viewNormal, E));
+		float NL = max(1e-8, dot(viewNormal, L));
 
-	float weight = (CalcSpecular(vec3(1.0), NH, NL, NE, 0.0, roughness).r / packedHitPos.z) * packedHitPos.a;
+		float weight = CalcSpecular(vec3(1.0), NH, NL, NE, 0.0, roughness) * packedHitPos.z * packedHitPos.a;
 
-	float coneTangent = mix(0.0, roughness * (1.0 - brdfBias), NE * sqrt(roughness));
-	coneTangent *= mix(clamp (NE * 2.0, 0.0, 1.0), 1.0, sqrt(roughness));
+		float coneTangent = mix(0.0, roughness * (1.0 - brdfBias), NE * sqrt(roughness));
+		coneTangent *= mix(clamp (NE * 2.0, 0.0, 1.0), 1.0, sqrt(roughness));
 
-	float intersectionCircleRadius = coneTangent * distance(hitViewPos, viewPos);
-	float mip = clamp(log2( intersectionCircleRadius ), 0.0, 4.0);
+		float intersectionCircleRadius = coneTangent * distance(hitViewPos, viewPos);
+		float mip = clamp(log2( intersectionCircleRadius ), 0.0, 4.0);
 
-	vec2 velocity		= texture(velocityTexture, packedHitPos.xy).rg;
-	diffuseSample		= textureLod(u_ScreenImageMap, packedHitPos.xy - velocity, mip);
+		vec2 velocity		= texture(velocityTexture, packedHitPos.xy).rg;
+		diffuseSample		= textureLod(u_ScreenImageMap, packedHitPos.xy - velocity, mip);
 
-	diffuseSample.rgb *= diffuseSample.rgb;
-	diffuseSample.a = packedHitPos.a;
+		diffuseSample.rgb *= diffuseSample.rgb;
+		diffuseSample.a = packedHitPos.a;
+		diffuseSample *= weight;
 
-	diffuseSample.rgb /= 1.0 + luma(diffuseSample.rgb);
-	diffuseSample = diffuseSample * weight;
-
-	weightSum += weight;
+		weightSum += weight;
 	}
 	return diffuseSample;
 }
-
+#endif
 #define FLT_EPS 0.00000001f;
 
 vec4 clip_aabb(vec3 aabb_min, vec3 aabb_max, vec4 p, vec4 q)
@@ -685,32 +708,41 @@ void main()
 	vec3 H;
 	float NL, NH, NE, EH;
 	float attenuation;
-
+	vec4 diffuseOut = vec4(0.0, 0.0, 0.0, 1.0);
+	vec4 specularOut = vec4(0.0, 0.0, 0.0, 0.0);
 	ivec2 windowCoord = ivec2(gl_FragCoord.xy);
 
 #if defined(SSR)
-	vec2 coord = windowCoord / vec2(textureSize(u_ShadowMap, 0));
+	const vec2 jitter[4] = vec2[4](
+		vec2(0.0, 0.0),
+		vec2(1.0, 0.0),
+		vec2(1.0, 1.0),
+		vec2(0.0, 1.0)
+	);
+	vec2 coord = windowCoord + jitter[int(mod(u_ViewInfo.z, 4))];
+	coord /= vec2(textureSize(u_ShadowMap, 0));
 	float depth = texture(u_ShadowMap, coord).r;
+
+	if (depth < (u_ViewInfo.y - 0.1))
+	{
 	vec3 vsPosition = WorldPosFromDepth(depthSample(depth, u_ViewInfo.x, u_ViewInfo.y), coord);
-	vec4 normal = texture(u_NormalMap, coord);
-	vec4 specularAndGloss = texture(u_SpecularMap, coord);
 #else
 	vec2 coord = gl_FragCoord.xy * r_FBufInvScale;
 	float depth = texture(u_ScreenDepthMap, coord).r;
 	vec3 position = WorldPosFromDepth(depth, coord);
-	vec4 normal = texture(u_NormalMap, coord);
+#endif
+
+#if !defined(SSR) && !defined(SSR_RESOLVE)
 	vec4 specularAndGloss = texture(u_SpecularMap, coord);
 	specularAndGloss.rgb *= specularAndGloss.rgb;
-#endif	
-	
-	float roughness = max(1.0 - specularAndGloss.a, 0.01);
+#endif
+
+	vec4 normal = texture(u_NormalMap, coord);
+	float roughness = max(1.0 - normal.a, 0.01);
 
 	//vec3 N = normalize(DecodeNormal(normal.rg));
 	vec3 N = normalize(normal.rgb);
 	vec3 E = normalize(-var_ViewDir);
-	
-	vec4 diffuseOut = vec4(0.0, 0.0, 0.0, 1.0);
-	vec4 specularOut = vec4(0.0, 0.0, 0.0, 0.0);
 
 #if defined(SSR)
 
@@ -719,14 +751,14 @@ void main()
 	scspPos.xyz = scspPos.xyz * 0.5 + 0.5;
 	scspPos.z = 1.0 / linearDepth(scspPos.z, u_ViewInfo.x, u_ViewInfo.y);
 
-	int sample = bayer[int(Noise(gl_FragCoord.xy, u_ViewInfo.z) * SAMPLES)];
+	int sample = int(Noise(gl_FragCoord.xy, u_ViewInfo.z) * SAMPLES);
 
 	diffuseOut = traceSSRRay( roughness, N, E, vsPosition, scspPos.xyz, sample);
 
 	#if defined(TWO_RAYS_PER_PIXEL)
 		specularOut = traceSSRRay( roughness, N, E, vsPosition, scspPos.xyz, int(sample + u_ViewInfo.w));
 	#endif
-
+	}
 #elif defined(SSR_RESOLVE)
 	windowCoord = ivec2((gl_FragCoord.xy + 0.5) * 0.5); 
 	const int samples = 4;
@@ -735,7 +767,7 @@ void main()
 	vec3 viewPos = position;
 	diffuseOut.a = 0.0;
 
-	const vec2 offset[8] = vec2[8](
+	const vec2 offset[12] = vec2[12](
 		vec2(0.0, 0.0),
 		vec2(-1.0, 1.0),
 		vec2(0.0, 1.0),
@@ -743,24 +775,27 @@ void main()
 		vec2(0.0, 0.0),
 		vec2(0.0, -1.0),
 		vec2(-1.0, 0.0),
-		vec2(-1.0, -1.0)
+		vec2(-1.0, -1.0),
+		vec2(0.0, 0.0),
+		vec2(1.0, 0.0),
+		vec2(1.0, 1.0),
+		vec2(0.0, -1.0)
 	);
 
 	for( int i = 0; i < samples; i++)
 	{
-		int index = int(mod(i + u_ViewInfo.z, 8.0));
-		vec2 offsetUV = offset[index] * (roughness * 2.0 + 1.0);
-		ivec2 neighborUV = ivec2(windowCoord + offsetUV);
-
-		diffuseOut += resolveSSRRay(u_ScreenOffsetMap, neighborUV, u_ShadowMap, viewPos, viewNormal, roughness, weightSum);
+		int index1 = int(mod(i + u_ViewInfo.z, 12.0));
+		ivec2 offsetUV1 = ivec2(offset[index1] * (roughness * 3.0 + 1.0));
+		diffuseOut += resolveSSRRay(u_ScreenOffsetMap, windowCoord + offsetUV1, u_ShadowMap, viewPos, viewNormal, roughness, weightSum);
 
 		#if defined(TWO_RAYS_PER_PIXEL)
-			diffuseOut += resolveSSRRay(u_ScreenOffsetMap2, neighborUV, u_ShadowMap, viewPos, viewNormal, roughness, weightSum);
+			int index2 = int(mod(i + 6 + u_ViewInfo.z, 12.0));
+			ivec2 offsetUV2 = ivec2(offset[index2] * (roughness * 3.0 + 1.0));
+			diffuseOut += resolveSSRRay(u_ScreenOffsetMap2, windowCoord + offsetUV2, u_ShadowMap, viewPos, viewNormal, roughness, weightSum);
 		#endif
 	}
 
 	diffuseOut /= weightSum;
-	diffuseOut.rgb /= 1.0 - luma(diffuseOut.rgb);
 
 #elif defined(TEMPORAL_FILTER)
 /*
@@ -825,24 +860,25 @@ SOFTWARE.
 	vec4 currentMax = max(ctl, max(ctc, max(ctr, max(cml, max(cmc, max(cmr, max(cbl, max(cbc, cbr))))))));
 	vec4 average = (ctl+ctc+ctr+cml+cmc+cmr+cbl+cbc+cbr) / 9.0;
 
-	float velocityWeight = -min(length((minVelocity.xy * r_FBufScale) * 0.2), 3.0);
-
 	float lum0 = luma(current.rgb);
     float lum1 = luma(previous.rgb);
 
     float unbiased_diff = abs(lum0 - lum1) / max(lum0, max(lum1, 0.2));
     float unbiased_weight = 1.0 - unbiased_diff;
     float unbiased_weight_sqr = unbiased_weight * unbiased_weight;
-	float lumaWeight = mix(0.0, 3.0, unbiased_weight_sqr);
 
-	float tScale = max(2.0 + (velocityWeight + lumaWeight), 1.0);
+	float weight = 3.0;
+	weight += mix(0.0, 2.0, unbiased_weight_sqr);
+	weight -= min(length(minVelocity.xy * r_FBufScale), 4.0);
+	
+	weight = max(1.0, weight);
 
-	currentMin = (currentMin - average) * tScale + average;
-	currentMax = (currentMax - average) * tScale + average;
+	currentMin = (currentMin - average) * weight + average;
+	currentMax = (currentMax + average) * weight - average;
 
-	specularOut		= clip_aabb(currentMin.xyz, currentMax.xyz, clamp(average, currentMin, currentMax), previous);
+	specularOut		= mix(clip_aabb(currentMin.xyz, currentMax.xyz, clamp(average, currentMin, currentMax), previous), current, 1.0/16.0);
 	diffuseOut.rgb	= sqrt(specularOut.rgb * (specularAndGloss.rgb * EnvBRDF.x + EnvBRDF.y));
-	diffuseOut.a	= specularOut.a;
+	diffuseOut     *= specularOut.a * specularOut.a;
 
 #elif defined(POINT_LIGHT)
 	vec4 lightVec		= vec4(var_Position.xyz - position + (N*0.01), var_Position.w);

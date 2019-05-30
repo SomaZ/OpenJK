@@ -424,9 +424,9 @@ static	void R_LoadLightmaps( world_t *worldData, lump_t *l, lump_t *surfs ) {
 
 					R_ColorShiftLightingFloats(color, color, 1.0f / 255.0f);
 
-					color[0] = pow(color[0], r_lightmapGamma->value);
-					color[1] = pow(color[1], r_lightmapGamma->value);
-					color[2] = pow(color[2], r_lightmapGamma->value);
+					color[0] = sRGBtoRGB(color[0]);
+					color[1] = sRGBtoRGB(color[1]);
+					color[2] = sRGBtoRGB(color[2]);
 
 					ColorToRGBA16F(color, (unsigned short *)(&image[j*8]));
 				}

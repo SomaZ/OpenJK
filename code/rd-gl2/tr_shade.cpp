@@ -932,11 +932,11 @@ static void ForwardDlight( const shaderCommands_t *input,  VertexArraysPropertie
 	}
 
 	shaderProgram_t *sp = shaderGroup + index;
-	for ( int l = 0 ; l < backEnd.refdef.num_dlights ; l++ ) {
+	for (int l = 0; l < backEnd.refdef.num_dlights; l++) {
 		vec4_t texMatrix;
 		vec4_t texOffTurb;
 
-		if ( !( tess.dlightBits & ( 1 << l ) ) ) {
+		if (!(tess.dlightBits & (1 << l))) {
 			continue;	// this surface definately doesn't have any of this light
 		}
 
@@ -991,7 +991,13 @@ static void ForwardDlight( const shaderCommands_t *input,  VertexArraysPropertie
 		uniformDataWriter.SetUniformFloat(UNIFORM_LIGHTRADIUS, radius);
 
 		uniformDataWriter.SetUniformVec4(UNIFORM_NORMALSCALE, pStage->normalScale);
-		uniformDataWriter.SetUniformVec4(UNIFORM_SPECULARSCALE, pStage->specularScale);
+
+		vec4_t realTimeSpecGloss;
+		realTimeSpecGloss[0] = pStage->specularScale[0];
+		realTimeSpecGloss[1] = pStage->specularScale[1];
+		realTimeSpecGloss[2] = pStage->specularScale[2];
+		realTimeSpecGloss[3] = pStage->specularScale[3] * r_glossScale->value;
+		uniformDataWriter.SetUniformVec4(UNIFORM_SPECULARSCALE, realTimeSpecGloss);
 
 		matrix_t invModelMatrix;
 		matrix_t transInvModelMatrix;
@@ -1765,9 +1771,12 @@ static void RB_IterateStagesGeneric( shaderCommands_t *input, const VertexArrays
 
 		uniformDataWriter.SetUniformVec4(UNIFORM_NORMALSCALE, pStage->normalScale);
 		{
-			vec4_t specularScale;
-			VectorCopy4(pStage->specularScale, specularScale);
-			uniformDataWriter.SetUniformVec4(UNIFORM_SPECULARSCALE, specularScale);
+			vec4_t realTimeSpecGloss;
+			realTimeSpecGloss[0] = pStage->specularScale[0];
+			realTimeSpecGloss[1] = pStage->specularScale[1];
+			realTimeSpecGloss[2] = pStage->specularScale[2];
+			realTimeSpecGloss[3] = pStage->specularScale[3] * r_glossScale->value;
+			uniformDataWriter.SetUniformVec4(UNIFORM_SPECULARSCALE, realTimeSpecGloss);
 		}
 
 		int alphaTestFunction = useAlphaTestGE192 ? ATEST_CMP_GE : pStage->alphaTestCmp;

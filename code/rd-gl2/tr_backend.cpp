@@ -523,6 +523,16 @@ void RB_BeginDrawingView (void) {
 	// 2D images again
 	backEnd.projection2D = qfalse;
 
+	// clear content of the pre buffers
+	if (r_ssr->integer &&
+		(backEnd.viewParms.targetFbo == NULL ||
+		 backEnd.viewParms.targetFbo == tr.renderFbo))
+	{
+		FBO_Bind(tr.preBuffersFbo);
+		qglClearColor(0.0f, 0.0f, 0.0f, 0.0f);
+		qglClear(GL_COLOR_BUFFER_BIT);
+	}
+
 	// FIXME: HUGE HACK: render to the screen fbo if we've already postprocessed the frame and aren't drawing more world
 	// drawing more world check is in case of double renders, such as skyportals
 	if (backEnd.viewParms.targetFbo == NULL)
@@ -1282,6 +1292,13 @@ static void RB_SubmitDrawSurfsForDepthFill(
 		R_DecomposeSort(drawSurf->sort, &entityNum, &shader, &cubemapIndex, &postRender);
 		assert(shader != nullptr);
 
+		if (shader->sort != SS_OPAQUE ||
+			shader->isSky)
+		{
+			// Don't draw yet, let's see what's to come
+			continue;
+		}
+
 		if (shader == oldShader &&	entityNum == oldEntityNum)
 		{
 			// fast path, same as previous sort
@@ -1296,12 +1313,6 @@ static void RB_SubmitDrawSurfsForDepthFill(
 		if (shader != oldShader ||
 			(entityNum != oldEntityNum && !shader->entityMergable))
 		{
-			if (shader->sort != SS_OPAQUE)
-			{
-				// Don't draw yet, let's see what's to come
-				continue;
-			}
-
 			if (oldShader != nullptr)
 			{
 				RB_EndSurface();
@@ -2579,11 +2590,6 @@ void RB_RenderAllRealTimeLightTypes()
 	GL_BindToTMU(tr.specBufferImage, 3);
 	GL_BindToTMU(NULL, 4);
 
-	// only compute lighting for non sky pixels
-	qglEnable(GL_STENCIL_TEST);
-	qglStencilFunc(GL_EQUAL, 1, 0xff);
-	qglStencilMask(0);
-
 	if (!((tr.buildingSphericalHarmonics) ||
 		(tr.renderCubeFbo != NULL && backEnd.viewParms.targetFbo == tr.renderCubeFbo)) &&
 		r_ssr->integer &&
@@ -2688,6 +2694,11 @@ void RB_RenderAllRealTimeLightTypes()
 		GL_BindToTMU(NULL, 4);
 		GL_BindToTMU(NULL, 5);
 	}
+
+	// only compute lighting for non sky pixels
+	qglEnable(GL_STENCIL_TEST);
+	qglStencilFunc(GL_EQUAL, 1, 0xff);
+	qglStencilMask(0);
 
 	//render cubemaps where SSR  didn't render
 	//buggy! don't enable for now, finish when cubemap arrarys or bindless textures are available
@@ -3161,18 +3172,17 @@ void RB_StoreFrameData() {
 
 	for (int level = 1; level <= 4; level++) {
 
-		VectorSet2(texRes, 1.0f / (float)width, 1.0f / (float)height);
-		VectorSet4(viewInfo, level - 1, 0.0, 0.0, 0.0);
-
 		width = width / 2.0;
 		height = height / 2.0;
+
+		VectorSet2(texRes, 1.0f / (float)width, 1.0f / (float)height);
+		VectorSet4(viewInfo, level - 1, 0.0, 0.0, 0.0);
 		
-		
-		FBO_Bind(tr.quarterFbo[1]);
+		FBO_Bind(tr.refractiveFbo);
+		qglFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, tr.prevRenderImage->texnum, level);
 		GLSL_BindProgram(&tr.gaussianBlurShader[0]);
 		qglViewport(0, 0, width, height);
 		qglScissor(0, 0, width, height);
-
 
 		GL_BindToTMU(tr.prevRenderImage, TB_COLORMAP);
 		GLSL_SetUniformVec4(&tr.gaussianBlurShader[0], UNIFORM_COLOR, color);
@@ -3180,19 +3190,6 @@ void RB_StoreFrameData() {
 		GLSL_SetUniformVec4(&tr.gaussianBlurShader[0], UNIFORM_VIEWINFO, viewInfo);
 
 		qglDrawArrays(GL_TRIANGLES, 0, 3);
-
-		VectorSet4(viewInfo, 0.0, 0.0, 0.0, 0.0);
-
-		FBO_Bind(tr.refractiveFbo);
-		qglFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, tr.prevRenderImage->texnum, level);
-
-		GLSL_BindProgram(&tr.gaussianBlurShader[1]);
-		GL_BindToTMU(tr.quarterImage[1], TB_COLORMAP);
-
-		GLSL_SetUniformVec4(&tr.gaussianBlurShader[1], UNIFORM_COLOR, color);
-		GLSL_SetUniformVec2(&tr.gaussianBlurShader[1], UNIFORM_INVTEXRES, texRes);
-		GLSL_SetUniformVec4(&tr.gaussianBlurShader[1], UNIFORM_VIEWINFO, viewInfo);
-		qglDrawArrays(GL_TRIANGLES, 0, 3);		
 	}
 
 	FBO_Bind(tr.refractiveFbo);
@@ -3362,7 +3359,7 @@ const void *RB_PostProcess(const void *data)
 		VectorSet4(dstBox, 1280, glConfig.vidHeight - 256, 256, 256);
 		FBO_BlitFromTexture(tr.normalBufferImage, NULL, NULL, NULL, dstBox, NULL, NULL, 0);
 		VectorSet4(dstBox, 1536, glConfig.vidHeight - 256, 256, 256);
-		FBO_BlitFromTexture(tr.tempFilterOddBufferImage, NULL, NULL, NULL, dstBox, NULL, NULL, 0);
+		FBO_BlitFromTexture(tr.resolveImage, NULL, NULL, NULL, dstBox, NULL, NULL, 0);
 	}
 
 	if (0)
