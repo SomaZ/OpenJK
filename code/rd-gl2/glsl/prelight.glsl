@@ -785,7 +785,7 @@ void main()
 	for( int i = 0; i < samples; i++)
 	{
 		int index1 = int(mod(i + u_ViewInfo.z, 12.0));
-		ivec2 offsetUV1 = ivec2(offset[index1] * (roughness * 3.0 + 1.0));
+		ivec2 offsetUV1 = ivec2(offset[index1] * (roughness * 2.0 + 1.0));
 		diffuseOut += resolveSSRRay(u_ScreenOffsetMap, windowCoord + offsetUV1, u_ShadowMap, viewPos, viewNormal, roughness, weightSum);
 
 		#if defined(TWO_RAYS_PER_PIXEL)
@@ -831,12 +831,12 @@ SOFTWARE.
 
 	vec4 current = texture(u_ScreenImageMap, tc);
 
-	vec2 uvTraced1 = texture(u_ScreenOffsetMap, tc).xy;
-	vec2 minVelocity = texture(u_ShadowMap, uvTraced1).xy;
+	vec2 uvTraced = texture(u_ScreenOffsetMap, tc).xy;
+	vec2 minVelocity = texture(u_ShadowMap, uvTraced).xy;
 
 	#if defined(TWO_RAYS_PER_PIXEL)
-	vec2 uvTraced2 = texture(u_ScreenOffsetMap2, tc).xy;
-	minVelocity = (minVelocity + texture(u_ShadowMap, uvTraced2).xy) * 0.5;
+	uvTraced = texture(u_ScreenOffsetMap2, tc).xy;
+	minVelocity = (minVelocity + texture(u_ShadowMap, uvTraced).xy) * 0.5;
 	#endif
 
 	tc -= minVelocity.xy;
@@ -846,39 +846,29 @@ SOFTWARE.
 	const ivec2 du = ivec2(1.0, 0.0);
 	const ivec2 dv = ivec2(0.0,	1.0);
 
-	vec4 ctl = textureOffset(u_ScreenImageMap,	tc.xy, - dv - du	);
-	vec4 ctc = textureOffset(u_ScreenImageMap,	tc.xy, - dv			);
-	vec4 ctr = textureOffset(u_ScreenImageMap,	tc.xy, - dv + du	);
-	vec4 cml = textureOffset(u_ScreenImageMap,	tc.xy, - du			);
-	vec4 cmc = texture		(u_ScreenImageMap,	tc.xy				);
-	vec4 cmr = textureOffset(u_ScreenImageMap,	tc.xy, + du			);
-	vec4 cbl = textureOffset(u_ScreenImageMap,	tc.xy, + dv - du	);
-	vec4 cbc = textureOffset(u_ScreenImageMap,	tc.xy, + dv			);
-	vec4 cbr = textureOffset(u_ScreenImageMap,	tc.xy, + dv + du	);
+	vec4 ctl = textureOffset(u_ScreenImageMap, tc.xy, - dv - du);
+	vec4 ctc = textureOffset(u_ScreenImageMap, tc.xy, - dv);
+	vec4 ctr = textureOffset(u_ScreenImageMap, tc.xy, - dv + du);
+	vec4 cml = textureOffset(u_ScreenImageMap, tc.xy, - du);
+	vec4 cmc = texture		(u_ScreenImageMap, tc.xy);
+	vec4 cmr = textureOffset(u_ScreenImageMap, tc.xy, + du);
+	vec4 cbl = textureOffset(u_ScreenImageMap, tc.xy, + dv - du);
+	vec4 cbc = textureOffset(u_ScreenImageMap, tc.xy, + dv);
+	vec4 cbr = textureOffset(u_ScreenImageMap, tc.xy, + dv + du);
 
 	vec4 currentMin = min(ctl, min(ctc, min(ctr, min(cml, min(cmc, min(cmr, min(cbl, min(cbc, cbr))))))));
 	vec4 currentMax = max(ctl, max(ctc, max(ctr, max(cml, max(cmc, max(cmr, max(cbl, max(cbc, cbr))))))));
-	vec4 average = (ctl+ctc+ctr+cml+cmc+cmr+cbl+cbc+cbr) / 9.0;
 
-	float lum0 = luma(current.rgb);
-    float lum1 = luma(previous.rgb);
+	vec4 center = (currentMin + currentMax) * 0.5;
+	currentMin = (currentMin - center) * 128.0 + center;
+	currentMax = (currentMax - center) * 128.0 + center;
 
-    float unbiased_diff = abs(lum0 - lum1) / max(lum0, max(lum1, 0.2));
-    float unbiased_weight = 1.0 - unbiased_diff;
-    float unbiased_weight_sqr = unbiased_weight * unbiased_weight;
+	previous = clip_aabb(currentMin.xyz, currentMax.xyz, clamp(center, currentMin, currentMax), previous);
+	float temp = clamp(1.0 - (length(minVelocity * r_FBufScale) * 0.1), 0.35, 0.98);
 
-	float weight = 3.0;
-	weight += mix(0.0, 2.0, unbiased_weight_sqr);
-	weight -= min(length(minVelocity.xy * r_FBufScale), 4.0);
-	
-	weight = max(1.0, weight);
-
-	currentMin = (currentMin - average) * weight + average;
-	currentMax = (currentMax + average) * weight - average;
-
-	specularOut		= mix(clip_aabb(currentMin.xyz, currentMax.xyz, clamp(average, currentMin, currentMax), previous), current, 1.0/16.0);
+	specularOut		= mix(current, previous, temp);
 	diffuseOut.rgb	= sqrt(specularOut.rgb * (specularAndGloss.rgb * EnvBRDF.x + EnvBRDF.y));
-	diffuseOut     *= specularOut.a * specularOut.a;
+	diffuseOut	   *= specularOut.a * specularOut.a;
 
 #elif defined(POINT_LIGHT)
 	vec4 lightVec		= vec4(var_Position.xyz - position + (N*0.01), var_Position.w);
