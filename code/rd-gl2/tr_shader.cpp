@@ -4004,11 +4004,44 @@ static const char *FindShaderInShaderText(const char *shadername) {
 		return NULL;
 	}
 
+#ifdef USE_STL_FOR_SHADER_LOOKUPS
+
 	char sLowerCaseName[MAX_QPATH];
 	Q_strncpyz(sLowerCaseName, shadername, sizeof(sLowerCaseName));
 	Q_strlwr(sLowerCaseName);	// Q_strlwr is pretty gay, so I'm not using it
 
 	return ShaderEntryPtrs_Lookup(sLowerCaseName);
+
+#else
+
+	char *token;
+
+	// look for label
+	// note that this could get confused if a shader name is used inside
+	// another shader definition
+	while (1) {
+
+		token = COM_ParseExt(&p, qtrue);
+		if (token[0] == 0) {
+			break;
+		}
+
+		if (token[0] == '{') {
+			// skip the definition
+			SkipBracedSection(&p);
+		}
+		else if (!Q_stricmp(token, shadername)) {
+			return p;
+		}
+		else {
+			// skip to end of line
+			SkipRestOfLine(&p);
+		}
+	}
+
+	return NULL;
+
+#endif
 }
 
 
@@ -4559,6 +4592,7 @@ void	R_ShaderList_f (void) {
 	ri.Printf (PRINT_ALL, "------------------\n");
 }
 
+#ifdef USE_STL_FOR_SHADER_LOOKUPS
 // setup my STL shortcut list as to where all the shaders are, saves re-parsing every line for every .TGA request.
 //
 static void SetupShaderEntryPtrs(void)
@@ -4600,6 +4634,7 @@ static void SetupShaderEntryPtrs(void)
 
 	//ri.Printf( PRINT_DEVELOPER, "SetupShaderEntryPtrs(): Stored %d shader ptrs\n",ShaderEntryPtrs_Size() );
 }
+#endif
 
 /*
 ====================
@@ -4689,7 +4724,9 @@ static void ScanAndLoadShaderFiles(void)
 	// free up memory
 	ri.FS_FreeFileList(shaderFiles);
 
+	#ifdef USE_STL_FOR_SHADER_LOOKUPS
 	SetupShaderEntryPtrs();
+	#endif
 }
 
 shader_t *R_CreateShaderFromTextureBundle(

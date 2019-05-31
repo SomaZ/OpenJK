@@ -45,66 +45,6 @@ R_InitNextFrame
 ====================
 */
 void R_InitNextFrame( void ) {
-	if (backEndData->currentFrame != NULL)
-	{	// we measure overdraw by reading back the stencil buffer and
-		// counting up the number of increments that have happened
-		if (r_measureOverdraw->integer) {
-			int i;
-			long sum = 0;
-			unsigned char *stencilReadback;
-
-			stencilReadback = (unsigned char *)R_Malloc(glConfig.vidWidth * glConfig.vidHeight, TAG_TEMP_WORKSPACE, qfalse);
-			qglReadPixels(0, 0, glConfig.vidWidth, glConfig.vidHeight, GL_STENCIL_INDEX, GL_UNSIGNED_BYTE, stencilReadback);
-
-			for (i = 0; i < glConfig.vidWidth * glConfig.vidHeight; i++) {
-				sum += stencilReadback[i];
-			}
-
-			backEnd.pc.c_overDraw += sum;
-			R_Free(stencilReadback);
-		}
-
-		if (!backEnd.framePostProcessed)
-		{
-			if (tr.msaaResolveFbo && r_hdr->integer)
-			{
-				// Resolving an RGB16F MSAA FBO to the screen messes with the brightness, so resolve to an RGB16F FBO first
-				FBO_FastBlit(tr.renderFbo, NULL, tr.msaaResolveFbo, NULL, GL_COLOR_BUFFER_BIT, GL_NEAREST);
-				FBO_FastBlit(tr.msaaResolveFbo, NULL, NULL, NULL, GL_COLOR_BUFFER_BIT, GL_NEAREST);
-			}
-			else if (tr.renderFbo)
-			{
-				FBO_FastBlit(tr.renderFbo, NULL, NULL, NULL, GL_COLOR_BUFFER_BIT, GL_NEAREST);
-			}
-		}
-
-		if (tr.numFramesToCapture > 0)
-		{
-			tr.numFramesToCapture--;
-			if (!tr.numFramesToCapture)
-			{
-				ri.Printf(PRINT_ALL, "Frames captured\n");
-				ri.FS_FCloseFile(tr.debugFile);
-				tr.debugFile = 0;
-			}
-		}
-
-		int frameNumber = backEndData->realFrameNumber;
-		gpuFrame_t *currentFrame = backEndData->currentFrame;
-
-		assert(!currentFrame->sync);
-		currentFrame->sync = qglFenceSync(GL_SYNC_GPU_COMMANDS_COMPLETE, 0);
-
-		backEndData->realFrameNumber = frameNumber + 1;
-
-		GLimp_LogComment("***************** RB_SwapBuffers *****************\n\n\n");
-
-		ri.WIN_Present(&window);
-	}
-
-	backEnd.framePostProcessed = qfalse;
-	backEnd.projection2D = qfalse;
-
 	backEndData->commands.used = 0;
 
 	tr.numTimedBlocks = 0;
