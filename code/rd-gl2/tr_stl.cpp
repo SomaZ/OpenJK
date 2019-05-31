@@ -34,7 +34,6 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 #include <map>
 #include "../qcommon/sstring.h"	// #include <string>
 
-#ifdef USE_STL_FOR_SHADER_LOOKUPS
 typedef std::map<sstring_t, const char *>	ShaderEntryPtrs_t;
 typedef ShaderEntryPtrs_t::size_type	ShaderEntryPtr_size;
 ShaderEntryPtrs_t ShaderEntryPtrs;
@@ -77,4 +76,3 @@ const char *ShaderEntryPtrs_Lookup(const char *psShaderName)
 
 	return NULL;
 }
-#endif

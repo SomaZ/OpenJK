@@ -27,16 +27,7 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 
 #pragma once
 
-// REM this out if you want to compile without using STL (but slower of course)
-//
-#define USE_STL_FOR_SHADER_LOOKUPS
-
-#ifdef USE_STL_FOR_SHADER_LOOKUPS
 void ShaderEntryPtrs_Clear(void);
 int ShaderEntryPtrs_Size(void);
 const char  *ShaderEntryPtrs_Lookup(const char *psShaderName);
 void ShaderEntryPtrs_Insert(const char  *token, const char  *p);
-#else
-
-#define ShaderEntryPtrs_Clear()
-#endif	// #ifdef USE_STL_FOR_SHADER_LOOKUPS
