@@ -863,8 +863,8 @@ SOFTWARE.
 	currentMin = (currentMin - center) * 128.0 + center;
 	currentMax = (currentMax - center) * 128.0 + center;
 
-	previous = clip_aabb(currentMin.xyz, currentMax.xyz, clamp(center, currentMin, currentMax), previous);
-	float temp = clamp(1.0 - (length(minVelocity * r_FBufScale) * 0.1), 0.35, 0.98);
+	previous = clip_aabb(currentMin.xyz, currentMax.xyz, clamp(previous, currentMin, currentMax), previous);
+	float temp = clamp(1.0 - (length(minVelocity * r_FBufScale) * 0.08), 0.1, 0.98);
 
 	specularOut		= mix(current, previous, temp);
 	diffuseOut.rgb	= sqrt(specularOut.rgb * (specularAndGloss.rgb * EnvBRDF.x + EnvBRDF.y));

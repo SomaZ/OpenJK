@@ -142,6 +142,7 @@ if(BuildSPRdGL2)
 		"${SPDir}/rd-gl2/tr_stl.h"
 		"${SPDir}/rd-gl2/tr_subs.cpp"
 		"${SPDir}/rd-gl2/tr_surface.cpp"
+		"${SPDir}/rd-gl2/tr_tbo.cpp"
 		"${SPDir}/rd-gl2/tr_vbo.cpp"
 		"${SPDir}/rd-gl2/tr_world.cpp"
 		"${SPDir}/rd-gl2/tr_weather.cpp"

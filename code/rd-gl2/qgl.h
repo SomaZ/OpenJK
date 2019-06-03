@@ -407,6 +407,7 @@ extern PFNGLISBUFFERPROC qglIsBuffer;
 
 // Texturing
 extern PFNGLACTIVETEXTUREPROC qglActiveTexture;
+extern PFNGLTEXBUFFERPROC qglTexBuffer;
 extern PFNGLTEXIMAGE3DPROC qglTexImage3D;
 extern PFNGLTEXSUBIMAGE3DPROC qglTexSubImage3D;
 extern PFNGLTEXIMAGE2DMULTISAMPLEPROC qglTexImage2DMultisample;
