@@ -779,11 +779,12 @@ typedef enum
 
 enum specularType
 {
-	SPEC_GEN,	// generate specular from material settings
-	SPEC_RMO,	// calculate spec from rmo  texture with a specular of 0.04 for dielectric materials
-	SPEC_RMOS,	// calculate spec from rmos texture with a specular of 0.0 - 0.08 from input
-	SPEC_MOXR,  // calculate spec from moxr texture with a specular of 0.04 for dielectric materials
-	SPEC_MOSR,  // calculate spec from mosr texture with a specular of 0.0 - 0.08 from input
+	SPEC_GEN,		// generate specular from material settings
+	SPEC_METALNESS, // generate specular from diffuse texture (BAD APPROXIMATION!)
+	SPEC_RMO,		// calculate spec from rmo  texture with a specular of 0.04 for dielectric materials
+	SPEC_RMOS,		// calculate spec from rmos texture with a specular of 0.0 - 0.08 from input
+	SPEC_MOXR,		// calculate spec from moxr texture with a specular of 0.04 for dielectric materials
+	SPEC_MOSR,		// calculate spec from mosr texture with a specular of 0.0 - 0.08 from input
 };
 
 enum AlphaTestCmp
@@ -831,6 +832,7 @@ typedef struct {
 
 	vec4_t normalScale;
 	vec4_t specularScale;
+	float metalness;
 
 	surfaceSprite_t	*ss;
 

@@ -108,13 +108,13 @@ static void ClearGlobalShader(void)
 		stages[i].bundle[0].texMods = texMods[i];
 		//stages[i].mGLFogColorOverride = GLFOGOVERRIDE_NONE;
 
-		// default normal/specular
+		// default normal/specular/metalness
 		VectorSet4(stages[i].normalScale, 0.0f, 0.0f, 0.0f, 0.0f);
 		stages[i].specularScale[0] =
 		stages[i].specularScale[1] =
 		stages[i].specularScale[2] = RGBtosRGB(r_baseSpecular->value);
 		stages[i].specularScale[3] = r_baseGloss->value;
-
+		stages[i].metalness = 0.0f;
 	}
 
 	shader.contentFlags = CONTENTS_SOLID | CONTENTS_OPAQUE;
@@ -1453,9 +1453,6 @@ static qboolean ParseStage( shaderStage_t *stage, const char **text )
 					if (!shader.noPicMip)
 						flags |= IMGFLAG_PICMIP;
 
-					if (r_srgb->integer)
-						flags |= IMGFLAG_SRGB;
-
 					if (shader.noTC)
 						flags |= IMGFLAG_NO_COMPRESSION;
 
@@ -1616,6 +1613,24 @@ static qboolean ParseStage( shaderStage_t *stage, const char **text )
 			// Assumes max exponent of 8190 and min of 0, must change here if altered in lightall_fp.glsl
 			exponent = CLAMP(exponent, 0.0f, 8190.0f);
 			stage->specularScale[3] = (log2f(exponent + 2.0f) - 1.0f) / 12.0f;
+		}
+		//
+		// metalness <value> 
+		//
+		else if (!Q_stricmp(token, "metalness"))
+		{
+			float metalness;
+			token = COM_ParseExt(text, qfalse);
+			if (token[0] == 0)
+			{
+				ri.Printf(PRINT_WARNING, "WARNING: missing parameter for gloss in shader '%s'\n", shader.name);
+				continue;
+			}
+
+			metalness = atof(token);
+			stage->metalness = metalness;
+			if(buildSpecFromPacked == SPEC_GEN)
+				buildSpecFromPacked = SPEC_METALNESS;
 		}
 		//
 		// gloss <value> 
