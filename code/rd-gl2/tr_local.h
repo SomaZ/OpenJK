@@ -127,7 +127,6 @@ extern cvar_t	*r_offsetFactor;
 extern cvar_t	*r_offsetUnits;
 extern cvar_t	*r_fullbright;			// avoid lightmap pass
 extern cvar_t	*r_lightmap;			// render lightmaps only
-extern cvar_t	*r_vertexLight;			// vertex lighting mode for better performance
 extern cvar_t	*r_uiFullScreen;		// ui is running fullscreen
 extern cvar_t	*r_logFile;				// number of frames to emit GL logs
 extern cvar_t	*r_showtris;			// enables wireframe rendering of the world
@@ -326,7 +325,6 @@ enum
 	ATTR_INDEX_TANGENT,
 	ATTR_INDEX_NORMAL,
 	ATTR_INDEX_COLOR,
-	ATTR_INDEX_PAINTCOLOR,
 	ATTR_INDEX_LIGHTDIRECTION,
 	ATTR_INDEX_BONE_INDEXES,
 	ATTR_INDEX_BONE_WEIGHTS,
@@ -1078,15 +1076,14 @@ enum
 	ATTR_TANGENT		= 0x0040,
 	ATTR_NORMAL			= 0x0080,
 	ATTR_COLOR			= 0x0100,
-	ATTR_PAINTCOLOR		= 0x0200,
-	ATTR_LIGHTDIRECTION = 0x0400,
-	ATTR_BONE_INDEXES	= 0x0800,
-	ATTR_BONE_WEIGHTS	= 0x1000,
+	ATTR_LIGHTDIRECTION = 0x0200,
+	ATTR_BONE_INDEXES	= 0x0400,
+	ATTR_BONE_WEIGHTS	= 0x0800,
 
 	// for .md3 interpolation
-	ATTR_POSITION2		= 0x2000,
-	ATTR_TANGENT2		= 0x4000,
-	ATTR_NORMAL2		= 0x8000,
+	ATTR_POSITION2		= 0x1000,
+	ATTR_TANGENT2		= 0x2000,
+	ATTR_NORMAL2		= 0x4000,
 
 	ATTR_DEFAULT		= ATTR_POSITION,
 	ATTR_BITS			= ATTR_POSITION |
@@ -1098,7 +1095,6 @@ enum
 							ATTR_TANGENT |
 							ATTR_NORMAL |
 							ATTR_COLOR |
-							ATTR_PAINTCOLOR |
 							ATTR_LIGHTDIRECTION |
 							ATTR_BONE_INDEXES |
 							ATTR_BONE_WEIGHTS |

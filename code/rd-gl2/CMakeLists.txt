@@ -34,7 +34,7 @@ if(BuildSPRdGL2)
 	# Modular Renderer crap (let's hope this works..)
 
 	# Defines
-	set(SPRDGL2Defines ${SharedDefines} "RENDERER" "_JK2EXE")
+	set(SPRDGL2Defines ${SharedDefines} "RENDERER" "_JK2EXE" "DF2_MODE")
 
 	# Files
 

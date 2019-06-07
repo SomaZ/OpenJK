@@ -667,11 +667,6 @@ static shader_t *ShaderForShaderNum( const world_t *worldData, int shaderNum, co
 		styles = vertexStyles;
 	}
 
-	if ( r_vertexLight->integer ) {
-		lightmapNums = lightmapsVertex;
-		styles = vertexStyles;
-	}
-
 	if ( r_fullbright->integer ) {
 		lightmapNums = lightmapsFullBright;
 	}
@@ -2791,32 +2786,6 @@ void R_LoadEntities( world_t *worldData, lump_t *l ) {
 		}
 		Q_strncpyz(value, token, sizeof(value));
 
-		// check for remapping of shaders for vertex lighting
-		/*s = vertexRemapShaderText;
-		if (!Q_strncmp(keyname, s, strlen(s)) ) {
-			s = strchr(value, ';');
-			if (!s) {
-				ri.Printf( PRINT_WARNING, "WARNING: no semi colon in vertexshaderremap '%s'\n", value );
-				break;
-			}
-			*s++ = 0;
-			if (r_vertexLight->integer) {
-				R_RemapShader(value, s, "0");
-			}
-			continue;
-		}
-		// check for remapping of shaders
-		s = remapShaderText;
-		if (!Q_strncmp(keyname, s, strlen(s)) ) {
-			s = strchr(value, ';');
-			if (!s) {
-				ri.Printf( PRINT_WARNING, "WARNING: no semi colon in shaderremap '%s'\n", value );
-				break;
-			}
-			*s++ = 0;
-			R_RemapShader(value, s, "0");
-			continue;
-		}*/
  		if (!Q_stricmp(keyname, "distanceCull")) {
 			sscanf(value, "%f", &tr.distanceCull );
 			continue;
@@ -4187,8 +4156,8 @@ void RE_LoadWorldMap( const char *name ) {
 
 	// set default tone mapping settings
 	tr.toneMinAvgMaxLevel[0] = -8.0f;
-	tr.toneMinAvgMaxLevel[1] = -2.0f;
-	tr.toneMinAvgMaxLevel[2] = 0.0f;
+	tr.toneMinAvgMaxLevel[1] = 0.0f;
+	tr.toneMinAvgMaxLevel[2] = 2.0f;
 
 	world_t *world = R_LoadBSP(name);
 	if (world == nullptr)

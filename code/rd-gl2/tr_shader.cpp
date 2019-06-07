@@ -106,7 +106,6 @@ static void ClearGlobalShader(void)
 	memset( &stages, 0, sizeof( stages ) );
 	for (i = 0; i < MAX_SHADER_STAGES; i++) {
 		stages[i].bundle[0].texMods = texMods[i];
-		//stages[i].mGLFogColorOverride = GLFOGOVERRIDE_NONE;
 
 		// default normal/specular/metalness
 		VectorSet4(stages[i].normalScale, 0.0f, 0.0f, 0.0f, 0.0f);
@@ -2435,7 +2434,7 @@ infoParm_t	infoParms[] = {
 	{ "nonopaque",		~CONTENTS_OPAQUE,					SURF_NONE,			CONTENTS_NONE },		// special hack to clear opaque flag
 	{ "lava",			~CONTENTS_SOLID,					SURF_NONE,			CONTENTS_LAVA },		// very damaging
 	{ "slime",			~CONTENTS_SOLID,					SURF_NONE,			CONTENTS_SLIME },		// mildly damaging
-#ifndef JK2_MODE
+#ifdef DF2_MODE
 	{ "batteryacid",	~CONTENTS_SOLID,					SURF_NONE,			CONTENTS_BATTERYACID },	// mildly damaging
 #endif
 	{ "water",			~CONTENTS_SOLID,					SURF_NONE,			CONTENTS_WATER },		// 
@@ -2907,14 +2906,7 @@ static void ComputeVertexAttribs(void)
 {
 	int i, stage;
 
-	// dlights always need ATTR_NORMAL
 	shader.vertexAttribs = ATTR_POSITION | ATTR_NORMAL;
-
-	// portals always need normals, for SurfIsOffscreen()
-	if (shader.isPortal)
-	{
-		shader.vertexAttribs |= ATTR_NORMAL;
-	}
 
 	if (shader.defaultShader)
 	{
@@ -2931,31 +2923,14 @@ static void ComputeVertexAttribs(void)
 			switch (ds->deformation)
 			{
 				case DEFORM_BULGE:
-					shader.vertexAttribs |= ATTR_NORMAL | ATTR_TEXCOORD0;
+					shader.vertexAttribs |= ATTR_TEXCOORD0;
 					break;
 
 				case DEFORM_AUTOSPRITE:
-					shader.vertexAttribs |= ATTR_NORMAL | ATTR_COLOR;
-					break;
-
-				case DEFORM_WAVE:
-				case DEFORM_NORMALS:
-				case DEFORM_TEXT0:
-				case DEFORM_TEXT1:
-				case DEFORM_TEXT2:
-				case DEFORM_TEXT3:
-				case DEFORM_TEXT4:
-				case DEFORM_TEXT5:
-				case DEFORM_TEXT6:
-				case DEFORM_TEXT7:
-					shader.vertexAttribs |= ATTR_NORMAL;
+					shader.vertexAttribs |= ATTR_COLOR;
 					break;
 
 				default:
-				case DEFORM_NONE:
-				case DEFORM_MOVE:
-				case DEFORM_PROJECTION_SHADOW:
-				case DEFORM_AUTOSPRITE2:
 					break;
 			}
 		}
@@ -2972,8 +2947,6 @@ static void ComputeVertexAttribs(void)
 
 		if (pStage->glslShaderGroup == tr.lightallShader)
 		{
-			shader.vertexAttribs |= ATTR_NORMAL;
-
 			if ((pStage->glslShaderIndex & LIGHTDEF_LIGHTTYPE_MASK) &&
 					(r_normalMapping->integer != 0 ||
 					 r_specularMapping->integer != 0))
@@ -3011,9 +2984,6 @@ static void ComputeVertexAttribs(void)
 					shader.vertexAttribs |= (ATTR_TEXCOORD1 | ATTR_TEXCOORD2 |
 											 ATTR_TEXCOORD3 | ATTR_TEXCOORD4);
 					break;
-				case TCGEN_ENVIRONMENT_MAPPED:
-					shader.vertexAttribs |= ATTR_NORMAL;
-					break;
 
 				default:
 					break;
@@ -3030,21 +3000,12 @@ static void ComputeVertexAttribs(void)
 				shader.vertexAttribs |= ATTR_COLOR;
 				break;
 
-			case CGEN_LIGHTING_DIFFUSE:
-			case CGEN_LIGHTING_DIFFUSE_ENTITY:
-				shader.vertexAttribs |= ATTR_NORMAL;
-				break;
-
 			default:
 				break;
 		}
 
 		switch(pStage->alphaGen)
 		{
-			case AGEN_LIGHTING_SPECULAR:
-				shader.vertexAttribs |= ATTR_NORMAL;
-				break;
-
 			case AGEN_VERTEX:
 			case AGEN_ONE_MINUS_VERTEX:
 				shader.vertexAttribs |= ATTR_COLOR;
@@ -3061,14 +3022,11 @@ static void CollapseStagesToLightall(shaderStage_t *stage, shaderStage_t *lightm
 {
 	int defs = 0;
 
-	//ri.Printf(PRINT_ALL, "shader %s has diffuse %s", shader.name, stage->bundle[0].image[0]->imgName);
-
 	// reuse diffuse, mark others inactive
 	stage->type = ST_GLSL;
 
 	if (lightmap)
 	{
-		//ri.Printf(PRINT_ALL, ", lightmap");
 		stage->bundle[TB_LIGHTMAP] = lightmap->bundle[0];
 		defs |= LIGHTDEF_USE_LIGHTMAP;
 	}
@@ -3083,7 +3041,6 @@ static void CollapseStagesToLightall(shaderStage_t *stage, shaderStage_t *lightm
 
 	if (r_deluxeMapping->integer && tr.worldDeluxeMapping && lightmap)
 	{
-		//ri.Printf(PRINT_ALL, ", deluxemap");
 		stage->bundle[TB_DELUXEMAP] = lightmap->bundle[0];
 		stage->bundle[TB_DELUXEMAP].image[0] = tr.deluxemaps[shader.lightmapIndex[0]];
 	}
@@ -3095,7 +3052,6 @@ static void CollapseStagesToLightall(shaderStage_t *stage, shaderStage_t *lightm
 		{
 			if ((stage->bundle[TB_NORMALMAP].image[0]->type == IMGTYPE_NORMALHEIGHT) && r_parallaxMapping->integer)
 				defs |= LIGHTDEF_USE_PARALLAXMAP;
-			//ri.Printf(PRINT_ALL, ", normalmap %s", stage->bundle[TB_NORMALMAP].image[0]->imgName);
 		}
 		
 		else if ((lightmap || useLightVector || useLightVertex) && (diffuseImg = stage->bundle[TB_DIFFUSEMAP].image[0]))
@@ -3141,7 +3097,6 @@ static void CollapseStagesToLightall(shaderStage_t *stage, shaderStage_t *lightm
 		image_t *diffuseImg;
 		if (stage->bundle[TB_SPECULARMAP].image[0])
 		{
-			//ri.Printf(PRINT_ALL, ", specularmap %s", stage->bundle[TB_SPECULARMAP].image[0]->imgName);
 		}
 		else if ((lightmap || useLightVector || useLightVertex) && (diffuseImg = stage->bundle[TB_DIFFUSEMAP].image[0]))
 		{
@@ -3181,8 +3136,6 @@ static void CollapseStagesToLightall(shaderStage_t *stage, shaderStage_t *lightm
 
 	if (stage->glow)
 		defs |= LIGHTDEF_USE_GLOW_BUFFER;
-
-	//ri.Printf(PRINT_ALL, ".\n");
 
 	stage->glslShaderGroup = tr.lightallShader;
 	stage->glslShaderIndex = defs;
@@ -3610,122 +3563,6 @@ static shader_t *GeneratePermanentShader( void ) {
 }
 
 /*
-=================
-VertexLightingCollapse
-
-If vertex lighting is enabled, only render a single
-pass, trying to guess which is the correct one to best aproximate
-what it is supposed to look like.
-=================
-*/
-static void VertexLightingCollapse( void ) {
-	int		stage;
-	shaderStage_t	*bestStage;
-	int		bestImageRank;
-	int		rank;
-
-	// if we aren't opaque, just use the first pass
-	if ( shader.sort == SS_OPAQUE ) {
-
-		// pick the best texture for the single pass
-		bestStage = &stages[0];
-		bestImageRank = -999999;
-
-		for ( stage = 0; stage < MAX_SHADER_STAGES; stage++ ) {
-			shaderStage_t *pStage = &stages[stage];
-
-			if ( !pStage->active ) {
-				break;
-			}
-			rank = 0;
-
-			if ( pStage->bundle[0].isLightmap ) {
-				rank -= 100;
-			}
-			if ( pStage->bundle[0].tcGen != TCGEN_TEXTURE ) {
-				rank -= 5;
-			}
-			if ( pStage->bundle[0].numTexMods ) {
-				rank -= 5;
-			}
-			if ( pStage->rgbGen != CGEN_IDENTITY && pStage->rgbGen != CGEN_IDENTITY_LIGHTING ) {
-				rank -= 3;
-			}
-
-			if ( rank > bestImageRank  ) {
-				bestImageRank = rank;
-				bestStage = pStage;
-			}
-		}
-
-		stages[0].bundle[0] = bestStage->bundle[0];
-		stages[0].stateBits &= ~( GLS_DSTBLEND_BITS | GLS_SRCBLEND_BITS );
-		stages[0].stateBits |= GLS_DEPTHMASK_TRUE;
-		if ( shader.lightmapIndex[0] == LIGHTMAP_NONE ) {
-			stages[0].rgbGen = CGEN_LIGHTING_DIFFUSE;
-		} else {
-			stages[0].rgbGen = CGEN_EXACT_VERTEX;
-		}
-		stages[0].alphaGen = AGEN_SKIP;		
-	} else {
-		// don't use a lightmap (tesla coils)
-		if ( stages[0].bundle[0].isLightmap ) {
-			stages[0] = stages[1];
-		}
-
-		// if we were in a cross-fade cgen, hack it to normal
-		if ( stages[0].rgbGen == CGEN_ONE_MINUS_ENTITY || stages[1].rgbGen == CGEN_ONE_MINUS_ENTITY ) {
-			stages[0].rgbGen = CGEN_IDENTITY_LIGHTING;
-		}
-		if ( ( stages[0].rgbGen == CGEN_WAVEFORM && stages[0].rgbWave.func == GF_SAWTOOTH )
-			&& ( stages[1].rgbGen == CGEN_WAVEFORM && stages[1].rgbWave.func == GF_INVERSE_SAWTOOTH ) ) {
-			stages[0].rgbGen = CGEN_IDENTITY_LIGHTING;
-		}
-		if ( ( stages[0].rgbGen == CGEN_WAVEFORM && stages[0].rgbWave.func == GF_INVERSE_SAWTOOTH )
-			&& ( stages[1].rgbGen == CGEN_WAVEFORM && stages[1].rgbWave.func == GF_SAWTOOTH ) ) {
-			stages[0].rgbGen = CGEN_IDENTITY_LIGHTING;
-		}
-	}
-
-	for ( stage = 1; stage < MAX_SHADER_STAGES; stage++ ) {
-		shaderStage_t *pStage = &stages[stage];
-
-		if ( !pStage->active ) {
-			break;
-		}
-
-		Com_Memset( pStage, 0, sizeof( *pStage ) );
-	}
-}
-
-int FindFirstLightmapStage ( const shaderStage_t *stages, int numStages )
-{
-	for ( int i = 0; i < numStages; i++ )
-	{
-		const shaderStage_t *stage = &stages[i];
-		if ( stage->active && stage->bundle[0].isLightmap )
-		{
-			return i;
-		}
-	}
-
-	return numStages;
-}
-
-int GetNumStylesInShader ( const shader_t *shader )
-{
-	for ( int i = 0; i < MAXLIGHTMAPS; i++ )
-	{
-		if ( shader->styles[i] >= LS_UNUSED )
-		{
-			return i - 1;
-		}
-	}
-
-	return MAXLIGHTMAPS - 1;
-}
-
-/*
 =========================
 FinishShader
 
@@ -3961,22 +3798,12 @@ static shader_t *FinishShader( void ) {
 	}
 
 	//
-	// if we are in r_vertexLight mode, never use a lightmap texture
-	//
-	if ( stage > 1 && (r_vertexLight->integer && !r_uiFullScreen->integer) ) {
-		VertexLightingCollapse();
-		hasLightmapStage = qfalse;
-	}
-
-	//
 	// look for multitexture potential
 	//
 	stage = CollapseStagesToGLSL();
 
 	if ( shader.lightmapIndex[0] >= 0 && !hasLightmapStage ) {
 		ri.Printf( PRINT_DEVELOPER, "WARNING: shader '%s' has lightmap but no lightmap stage!\n", shader.name );
-		// Don't set this, it will just add duplicate shaders to the hash
-  		//shader.lightmapIndex = LIGHTMAP_NONE;
 	}
 
 
@@ -4306,131 +4133,6 @@ shader_t *R_FindShader( const char *name, const int *lightmapIndexes, const byte
 
 	return FinishShader();
 }
-
-/*shader_t *R_FindServerShader( const char *name, const int *lightmapIndexes, const byte *styles, qboolean mipRawImage ) 
-{
-	char		strippedName[MAX_QPATH];
-	int			hash;
-	shader_t	*sh;
-
-	if ( name[0] == 0 ) {
-		return tr.defaultShader;
-	}
-
-	COM_StripExtension( name, strippedName, sizeof( strippedName ) );
-
-	hash = generateHashValue(strippedName, FILE_HASH_SIZE);
-
-	//
-	// see if the shader is already loaded
-	//
-	for (sh = hashTable[hash]; sh; sh = sh->next) {
-		// NOTE: if there was no shader or image available with the name strippedName
-		// then a default shader is created with lightmapIndex == LIGHTMAP_NONE, so we
-		// have to check all default shaders otherwise for every call to R_FindShader
-		// with that same strippedName a new default shader is created.
-		if ( IsShader (sh, name, lightmapIndexes, styles) ) {
-			// match found
-			return sh;
-		}
-	}
-
-	// clear the global shader
-	ClearGlobalShader();
-	Q_strncpyz(shader.name, strippedName, sizeof(shader.name));
-	Com_Memcpy (shader.lightmapIndex, lightmapIndexes, sizeof (shader.lightmapIndex));
-	
-	shader.defaultShader = qtrue;
-	return FinishShader();
-}*/
-
-/*qhandle_t RE_RegisterShaderFromImage(const char *name, const int *lightmapIndexes, const byte *styles, image_t *image, qboolean mipRawImage) {
-	int			hash;
-	shader_t	*sh;
-
-	hash = generateHashValue(name, FILE_HASH_SIZE);
-
-	// probably not necessary since this function
-	// only gets called from tr_font.c with lightmapIndex == LIGHTMAP_2D
-	// but better safe than sorry.
-	if ( lightmapIndexes[0] >= tr.numLightmaps ) {
-		lightmapIndexes = lightmapsFullBright;
-	}
-
-	//
-	// see if the shader is already loaded
-	//
-	for (sh=hashTable[hash]; sh; sh=sh->next) {
-		// NOTE: if there was no shader or image available with the name strippedName
-		// then a default shader is created with lightmapIndex == LIGHTMAP_NONE, so we
-		// have to check all default shaders otherwise for every call to R_FindShader
-		// with that same strippedName a new default shader is created.
-		if ( IsShader (sh, name, lightmapIndexes, styles) ) {
-			// match found
-			return sh->index;
-		}
-	}
-
-	// clear the global shader
-	ClearGlobalShader();
-	Q_strncpyz(shader.name, name, sizeof(shader.name));
-	Com_Memcpy (shader.lightmapIndex, lightmapIndexes, sizeof (shader.lightmapIndex));
-
-	//
-	// create the default shading commands
-	//
-	if ( shader.lightmapIndex[0] == LIGHTMAP_NONE ) {
-		// dynamic colors at vertexes
-		stages[0].bundle[0].image[0] = image;
-		stages[0].active = qtrue;
-		stages[0].rgbGen = CGEN_LIGHTING_DIFFUSE;
-		stages[0].stateBits = GLS_DEFAULT;
-	} else if ( shader.lightmapIndex[0] == LIGHTMAP_BY_VERTEX ) {
-		// explicit colors at vertexes
-		stages[0].bundle[0].image[0] = image;
-		stages[0].active = qtrue;
-		stages[0].rgbGen = CGEN_EXACT_VERTEX;
-		stages[0].alphaGen = AGEN_SKIP;
-		stages[0].stateBits = GLS_DEFAULT;
-	} else if ( shader.lightmapIndex[0] == LIGHTMAP_2D ) {
-		// GUI elements
-		stages[0].bundle[0].image[0] = image;
-		stages[0].active = qtrue;
-		stages[0].rgbGen = CGEN_VERTEX;
-		stages[0].alphaGen = AGEN_VERTEX;
-		stages[0].stateBits = GLS_DEPTHTEST_DISABLE |
-			  GLS_SRCBLEND_SRC_ALPHA |
-			  GLS_DSTBLEND_ONE_MINUS_SRC_ALPHA;
-	} else if ( shader.lightmapIndex[0] == LIGHTMAP_WHITEIMAGE ) {
-		// fullbright level
-		stages[0].bundle[0].image[0] = tr.whiteImage;
-		stages[0].active = qtrue;
-		stages[0].rgbGen = CGEN_IDENTITY_LIGHTING;
-		stages[0].stateBits = GLS_DEFAULT;
-
-		stages[1].bundle[0].image[0] = image;
-		stages[1].active = qtrue;
-		stages[1].rgbGen = CGEN_IDENTITY;
-		stages[1].stateBits |= GLS_SRCBLEND_DST_COLOR | GLS_DSTBLEND_ZERO;
-	} else {
-		// two pass lightmap
-		stages[0].bundle[0].image[0] = tr.lightmaps[shader.lightmapIndex[0]];
-		stages[0].bundle[0].isLightmap = qtrue;
-		stages[0].active = qtrue;
-		stages[0].rgbGen = CGEN_IDENTITY;	// lightmaps are scaled on creation
-													// for identitylight
-		stages[0].stateBits = GLS_DEFAULT;
-
-		stages[1].bundle[0].image[0] = image;
-		stages[1].active = qtrue;
-		stages[1].rgbGen = CGEN_IDENTITY;
-		stages[1].stateBits |= GLS_SRCBLEND_DST_COLOR | GLS_DSTBLEND_ZERO;
-	}
-
-	sh = FinishShader();
-  return sh->index; 
-}*/
-
 
 /* 
 ====================
@@ -4795,7 +4497,7 @@ static void CreateInternalShaders( void ) {
 	tr.shadowShader = FinishShader();
 
 	// distortion shader is just a marker
-	Q_strncpyz( shader.name, "internal_distortion", sizeof( shader.name ) );
+	Q_strncpyz( shader.name, "<internal_distortion>", sizeof( shader.name ) );
 	shader.sort = SS_BLEND0;
 	shader.defaultShader = qfalse;
 	tr.distortionShader = FinishShader();
@@ -4808,7 +4510,7 @@ static void CreateInternalShaders( void ) {
 }
 
 static void CreateExternalShaders( void ) {
-	tr.projectionShadowShader = R_FindShader( "projectionShadow", lightmapsNone, stylesDefault, qtrue );
+	tr.projectionShadowShader = R_FindShader( "<projectionShadow>", lightmapsNone, stylesDefault, qtrue );
 	tr.flareShader = R_FindShader( "gfx/misc/flare", lightmapsNone, stylesDefault, qtrue );
 
 	// Hack to make fogging work correctly on flares. Fog colors are calculated
@@ -4863,15 +4565,6 @@ void R_InitShaders(void) {
 	//ri.Printf( PRINT_ALL, "Initializing Shaders\n" );
 
 	memset(hashTable, 0, sizeof(hashTable));
-	/*
-	Ghoul2 Insert Start
-	*/
-	//	memset(hitMatReg, 0, sizeof(hitMatReg));
-	//	hitMatCount = 0;
-	/*
-	Ghoul2 Insert End
-	*/
-
 
 	CreateInternalShaders();
 

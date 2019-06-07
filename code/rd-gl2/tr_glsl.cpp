@@ -598,7 +598,6 @@ static void GLSL_BindShaderInterface(shaderProgram_t *program)
 		"attr_Tangent",  // ATTR_INDEX_TANGENT
 		"attr_Normal",  // ATTR_INDEX_NORMAL
 		"attr_Color",  // ATTR_INDEX_COLOR
-		"attr_PaintColor",  // ATTR_INDEX_PAINTCOLOR
 		"attr_LightDirection",  // ATTR_INDEX_LIGHTDIRECTION
 		"attr_BoneIndexes",  // ATTR_INDEX_BONE_INDEXES
 		"attr_BoneWeights",  // ATTR_INDEX_BONE_WEIGHTS
@@ -2929,7 +2928,6 @@ void GL_VertexArraysToAttribs(vertexAttribute_t *attribs,
 		{ 4, GL_FALSE, GL_UNSIGNED_INT_2_10_10_10_REV, GL_TRUE }, // tangent
 		{ 4, GL_FALSE, GL_UNSIGNED_INT_2_10_10_10_REV, GL_TRUE }, // normal
 		{ 4, GL_FALSE, GL_FLOAT, GL_FALSE }, // color
-		{ 0, GL_FALSE, GL_NONE, GL_FALSE }, // paint color
 		{ 4, GL_FALSE, GL_UNSIGNED_INT_2_10_10_10_REV, GL_TRUE }, // light direction
 		{ 4, GL_TRUE,  GL_UNSIGNED_BYTE, GL_FALSE }, // bone indices
 		{ 4, GL_FALSE, GL_UNSIGNED_BYTE, GL_TRUE }, // bone weights

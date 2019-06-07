@@ -99,7 +99,6 @@ cvar_t	*r_offsetFactor;
 cvar_t	*r_offsetUnits;
 cvar_t	*r_fullbright;					// avoid lightmap pass
 cvar_t	*r_lightmap;					// render lightmaps only
-cvar_t	*r_vertexLight;					// vertex lighting mode for better performance
 cvar_t	*r_uiFullScreen;				// ui is running fullscreen
 cvar_t	*r_logFile;						// number of frames to emit GL logs
 cvar_t	*r_showtris;					// enables wireframe rendering of the world
@@ -1178,10 +1177,6 @@ static void GfxInfo_f(void)
 	ri.Printf(PRINT_ALL, "picmip: %d\n", r_picmip->integer);
 	ri.Printf(PRINT_ALL, "texture bits: %d\n", r_texturebits->integer);
 
-	if (r_vertexLight->integer)
-	{
-		ri.Printf(PRINT_ALL, "HACK: using vertex lightmap approximation\n");
-	}
 	int displayRefresh = ri.Cvar_VariableIntegerValue("r_displayRefresh");
 	if (displayRefresh) {
 		ri.Printf(PRINT_ALL, "Display refresh set to %d\n", displayRefresh);
@@ -1337,7 +1332,6 @@ void R_Register(void)
 	r_texturebits = ri.Cvar_Get("r_texturebits", "32", CVAR_ARCHIVE | CVAR_LATCH);
 	r_overBrightBits = ri.Cvar_Get("r_overBrightBits", "0", CVAR_ARCHIVE | CVAR_LATCH);
 	r_simpleMipMaps = ri.Cvar_Get("r_simpleMipMaps", "1", CVAR_ARCHIVE | CVAR_LATCH);
-	r_vertexLight = ri.Cvar_Get("r_vertexLight", "0", CVAR_ARCHIVE | CVAR_LATCH);
 	r_uiFullScreen = ri.Cvar_Get("r_uifullscreen", "0", 0);
 	r_subdivisions = ri.Cvar_Get("r_subdivisions", "2", CVAR_ARCHIVE | CVAR_LATCH);
 	ri.Cvar_CheckRange(r_subdivisions, 0, 80, qfalse);

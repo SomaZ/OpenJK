@@ -469,13 +469,6 @@ void RE_BeginScene(const refdef_t *fd)
 	tr.refdef.num_pshadows = 0;
 	tr.refdef.pshadows = &backEndData->pshadows[0];
 
-	// turn off dynamic lighting globally by clearing all the
-	// dlights if it needs to be disabled or if vertex lighting is enabled
-	if ( r_dynamiclight->integer == 0 ||
-		 r_vertexLight->integer == 1 ) {
-		tr.refdef.num_dlights = 0;
-	}
-
 	// a single frame may have multiple scenes draw inside it --
 	// a 3D game view, 3D status bar renderings, 3D menus, etc.
 	// They need to be distinguished by the light flare code, because
