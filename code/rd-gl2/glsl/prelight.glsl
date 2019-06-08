@@ -784,16 +784,16 @@ void main()
 
 	for( int i = 0; i < samples; i++)
 	{
-		int index1 = int(mod(i + u_ViewInfo.z, 12.0));
-		ivec2 offsetUV1 = ivec2(offset[index1] * (roughness * 2.0 + 1.0));
-		diffuseOut += resolveSSRRay(u_ScreenOffsetMap, windowCoord + offsetUV1, u_ShadowMap, viewPos, viewNormal, roughness, weightSum);
+		int index = int(mod(i + u_ViewInfo.z, 12.0));
+		ivec2 offsetUV = ivec2(offset[index] * (roughness * 2.0 + 1.0));
+		diffuseOut += resolveSSRRay(u_ScreenOffsetMap, windowCoord + offsetUV, u_ShadowMap, viewPos, viewNormal, roughness, weightSum);
 
 		#if defined(TWO_RAYS_PER_PIXEL)
-			int index2 = int(mod(i + 6 + u_ViewInfo.z, 12.0));
-			ivec2 offsetUV2 = ivec2(offset[index2] * (roughness * 3.0 + 1.0));
-			diffuseOut += resolveSSRRay(u_ScreenOffsetMap2, windowCoord + offsetUV2, u_ShadowMap, viewPos, viewNormal, roughness, weightSum);
+			index = int(mod(i + 6 + u_ViewInfo.z, 12.0));
+			offsetUV = ivec2(offset[index] * (roughness * 3.0 + 1.0));
+			diffuseOut += resolveSSRRay(u_ScreenOffsetMap2, windowCoord + offsetUV, u_ShadowMap, viewPos, viewNormal, roughness, weightSum);
 		#endif
-	}
+}
 
 	diffuseOut /= weightSum;
 
@@ -829,20 +829,6 @@ SOFTWARE.
 
 	vec2 tc = gl_FragCoord.xy / r_FBufScale;
 
-	vec4 current = texture(u_ScreenImageMap, tc);
-
-	vec2 uvTraced = texture(u_ScreenOffsetMap, tc).xy;
-	vec2 minVelocity = texture(u_ShadowMap, uvTraced).xy;
-
-	#if defined(TWO_RAYS_PER_PIXEL)
-	uvTraced = texture(u_ScreenOffsetMap2, tc).xy;
-	minVelocity = (minVelocity + texture(u_ShadowMap, uvTraced).xy) * 0.5;
-	#endif
-
-	tc -= minVelocity.xy;
-
-	vec4 previous = texture(u_ScreenDepthMap, tc);
-
 	const ivec2 du = ivec2(1.0, 0.0);
 	const ivec2 dv = ivec2(0.0,	1.0);
 
@@ -863,12 +849,24 @@ SOFTWARE.
 	currentMin = (currentMin - center) * 128.0 + center;
 	currentMax = (currentMax - center) * 128.0 + center;
 
-	previous = clip_aabb(currentMin.xyz, currentMax.xyz, clamp(previous, currentMin, currentMax), previous);
-	float temp = clamp(1.0 - (length(minVelocity * r_FBufScale) * 0.08), 0.1, 0.98);
+	vec2 uvTraced = texture(u_ScreenOffsetMap, tc).xy;
+	vec2 minVelocity = texture(u_ShadowMap, uvTraced).xy;
 
-	specularOut		= mix(current, previous, temp);
+	#if defined(TWO_RAYS_PER_PIXEL)
+	uvTraced = texture(u_ScreenOffsetMap2, tc).xy;
+	minVelocity = (minVelocity + texture(u_ShadowMap, uvTraced).xy) * 0.5;
+	#endif
+
+	tc -= minVelocity.xy;
+
+	vec4 previous = texture(u_ScreenDepthMap, tc);
+
+	previous = clip_aabb(currentMin.xyz, currentMax.xyz, clamp(cmc, currentMin, currentMax), previous);
+	float temp = clamp(1.0 - (length(minVelocity * r_FBufScale) * 0.08), 0.7, 0.98);
+
+	specularOut		= mix(cmc, previous, temp);
 	diffuseOut.rgb	= sqrt(specularOut.rgb * (specularAndGloss.rgb * EnvBRDF.x + EnvBRDF.y));
-	diffuseOut	   *= specularOut.a * specularOut.a;
+	diffuseOut *= specularOut.a * specularOut.a;
 
 #elif defined(POINT_LIGHT)
 	vec4 lightVec		= vec4(var_Position.xyz - position + (N*0.01), var_Position.w);
