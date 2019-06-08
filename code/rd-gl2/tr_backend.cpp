@@ -100,7 +100,7 @@ void GL_SelectTexture( int unit )
 void GL_BindToTMU( image_t *image, int tmu )
 {
 	int		texnum;
-	int     oldtmu = glState.currenttmu;
+	//int     oldtmu = glState.currenttmu;
 
 	if (!image)
 		texnum = 0;
@@ -124,7 +124,7 @@ void GL_BindToTMU( image_t *image, int tmu )
 		}
 		else
 			qglBindTexture( GL_TEXTURE_2D, texnum );
-		GL_SelectTexture( oldtmu );
+		//GL_SelectTexture( oldtmu );
 	}
 }
 
@@ -276,13 +276,20 @@ void GL_State( uint32_t stateBits )
 				ri.Error( ERR_DROP, "GL_State: invalid dst blend state bits" );
 				break;
 			}
-
-			qglEnable( GL_BLEND );
+			if (glState.blend == qfalse)
+			{
+				qglEnable(GL_BLEND);
+				glState.blend = qtrue;
+			}
 			qglBlendFunc( srcFactor, dstFactor );
 		}
 		else
 		{
-			qglDisable( GL_BLEND );
+			if (glState.blend == qtrue)
+			{
+				glState.blend = qfalse;
+				qglDisable(GL_BLEND);
+			}
 		}
 	}
 
@@ -515,6 +522,16 @@ void RB_BeginDrawingView (void) {
 	// we will need to change the projection matrix before drawing
 	// 2D images again
 	backEnd.projection2D = qfalse;
+
+	// clear content of the pre buffers
+	if (r_ssr->integer &&
+		(backEnd.viewParms.targetFbo == NULL ||
+		 backEnd.viewParms.targetFbo == tr.renderFbo))
+	{
+		FBO_Bind(tr.preBuffersFbo);
+		qglClearColor(0.0f, 0.0f, 0.0f, 0.0f);
+		qglClear(GL_COLOR_BUFFER_BIT);
+	}
 
 	// FIXME: HUGE HACK: render to the screen fbo if we've already postprocessed the frame and aren't drawing more world
 	// drawing more world check is in case of double renders, such as skyportals
@@ -1275,6 +1292,13 @@ static void RB_SubmitDrawSurfsForDepthFill(
 		R_DecomposeSort(drawSurf->sort, &entityNum, &shader, &cubemapIndex, &postRender);
 		assert(shader != nullptr);
 
+		if (shader->sort != SS_OPAQUE ||
+			shader->isSky)
+		{
+			// Don't draw yet, let's see what's to come
+			continue;
+		}
+
 		if (shader == oldShader &&	entityNum == oldEntityNum)
 		{
 			// fast path, same as previous sort
@@ -1289,12 +1313,6 @@ static void RB_SubmitDrawSurfsForDepthFill(
 		if (shader != oldShader ||
 			(entityNum != oldEntityNum && !shader->entityMergable))
 		{
-			if (shader->sort != SS_OPAQUE)
-			{
-				// Don't draw yet, let's see what's to come
-				continue;
-			}
-
 			if (oldShader != nullptr)
 			{
 				RB_EndSurface();
@@ -2151,7 +2169,7 @@ static void RB_BuildHiZBuffer()
 			dim /= 2;
 		}
 
-		for (int i = 0; i < levels-1; i++)
+		for (int i = 0; i < 1; i++)
 		{
 			FBO_Bind(tr.prevDepthFbo);
 
@@ -2550,11 +2568,6 @@ void RB_RenderAllRealTimeLightTypes()
 	const float zmax = backEnd.viewParms.zFar;
 	const float zmin = backEnd.viewParms.zNear;
 	vec4_t viewInfo = { zmax / zmin, zmax, zmin, 0.0f };
-	
-	// only compute lighting for non sky pixels
-	qglEnable(GL_STENCIL_TEST);
-	qglStencilFunc(GL_EQUAL, 1, 0xff);
-	qglStencilMask(0);
 
 	GL_DepthRange(0.0, 1.0);
 
@@ -2589,9 +2602,6 @@ void RB_RenderAllRealTimeLightTypes()
 		FBO_Bind(tr.preLightFbo[PRELIGHT_PRE_SSR_FBO]);
 		qglClear(GL_COLOR_BUFFER_BIT);
 
-		tess.useInternalVBO = qfalse;
-		R_BindVBO(tr.screenQuad.vbo);
-		R_BindIBO(tr.screenQuad.ibo);
 		GLSL_VertexAttribsState(ATTR_POSITION, NULL);
 		GL_State(GLS_SRCBLEND_ONE | GLS_DSTBLEND_ZERO | GLS_DEPTHTEST_DISABLE);
 		GL_Cull(CT_FRONT_SIDED);
@@ -2604,8 +2614,8 @@ void RB_RenderAllRealTimeLightTypes()
 		GLSL_SetUniformVec3(sp, UNIFORM_VIEWLEFT, viewBasis[1]);
 		GLSL_SetUniformVec3(sp, UNIFORM_VIEWUP, viewBasis[2]);
 		GLSL_SetUniformVec3(sp, UNIFORM_VIEWORIGIN, backEnd.viewParms.ori.origin);
-		
-		vec4_t viewInfo = { tr.viewParms.zNear, tr.viewParms.zFar, Q_flrand(0.f, 32.f), Q_flrand(0.f, 32.f) };
+		const float samples = 64.0f;
+		vec4_t viewInfo = { tr.viewParms.zNear, tr.viewParms.zFar, Q_flrand(0.f, samples), Q_flrand(32.f, samples) };
 		GLSL_SetUniformVec4(sp, UNIFORM_VIEWINFO, viewInfo);
 		
 		matrix_t invModelViewMatrix;
@@ -2628,9 +2638,7 @@ void RB_RenderAllRealTimeLightTypes()
 		qglViewport(0, 0, tr.renderImage->width, tr.renderImage->height);
 		qglScissor(0, 0, tr.renderImage->width, tr.renderImage->height);
 		
-
 		// ssr resolve
-		GL_State(GLS_SRCBLEND_SRC_ALPHA | GLS_DSTBLEND_ONE_MINUS_SRC_ALPHA | GLS_DEPTHTEST_DISABLE);
 		FBO_Bind(tr.preLightFbo[PRELIGHT_RESOLVE_FBO]);
 
 		GL_BindToTMU(tr.prevRenderImage, 0);
@@ -2648,7 +2656,7 @@ void RB_RenderAllRealTimeLightTypes()
 		GLSL_SetUniformVec3(sp, UNIFORM_VIEWUP, viewBasis[2]);
 		GLSL_SetUniformVec3(sp, UNIFORM_VIEWORIGIN, backEnd.viewParms.ori.origin);
 
-		VectorSet4(viewInfo, 1.f / (float)tr.renderImage->width, 1.f / (float)tr.renderImage->height, sin(Q_flrand(0.f, 360.f)), cos(Q_flrand(0.f, 360.f)));
+		VectorSet4(viewInfo, 1.f / (float)tr.renderImage->width, 1.f / (float)tr.renderImage->height, Q_flrand(0.f, 8.f), cos(Q_flrand(0.f, 360.f)));
 		GLSL_SetUniformVec4(sp, UNIFORM_VIEWINFO, viewInfo);
 		
 		GLSL_SetUniformMatrix4x4(sp, UNIFORM_INVVIEWPROJECTIONMATRIX, invProjectionMatrix);
@@ -2662,7 +2670,7 @@ void RB_RenderAllRealTimeLightTypes()
 		bool oddFrame = tr.frameCount % 2 == 1;
 		FBO_Bind(tr.preLightFbo[oddFrame ? PRELIGHT_TEMP_ODD_FBO : PRELIGHT_TEMP_EVEN_FBO]);
 		
-		GL_BindToTMU(tr.diffuseLightingImage, 0);
+		GL_BindToTMU(tr.resolveImage, 0);
 		GL_BindToTMU(oddFrame ? tr.tempFilterEvenBufferImage : tr.tempFilterOddBufferImage, 1);
 
 		GL_BindToTMU(tr.preSSRImage[0], 4);
@@ -2683,12 +2691,14 @@ void RB_RenderAllRealTimeLightTypes()
 
 		qglDrawArrays(GL_TRIANGLES, 0, 3);
 
-		FBO_Bind(tr.preLightFbo[PRELIGHT_DIFFUSE_FBO]);
-		qglClear(GL_COLOR_BUFFER_BIT);
-
 		GL_BindToTMU(NULL, 4);
 		GL_BindToTMU(NULL, 5);
 	}
+
+	// only compute lighting for non sky pixels
+	qglEnable(GL_STENCIL_TEST);
+	qglStencilFunc(GL_EQUAL, 1, 0xff);
+	qglStencilMask(0);
 
 	//render cubemaps where SSR  didn't render
 	//buggy! don't enable for now, finish when cubemap arrarys or bindless textures are available
@@ -2757,6 +2767,7 @@ void RB_RenderAllRealTimeLightTypes()
 			qglDrawElementsInstanced(GL_TRIANGLES, tr.lightSphereVolume.numIndexes, GL_UNSIGNED_INT, 0, rest);
 		}
 	}
+
 	//render sun lights or maybe not, can also be rendered forward, shouldn't make a difference, only invest time when multiple suns are needed
 	if (0)//(r_sunlightMode->integer)
 	{
@@ -3156,20 +3167,22 @@ void RB_StoreFrameData() {
 	vec2_t texRes = { 1.0f / (float)width, 1.0f / (float)height };
 	vec4_t viewInfo;
 
-	for (int level = 1; level <= 4; level++) {
+	GL_State(GLS_SRCBLEND_ONE | GLS_DSTBLEND_ZERO | GLS_DEPTHTEST_DISABLE);
+	GL_Cull(CT_FRONT_SIDED);
 
-		VectorSet2(texRes, 1.0f / (float)width, 1.0f / (float)height);
-		VectorSet4(viewInfo, level - 1, 0.0, 0.0, 0.0);
+	for (int level = 1; level <= 4; level++) {
 
 		width = width / 2.0;
 		height = height / 2.0;
+
+		VectorSet2(texRes, 1.0f / (float)width, 1.0f / (float)height);
+		VectorSet4(viewInfo, level - 1, 0.0, 0.0, 0.0);
 		
-		
-		FBO_Bind(tr.quarterFbo[1]);
+		FBO_Bind(tr.refractiveFbo);
+		qglFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, tr.prevRenderImage->texnum, level);
 		GLSL_BindProgram(&tr.gaussianBlurShader[0]);
 		qglViewport(0, 0, width, height);
 		qglScissor(0, 0, width, height);
-
 
 		GL_BindToTMU(tr.prevRenderImage, TB_COLORMAP);
 		GLSL_SetUniformVec4(&tr.gaussianBlurShader[0], UNIFORM_COLOR, color);
@@ -3177,19 +3190,6 @@ void RB_StoreFrameData() {
 		GLSL_SetUniformVec4(&tr.gaussianBlurShader[0], UNIFORM_VIEWINFO, viewInfo);
 
 		qglDrawArrays(GL_TRIANGLES, 0, 3);
-
-		VectorSet4(viewInfo, 0.0, 0.0, 0.0, 0.0);
-
-		FBO_Bind(tr.refractiveFbo);
-		qglFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, tr.prevRenderImage->texnum, level);
-
-		GLSL_BindProgram(&tr.gaussianBlurShader[1]);
-		GL_BindToTMU(tr.quarterImage[1], TB_COLORMAP);
-
-		GLSL_SetUniformVec4(&tr.gaussianBlurShader[1], UNIFORM_COLOR, color);
-		GLSL_SetUniformVec2(&tr.gaussianBlurShader[1], UNIFORM_INVTEXRES, texRes);
-		GLSL_SetUniformVec4(&tr.gaussianBlurShader[1], UNIFORM_VIEWINFO, viewInfo);
-		qglDrawArrays(GL_TRIANGLES, 0, 3);		
 	}
 
 	FBO_Bind(tr.refractiveFbo);
@@ -3359,7 +3359,7 @@ const void *RB_PostProcess(const void *data)
 		VectorSet4(dstBox, 1280, glConfig.vidHeight - 256, 256, 256);
 		FBO_BlitFromTexture(tr.normalBufferImage, NULL, NULL, NULL, dstBox, NULL, NULL, 0);
 		VectorSet4(dstBox, 1536, glConfig.vidHeight - 256, 256, 256);
-		FBO_BlitFromTexture(tr.tempFilterOddBufferImage, NULL, NULL, NULL, dstBox, NULL, NULL, 0);
+		FBO_BlitFromTexture(tr.resolveImage, NULL, NULL, NULL, dstBox, NULL, NULL, 0);
 	}
 
 	if (0)

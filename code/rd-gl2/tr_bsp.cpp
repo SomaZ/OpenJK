@@ -124,10 +124,9 @@ static	void R_ColorShiftLightingBytes( byte in[4], byte out[4] ) {
 		g = g * 255 / max;
 		b = b * 255 / max;
 	}
-
-	out[0] = (byte)(pow((float)r / 255.f, r_lightmapGamma->value) * 255);
-	out[1] = (byte)(pow((float)g / 255.f, r_lightmapGamma->value) * 255);
-	out[2] = (byte)(pow((float)b / 255.f, r_lightmapGamma->value) * 255);
+	out[0] = (byte)(sRGBtoRGB((float)r / 255.f) * 255);
+	out[1] = (byte)(sRGBtoRGB((float)g / 255.f) * 255);
+	out[2] = (byte)(sRGBtoRGB((float)b / 255.f) * 255);
 	out[3] = in[3];
 }
 
@@ -425,9 +424,9 @@ static	void R_LoadLightmaps( world_t *worldData, lump_t *l, lump_t *surfs ) {
 
 					R_ColorShiftLightingFloats(color, color, 1.0f / 255.0f);
 
-					color[0] = pow(color[0], r_lightmapGamma->value);
-					color[1] = pow(color[1], r_lightmapGamma->value);
-					color[2] = pow(color[2], r_lightmapGamma->value);
+					color[0] = sRGBtoRGB(color[0]);
+					color[1] = sRGBtoRGB(color[1]);
+					color[2] = sRGBtoRGB(color[2]);
 
 					ColorToRGBA16F(color, (unsigned short *)(&image[j*8]));
 				}

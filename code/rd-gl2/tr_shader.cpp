@@ -108,13 +108,13 @@ static void ClearGlobalShader(void)
 		stages[i].bundle[0].texMods = texMods[i];
 		//stages[i].mGLFogColorOverride = GLFOGOVERRIDE_NONE;
 
-		// default normal/specular
+		// default normal/specular/metalness
 		VectorSet4(stages[i].normalScale, 0.0f, 0.0f, 0.0f, 0.0f);
 		stages[i].specularScale[0] =
 		stages[i].specularScale[1] =
 		stages[i].specularScale[2] = RGBtosRGB(r_baseSpecular->value);
 		stages[i].specularScale[3] = r_baseGloss->value;
-
+		stages[i].metalness = 0.0f;
 	}
 
 	shader.contentFlags = CONTENTS_SOLID | CONTENTS_OPAQUE;
@@ -720,7 +720,7 @@ static animMapType_t AnimMapType( const char *token )
 
 static const char *animMapNames[] = {
 	"animMap",
-	"clapanimMap",
+	"clampanimMap",
 	"oneshotanimMap"
 };
 
@@ -1453,9 +1453,6 @@ static qboolean ParseStage( shaderStage_t *stage, const char **text )
 					if (!shader.noPicMip)
 						flags |= IMGFLAG_PICMIP;
 
-					if (r_srgb->integer)
-						flags |= IMGFLAG_SRGB;
-
 					if (shader.noTC)
 						flags |= IMGFLAG_NO_COMPRESSION;
 
@@ -1616,6 +1613,24 @@ static qboolean ParseStage( shaderStage_t *stage, const char **text )
 			// Assumes max exponent of 8190 and min of 0, must change here if altered in lightall_fp.glsl
 			exponent = CLAMP(exponent, 0.0f, 8190.0f);
 			stage->specularScale[3] = (log2f(exponent + 2.0f) - 1.0f) / 12.0f;
+		}
+		//
+		// metalness <value> 
+		//
+		else if (!Q_stricmp(token, "metalness"))
+		{
+			float metalness;
+			token = COM_ParseExt(text, qfalse);
+			if (token[0] == 0)
+			{
+				ri.Printf(PRINT_WARNING, "WARNING: missing parameter for gloss in shader '%s'\n", shader.name);
+				continue;
+			}
+
+			metalness = atof(token);
+			stage->metalness = metalness;
+			if(buildSpecFromPacked == SPEC_GEN)
+				buildSpecFromPacked = SPEC_METALNESS;
 		}
 		//
 		// gloss <value> 
@@ -3489,91 +3504,6 @@ static qboolean CollapseStagesToGLSL(void)
 }
 
 /*
-=============
-
-FixRenderCommandList
-https://zerowing.idsoftware.com/bugzilla/show_bug.cgi?id=493
-Arnout: this is a nasty issue. Shaders can be registered after drawsurfaces are generated
-but before the frame is rendered. This will, for the duration of one frame, cause drawsurfaces
-to be rendered with bad shaders. To fix this, need to go through all render commands and fix
-sortedIndex.
-==============
-*/
-static void FixRenderCommandList( int newShader ) {
-
-	renderCommandList_t	*cmdList = &backEndData->commands;
-	if( cmdList ) {
-		const void *curCmd = cmdList->cmds;
-		while ( 1 ) {
-			curCmd = PADP(curCmd, sizeof(void *));
-			switch ( *(const int *)curCmd ) {
-			case RC_SET_COLOR:
-				{
-				const setColorCommand_t *sc_cmd = (const setColorCommand_t *)curCmd;
-				curCmd = (const void *)(sc_cmd + 1);
-				break;
-				}
-			case RC_STRETCH_PIC:
-				{
-				const stretchPicCommand_t *sp_cmd = (const stretchPicCommand_t *)curCmd;
-				curCmd = (const void *)(sp_cmd + 1);
-				break;
-				}
-			case RC_ROTATE_PIC:
-			case RC_ROTATE_PIC2:
-				{
-					const rotatePicCommand_t *sp_cmd = (const rotatePicCommand_t *)curCmd;
-					curCmd = (const void *)(sp_cmd + 1);
-					break;
-				}
-			case RC_ROTATE_PIC2_RATIOFIX:
-				{
-					const rotatePicRatioFixCommand_t *sp_cmd = (const rotatePicRatioFixCommand_t *)curCmd;
-					curCmd = (const void *)(sp_cmd + 1);
-					break;
-				}
-			case RC_DRAW_SURFS:
-				{
-				int i;
-				drawSurf_t	*drawSurf;
-				shader_t	*shader;
-				int         postRender;
-				int			sortedIndex;
-				int			cubemap;
-				int			entityNum;
-				const drawSurfsCommand_t *ds_cmd =  (const drawSurfsCommand_t *)curCmd;
-				for( i = 0, drawSurf = ds_cmd->drawSurfs; i < ds_cmd->numDrawSurfs; i++, drawSurf++ ) {
-					R_DecomposeSort(drawSurf->sort, &entityNum, &shader, &cubemap, &postRender);
-					sortedIndex = (( drawSurf->sort >> QSORT_SHADERNUM_SHIFT ) & (MAX_SHADERS-1));
-					if( sortedIndex >= newShader ) {
-						sortedIndex++;
-						drawSurf->sort = R_CreateSortKey(entityNum, sortedIndex, cubemap, postRender);
-					}
-				}
-				curCmd = (const void *)(ds_cmd + 1);
-				break;
-				}
-			case RC_DRAW_BUFFER:
-				{
-				const drawBufferCommand_t *db_cmd = (const drawBufferCommand_t *)curCmd;
-				curCmd = (const void *)(db_cmd + 1);
-				break;
-				}
-			case RC_SWAP_BUFFERS:
-				{
-				const swapBuffersCommand_t *sb_cmd = (const swapBuffersCommand_t *)curCmd;
-				curCmd = (const void *)(sb_cmd + 1);
-				break;
-				}
-			case RC_END_OF_LIST:
-			default:
-				return;
-			}
-		}
-	}
-}
-
-/*
 ==============
 SortNewShader
 
@@ -3614,10 +3544,6 @@ static void SortNewShader( void ) {
 		tr.sortedShaders[i+1] = shader;
 		tr.sortedShaders[i+1]->sortedIndex++;
 	}
-
-	// Arnout: fix rendercommandlist
-	// https://zerowing.idsoftware.com/bugzilla/show_bug.cgi?id=493
-	//FixRenderCommandList( i+1 );
 
 	newShader->sortedIndex = i+1;
 	tr.sortedShaders[i+1] = newShader;
@@ -3845,6 +3771,8 @@ static shader_t *FinishShader( void ) {
 				memset(&stages[MAX_SHADER_STAGES-1], 0, sizeof(shaderStage_t));
 				//change blending on the moved down stage
 				stages[lmStage].stateBits = GLS_DEFAULT;
+				if (shader.polygonOffset)
+					stages[lmStage].stateBits |= GLS_POLYGON_OFFSET_FILL;
 			}
 			//change anything that was moved down (or the *white if LM is first) to use vertex color
 			stages[lmStage].rgbGen = CGEN_EXACT_VERTEX;

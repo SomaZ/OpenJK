@@ -2758,13 +2758,15 @@ void R_RenderSunShadowMaps(const refdef_t *fd, int level)
 			break;
 		case 2:
 			splitZNear = CalcSplit(viewZNear, viewZFar, 2, 3) + splitBias;
-			splitZFar = viewZFar + splitBias;
+			viewZFar += splitBias;
+			splitZFar = viewZFar;
 			//splitZNear = 896;
 			//splitZFar  = 3072;
 			break;
 		case 3:
 			splitZNear = viewZFar + splitBias;
-			splitZFar = viewZFar * 2.0;
+			viewZFar *= 2.0;
+			splitZFar = viewZFar;
 			//splitZNear = 896;
 			//splitZFar  = 3072;
 			break;

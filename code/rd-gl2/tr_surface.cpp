@@ -817,7 +817,7 @@ static void DoLine( const vec3_t start, const vec3_t end, const vec3_t up, float
 	tess.indexes[tess.numIndexes++] = vbase + 3;
 }
 
-static void DoLine2( const vec3_t start, const vec3_t end, const vec3_t up, float spanWidth, float spanWidth2 )
+static void DoLine2( const vec3_t start, const vec3_t end, const vec3_t up, float spanWidth, float spanWidth2, const float tcStart, const float tcEnd )
 {
 	int			vbase;
 
@@ -827,26 +827,26 @@ static void DoLine2( const vec3_t start, const vec3_t end, const vec3_t up, floa
 
 	VectorMA( start, spanWidth, up, tess.xyz[tess.numVertexes] );
 	tess.texCoords[tess.numVertexes][0][0] = 0;
-	tess.texCoords[tess.numVertexes][0][1] = 0;
+	tess.texCoords[tess.numVertexes][0][1] = tcStart;
 	VectorScale4 (backEnd.currentEntity->e.shaderRGBA, 1.0f / 255.0f, tess.vertexColors[tess.numVertexes]);
 	tess.numVertexes++;
 
 	VectorMA( start, -spanWidth, up, tess.xyz[tess.numVertexes] );
 	tess.texCoords[tess.numVertexes][0][0] = 1;//backEnd.currentEntity->e.shaderTexCoord[0];
-	tess.texCoords[tess.numVertexes][0][1] = 0;
+	tess.texCoords[tess.numVertexes][0][1] = tcStart;
 	VectorScale4 (backEnd.currentEntity->e.shaderRGBA, 1.0f / 255.0f, tess.vertexColors[tess.numVertexes]);
 	tess.numVertexes++;
 
 	VectorMA( end, spanWidth2, up, tess.xyz[tess.numVertexes] );
 
 	tess.texCoords[tess.numVertexes][0][0] = 0;
-	tess.texCoords[tess.numVertexes][0][1] = 1;//backEnd.currentEntity->e.shaderTexCoord[1];
+	tess.texCoords[tess.numVertexes][0][1] = tcEnd;//backEnd.currentEntity->e.shaderTexCoord[1];
 	VectorScale4 (backEnd.currentEntity->e.shaderRGBA, 1.0f / 255.0f, tess.vertexColors[tess.numVertexes]);
 	tess.numVertexes++;
 
 	VectorMA( end, -spanWidth2, up, tess.xyz[tess.numVertexes] );
 	tess.texCoords[tess.numVertexes][0][0] = 1;//backEnd.currentEntity->e.shaderTexCoord[0];
-	tess.texCoords[tess.numVertexes][0][1] = 1;//backEnd.currentEntity->e.shaderTexCoord[1];
+	tess.texCoords[tess.numVertexes][0][1] = tcEnd;//backEnd.currentEntity->e.shaderTexCoord[1];
 	VectorScale4 (backEnd.currentEntity->e.shaderRGBA, 1.0f / 255.0f, tess.vertexColors[tess.numVertexes]);
 	tess.numVertexes++;
 
@@ -1111,43 +1111,43 @@ static float Q_crandom( int *seed ) {
 static void CreateShape()
 //----------------------------------------------------------------------------
 {
-	VectorSet( sh1, 0.66f + Q_flrand(-1.0f, 1.0f) * 0.1f,	// fwd
+	VectorSet( sh1, 0.66f,// + Q_flrand(-1.0f, 1.0f) * 0.1f,	// fwd
 				0.07f + Q_flrand(-1.0f, 1.0f) * 0.025f,
 				0.07f + Q_flrand(-1.0f, 1.0f) * 0.025f );
 
 	// it seems to look best to have a point on one side of the ideal line, then the other point on the other side.
-	VectorSet( sh2, 0.33f + Q_flrand(-1.0f, 1.0f) * 0.1f,	// fwd
+	VectorSet( sh2, 0.33f,// + Q_flrand(-1.0f, 1.0f) * 0.1f,	// fwd
 					-sh1[1] + Q_flrand(-1.0f, 1.0f) * 0.02f,	// forcing point to be on the opposite side of the line -- right
 					-sh1[2] + Q_flrand(-1.0f, 1.0f) * 0.02f );// up
 }
 
 //----------------------------------------------------------------------------
-static void ApplyShape( vec3_t start, vec3_t end, vec3_t right, float sradius, float eradius, int count )
+static void ApplyShape(vec3_t start, vec3_t end, vec3_t right, float sradius, float eradius, int count, float startPerc, float endPerc)
 //----------------------------------------------------------------------------
 {
 	vec3_t	point1, point2, fwd;
 	vec3_t	rt, up;
 	float	perc, dis;
 
-    if ( count < 1 )
+	if (count < 1)
 	{
 		// done recursing
-		DoLine2( start, end, right, sradius, eradius );
+		DoLine2(start, end, right, sradius, eradius, startPerc, endPerc);
 		return;
 	}
-    
-    CreateShape();
 
-	VectorSubtract( end, start, fwd );
-	dis = VectorNormalize( fwd ) * 0.7f;
-	MakeNormalVectors( fwd, rt, up );
+	CreateShape();
+
+	VectorSubtract(end, start, fwd);
+	dis = VectorNormalize(fwd) * 0.7f;
+	MakeNormalVectors(fwd, rt, up);
 
 	perc = sh1[0];
 
-	VectorScale( start, perc, point1 );
-	VectorMA( point1, 1.0f - perc, end, point1 );
-	VectorMA( point1, dis * sh1[1], rt, point1 );
-	VectorMA( point1, dis * sh1[2], up, point1 );
+	VectorScale(start, perc, point1);
+	VectorMA(point1, 1.0f - perc, end, point1);
+	VectorMA(point1, dis * sh1[1], rt, point1);
+	VectorMA(point1, dis * sh1[2], up, point1);
 
 	// do a quick and dirty interpolation of the radius at that point
 	float rads1, rads2;
@@ -1156,18 +1156,18 @@ static void ApplyShape( vec3_t start, vec3_t end, vec3_t right, float sradius, f
 	rads2 = sradius * 0.333f + eradius * 0.666f;
 
 	// recursion
-    ApplyShape( start, point1, right, sradius, rads1, count - 1 );
+	ApplyShape(start, point1, right, sradius, rads1, count - 1, startPerc, startPerc * 0.666f + endPerc * 0.333f);
 
 	perc = sh2[0];
 
-	VectorScale( start, perc, point2 );
-	VectorMA( point2, 1.0f - perc, end, point2 );
-	VectorMA( point2, dis * sh2[1], rt, point2 );
-	VectorMA( point2, dis * sh2[2], up, point2 );
-    
+	VectorScale(start, perc, point2);
+	VectorMA(point2, 1.0f - perc, end, point2);
+	VectorMA(point2, dis * sh2[1], rt, point2);
+	VectorMA(point2, dis * sh2[2], up, point2);
+
 	// recursion
-    ApplyShape( point2, point1, right, rads1, rads2, count - 1 );
-	ApplyShape( point2, end, right, rads2, eradius, count - 1 );
+	ApplyShape(point2, point1, right, rads1, rads2, count - 1, startPerc * 0.333f + endPerc * 0.666f, startPerc * 0.666f + endPerc * 0.333f);
+	ApplyShape(point2, end, right, rads2, eradius, count - 1, startPerc * 0.333f + endPerc * 0.666f, endPerc);
 }
 
 //----------------------------------------------------------------------------
@@ -1187,16 +1187,22 @@ static void DoBoltSeg( vec3_t start, vec3_t end, vec3_t right, float radius )
 	VectorSubtract( end, start, fwd );
 	dis = VectorNormalize( fwd );
 
+	if (dis > 2000)	//freaky long
+	{
+		//		ri.Printf( PRINT_WARNING, "DoBoltSeg: insane distance.\n" );
+		dis = 2000;
+	}
+
 	MakeNormalVectors( fwd, rt, up );
 
 	VectorCopy( start, old );
     
-	oldRadius = newRadius = radius;
+	newRadius = oldRadius = radius;
 
-    for ( i = 20; i <= dis; i+= 20 )
+    for ( i = 16; i <= dis; i+= 16 )
 	{
 		// because of our large step size, we may not actually draw to the end.  In this case, fudge our percent so that we are basically complete
-		if ( i + 20 > dis )
+		if ( i + 16 > dis )
 		{
 			perc = 1.0f;
 		}
@@ -1208,8 +1214,8 @@ static void DoBoltSeg( vec3_t start, vec3_t end, vec3_t right, float radius )
 
 		// create our level of deviation for this point
 		VectorScale( fwd, Q_crandom(&e->frame) * 3.0f, temp );				// move less in fwd direction, chaos also does not affect this
-		VectorMA( temp, Q_crandom(&e->frame) * 7.0f * e->axis[0][0], rt, temp );	// move more in direction perpendicular to line, angles is really the chaos
-		VectorMA( temp, Q_crandom(&e->frame) * 7.0f * e->axis[0][0], up, temp );	// move more in direction perpendicular to line
+		VectorMA( temp, Q_crandom(&e->frame) * 7.0f * e->angles[0], rt, temp );	// move more in direction perpendicular to line, angles is really the chaos
+		VectorMA( temp, Q_crandom(&e->frame) * 7.0f * e->angles[0], up, temp );	// move more in direction perpendicular to line
 
 		// track our total level of offset from the ideal line
 		VectorAdd( off, temp, off );
@@ -1229,7 +1235,7 @@ static void DoBoltSeg( vec3_t start, vec3_t end, vec3_t right, float radius )
 		}
 
 		// Apply the random shape to our line seg to give it some micro-detail-jaggy-coolness.
-        ApplyShape( cur, old, right, newRadius, oldRadius, LIGHTNING_RECURSION_LEVEL );
+        ApplyShape( cur, old, right, newRadius, oldRadius, 2 - r_lodbias->integer, 0, 1 );
   
 		// randomly split off to create little tendrils, but don't do it too close to the end and especially if we are not even of the forked variety
         if ( ( e->renderfx & RF_FORKED ) && f_count > 0 && Q_random(&e->frame) > 0.94f && radius * (1.0f - perc) > 0.2f )
@@ -1279,7 +1285,8 @@ static void RB_SurfaceElectricity()
 	// see if we should grow from start to end
 	if ( e->renderfx & RF_GROW )
 	{
-		perc = 1.0f - ( e->axis[0][2]/*endTime*/ - tr.refdef.time ) / e->axis[0][1]/*duration*/;
+		//perc = 1.0f - ( e->axis[0][2]/*endTime*/ - tr.refdef.time ) / e->axis[0][1]/*duration*/;
+		perc = 1.0f - (e->endTime - tr.refdef.time) / e->angles[1]/*duration*/;
 
 		if ( perc > 1.0f )
 		{
@@ -1300,6 +1307,7 @@ static void RB_SurfaceElectricity()
 	CrossProduct( v1, v2, right );
 	VectorNormalize( right );
 
+	f_count = 3;
     DoBoltSeg( start, end, right, radius );
 }
 

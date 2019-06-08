@@ -539,7 +539,7 @@ void FBO_Init(void)
 				}
 				if (i == PRELIGHT_RESOLVE_FBO)
 				{
-					FBO_AttachTextureImage(tr.diffuseLightingImage, 0); //out_Color
+					FBO_AttachTextureImage(tr.resolveImage, 0); //out_Color
 				}
 				if (i == PRELIGHT_TEMP_ODD_FBO)
 				{

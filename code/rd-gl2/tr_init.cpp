@@ -184,7 +184,7 @@ cvar_t  *r_mergeMultidraws;
 cvar_t  *r_mergeLeafSurfaces;
 cvar_t  *r_cameraExposure;
 cvar_t  *r_floatLightmap;
-cvar_t	*r_lightmapGamma;
+cvar_t	*r_glossScale;
 cvar_t  *r_toneMap;
 cvar_t  *r_forceToneMap;
 cvar_t  *r_forceToneMapMin;
@@ -1077,6 +1077,7 @@ void GL_SetDefaultState(void)
 	//
 	glState.glStateBits = GLS_DEPTHTEST_DISABLE | GLS_DEPTHMASK_TRUE;
 	glState.maxDepth = 1.0f;
+	glState.blend = qfalse;
 	qglDepthRange(0.0f, 1.0f);
 
 	qglUseProgram(0);
@@ -1346,7 +1347,6 @@ void R_Register(void)
 	r_externalGLSL = ri.Cvar_Get("r_externalGLSL", "0", CVAR_LATCH);
 	r_hdr = ri.Cvar_Get("r_hdr", "1", CVAR_ARCHIVE | CVAR_LATCH);
 	r_floatLightmap = ri.Cvar_Get("r_floatLightmap", "0", CVAR_ARCHIVE | CVAR_LATCH);
-	r_lightmapGamma = ri.Cvar_Get("r_lightmapGamma", "2.0", CVAR_ARCHIVE | CVAR_LATCH);
 	r_toneMap = ri.Cvar_Get("r_toneMap", "1", CVAR_ARCHIVE | CVAR_LATCH);
 	ri.Cvar_CheckRange(r_toneMap, 0, 3, qfalse);
 	r_forceToneMap = ri.Cvar_Get("r_forceToneMap", "0", CVAR_CHEAT);
@@ -1448,6 +1448,7 @@ void R_Register(void)
 	r_nocurves = ri.Cvar_Get("r_nocurves", "0", CVAR_CHEAT);
 	r_drawworld = ri.Cvar_Get("r_drawworld", "1", CVAR_CHEAT);
 	r_lightmap = ri.Cvar_Get("r_lightmap", "0", 0);
+	r_glossScale = ri.Cvar_Get("r_glossScale", "1.0", CVAR_TEMP);
 	r_portalOnly = ri.Cvar_Get("r_portalOnly", "0", CVAR_CHEAT);
 	r_flareSize = ri.Cvar_Get("r_flareSize", "40", CVAR_CHEAT);
 	r_flareFade = ri.Cvar_Get("r_flareFade", "7", CVAR_CHEAT);

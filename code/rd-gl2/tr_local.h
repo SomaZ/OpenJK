@@ -215,7 +215,7 @@ extern cvar_t   *r_mergeMultidraws;
 extern cvar_t   *r_mergeLeafSurfaces;
 extern cvar_t   *r_cameraExposure;
 extern cvar_t   *r_floatLightmap;
-extern cvar_t   *r_lightmapGamma;
+extern cvar_t   *r_glossScale;
 extern cvar_t   *r_toneMap;
 extern cvar_t   *r_forceToneMap;
 extern cvar_t   *r_forceToneMapMin;
@@ -779,11 +779,12 @@ typedef enum
 
 enum specularType
 {
-	SPEC_GEN,	// generate specular from material settings
-	SPEC_RMO,	// calculate spec from rmo  texture with a specular of 0.04 for dielectric materials
-	SPEC_RMOS,	// calculate spec from rmos texture with a specular of 0.0 - 0.08 from input
-	SPEC_MOXR,  // calculate spec from moxr texture with a specular of 0.04 for dielectric materials
-	SPEC_MOSR,  // calculate spec from mosr texture with a specular of 0.0 - 0.08 from input
+	SPEC_GEN,		// generate specular from material settings
+	SPEC_METALNESS, // generate specular from diffuse texture (BAD APPROXIMATION!)
+	SPEC_RMO,		// calculate spec from rmo  texture with a specular of 0.04 for dielectric materials
+	SPEC_RMOS,		// calculate spec from rmos texture with a specular of 0.0 - 0.08 from input
+	SPEC_MOXR,		// calculate spec from moxr texture with a specular of 0.04 for dielectric materials
+	SPEC_MOSR,		// calculate spec from mosr texture with a specular of 0.0 - 0.08 from input
 };
 
 enum AlphaTestCmp
@@ -831,6 +832,7 @@ typedef struct {
 
 	vec4_t normalScale;
 	vec4_t specularScale;
+	float metalness;
 
 	surfaceSprite_t	*ss;
 
@@ -2209,6 +2211,7 @@ typedef struct glstate_s {
 	int				vertexAttribsTexCoordOffset[2];
 	qboolean        vertexAnimation;
 	qboolean		skeletalAnimation;
+	qboolean		blend;
 	mat4x3_t       *boneMatrices;
 	int				numBones;
 	shaderProgram_t *currentProgram;
@@ -2404,6 +2407,7 @@ typedef struct trGlobals_s {
 	image_t					*glowImage;
 	image_t					*glowImageScaled[6];
 	image_t					*prevRenderImage;
+	image_t					*resolveImage;
 	image_t					*tempFilterOddBufferImage;
 	image_t					*tempFilterEvenBufferImage;
 	image_t					*preSSRImage[2];
