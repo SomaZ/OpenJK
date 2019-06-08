@@ -698,6 +698,11 @@ static void ParseFace( const world_t *worldData, dsurface_t *ds, drawVert_t *ver
 		realLightmapNum[j] = FatLightmap (LittleLong (ds->lightmapNum[j]));
 	}
 
+	surf->realLightmapNum[0] = realLightmapNum[0];
+	surf->realLightmapNum[1] = realLightmapNum[1];
+	surf->realLightmapNum[2] = realLightmapNum[2];
+	surf->realLightmapNum[3] = realLightmapNum[3];
+
 	surf->numSurfaceSprites = 0;
 	surf->surfaceSprites = nullptr;
 
@@ -857,6 +862,11 @@ static void ParseMesh ( const world_t *worldData, dsurface_t *ds, drawVert_t *ve
 	for ( j = 0; j < MAXLIGHTMAPS; j++ )
 		realLightmapNum[j] = FatLightmap(LittleLong(ds->lightmapNum[j]));
 
+	surf->realLightmapNum[0] = realLightmapNum[0];
+	surf->realLightmapNum[1] = realLightmapNum[1];
+	surf->realLightmapNum[2] = realLightmapNum[2];
+	surf->realLightmapNum[3] = realLightmapNum[3];
+
 	surf->numSurfaceSprites = 0;
 	surf->surfaceSprites = nullptr;
 
@@ -954,7 +964,7 @@ static void ParseMesh ( const world_t *worldData, dsurface_t *ds, drawVert_t *ve
 ParseTriSurf
 ===============
 */
-static void ParseTriSurf( const world_t *worldData, dsurface_t *ds, drawVert_t *verts, float *hdrVertColors, msurface_t *surf, int *indexes ) {
+static void ParseTriSurf(const world_t *worldData, dsurface_t *ds, drawVert_t *verts, float *hdrVertColors, msurface_t *surf, int *indexes) {
 	srfBspSurface_t *cv;
 	glIndex_t  *tri;
 	int             i, j;
@@ -968,7 +978,12 @@ static void ParseTriSurf( const world_t *worldData, dsurface_t *ds, drawVert_t *
 	surf->surfaceSprites = nullptr;
 
 	// get fog volume
-	surf->fogIndex = LittleLong( ds->fogNum ) + 1;
+	surf->fogIndex = LittleLong(ds->fogNum) + 1;
+
+	surf->realLightmapNum[0] = realLightmapNum[0];
+	surf->realLightmapNum[1] = realLightmapNum[1];
+	surf->realLightmapNum[2] = realLightmapNum[2];
+	surf->realLightmapNum[3] = realLightmapNum[3];
 
 	// get shader
 	surf->shader = ShaderForShaderNum(worldData, ds->shaderNum, realLightmapNum, ds->lightmapStyles, ds->vertexStyles);

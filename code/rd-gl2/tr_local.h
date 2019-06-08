@@ -890,8 +890,6 @@ typedef struct {
 
 typedef struct shader_s {
 	char		name[MAX_QPATH];		// game path, including extension
-	int			lightmapIndex[MAXLIGHTMAPS];	// for a shader to match, both name and all lightmapIndex must match
-	byte		styles[MAXLIGHTMAPS];
 
 	int			index;					// this shader == tr.shaders[index]
 	int			sortedIndex;			// this shader == tr.sortedShaders[sortedIndex]
@@ -938,14 +936,14 @@ typedef struct shader_s {
 	int			numSurfaceSpriteStages;
 	shaderStage_t	*stages[MAX_SHADER_STAGES];
 
-	int			lightingStage;
+	byte		shaderType;				//GUI,VertexLit,DiffuseLit,Lightmapped,
 
 	void		(*optimalStageIteratorFunc)( void );
 
-  float clampTime;                                  // time this shader is clamped to
-  float timeOffset;                                 // current time offset for this shader
+	float		clampTime;                                  // time this shader is clamped to
+	float		timeOffset;                                 // current time offset for this shader
 
-  struct shader_s *remappedShader;                  // current shader this one is remapped too
+	struct shader_s *remappedShader;                  // current shader this one is remapped too
 
 	struct	shader_s	*next;
 } shader_t;
@@ -1852,6 +1850,8 @@ typedef struct msurface_s {
 
 	int					numSurfaceSprites;
 	srfSprites_t		*surfaceSprites;
+
+	int realLightmapNum[MAXLIGHTMAPS];
 
 	surfaceType_t		*data;			// any of srf*_t
 } msurface_t;

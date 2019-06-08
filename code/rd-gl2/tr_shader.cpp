@@ -1254,30 +1254,7 @@ static qboolean ParseStage( shaderStage_t *stage, const char **text )
 			else if ( !Q_stricmp( token, "$lightmap" ) )
 			{
 				stage->bundle[0].isLightmap = qtrue;
-				if ( shader.lightmapIndex[0] < 0 || shader.lightmapIndex[0] >= tr.numLightmaps ) {
-#ifndef FINAL_BUILD
-					ri.Printf (PRINT_ALL, S_COLOR_RED "Lightmap requested but none avilable for shader '%s'\n", shader.name);
-#endif
-					stage->bundle[0].image[0] = tr.whiteImage;
-				} else {
-					stage->bundle[0].image[0] = tr.lightmaps[shader.lightmapIndex[0]];
-				}
-				continue;
-			}
-			else if ( !Q_stricmp( token, "$deluxemap" ) )
-			{
-				if (!tr.worldDeluxeMapping)
-				{
-					ri.Printf( PRINT_WARNING, "WARNING: shader '%s' wants a deluxe map in a map compiled without them\n", shader.name );
-					return qfalse;
-				}
-
-				stage->bundle[0].isLightmap = qtrue;
-				if ( shader.lightmapIndex[0] < 0 || shader.lightmapIndex[0] >= tr.numLightmaps ) {
-					stage->bundle[0].image[0] = tr.whiteImage;
-				} else {
-					stage->bundle[0].image[0] = tr.deluxemaps[shader.lightmapIndex[0]];
-				}
+				stage->bundle[0].image[0] = tr.lightmaps[0];
 				continue;
 			}
 			else
@@ -1830,10 +1807,6 @@ static qboolean ParseStage( shaderStage_t *stage, const char **text )
 			}
 			else if ( !Q_stricmp( token, "lightingDiffuseEntity" ) )
 			{
-				if (shader.lightmapIndex[0] != LIGHTMAP_NONE)
-				{
-					Com_Printf( S_COLOR_RED "ERROR: rgbGen lightingDiffuseEntity used on a misc_model! in shader '%s'\n", shader.name );
-				}
 				stage->rgbGen = CGEN_LIGHTING_DIFFUSE_ENTITY;
 			}
 			else if ( !Q_stricmp( token, "oneMinusVertex" ) )
@@ -2094,7 +2067,6 @@ static qboolean ParseStage( shaderStage_t *stage, const char **text )
 			stage->rgbGen = CGEN_IDENTITY;
 		}
 	}
-
 
 	//
 	// implicitly assume that a GL_ONE GL_ZERO blend mask disables blending
@@ -3042,7 +3014,7 @@ static void CollapseStagesToLightall(shaderStage_t *stage, shaderStage_t *lightm
 	if (r_deluxeMapping->integer && tr.worldDeluxeMapping && lightmap)
 	{
 		stage->bundle[TB_DELUXEMAP] = lightmap->bundle[0];
-		stage->bundle[TB_DELUXEMAP].image[0] = tr.deluxemaps[shader.lightmapIndex[0]];
+		stage->bundle[TB_DELUXEMAP].image[0] = tr.deluxemaps[0];
 	}
 
 	if (r_normalMapping->integer)
@@ -3591,84 +3563,6 @@ static shader_t *FinishShader( void ) {
 			shader.sort = SS_DECAL;
 	}
 
-	int lmStage;
-	for(lmStage = 0; lmStage < MAX_SHADER_STAGES; lmStage++)
-	{
-		shaderStage_t *pStage = &stages[lmStage];
-		if (pStage->active && pStage->bundle[0].isLightmap)
-		{
-			break;
-		}
-	}
-
-	if (lmStage < MAX_SHADER_STAGES)
-	{
-		if (shader.lightmapIndex[0] == LIGHTMAP_BY_VERTEX)
-		{
-			if (lmStage == 0)	//< MAX_SHADER_STAGES-1)
-			{//copy the rest down over the lightmap slot
-				memmove(&stages[lmStage], &stages[lmStage+1], sizeof(shaderStage_t) * (MAX_SHADER_STAGES-lmStage-1));
-				memset(&stages[MAX_SHADER_STAGES-1], 0, sizeof(shaderStage_t));
-				//change blending on the moved down stage
-				stages[lmStage].stateBits = GLS_DEFAULT;
-				if (shader.polygonOffset)
-					stages[lmStage].stateBits |= GLS_POLYGON_OFFSET_FILL;
-			}
-			//change anything that was moved down (or the *white if LM is first) to use vertex color
-			stages[lmStage].rgbGen = CGEN_EXACT_VERTEX;
-			stages[lmStage].alphaGen = AGEN_SKIP;
-			lmStage = MAX_SHADER_STAGES;	//skip the style checking below
-		}
-	}
-
-	if (lmStage < MAX_SHADER_STAGES)// && !r_fullbright->value)
-	{
-		int	numStyles;
-		int	i;
-
-		for(numStyles=0;numStyles< 1/*MAXLIGHTMAPS*/;numStyles++)
-		{
-			if (shader.styles[numStyles] >= LS_UNUSED)
-			{
-				break;
-			}
-		}
-		numStyles--;
-		if (numStyles > 0)
-		{
-			for(i=MAX_SHADER_STAGES-1;i>lmStage+numStyles;i--)
-			{
-				stages[i] = stages[i-numStyles];
-			}
-
-			for(i=0;i<numStyles;i++)
-			{
-				stages[lmStage+i+1] = stages[lmStage];
-				if (shader.lightmapIndex[i+1] == LIGHTMAP_BY_VERTEX)
-				{
-					stages[lmStage+i+1].bundle[0].image[0] = tr.whiteImage;
-				}
-				else if (shader.lightmapIndex[i+1] < 0)
-				{
-					Com_Error( ERR_DROP, "FinishShader: light style with no light map or vertex color for shader %s", shader.name);
-				}
-				else
-				{
-					stages[lmStage+i+1].bundle[0].image[0] = tr.lightmaps[shader.lightmapIndex[i+1]];
-					stages[lmStage+i+1].bundle[0].tcGen = (texCoordGen_t)(TCGEN_LIGHTMAP+i+1);
-				}
-				stages[lmStage+i+1].rgbGen = CGEN_LIGHTMAPSTYLE;
-				stages[lmStage+i+1].stateBits &= ~(GLS_SRCBLEND_BITS | GLS_DSTBLEND_BITS);
-				stages[lmStage+i+1].stateBits |= GLS_SRCBLEND_ONE | GLS_DSTBLEND_ONE;
-			}
-		}
-
-		for(i=0;i<=numStyles;i++)
-		{
-			stages[lmStage+i].lightmapStyle = shader.styles[i];
-		}
-	}
-
 	//
 	// set appropriate stage information
 	//
@@ -3802,11 +3696,6 @@ static shader_t *FinishShader( void ) {
 	//
 	stage = CollapseStagesToGLSL();
 
-	if ( shader.lightmapIndex[0] >= 0 && !hasLightmapStage ) {
-		ri.Printf( PRINT_DEVELOPER, "WARNING: shader '%s' has lightmap but no lightmap stage!\n", shader.name );
-	}
-
-
 	//
 	// compute number of passes
 	//
@@ -3925,7 +3814,7 @@ shader_t *R_FindShaderByName( const char *name ) {
 	return tr.defaultShader;
 }
 
-static qboolean IsShader ( const shader_t *sh, const char *name, const int *lightmapIndexes, const byte *styles )
+static qboolean IsShader ( const shader_t *sh, const char *name )
 {
 	if ( Q_stricmp (sh->name, name) != 0 )
 	{
@@ -3935,19 +3824,6 @@ static qboolean IsShader ( const shader_t *sh, const char *name, const int *ligh
 	if ( sh->defaultShader )
 	{
 		return qtrue;
-	}
-
-	for ( int i = 0; i < MAXLIGHTMAPS; i++ )
-	{
-		if ( sh->lightmapIndex[i] != lightmapIndexes[i] )
-		{
-			return qfalse;
-		}
-
-		if ( sh->styles[i] != styles[i] )
-		{
-			return qfalse;
-		}
 	}
 
 	return qtrue;
@@ -3993,16 +3869,6 @@ shader_t *R_FindShader( const char *name, const int *lightmapIndexes, const byte
 		return tr.defaultShader;
 	}
 
-	// use (fullbright) vertex lighting if the bsp file doesn't have
-	// lightmaps
-	if ( lightmapIndexes[0] >= 0 && lightmapIndexes[0] >= tr.numLightmaps ) {
-		lightmapIndexes = lightmapsVertex;
-	} else if ( lightmapIndexes[0] < LIGHTMAP_2D ) {
-		// negative lightmap indexes cause stray pointers (think tr.lightmaps[lightmapIndex])
-		ri.Printf( PRINT_WARNING, "WARNING: shader '%s' has invalid lightmap index of %d\n", name, lightmapIndexes[0]  );
-		lightmapIndexes = lightmapsVertex;
-	}
-
 	COM_StripExtension(name, strippedName, sizeof(strippedName));
 
 	hash = generateHashValue(strippedName, FILE_HASH_SIZE);
@@ -4015,7 +3881,7 @@ shader_t *R_FindShader( const char *name, const int *lightmapIndexes, const byte
 		// then a default shader is created with lightmapIndex == LIGHTMAP_NONE, so we
 		// have to check all default shaders otherwise for every call to R_FindShader
 		// with that same strippedName a new default shader is created.
-		if ( IsShader (sh, strippedName, lightmapIndexes, styles) ) {
+		if ( IsShader (sh, strippedName) ) {
 			// match found
 			return sh;
 		}
@@ -4028,8 +3894,6 @@ shader_t *R_FindShader( const char *name, const int *lightmapIndexes, const byte
 	// clear the global shader
 	ClearGlobalShader();
 	Q_strncpyz(shader.name, strippedName, sizeof(shader.name));
-	Com_Memcpy (shader.lightmapIndex, lightmapIndexes, sizeof (shader.lightmapIndex));
-	Com_Memcpy (shader.styles, styles, sizeof (shader.styles));
 
 	//
 	// attempt to define shader from an explicit parameter file
@@ -4080,32 +3944,38 @@ shader_t *R_FindShader( const char *name, const int *lightmapIndexes, const byte
 		return FinishShader();
 	}
 
+	shader.shaderType = lightmapIndexes[0];
+
 	//
 	// create the default shading commands
 	//
-	if ( shader.lightmapIndex[0] == LIGHTMAP_NONE ) {
+	if (shader.shaderType == LIGHTMAP_NONE) {
 		// dynamic colors at vertexes
 		stages[0].bundle[0].image[0] = image;
 		stages[0].active = qtrue;
 		stages[0].rgbGen = CGEN_LIGHTING_DIFFUSE;
 		stages[0].stateBits = GLS_DEFAULT;
-	} else if ( shader.lightmapIndex[0] == LIGHTMAP_BY_VERTEX ) {
+	} else if (shader.shaderType == LIGHTMAP_BY_VERTEX) {
 		// explicit colors at vertexes
 		stages[0].bundle[0].image[0] = image;
 		stages[0].active = qtrue;
 		stages[0].rgbGen = CGEN_EXACT_VERTEX;
 		stages[0].alphaGen = AGEN_SKIP;
 		stages[0].stateBits = GLS_DEFAULT;
-	} else if ( shader.lightmapIndex[0] == LIGHTMAP_2D ) {
+	} else if (shader.shaderType == LIGHTMAP_2D) {
 		// GUI elements
 		stages[0].bundle[0].image[0] = image;
 		stages[0].active = qtrue;
 		stages[0].rgbGen = CGEN_VERTEX;
 		stages[0].alphaGen = AGEN_VERTEX;
 		stages[0].stateBits = GLS_DEPTHTEST_DISABLE |
-			  GLS_SRCBLEND_SRC_ALPHA |
-			  GLS_DSTBLEND_ONE_MINUS_SRC_ALPHA;
-	} else if ( shader.lightmapIndex[0] == LIGHTMAP_WHITEIMAGE ) {
+			GLS_SRCBLEND_SRC_ALPHA |
+			GLS_DSTBLEND_ONE_MINUS_SRC_ALPHA;
+		stages[0].alphaTestCmp = ATEST_CMP_GE;
+		stages[0].alphaTestValue = 0.5f;
+		stages[0].glslShaderGroup = tr.genericShader;
+	}
+	else if (shader.shaderType == LIGHTMAP_WHITEIMAGE) {
 		// fullbright level
 		stages[0].bundle[0].image[0] = tr.whiteImage;
 		stages[0].active = qtrue;
@@ -4118,11 +3988,11 @@ shader_t *R_FindShader( const char *name, const int *lightmapIndexes, const byte
 		stages[1].stateBits |= GLS_SRCBLEND_DST_COLOR | GLS_DSTBLEND_ZERO;
 	} else {
 		// two pass lightmap
-		stages[0].bundle[0].image[0] = tr.lightmaps[shader.lightmapIndex[0]];
+		stages[0].bundle[0].image[0] = tr.whiteImage;
 		stages[0].bundle[0].isLightmap = qtrue;
 		stages[0].active = qtrue;
 		stages[0].rgbGen = CGEN_IDENTITY;	// lightmaps are scaled on creation
-													// for identitylight
+											// for identitylight
 		stages[0].stateBits = GLS_DEFAULT;
 
 		stages[1].bundle[0].image[0] = image;
@@ -4275,12 +4145,6 @@ void	R_ShaderList_f (void) {
 		}
 
 		ri.Printf( PRINT_ALL, "%i ", shader->numUnfoggedPasses );
-
-		if (shader->lightmapIndex >= 0 ) {
-			ri.Printf (PRINT_ALL, "L ");
-		} else {
-			ri.Printf (PRINT_ALL, "  ");
-		}
 
 		if ( shader->explicitlyDefined ) {
 			ri.Printf( PRINT_ALL, "E " );
@@ -4481,7 +4345,6 @@ static void CreateInternalShaders( void ) {
 
 	Q_strncpyz( shader.name, "<default>", sizeof( shader.name ) );
 
-	Com_Memcpy (shader.lightmapIndex, lightmapsNone, sizeof (shader.lightmapIndex));
 	for ( int i = 0 ; i < MAX_SHADER_STAGES ; i++ ) {
 		stages[i].bundle[0].texMods = texMods[i];
 	}
@@ -4547,7 +4410,6 @@ static void CreateExternalShaders( void ) {
 
 		Q_strncpyz( shader.name, "gfx/2d/sunflare", sizeof( shader.name ) );
 
-		Com_Memcpy (shader.lightmapIndex, lightmapsNone, sizeof (shader.lightmapIndex));
 		stages[0].bundle[0].image[0] = image;
 		stages[0].active = qtrue;
 		stages[0].stateBits = GLS_DEFAULT;
