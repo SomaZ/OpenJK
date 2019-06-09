@@ -841,7 +841,7 @@ void main()
 	if (u_EnableTextures.x == 1.0)
 		out_Color.rgb += shColor * diffuse.rgb;
 
-	out_Color.rgb += cubeLightColor * (1.0 - specBufferColor.a) * (specular.rgb * EnvBRDF.x + EnvBRDF.y) * horiz;
+	out_Color.rgb += cubeLightColor * specBufferColor.a * (specular.rgb * EnvBRDF.x + EnvBRDF.y) * horiz;
 
   #endif
 
