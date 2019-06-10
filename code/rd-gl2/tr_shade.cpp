@@ -1653,9 +1653,15 @@ static void RB_IterateStagesGeneric( shaderCommands_t *input, const VertexArrays
 
 		uniformDataWriter.Start(sp);
 		
-		
+		uniformDataWriter.SetUniformInt(UNIFORM_MATRIX_INDEX, glState.matrixTBOIndex - 1);
 
-		uniformDataWriter.SetUniformMatrix4x4( UNIFORM_MODELVIEWPROJECTIONMATRIX, glState.modelviewProjection);
+		matrix_t viewProjectionMatrix;
+		Matrix16Multiply(
+			backEnd.viewParms.projectionMatrix,
+			backEnd.viewParms.world.modelViewMatrix,
+			viewProjectionMatrix);
+		uniformDataWriter.SetUniformMatrix4x4( UNIFORM_MODELVIEWPROJECTIONMATRIX, viewProjectionMatrix);
+
 		uniformDataWriter.SetUniformVec3(UNIFORM_VIEWORIGIN, backEnd.viewParms.ori.origin);
 		uniformDataWriter.SetUniformVec3(UNIFORM_LOCALVIEWORIGIN, backEnd.ori.viewOrigin);
 
@@ -1760,14 +1766,6 @@ static void RB_IterateStagesGeneric( shaderCommands_t *input, const VertexArrays
 			uniformDataWriter.SetUniformVec3(UNIFORM_TCGEN0VECTOR0, pStage->bundle[0].tcGenVectors[0]);
 			uniformDataWriter.SetUniformVec3(UNIFORM_TCGEN0VECTOR1, pStage->bundle[0].tcGenVectors[1]);
 		}
-
-		matrix_t invModelMatrix;
-		matrix_t transInvModelMatrix;
-		Matrix16Inverse(backEnd.ori.modelMatrix, invModelMatrix);
-		Matrix16Transpose(invModelMatrix, transInvModelMatrix);
-
-		uniformDataWriter.SetUniformMatrix4x4(UNIFORM_MODELMATRIX, backEnd.ori.modelMatrix);
-		uniformDataWriter.SetUniformMatrix4x4(UNIFORM_NORMALMATRIX, transInvModelMatrix);
 
 		uniformDataWriter.SetUniformVec4(UNIFORM_NORMALSCALE, pStage->normalScale);
 		{

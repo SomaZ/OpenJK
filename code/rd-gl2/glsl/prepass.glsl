@@ -39,8 +39,8 @@ uniform float u_Time;
 
 uniform mat4 u_ModelViewProjectionMatrix;
 uniform mat4 u_PrevViewProjectionMatrix;
-uniform mat4 u_ModelMatrix;
-uniform mat4 u_NormalMatrix;
+uniform int u_Matrix_Index;
+uniform samplerBuffer u_Tbo_Matrices;
 
 #if defined(USE_VERTEX_ANIMATION)
 uniform float u_VertexLerp;
@@ -58,6 +58,25 @@ out vec4 var_Bitangent;
 out vec4 var_CurrentPosition;
 out vec4 var_OldPosition;
 #endif
+
+//FIX ME: possibly stupid
+#if defined(USE_CUBEMAP_TRANSFORMS)
+out mat4 var_ModelMatrix;
+#endif
+
+mat4 GetModelMatrixFromTBO(int matrixIndex)
+{
+	return mat4(	texelFetch(u_Tbo_Matrices, matrixIndex + 0),
+					texelFetch(u_Tbo_Matrices, matrixIndex + 1),
+					texelFetch(u_Tbo_Matrices, matrixIndex + 2),
+					texelFetch(u_Tbo_Matrices, matrixIndex + 3));
+}
+mat3 GetNormalMatrixFromTBO(int matrixIndex)
+{
+	return mat3(	texelFetch(u_Tbo_Matrices, matrixIndex + 4).rgb,
+					texelFetch(u_Tbo_Matrices, matrixIndex + 5).rgb,
+					texelFetch(u_Tbo_Matrices, matrixIndex + 6).rgb);
+}
 
 #if defined(USE_DEFORM_VERTEXES)
 float GetNoiseValue( float x, float y, float z, float t )
@@ -279,19 +298,24 @@ void main()
 	normal = DeformNormal( position, normal );
 #endif
 
-	gl_Position = u_ModelViewProjectionMatrix * vec4(position, 1.0);
+	mat4 modelMatrix = GetModelMatrixFromTBO(u_Matrix_Index);
+	mat3 normalMatrix = GetNormalMatrixFromTBO(u_Matrix_Index);
 
+	gl_Position = u_ModelViewProjectionMatrix * modelMatrix * vec4(position, 1.0);
+	
 	#if !defined(USE_CUBEMAP_TRANSFORMS)
 	#if defined(USE_G_BUFFERS)
 	var_CurrentPosition = gl_Position;
-	var_OldPosition = (u_PrevViewProjectionMatrix * u_ModelMatrix) * vec4(position, 1.0);
+	var_OldPosition = (u_PrevViewProjectionMatrix * modelMatrix) * vec4(position, 1.0);
 	#endif
-	position  = mat3(u_ModelMatrix) * position;
+	position  = mat3(modelMatrix) * position;
+	#else
+	var_ModelMatrix = modelMatrix;
 	#endif
 
 	#if defined(USE_G_BUFFERS)
-		normal    = mat3(u_NormalMatrix) * normal;
-		tangent   = mat3(u_NormalMatrix) * tangent;
+		normal    = mat3(normalMatrix) * normal;
+		tangent   = mat3(normalMatrix) * tangent;
 		vec3 bitangent = cross(normal, tangent) * (attr_Tangent.w * 2.0 - 1.0);
 	#endif
 
@@ -303,7 +327,6 @@ void main()
 		var_Tangent   = vec4(tangent,   viewDir.y);
 		var_Bitangent = vec4(bitangent, viewDir.z);
 	#endif
-
 }
 
 /*[Geometry]*/
@@ -314,9 +337,9 @@ layout(std140) uniform CubemapMatrices
 {
 mat4		cubeMatrices[6];
 };
-uniform mat4 u_ModelMatrix;
 uniform mat4 u_ModelViewProjectionMatrix;
 uniform vec3 u_ViewOrigin;
+in mat4   var_ModelMatrix[];
 in vec4   var_TexCoords[];
 in vec3	  var_Position[];
 
@@ -341,7 +364,7 @@ void main()
 		for (int i = 0; i < 3; ++i)
 		{
 			gl_Layer = face;
-			gl_Position = cubeMatrices[face] * u_ModelMatrix * vec4(var_Position[i], 1.0);
+			gl_Position = cubeMatrices[face] * var_ModelMatrix[i] * vec4(var_Position[i], 1.0);
 			fs_TexCoords = var_TexCoords[i];
 			fs_Position = var_Position[i];
 

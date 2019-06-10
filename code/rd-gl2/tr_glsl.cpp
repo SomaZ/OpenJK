@@ -61,6 +61,12 @@ static uniformInfo_t uniformsInfo[] =
 	{ "u_ScreenOffsetMap", GLSL_INT, 1 },
 	{ "u_ScreenOffsetMap2", GLSL_INT, 1 },
 
+	{ "u_Tbo_Matrices", GLSL_INT, 1 },
+	{ "u_Tbo_Materials", GLSL_INT, 1 },
+	{ "u_Tbo_Lights", GLSL_INT, 1 },
+
+	{ "u_Matrix_Index", GLSL_INT, 1 },
+
 	{ "u_LightGridDirectionMap", GLSL_INT, 1 },
 	{ "u_LightGridDirectionalLightMap", GLSL_INT, 1 },
 	{ "u_LightGridAmbientLightMap", GLSL_INT, 1 },
@@ -1920,6 +1926,9 @@ static int GLSL_LoadGPUProgramLightAll(
 		if (i & LIGHTDEF_USE_GLOW_BUFFER)
 			Q_strcat(extradefines, sizeof(extradefines), "#define USE_GLOW_BUFFER\n");
 
+		if (false)
+			Q_strcat(extradefines, sizeof(extradefines), "#define USE_TBO_DATA\n");
+
 		uint32_t shaderTypes = GPUSHADER_VERTEX | GPUSHADER_FRAGMENT;
 
 		//TODO: use culling or cubemapping layering
@@ -1948,6 +1957,9 @@ static int GLSL_LoadGPUProgramLightAll(
 		GLSL_SetUniformInt(&tr.lightallShader[i], UNIFORM_LIGHTGRIDAMBIENTLIGHTMAP, TB_LGAMBIENT);
 		GLSL_SetUniformInt(&tr.lightallShader[i], UNIFORM_SCREENDIFFUSEMAP, TB_DIFFUSELIGHTBUFFER);
 		GLSL_SetUniformInt(&tr.lightallShader[i], UNIFORM_SCREENSPECULARMAP, TB_SPECLIGHTBUFFER);
+		GLSL_SetUniformInt(&tr.lightallShader[i], UNIFORM_TBO_MATRICES, TB_TBO_MATRICES);
+		GLSL_SetUniformInt(&tr.lightallShader[i], UNIFORM_TBO_MATERIALS, TB_TBO_MATERIALS);
+		GLSL_SetUniformInt(&tr.lightallShader[i], UNIFORM_TBO_LIGHTS, TB_TBO_LIGHTS);
 		qglUseProgram(0);
 
 		GLSL_FinishGPUShader(&tr.lightallShader[i]);

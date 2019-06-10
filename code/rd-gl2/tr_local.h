@@ -56,6 +56,7 @@ typedef unsigned int glIndex_t;
 #define MAX_VISCOUNTS 5
 #define MAX_VBOS 4096
 #define MAX_IBOS 4096
+#define MAX_TBOS 3
 
 #define MAX_CALC_PSHADOWS 64
 #define MAX_DRAWN_PSHADOWS 32 // do not increase past 32, because bit flags are used on surfaces
@@ -763,7 +764,10 @@ enum
 	TB_LGAMBIENT   =10,
 	TB_DIFFUSELIGHTBUFFER = 11,
 	TB_SPECLIGHTBUFFER = 12,
-	NUM_TEXTURE_BUNDLES = 13,
+	TB_TBO_MATRICES	= 13,
+	TB_TBO_MATERIALS = 14,
+	TB_TBO_LIGHTS = 15,
+	NUM_TEXTURE_BUNDLES = 16,
 };
 
 typedef enum
@@ -1232,6 +1236,16 @@ enum
 	GLSL_MAT4x4,
 };
 
+typedef struct textureBuffer_s
+{
+	GLuint tbonum;
+	GLuint texnum;
+	int size;
+	int slot;
+	int numItems;
+	float *buffer;
+} textureBuffer_t;
+
 enum uniformBlock_t
 {
 	UNIFORM_BLOCK_SURFACESPRITE,
@@ -1303,6 +1317,12 @@ typedef enum
 	UNIFORM_SCREENSPECULARMAP,
 	UNIFORM_SCREENOFFSETMAP,
 	UNIFORM_SCREENOFFSETMAP2,
+
+	UNIFORM_TBO_MATRICES,
+	UNIFORM_TBO_MATERIALS,
+	UNIFORM_TBO_LIGHTS,
+
+	UNIFORM_MATRIX_INDEX,
 
 	UNIFORM_LIGHTGRIDDIRECTIONMAP,
 	UNIFORM_LIGHTGRIDDIRECTIONALLIGHTMAP,
@@ -2132,7 +2152,6 @@ void R_SortAndSubmitDrawSurfs(drawSurf_t *drawSurfs, int numDrawSurfs);
 #define	MAX_DRAWIMAGES 4096
 #define	MAX_SKINS 1024
 
-
 #define	MAX_DRAWSURFS 0x10000
 #define	DRAWSURF_MASK (MAX_DRAWSURFS-1)
 
@@ -2224,6 +2243,7 @@ typedef struct glstate_s {
 	matrix_t		modelviewProjection;
 	int				attrIndex;
 	int				attrStepRate;
+	uint16_t		matrixTBOIndex;
 } glstate_t;
 
 typedef enum {
@@ -2574,6 +2594,9 @@ typedef struct trGlobals_s {
 
 	int						numImages;
 	image_t					*images[MAX_DRAWIMAGES];
+
+	int						numTbos;
+	textureBuffer_t			*tbos[MAX_TBOS];
 
 	int						numFBOs;
 	FBO_t					*fbos[MAX_FBOS];
@@ -3613,5 +3636,22 @@ void RB_FillDrawCommand(
 uint32_t RB_CreateSortKey(const DrawItem& item, int stage, int layer);
 void RB_AddDrawItem(Pass *pass, uint32_t sortKey, const DrawItem& drawItem);
 DepthRange RB_GetDepthRange(const trRefEntity_t *re, const shader_t *shader);
+
+enum tboBlock_t
+{
+	TBO_MATRICES,
+	TBO_MATERIALS,
+	TBO_LIGHTS,
+	TBO_COUNT
+};
+
+void R_CreateBuildinTBOs( void );
+void R_DeleteBuildinTBOs( void );
+void R_SetTBOData(textureBuffer_t *tbo, int* data, int numComponents);
+uint16_t R_AddModelAndNormalMatrixToTBO(matrix_t modelMatrix);
+void GL_BindTBO(textureBuffer_t *tbo);
+void GL_UnbindTBO(textureBuffer_t *tbo);
+void R_StartBuildingMatricesBuffer( void );
+void R_FinishBuildingMatricesBuffer(void);
 
 #endif //TR_LOCAL_H

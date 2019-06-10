@@ -3448,6 +3448,10 @@ void R_CreateBuiltinImages(void) {
 		IMGFLAG_NO_COMPRESSION | IMGFLAG_CLAMPTOEDGE,
 		GL_DEPTH_COMPONENT24);
 
+	R_CreateBuildinTBOs();
+
+	int intData[5] = { 1, 2, 3, 4, 5 };
+	R_SetTBOData(tr.tbos[TBO_MATERIALS], intData, 5);
 }
 
 
@@ -3585,6 +3589,9 @@ void R_DeleteTextures(void) {
 		qglDeleteTextures(1, &tr.world->directionalLightImages[0]->texnum);
 		qglDeleteTextures(1, &tr.world->directionImages->texnum);
 	}
+
+	R_DeleteBuildinTBOs();
+	tr.numTbos = 0;
 	
 	Com_Memset(glState.currenttextures, 0, sizeof(glState.currenttextures));
 	GL_SelectTexture(1);

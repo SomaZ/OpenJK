@@ -52,8 +52,11 @@ uniform vec4 u_DiffuseTexOffTurb;
 uniform mat4 u_ModelViewProjectionMatrix;
 uniform vec4 u_BaseColor;
 uniform vec4 u_VertColor;
-uniform mat4 u_ModelMatrix;
-uniform mat4 u_NormalMatrix;
+
+uniform int u_Matrix_Index;
+uniform samplerBuffer u_Tbo_Matrices;
+uniform usamplerBuffer u_Tbo_Materials;
+uniform samplerBuffer u_Tbo_Lights;
 
 #if defined(USE_VERTEX_ANIMATION)
 uniform float u_VertexLerp;
@@ -93,6 +96,20 @@ out vec4 var_LightDir;
 #if defined(USE_PRIMARY_LIGHT) || defined(USE_SHADOWMAP)
 out vec4 var_PrimaryLightDir;
 #endif
+
+mat4 GetModelMatrixFromTBO(int matrixIndex)
+{
+	return mat4(	texelFetch(u_Tbo_Matrices, matrixIndex + 0),
+					texelFetch(u_Tbo_Matrices, matrixIndex + 1),
+					texelFetch(u_Tbo_Matrices, matrixIndex + 2),
+					texelFetch(u_Tbo_Matrices, matrixIndex + 3));
+}
+mat3 GetNormalMatrixFromTBO(int matrixIndex)
+{
+	return mat3(	texelFetch(u_Tbo_Matrices, matrixIndex + 4).rgb,
+					texelFetch(u_Tbo_Matrices, matrixIndex + 5).rgb,
+					texelFetch(u_Tbo_Matrices, matrixIndex + 6).rgb);
+}
 
 #if defined(USE_TCGEN) || defined(USE_LIGHTMAP)
 vec2 GenTexCoords(int TCGen, vec3 position, vec3 normal, vec3 TCGenVector0, vec3 TCGenVector1)
@@ -213,12 +230,16 @@ void main()
 	var_TexCoords.xy = texCoords;
 #endif
 
-	gl_Position = u_ModelViewProjectionMatrix * vec4(position, 1.0);
+	mat4 modelMatrix = GetModelMatrixFromTBO(u_Matrix_Index);
+	mat3 normalMatrix = GetNormalMatrixFromTBO(u_Matrix_Index);
 
-	position  = (u_ModelMatrix * vec4(position, 1.0)).xyz;
-	normal    = mat3(u_NormalMatrix) * normal;
+	gl_Position = u_ModelViewProjectionMatrix * modelMatrix * vec4(position, 1.0);
+
+	position  = mat3(modelMatrix) * position;
+	normal    = mat3(normalMatrix) * normal;
+
   #if defined(PER_PIXEL_LIGHTING)
-	tangent   = mat3(u_NormalMatrix) * tangent;
+	tangent   = mat3(normalMatrix) * tangent;
 	vec3 bitangent = cross(normal, tangent) * (attr_Tangent.w * 2.0 - 1.0);
   #endif
 
@@ -226,7 +247,7 @@ void main()
 	vec3 L = u_LightOrigin.xyz - (position * u_LightOrigin.w);
 #elif defined(PER_PIXEL_LIGHTING)
 	vec3 L = attr_LightDirection * 2.0 - vec3(1.0);
-	L = (u_ModelMatrix * vec4(L, 0.0)).xyz;
+	L = (modelMatrix * vec4(L, 0.0)).xyz;
 #endif
 
 #if defined(USE_LIGHTMAP)
@@ -283,6 +304,7 @@ void main()
 }
 
 /*[Fragment]*/
+//#extension GL_EXT_gpu_shader4 : enable
 #if defined(USE_LIGHT) && !defined(USE_FAST_LIGHT)
 #define PER_PIXEL_LIGHTING
 uniform sampler2D u_ScreenDiffuseMap;
@@ -354,6 +376,10 @@ uniform float u_AlphaTestValue;
 in vec4      var_TexCoords;
 in vec4      var_Color;
 
+uniform samplerBuffer u_Tbo_Matrices;
+uniform usamplerBuffer u_Tbo_Materials;
+uniform samplerBuffer u_Tbo_Lights;
+
 #if defined(PER_PIXEL_LIGHTING)
 in vec4   var_Normal;
 in vec4   var_Tangent;
@@ -380,6 +406,18 @@ in vec4      var_PrimaryLightDir;
 
 out vec4 out_Color;
 out vec4 out_Glow;
+
+// from https://www.shadertoy.com/view/llGSzw
+float hash( uint n ) { 
+	n = (n << 13U) ^ n;
+    n = n * (n * n * 15731U + 789221U) + 1376312589U;
+    return float( n & uvec3(0x7fffffffU))/float(0x7fffffff);
+}
+
+float Noise(vec2 U, float x) {
+	U += x;
+    return hash(uint(U.x+r_FBufScale.x*U.y));
+}
 
 #define EPSILON 0.00000001
 
@@ -911,6 +949,24 @@ void main()
 #endif
 
 	out_Color.a = diffuse.a * var_Color.a;
+
+#if defined(USE_TBO_DATA)
+	int random = int(Noise(gl_FragCoord.xy, 1) * 3);
+
+	uint color = texelFetch(u_Tbo_Materials, random).r;
+	if ( color == 1u )
+	{
+		out_Color.rgb = vec3(1.0, 0.0, 0.0);
+	}
+	else if ( color == 2u )
+	{
+		out_Color.rgb = vec3(0.0, 1.0, 0.0);
+	}
+	else if ( color == 3u )
+	{
+		out_Color.rgb = vec3(0.0, 0.0, 1.0);
+	}
+#endif
 
 #if defined(USE_GLOW_BUFFER)
 	out_Glow = out_Color;
