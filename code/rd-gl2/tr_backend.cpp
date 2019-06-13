@@ -1333,8 +1333,10 @@ static void RB_SubmitDrawSurfsForDepthFill(
 			oldEntityNum = entityNum;
 			
 			// pushBack the modelMatrix
-			//if(backEnd.currentEntity->modelMatrixId == 0)
-			backEnd.currentEntity->modelMatrixId = R_AddModelAndNormalMatrixToTBO(backEnd.ori.modelMatrix);
+			if (entityNum == REFENTITYNUM_WORLD)
+				backEnd.currentEntity->modelMatrixId = 1;
+			else if (backEnd.currentEntity->modelMatrixId == 0)
+				backEnd.currentEntity->modelMatrixId = R_AddModelAndNormalMatrixToTBO(backEnd.ori.modelMatrix);
 		}
 
 		// add the triangles for this surface
@@ -1433,8 +1435,10 @@ static void RB_SubmitDrawSurfs(
 			oldEntityNum = entityNum;
 
 			// pushBack the modelMatrix
-			//if (backEnd.currentEntity->modelMatrixId == 0)
-			backEnd.currentEntity->modelMatrixId = R_AddModelAndNormalMatrixToTBO(backEnd.ori.modelMatrix);
+			if (entityNum == REFENTITYNUM_WORLD)
+				backEnd.currentEntity->modelMatrixId = 1;
+			else if (backEnd.currentEntity->modelMatrixId == 0)
+				backEnd.currentEntity->modelMatrixId = R_AddModelAndNormalMatrixToTBO(backEnd.ori.modelMatrix);
 		}
 
 		// add the triangles for this surface

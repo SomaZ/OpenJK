@@ -196,7 +196,30 @@ void R_ClearMatricesTBO(void)
 	
 	textureBuffer_t *tbo = tr.tbos[TBO_MATRICES];
 	ri.Printf(PRINT_ALL, "TBO_MATRICES Count was %i\n", tbo->numItems / 4);
+
+	GL_UnbindTBO(tr.tbos[TBO_MATRICES]);
+	
+	qglBindBuffer(GL_TEXTURE_BUFFER, tbo->tbonum);
+	tbo->buffer = (float*)qglMapBuffer(GL_TEXTURE_BUFFER, GL_WRITE_ONLY);
+
 	tbo->numItems = 0;
+
+	matrix_t worldModelMatrix;
+	Matrix16Identity(worldModelMatrix);
+	matrix_t invModelMatrix;
+	matrix_t transInvModelMatrix;
+	Matrix16Inverse(worldModelMatrix, invModelMatrix);
+	Matrix16Transpose(invModelMatrix, transInvModelMatrix);
+
+	for (int i = 0; i < 16; i++)
+	{
+		tbo->buffer[tbo->numItems++] = worldModelMatrix[i];
+	}
+
+	for (int i = 0; i < 16; i++)
+	{
+		tbo->buffer[tbo->numItems++] = transInvModelMatrix[i];
+	}
 }
 
 uint16_t R_AddModelAndNormalMatrixToTBO(matrix_t modelMatrix) 
@@ -237,18 +260,10 @@ uint16_t R_AddModelAndNormalMatrixToTBO(matrix_t modelMatrix)
 void R_StartBuildingMatricesBuffer(void)
 {
 	R_ClearMatricesTBO();
-	GL_UnbindTBO(tr.tbos[TBO_MATRICES]);
-	GL_UnbindTBO(tr.tbos[TBO_MATERIALS]);
-	GL_UnbindTBO(tr.tbos[TBO_LIGHTS]);
-	textureBuffer_t *tbo = tr.tbos[TBO_MATRICES];
-	qglBindBuffer(GL_TEXTURE_BUFFER, tbo->tbonum);
-	tbo->buffer = (float*)qglMapBuffer(GL_TEXTURE_BUFFER, GL_WRITE_ONLY);
 }
 
 void R_FinishBuildingMatricesBuffer(void)
 {
 	qglUnmapBuffer(GL_TEXTURE_BUFFER);
 	GL_BindTBO(tr.tbos[TBO_MATRICES]);
-	GL_BindTBO(tr.tbos[TBO_MATERIALS]);
-	GL_BindTBO(tr.tbos[TBO_LIGHTS]);
 }
