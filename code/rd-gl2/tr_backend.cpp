@@ -1333,7 +1333,8 @@ static void RB_SubmitDrawSurfsForDepthFill(
 			oldEntityNum = entityNum;
 			
 			// pushBack the modelMatrix
-			glState.matrixTBOIndex = R_AddModelAndNormalMatrixToTBO(backEnd.ori.modelMatrix);
+			//if(backEnd.currentEntity->modelMatrixId == 0)
+			backEnd.currentEntity->modelMatrixId = R_AddModelAndNormalMatrixToTBO(backEnd.ori.modelMatrix);
 		}
 
 		// add the triangles for this surface
@@ -1432,7 +1433,8 @@ static void RB_SubmitDrawSurfs(
 			oldEntityNum = entityNum;
 
 			// pushBack the modelMatrix
-			glState.matrixTBOIndex = R_AddModelAndNormalMatrixToTBO(backEnd.ori.modelMatrix);
+			//if (backEnd.currentEntity->modelMatrixId == 0)
+			backEnd.currentEntity->modelMatrixId = R_AddModelAndNormalMatrixToTBO(backEnd.ori.modelMatrix);
 		}
 
 		// add the triangles for this surface

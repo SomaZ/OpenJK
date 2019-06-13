@@ -209,8 +209,6 @@ uint16_t R_AddModelAndNormalMatrixToTBO(matrix_t modelMatrix)
 	
 	textureBuffer_t *tbo = tr.tbos[TBO_MATRICES];
 	int16_t startIndex = tbo->numItems / 4;
-	
-	GL_CheckErrors();
 
 	if (tbo->buffer == NULL)
 	{

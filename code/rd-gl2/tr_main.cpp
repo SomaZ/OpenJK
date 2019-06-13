@@ -1886,6 +1886,8 @@ static void R_AddEntitySurface(const trRefdef_t *refdef, trRefEntity_t *ent, int
 		return;
 	}
 
+	ent->modelMatrixId = 0;
+
 	vec3_t transformed;
 	VectorSubtract(ent->e.origin, tr.refdef.vieworg, transformed);
 	float distance = VectorLength(transformed);

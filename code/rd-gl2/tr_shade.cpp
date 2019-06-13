@@ -1653,14 +1653,19 @@ static void RB_IterateStagesGeneric( shaderCommands_t *input, const VertexArrays
 
 		uniformDataWriter.Start(sp);
 		
-		uniformDataWriter.SetUniformInt(UNIFORM_MATRIX_INDEX, glState.matrixTBOIndex - 1);
+		uniformDataWriter.SetUniformInt(UNIFORM_MATRIX_INDEX, backEnd.currentEntity->modelMatrixId - 1);
 
-		matrix_t viewProjectionMatrix;
-		Matrix16Multiply(
-			backEnd.viewParms.projectionMatrix,
-			backEnd.viewParms.world.modelViewMatrix,
-			viewProjectionMatrix);
-		uniformDataWriter.SetUniformMatrix4x4( UNIFORM_MODELVIEWPROJECTIONMATRIX, viewProjectionMatrix);
+		if (backEnd.currentEntity->modelMatrixId > 0)
+		{
+			matrix_t viewProjectionMatrix;
+			Matrix16Multiply(
+				backEnd.viewParms.projectionMatrix,
+				backEnd.viewParms.world.modelViewMatrix,
+				viewProjectionMatrix);
+			uniformDataWriter.SetUniformMatrix4x4(UNIFORM_MODELVIEWPROJECTIONMATRIX, viewProjectionMatrix);
+		}
+		else 
+			uniformDataWriter.SetUniformMatrix4x4(UNIFORM_MODELVIEWPROJECTIONMATRIX, glState.modelviewProjection);
 
 		uniformDataWriter.SetUniformVec3(UNIFORM_VIEWORIGIN, backEnd.viewParms.ori.origin);
 		uniformDataWriter.SetUniformVec3(UNIFORM_LOCALVIEWORIGIN, backEnd.ori.viewOrigin);

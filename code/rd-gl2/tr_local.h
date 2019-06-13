@@ -401,6 +401,7 @@ typedef struct trRefEntity_s {
 	vec3_t		ambientLight;	// color normalized to 0-255
 	int			ambientLightInt;	// 32 bit rgba packed
 	vec3_t		directedLight;
+	uint16_t	modelMatrixId;
 } trRefEntity_t;
 
 
@@ -2243,7 +2244,6 @@ typedef struct glstate_s {
 	matrix_t		modelviewProjection;
 	int				attrIndex;
 	int				attrStepRate;
-	uint16_t		matrixTBOIndex;
 } glstate_t;
 
 typedef enum {
