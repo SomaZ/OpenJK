@@ -175,6 +175,26 @@ void Matrix16Transpose(const matrix_t m, matrix_t out)
 	out[15] = m[15];
 }
 
+void MatrixToMatrix16f(const matrix_t m, matrix16f_t out)
+{
+	out[0] = FloatToHalf(m[0]);
+	out[1] = FloatToHalf(m[1]);
+	out[2] = FloatToHalf(m[2]);
+	out[3] = FloatToHalf(m[3]);
+	out[4] = FloatToHalf(m[4]);
+	out[5] = FloatToHalf(m[5]);
+	out[6] = FloatToHalf(m[6]);
+	out[7] = FloatToHalf(m[7]);
+	out[8] = FloatToHalf(m[8]);
+	out[9] = FloatToHalf(m[9]);
+	out[10] = FloatToHalf(m[10]);
+	out[11] = FloatToHalf(m[11]);
+	out[12] = FloatToHalf(m[12]);
+	out[13] = FloatToHalf(m[13]);
+	out[14] = FloatToHalf(m[14]);
+	out[15] = FloatToHalf(m[15]);
+}
+
 void Matrix16Inverse(const matrix_t m, matrix_t out)
 {
 	float inv[16], det;

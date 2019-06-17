@@ -401,7 +401,6 @@ typedef struct trRefEntity_s {
 	vec3_t		ambientLight;	// color normalized to 0-255
 	int			ambientLightInt;	// 32 bit rgba packed
 	vec3_t		directedLight;
-	uint16_t	modelMatrixId;
 } trRefEntity_t;
 
 
@@ -1244,7 +1243,6 @@ typedef struct textureBuffer_s
 	int size;
 	int slot;
 	int numItems;
-	float *buffer;
 } textureBuffer_t;
 
 enum uniformBlock_t
@@ -3647,11 +3645,10 @@ enum tboBlock_t
 
 void R_CreateBuildinTBOs( void );
 void R_DeleteBuildinTBOs( void );
+void R_TBOUpdateModelMatricesBuffer(const trRefdef_t *refDef);
 void R_SetTBOData(textureBuffer_t *tbo, int* data, int numComponents);
-uint16_t R_AddModelAndNormalMatrixToTBO(matrix_t modelMatrix);
 void GL_BindTBO(textureBuffer_t *tbo);
 void GL_UnbindTBO(textureBuffer_t *tbo);
-void R_StartBuildingMatricesBuffer( void );
-void R_FinishBuildingMatricesBuffer(void);
+
 
 #endif //TR_LOCAL_H

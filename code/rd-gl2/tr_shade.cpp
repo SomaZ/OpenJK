@@ -1652,10 +1652,8 @@ static void RB_IterateStagesGeneric( shaderCommands_t *input, const VertexArrays
 		assert(sp);
 
 		uniformDataWriter.Start(sp);
-		
-		uniformDataWriter.SetUniformInt(UNIFORM_MATRIX_INDEX, backEnd.currentEntity->modelMatrixId - 1);
 
-		if (backEnd.currentEntity->modelMatrixId > 0)
+		if (input->shader->styles[0] != LIGHTMAP_2D)
 		{
 			matrix_t viewProjectionMatrix;
 			Matrix16Multiply(
@@ -1663,10 +1661,13 @@ static void RB_IterateStagesGeneric( shaderCommands_t *input, const VertexArrays
 				backEnd.viewParms.world.modelViewMatrix,
 				viewProjectionMatrix);
 			uniformDataWriter.SetUniformMatrix4x4(UNIFORM_MODELVIEWPROJECTIONMATRIX, viewProjectionMatrix);
+			uniformDataWriter.SetUniformInt(UNIFORM_MATRIX_INDEX, (backEnd.currentEntity->e.hash + 1) * 8);
 		}
-		else 
+		else
+		{
+			uniformDataWriter.SetUniformInt(UNIFORM_MATRIX_INDEX, 0);
 			uniformDataWriter.SetUniformMatrix4x4(UNIFORM_MODELVIEWPROJECTIONMATRIX, glState.modelviewProjection);
-
+		}
 		uniformDataWriter.SetUniformVec3(UNIFORM_VIEWORIGIN, backEnd.viewParms.ori.origin);
 		uniformDataWriter.SetUniformVec3(UNIFORM_LOCALVIEWORIGIN, backEnd.ori.viewOrigin);
 

@@ -33,7 +33,6 @@ uniform float	u_PrimaryLightRadius;
 uniform int u_TCGen0;
 uniform vec3 u_TCGen0Vector0;
 uniform vec3 u_TCGen0Vector1;
-uniform vec3 u_LocalViewOrigin;
 uniform int u_TCGen1;
 
 uniform vec4 u_DiffuseTexMatrix;
@@ -63,15 +62,6 @@ vec2 GenTexCoords(int TCGen, vec3 position, vec3 normal, vec3 TCGenVector0, vec3
 
 	switch (TCGen)
 	{
-		case TCGEN_ENVIRONMENT_MAPPED:
-		{
-			vec3 viewer = normalize(u_LocalViewOrigin - position);
-			vec2 ref = reflect(viewer, normal).yz;
-			tex.s = ref.x * -0.5 + 0.5;
-			tex.t = ref.y *  0.5 + 0.5;
-		}
-		break;
-
 		case TCGEN_VECTOR:
 		{
 			tex = vec2(dot(position, TCGenVector0), dot(position, TCGenVector1));

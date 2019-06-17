@@ -1518,7 +1518,10 @@ static int GLSL_LoadGPUProgramGeneric(
 
 		qglUseProgram(tr.genericShader[i].program);
 		GLSL_SetUniformInt(&tr.genericShader[i], UNIFORM_DIFFUSEMAP, TB_DIFFUSEMAP);
-		GLSL_SetUniformInt(&tr.genericShader[i], UNIFORM_LIGHTMAP, TB_LIGHTMAP);
+		GLSL_SetUniformInt(&tr.genericShader[i], UNIFORM_LIGHTMAP, TB_LIGHTMAP); 
+		GLSL_SetUniformInt(&tr.genericShader[i], UNIFORM_TBO_MATRICES, TB_TBO_MATRICES);
+		GLSL_SetUniformInt(&tr.genericShader[i], UNIFORM_TBO_MATERIALS, TB_TBO_MATERIALS);
+		GLSL_SetUniformInt(&tr.genericShader[i], UNIFORM_TBO_LIGHTS, TB_TBO_LIGHTS);
 		qglUseProgram(0);
 
 		GLSL_FinishGPUShader(&tr.genericShader[i]);

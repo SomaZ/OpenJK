@@ -1994,6 +1994,7 @@ typedef struct cgMiscEntData_s
 	vec3_t		scale;
 	float		radius;
 	float		zOffset; //some models need a z offset for culling, because of stupid wrong model origins
+	int			hash;
 } cgMiscEntData_t;
 
 static cgMiscEntData_t	MiscEnts[MAX_MISC_ENTS]; //statically allocated for now.
@@ -2051,6 +2052,7 @@ void CG_CreateMiscEnts(void)
 		VectorScaleVector(mins, MiscEnt->scale, mins);
 		VectorScaleVector(maxs, MiscEnt->scale, maxs);
 		MiscEnt->radius = DistanceSquared(mins, maxs);
+		MiscEnt->hash = cg.numHashedEntites++;
 	}
 }
 
@@ -2165,6 +2167,7 @@ void CG_DrawMiscEnts(void)
 				VectorCopy(MiscEnt->origin, refEnt.origin);
 				VectorCopy(cullOrigin, refEnt.lightingOrigin);
 				ScaleModelAxis(&refEnt);
+				refEnt.hash = MiscEnt->hash;
 				cgi_R_AddRefEntityToScene(&refEnt);
 			}
 		}

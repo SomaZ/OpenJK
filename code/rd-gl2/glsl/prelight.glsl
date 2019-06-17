@@ -591,7 +591,7 @@ vec4 traceSSRRay(in float roughness, in vec3 wsNormal, in vec3 E, in vec3 viewPo
 	vec3 reflection;
 	bool NdotR, VdotR;
 
-	for (int i = 0; i < 3; i++) 
+	for (int i = 0; i < 32; i++) 
 	{
 		sample = int(mod(sample + 3, SAMPLES));
 		vec2 Xi = halton[sample];
@@ -846,8 +846,8 @@ SOFTWARE.
 	vec4 currentMax = max(ctl, max(ctc, max(ctr, max(cml, max(cmc, max(cmr, max(cbl, max(cbc, cbr))))))));
 
 	vec4 center = (currentMin + currentMax) * 0.5;
-	currentMin = (currentMin - center) * 128.0 + center;
-	currentMax = (currentMax - center) * 128.0 + center;
+	currentMin = (currentMin - center) * 256.0 + center;
+	currentMax = (currentMax - center) * 256.0 + center;
 
 	vec2 uvTraced = texture(u_ScreenOffsetMap, tc).xy;
 	vec2 minVelocity = texture(u_ShadowMap, uvTraced).xy;
@@ -862,7 +862,7 @@ SOFTWARE.
 	vec4 previous = texture(u_ScreenDepthMap, tc);
 
 	previous = clip_aabb(currentMin.xyz, currentMax.xyz, clamp(cmc, currentMin, currentMax), previous);
-	float temp = clamp(1.0 - (length(minVelocity * r_FBufScale) * 0.08), 0.7, 0.98);
+	float temp = clamp(1.0 - (length(minVelocity * r_FBufScale) * 0.08), 0.5, 0.98);
 
 	specularOut		= mix(cmc, previous, temp);
 	diffuseOut.rgb	= sqrt(specularOut.rgb * (specularAndGloss.rgb * EnvBRDF.x + EnvBRDF.y));

@@ -150,6 +150,7 @@ typedef struct {
 // only the entityState_t is directly communicated to the cgame
 struct centity_s
 {
+	int				hash;
 	entityState_t	currentState;	// from cg.frame
 	const entityState_t	*nextState;		// from cg.nextFrame, if available
 	qboolean		interpolate;	// true if next is valid to interpolate to
@@ -334,6 +335,8 @@ typedef struct {
 	int			oldTime;		// time at last frame, used for missile trails and prediction checking
 
 	int			timelimitWarnings;	// 5 min, 1 min, overtime
+
+	int			numHashedEntites;
 
 	qboolean	renderingThirdPerson;		// during deaths, chasecams, etc
 

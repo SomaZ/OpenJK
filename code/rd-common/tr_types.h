@@ -174,6 +174,7 @@ Ghoul2 Insert Start
 /*
 Ghoul2 Insert End
 */
+	int	hash;
 
 } refEntity_t;
 

@@ -25,6 +25,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #define __TR_EXTRAMATH_H__
 
 typedef float matrix_t[16];
+typedef uint16_t matrix16f_t[16];
 typedef float mat4x3_t[12];
 typedef int vec2i_t[2];
 typedef int vec3i_t[3];
@@ -33,6 +34,7 @@ typedef int vec4i_t[4];
 void Matrix16Zero( matrix_t out );
 void Matrix16Identity( matrix_t out );
 void Matrix16Copy( const matrix_t in, matrix_t out );
+void MatrixToMatrix16f(const matrix_t m, matrix16f_t out);
 void Matrix16Multiply( const matrix_t in1, const matrix_t in2, matrix_t out );
 void Matrix16Transform( const matrix_t in1, const vec4_t in2, vec4_t out );
 qboolean Matrix16Compare(const matrix_t a, const matrix_t b);

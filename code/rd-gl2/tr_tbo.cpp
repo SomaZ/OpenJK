@@ -23,6 +23,39 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #include "tr_local.h"
 #include "glext.h"
 
+struct matricesBlock
+{
+	matrix_t modelMatrix;
+	matrix_t normalMatrix;
+};
+
+struct shaderBlock
+{
+	uint16_t lightmode;
+	uint16_t numStages;
+};
+
+struct stageBlock
+{
+	uint16_t index;
+	uint16_t numTextures;
+	uint16_t blend;
+	uint16_t alphaTest;
+};
+
+struct textureBlock
+{
+	uint16_t page;
+	uint16_t index;
+};
+
+struct materialBlock
+{
+	shaderBlock		shader;
+	stageBlock		*stage;
+	textureBlock	*texture;
+};
+
 /*
 ** GL_BindTBO
 */
@@ -58,39 +91,6 @@ void GL_UnbindTBO(textureBuffer_t *tbo)
 	}
 }
 
-struct TboMatricesBlock
-{
-	matrix_t modelMatrix;
-	matrix_t normalMatrix;
-};
-
-struct shaderBlock
-{
-	uint16_t lightmode;
-	uint16_t numStages;
-};
-
-struct stageBlock
-{
-	uint16_t index;
-	uint16_t numTextures;
-	uint16_t blend;
-	uint16_t alphaTest;
-};
-
-struct textureBlock
-{
-	uint16_t page;
-	uint16_t index;
-};
-
-struct TboMaterialBlock
-{
-	shaderBlock		shader;
-	stageBlock		*stage;
-	textureBlock	*texture;
-};
-
 struct tboBlockInfo_t
 {
 	int slot;
@@ -100,7 +100,7 @@ struct tboBlockInfo_t
 	int size;
 };
 
-const int MatricesMaxSize =			sizeof(TboMatricesBlock) * MAX_REFENTITIES;
+const int MatricesMaxSize =			sizeof(matricesBlock) * MAX_REFENTITIES;
 const int MaterialsMaxSize =		sizeof(shaderBlock) * MAX_SHADERS *
 									sizeof(stageBlock) * 4 + //just assume we have an average of 4 stages max else it would be MAX_SHADER_STAGES
 									sizeof(textureBlock) * MAX_DRAWIMAGES;
@@ -108,7 +108,7 @@ const int MaterialsMaxSize =		sizeof(shaderBlock) * MAX_SHADERS *
 const int LightComponentsMaxSize =	sizeof(dlight_t) * MAX_DLIGHTS;
 
 const tboBlockInfo_t tboBlocksInfo[TBO_COUNT] = {
-	{ TB_TBO_MATRICES, "TBO_Matrices", GL_RGBA32F, GL_DYNAMIC_DRAW, MatricesMaxSize },
+	{ TB_TBO_MATRICES, "TBO_Matrices", GL_RGBA32F, GL_STATIC_DRAW, MatricesMaxSize },
 	{ TB_TBO_MATERIALS, "TBO_Materials", GL_RG16UI, GL_DYNAMIC_DRAW, MaterialsMaxSize },
 	{ TB_TBO_LIGHTS, "TBO_LightComponents", GL_RGBA16F, GL_DYNAMIC_DRAW, LightComponentsMaxSize }
 };
@@ -189,81 +189,54 @@ void R_SetTBOData(textureBuffer_t *tbo, int* data, int numComponents)
 	qglBindBuffer(GL_TEXTURE_BUFFER, 0);
 }
 
-void R_ClearMatricesTBO(void) 
+matrix_t worldModelMatrix = {	1.0f, 0.0f, 0.0f, 0.0f,
+								0.0f, 1.0f, 0.0f, 0.0f,
+								0.0f, 0.0f, 1.0f, 0.0f,
+								0.0f, 0.0f, 0.0f, 1.0f };
+
+void R_TBOUpdateModelMatricesBuffer(const trRefdef_t *refDef)
 {
 	if (tr.tbos[TBO_MATRICES] == NULL)
 		return;
-	
+
 	textureBuffer_t *tbo = tr.tbos[TBO_MATRICES];
-	ri.Printf(PRINT_ALL, "TBO_MATRICES Count was %i\n", tbo->numItems / 4);
+	GL_UnbindTBO(tbo);
 
-	GL_UnbindTBO(tr.tbos[TBO_MATRICES]);
-	
 	qglBindBuffer(GL_TEXTURE_BUFFER, tbo->tbonum);
-	tbo->buffer = (float*)qglMapBuffer(GL_TEXTURE_BUFFER, GL_WRITE_ONLY);
+	matricesBlock *buffer = (matricesBlock*)qglMapBuffer(GL_TEXTURE_BUFFER, GL_WRITE_ONLY);
 
-	tbo->numItems = 0;
+	assert(buffer != nullptr);
 
-	matrix_t worldModelMatrix;
-	Matrix16Identity(worldModelMatrix);
 	matrix_t invModelMatrix;
 	matrix_t transInvModelMatrix;
 	Matrix16Inverse(worldModelMatrix, invModelMatrix);
 	Matrix16Transpose(invModelMatrix, transInvModelMatrix);
 
-	for (int i = 0; i < 16; i++)
+	Matrix16Copy(worldModelMatrix, buffer[0].modelMatrix);
+	Matrix16Copy(invModelMatrix, buffer[0].normalMatrix);
+
+	for (int i = 0; i < refDef->num_entities; i++)
 	{
-		tbo->buffer[tbo->numItems++] = worldModelMatrix[i];
+		refEntity_t ent = refDef->entities[i].e;
+
+		if (ent.reType != RT_MODEL)
+			continue;
+
+		matrix_t modelMatrix = {	ent.axis[0][0], ent.axis[0][1], ent.axis[0][2], 0.f,
+									ent.axis[1][0], ent.axis[1][1], ent.axis[1][2], 0.f,
+									ent.axis[2][0], ent.axis[2][1], ent.axis[2][2], 0.f,
+									ent.origin[0],  ent.origin[1],  ent.origin[2],  1.f
+		};
+
+		Matrix16Inverse(modelMatrix, invModelMatrix);
+		Matrix16Transpose(invModelMatrix, transInvModelMatrix);
+
+		Matrix16Copy(modelMatrix, buffer[ent.hash + 1].modelMatrix);
+		Matrix16Copy(transInvModelMatrix, buffer[ent.hash + 1].normalMatrix);
 	}
 
-	for (int i = 0; i < 16; i++)
-	{
-		tbo->buffer[tbo->numItems++] = transInvModelMatrix[i];
-	}
-}
-
-uint16_t R_AddModelAndNormalMatrixToTBO(matrix_t modelMatrix) 
-{
-	if (tr.tbos[TBO_MATRICES] == NULL)
-	{
-		ri.Printf(PRINT_ALL, "TBO_MATRICES was NULL\n");
-		return 0;
-	}
-	
-	textureBuffer_t *tbo = tr.tbos[TBO_MATRICES];
-	int16_t startIndex = tbo->numItems / 4;
-
-	if (tbo->buffer == NULL)
-	{
-		ri.Printf(PRINT_ALL, "TBO_MATRICES Buffer was NULL\n");
-		return 0;
-	}
-
-	matrix_t invModelMatrix;
-	matrix_t transInvModelMatrix;
-	Matrix16Inverse(modelMatrix, invModelMatrix);
-	Matrix16Transpose(invModelMatrix, transInvModelMatrix);
-
-	for (int i = 0; i < 16; i++)
-	{
-		tbo->buffer[tbo->numItems++] = modelMatrix[i];
-	}
-	
-	for (int i = 0; i < 16; i++)
-	{
-		tbo->buffer[tbo->numItems++] = transInvModelMatrix[i];
-	}
-	
-	return startIndex + 1;
-}
-
-void R_StartBuildingMatricesBuffer(void)
-{
-	R_ClearMatricesTBO();
-}
-
-void R_FinishBuildingMatricesBuffer(void)
-{
 	qglUnmapBuffer(GL_TEXTURE_BUFFER);
-	GL_BindTBO(tr.tbos[TBO_MATRICES]);
+	qglBindBuffer(GL_TEXTURE_BUFFER, 0);
+
+	GL_BindTBO(tbo);
 }

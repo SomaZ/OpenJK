@@ -235,7 +235,7 @@ void main()
 
 	gl_Position = u_ModelViewProjectionMatrix * modelMatrix * vec4(position, 1.0);
 
-	position  = mat3(modelMatrix) * position;
+	position  = (modelMatrix * vec4(position, 1.0)).xyz;
 	normal    = mat3(normalMatrix) * normal;
 
   #if defined(PER_PIXEL_LIGHTING)

@@ -1063,7 +1063,6 @@ static void RB_BindTransformFeedbackBuffer(const bufferBinding_t& binding)
 
 static void RB_DrawItems( int numDrawItems, const DrawItem *drawItems, uint32_t *drawOrder )
 {
-	R_FinishBuildingMatricesBuffer();
 	for ( int i = 0; i < numDrawItems; ++i )
 	{
 		const DrawItem& drawItem = drawItems[drawOrder[i]];
@@ -1334,9 +1333,7 @@ static void RB_SubmitDrawSurfsForDepthFill(
 			
 			// pushBack the modelMatrix
 			if (entityNum == REFENTITYNUM_WORLD)
-				backEnd.currentEntity->modelMatrixId = 1;
-			else if (backEnd.currentEntity->modelMatrixId == 0)
-				backEnd.currentEntity->modelMatrixId = R_AddModelAndNormalMatrixToTBO(backEnd.ori.modelMatrix);
+				backEnd.currentEntity->e.hash = -1;
 		}
 
 		// add the triangles for this surface
@@ -1436,9 +1433,7 @@ static void RB_SubmitDrawSurfs(
 
 			// pushBack the modelMatrix
 			if (entityNum == REFENTITYNUM_WORLD)
-				backEnd.currentEntity->modelMatrixId = 1;
-			else if (backEnd.currentEntity->modelMatrixId == 0)
-				backEnd.currentEntity->modelMatrixId = R_AddModelAndNormalMatrixToTBO(backEnd.ori.modelMatrix);
+				backEnd.currentEntity->e.hash = -1;
 		}
 
 		// add the triangles for this surface
@@ -2911,8 +2906,6 @@ static const void	*RB_DrawSurfs( const void *data ) {
 
 	// clear the z buffer, set the modelview, etc
 	RB_BeginDrawingView();
-
-	R_StartBuildingMatricesBuffer();
 
 	RB_RenderAllDepthRelatedPasses(cmd->drawSurfs, cmd->numDrawSurfs);
 
