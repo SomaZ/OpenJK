@@ -337,6 +337,7 @@ Ghoul2 Insert End
 	}
 
 	memset (&ent, 0, sizeof(ent));
+	ent.hash = cent->hash;
 
 	// set frame
 
@@ -947,6 +948,7 @@ Ghoul2 Insert End
 	if ( cg_simpleItems.integer )
 	{
 		memset( &ent, 0, sizeof( ent ) );
+		ent.hash = cent->hash;
 		ent.reType = RT_SPRITE;
 		VectorCopy( cent->lerpOrigin, ent.origin );
 		ent.origin[2] += 16;
@@ -962,6 +964,7 @@ Ghoul2 Insert End
 	}
 
 	memset (&ent, 0, sizeof(ent));
+	ent.hash = cent->hash;
 
 	// items bob up and down continuously
 	if( item->giType == IT_HOLOCRON )
@@ -1231,6 +1234,7 @@ static void CG_Missile( centity_t *cent ) {
 
 	// create the render entity
 	memset (&ent, 0, sizeof(ent));
+	ent.hash = cent->hash;
 	VectorCopy( cent->lerpOrigin, ent.origin);
 	VectorCopy( cent->lerpOrigin, ent.oldorigin);
 /*
@@ -1316,6 +1320,7 @@ static void CG_Mover( centity_t *cent ) {
 
 	// create the render entity
 	memset (&ent, 0, sizeof(ent));
+	ent.hash = cent->hash;
 	//FIXME: why are these always 0, 0, 0???!
 	VectorCopy( cent->lerpOrigin, ent.origin);
 	VectorCopy( cent->lerpOrigin, ent.oldorigin);
@@ -1436,6 +1441,7 @@ void CG_Beam( centity_t *cent, int color ) {
 
 	// create the render entity
 	memset (&ent, 0, sizeof(ent));
+	ent.hash = cent->hash;
 	VectorCopy( s1->pos.trBase, ent.origin );
 	VectorCopy( s1->origin2, ent.oldorigin );
 	AxisClear( ent.axis );
@@ -1584,6 +1590,7 @@ static void CG_Portal( centity_t *cent ) {
 
 	// create the render entity
 	memset (&ent, 0, sizeof(ent));
+	ent.hash = cent->hash;
 	VectorCopy( cent->lerpOrigin, ent.origin );
 	VectorCopy( s1->origin2, ent.oldorigin );
 	ByteToDir( s1->eventParm, ent.axis[0] );
@@ -2340,6 +2347,7 @@ static void CG_Clouds( centity_t *cent )
 
 	// create the render entity
 	memset( &ent, 0, sizeof( ent ));
+	ent.hash = cent->hash;
 
 	VectorCopy( cent->lerpOrigin, ent.origin );
 
@@ -2412,6 +2420,8 @@ Ghoul2 Insert Start
 /*
 Ghoul2 Insert End
 */
+	if (cent->hash == 0)
+		cent->hash = cg.numHashedEntites++ + 2;
 
 	switch ( cent->currentState.eType ) {
 	default:

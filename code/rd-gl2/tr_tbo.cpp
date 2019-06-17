@@ -231,8 +231,8 @@ void R_TBOUpdateModelMatricesBuffer(const trRefdef_t *refDef)
 		Matrix16Inverse(modelMatrix, invModelMatrix);
 		Matrix16Transpose(invModelMatrix, transInvModelMatrix);
 
-		Matrix16Copy(modelMatrix, buffer[ent.hash + 1].modelMatrix);
-		Matrix16Copy(transInvModelMatrix, buffer[ent.hash + 1].normalMatrix);
+		Matrix16Copy(modelMatrix, buffer[ent.hash - 1].modelMatrix);
+		Matrix16Copy(transInvModelMatrix, buffer[ent.hash - 1].normalMatrix);
 	}
 
 	qglUnmapBuffer(GL_TEXTURE_BUFFER);

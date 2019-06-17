@@ -1653,7 +1653,7 @@ static void RB_IterateStagesGeneric( shaderCommands_t *input, const VertexArrays
 
 		uniformDataWriter.Start(sp);
 
-		if (input->shader->styles[0] != LIGHTMAP_2D)
+		if (backEnd.currentEntity->e.hash > 0)
 		{
 			matrix_t viewProjectionMatrix;
 			Matrix16Multiply(
@@ -1661,7 +1661,7 @@ static void RB_IterateStagesGeneric( shaderCommands_t *input, const VertexArrays
 				backEnd.viewParms.world.modelViewMatrix,
 				viewProjectionMatrix);
 			uniformDataWriter.SetUniformMatrix4x4(UNIFORM_MODELVIEWPROJECTIONMATRIX, viewProjectionMatrix);
-			uniformDataWriter.SetUniformInt(UNIFORM_MATRIX_INDEX, (backEnd.currentEntity->e.hash + 1) * 8);
+			uniformDataWriter.SetUniformInt(UNIFORM_MATRIX_INDEX, (backEnd.currentEntity->e.hash - 1) * 8);
 		}
 		else
 		{

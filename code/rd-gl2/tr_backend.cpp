@@ -1333,7 +1333,7 @@ static void RB_SubmitDrawSurfsForDepthFill(
 			
 			// pushBack the modelMatrix
 			if (entityNum == REFENTITYNUM_WORLD)
-				backEnd.currentEntity->e.hash = -1;
+				backEnd.currentEntity->e.hash = 1;
 		}
 
 		// add the triangles for this surface

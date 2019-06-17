@@ -6881,6 +6881,7 @@ Ghoul2 Insert Start
 		refEntity_t			ent;
 		vec3_t				tempAngles;
 		memset (&ent, 0, sizeof(ent));
+		ent.hash = cent->hash;
 
 		//FIXME: if at all possible, do all our sets before our gets to do only *1* G2 skeleton transform per render frame
 		CG_SetGhoul2Info(&ent, cent);

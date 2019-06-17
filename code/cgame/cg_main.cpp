@@ -2167,7 +2167,7 @@ void CG_DrawMiscEnts(void)
 				VectorCopy(MiscEnt->origin, refEnt.origin);
 				VectorCopy(cullOrigin, refEnt.lightingOrigin);
 				ScaleModelAxis(&refEnt);
-				refEnt.hash = MiscEnt->hash;
+				refEnt.hash = MiscEnt->hash + 2;
 				cgi_R_AddRefEntityToScene(&refEnt);
 			}
 		}
