@@ -2162,7 +2162,6 @@ static	void R_LoadSurfaces( world_t *worldData, lump_t *surfs, lump_t *verts, lu
 	worldData->surfaces = out;
 	worldData->numsurfaces = count;
 	worldData->surfacesViewCount = (int *)R_Hunk_Alloc ( count * sizeof(*worldData->surfacesViewCount), qtrue );
-	worldData->surfacesDlightBits = (int *)R_Hunk_Alloc ( count * sizeof(*worldData->surfacesDlightBits), qtrue);
 	worldData->surfacesPshadowBits = (int *)R_Hunk_Alloc ( count * sizeof(*worldData->surfacesPshadowBits), qtrue);
 
 	// load hdr vertex colors
@@ -3450,7 +3449,6 @@ static void R_MergeLeafSurfaces(world_t *worldData)
 	// Allocate merged surfaces
 	worldData->mergedSurfaces = (msurface_t *)R_Hunk_Alloc(sizeof(*worldData->mergedSurfaces) * numMergedSurfaces, qtrue);
 	worldData->mergedSurfacesViewCount = (int *)R_Hunk_Alloc(sizeof(*worldData->mergedSurfacesViewCount) * numMergedSurfaces, qtrue);
-	worldData->mergedSurfacesDlightBits = (int *)R_Hunk_Alloc(sizeof(*worldData->mergedSurfacesDlightBits) * numMergedSurfaces, qtrue);
 	worldData->mergedSurfacesPshadowBits = (int *)R_Hunk_Alloc(sizeof(*worldData->mergedSurfacesPshadowBits) * numMergedSurfaces, qtrue);
 	worldData->numMergedSurfaces = numMergedSurfaces;
 	

@@ -382,7 +382,7 @@ static void RB_SurfacePolychain( srfPoly_t *p ) {
 	tess.numVertexes = numv;
 }
 
-static void RB_SurfaceVertsAndIndexes( int numVerts, srfVert_t *verts, int numIndexes, glIndex_t *indexes, int dlightBits, int pshadowBits)
+static void RB_SurfaceVertsAndIndexes( int numVerts, srfVert_t *verts, int numIndexes, glIndex_t *indexes, int pshadowBits)
 {
 	int             i;
 	glIndex_t      *inIndex;
@@ -462,13 +462,6 @@ static void RB_SurfaceVertsAndIndexes( int numVerts, srfVert_t *verts, int numIn
 			*lightdir = R_VboPackNormal(dv->lightdir);
 	}
 
-#if 0  // nothing even uses vertex dlightbits
-	for ( i = 0 ; i < numVerts ; i++ ) {
-		tess.vertexDlightBits[ tess.numVertexes + i ] = dlightBits;
-	}
-#endif
-
-	tess.dlightBits |= dlightBits;
 	tess.pshadowBits |= pshadowBits;
 
 	tess.numVertexes += numVerts;
@@ -476,7 +469,7 @@ static void RB_SurfaceVertsAndIndexes( int numVerts, srfVert_t *verts, int numIn
 
 static qboolean RB_SurfaceVbo(
 		VBO_t *vbo, IBO_t *ibo, int numVerts, int numIndexes, int firstIndex,
-		int minIndex, int maxIndex, int dlightBits, int pshadowBits, qboolean shaderCheck)
+		int minIndex, int maxIndex, int pshadowBits, qboolean shaderCheck)
 {
 	int i, mergeForward, mergeBack;
 	GLvoid *firstIndexOffset, *lastIndexOffset;
@@ -496,7 +489,6 @@ static qboolean RB_SurfaceVbo(
 
 	RB_CheckVBOandIBO(vbo, ibo);
 
-	tess.dlightBits |= dlightBits;
 	tess.pshadowBits |= pshadowBits;
 
 	// merge this into any existing multidraw primitives
@@ -589,13 +581,13 @@ RB_SurfaceBSPTriangles
 */
 static void RB_SurfaceBSPTriangles( srfBspSurface_t *srf ) {
 	if( RB_SurfaceVbo (srf->vbo, srf->ibo, srf->numVerts, srf->numIndexes,
-				srf->firstIndex, srf->minIndex, srf->maxIndex, srf->dlightBits, srf->pshadowBits, qtrue ) )
+				srf->firstIndex, srf->minIndex, srf->maxIndex, srf->pshadowBits, qtrue ) )
 	{
 		return;
 	}
 
 	RB_SurfaceVertsAndIndexes(srf->numVerts, srf->verts, srf->numIndexes,
-			srf->indexes, srf->dlightBits, srf->pshadowBits);
+			srf->indexes, srf->pshadowBits);
 }
 
 
@@ -1730,13 +1722,13 @@ RB_SurfaceFace
 */
 static void RB_SurfaceBSPFace( srfBspSurface_t *srf ) {
 	if( RB_SurfaceVbo(srf->vbo, srf->ibo, srf->numVerts, srf->numIndexes,
-				srf->firstIndex, srf->minIndex, srf->maxIndex, srf->dlightBits, srf->pshadowBits, qtrue ) )
+				srf->firstIndex, srf->minIndex, srf->maxIndex, srf->pshadowBits, qtrue ) )
 	{
 		return;
 	}
 
 	RB_SurfaceVertsAndIndexes(srf->numVerts, srf->verts, srf->numIndexes,
-			srf->indexes, srf->dlightBits, srf->pshadowBits);
+			srf->indexes, srf->pshadowBits);
 }
 
 
@@ -1793,18 +1785,13 @@ static void RB_SurfaceBSPGrid( srfBspSurface_t *srf ) {
 	float	lodError;
 	int		lodWidth, lodHeight;
 	int		numVertexes;
-	int		dlightBits;
 	int     pshadowBits;
-	//int		*vDlightBits;
 
 	if( RB_SurfaceVbo (srf->vbo, srf->ibo, srf->numVerts, srf->numIndexes,
-				srf->firstIndex, srf->minIndex, srf->maxIndex, srf->dlightBits, srf->pshadowBits, qtrue ) )
+				srf->firstIndex, srf->minIndex, srf->maxIndex, srf->pshadowBits, qtrue ) )
 	{
 		return;
 	}
-
-	dlightBits = srf->dlightBits;
-	tess.dlightBits |= dlightBits;
 
 	pshadowBits = srf->pshadowBits;
 	tess.pshadowBits |= pshadowBits;
@@ -1873,7 +1860,6 @@ static void RB_SurfaceBSPGrid( srfBspSurface_t *srf ) {
 		lightCoords = tess.texCoords[numVertexes][1];
 		color = tess.vertexColors[numVertexes];
 		lightdir = &tess.lightdir[numVertexes];
-		//vDlightBits = &tess.vertexDlightBits[numVertexes];
 
 		for ( i = 0 ; i < rows ; i++ ) {
 			for ( j = 0 ; j < lodWidth ; j++ ) {
@@ -1917,8 +1903,6 @@ static void RB_SurfaceBSPGrid( srfBspSurface_t *srf ) {
 				{
 					*lightdir++ = R_VboPackNormal(dv->lightdir);
 				}
-
-				//*vDlightBits++ = dlightBits;
 			}
 		}
 
@@ -2077,7 +2061,7 @@ static void RB_SurfaceFlare(srfFlare_t *surf)
 static void RB_SurfaceVBOMesh(srfBspSurface_t * srf)
 {
 	RB_SurfaceVbo (srf->vbo, srf->ibo, srf->numVerts, srf->numIndexes, srf->firstIndex,
-			srf->minIndex, srf->maxIndex, srf->dlightBits, srf->pshadowBits, qfalse );
+			srf->minIndex, srf->maxIndex, srf->pshadowBits, qfalse );
 }
 
 void RB_SurfaceVBOMDVMesh(srfVBOMDVMesh_t * surface)

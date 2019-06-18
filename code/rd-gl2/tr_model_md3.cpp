@@ -323,7 +323,7 @@ void R_AddMD3Surfaces(trRefEntity_t *ent, int entityNum) {
 		// don't add third_person objects if not viewing through a portal
 		if (!personalModel)
 		{
-			R_AddDrawSurf((surfaceType_t *)&model->vboSurfaces[i], entityNum, shader, fogNum, qfalse, R_IsPostRenderEntity(ent), cubemapIndex, distance);
+			R_AddDrawSurf((surfaceType_t *)&model->vboSurfaces[i], entityNum, shader, fogNum, R_IsPostRenderEntity(ent), cubemapIndex, distance);
 		}
 
 		// we will add shadows even if the main object isn't visible in the view
@@ -334,7 +334,7 @@ void R_AddMD3Surfaces(trRefEntity_t *ent, int entityNum) {
 			&& fogNum == 0
 			&& !(ent->e.renderfx & (RF_NOSHADOW | RF_DEPTHHACK))
 			&& shader->sort == SS_OPAQUE) {
-			R_AddDrawSurf((surfaceType_t *)&model->vboSurfaces[i], entityNum, tr.shadowShader, 0, qfalse, qfalse, 0, distance);
+			R_AddDrawSurf((surfaceType_t *)&model->vboSurfaces[i], entityNum, tr.shadowShader, 0, qfalse, 0, distance);
 		}
 
 		// projection shadows work fine with personal models
@@ -342,7 +342,7 @@ void R_AddMD3Surfaces(trRefEntity_t *ent, int entityNum) {
 			&& fogNum == 0
 			&& (ent->e.renderfx & RF_SHADOW_PLANE)
 			&& shader->sort == SS_OPAQUE) {
-			R_AddDrawSurf((surfaceType_t *)&model->vboSurfaces[i], entityNum, tr.projectionShadowShader, 0, qfalse, qfalse, 0, distance);
+			R_AddDrawSurf((surfaceType_t *)&model->vboSurfaces[i], entityNum, tr.projectionShadowShader, 0, qfalse, 0, distance);
 		}
 
 		surface++;

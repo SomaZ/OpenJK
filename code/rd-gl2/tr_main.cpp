@@ -1780,7 +1780,7 @@ R_AddDrawSurf
 =================
 */
 void R_AddDrawSurf( surfaceType_t *surface, int entityNum, shader_t *shader,  int fogIndex,
-					int dlightMap, int postRender, int cubemap, float distance ) {
+					int postRender, int cubemap, float distance ) {
 	int index;
 	drawSurf_t *surf;
 
@@ -1805,7 +1805,6 @@ void R_AddDrawSurf( surfaceType_t *surface, int entityNum, shader_t *shader,  in
 	surf = tr.refdef.drawSurfs + index;
 
 	surf->sort = R_CreateSortKey(entityNum, shader->sortedIndex, cubemap, postRender);
-	surf->dlightBits = dlightMap;
 	surf->surface = surface;
 	surf->fogIndex = fogIndex;
 	surf->currentDistanceBucket = (int)(Q_min(distance / backEnd.viewParms.zFar, 1.0f) * 8);
@@ -1875,8 +1874,6 @@ static void R_AddEntitySurface(const trRefdef_t *refdef, trRefEntity_t *ent, int
 {
 	shader_t		*shader;
 
-	ent->needDlights = qfalse;
-
 	//
 	// the weapon model must be handled special --
 	// we don't want the hacked weapon position showing in 
@@ -1919,7 +1916,6 @@ static void R_AddEntitySurface(const trRefdef_t *refdef, trRefEntity_t *ent, int
 			entityNum,
 			shader,
 			R_SpriteFogNum(ent),
-			0,
 			R_IsPostRenderEntity(ent),
 			0 /* cubeMap */,
 			distance);
@@ -1935,7 +1931,6 @@ static void R_AddEntitySurface(const trRefdef_t *refdef, trRefEntity_t *ent, int
 				&entitySurface,
 				entityNum,
 				tr.defaultShader,
-				0,
 				0,
 				R_IsPostRenderEntity(ent),
 				0/* cubeMap */,
@@ -1975,7 +1970,6 @@ static void R_AddEntitySurface(const trRefdef_t *refdef, trRefEntity_t *ent, int
 					&entitySurface,
 					entityNum,
 					tr.defaultShader,
-					0,
 					0,
 					R_IsPostRenderEntity(ent),
 					0 /* cubeMap */,
@@ -2208,17 +2202,11 @@ void R_RenderView (viewParms_t *parms) {
 void R_RenderDlightCubemaps(const refdef_t *fd) 
 {
 	int i;
-
-	//unsigned int bufferDlightMask = tr.refdef.dlightMask;
-
+	
 	for (i = 0; i < tr.refdef.num_dlights; i++)
 	{
 		viewParms_t		shadowParms;
 		int j;
-
-		// use previous frame to determine visible dlights
-		//if ((1 << i) & bufferDlightMask)
-			//continue;
 
 		Com_Memset( &shadowParms, 0, sizeof( shadowParms ) );
 

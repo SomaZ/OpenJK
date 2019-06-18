@@ -97,20 +97,6 @@ out vec4 var_LightDir;
 out vec4 var_PrimaryLightDir;
 #endif
 
-mat4 GetModelMatrixFromTBO(int matrixIndex)
-{
-	return mat4(	texelFetch(u_Tbo_Matrices, matrixIndex + 0),
-					texelFetch(u_Tbo_Matrices, matrixIndex + 1),
-					texelFetch(u_Tbo_Matrices, matrixIndex + 2),
-					texelFetch(u_Tbo_Matrices, matrixIndex + 3));
-}
-mat3 GetNormalMatrixFromTBO(int matrixIndex)
-{
-	return mat3(	texelFetch(u_Tbo_Matrices, matrixIndex + 4).rgb,
-					texelFetch(u_Tbo_Matrices, matrixIndex + 5).rgb,
-					texelFetch(u_Tbo_Matrices, matrixIndex + 6).rgb);
-}
-
 #if defined(USE_TCGEN) || defined(USE_LIGHTMAP)
 vec2 GenTexCoords(int TCGen, vec3 position, vec3 normal, vec3 TCGenVector0, vec3 TCGenVector1)
 {
@@ -230,13 +216,18 @@ void main()
 	var_TexCoords.xy = texCoords;
 #endif
 
-	mat4 modelMatrix = GetModelMatrixFromTBO(u_Matrix_Index);
-	mat3 normalMatrix = GetNormalMatrixFromTBO(u_Matrix_Index);
-
-	gl_Position = u_ModelViewProjectionMatrix * modelMatrix * vec4(position, 1.0);
+	mat4 modelMatrix = mat4(	texelFetch(u_Tbo_Matrices, u_Matrix_Index + 0),
+								texelFetch(u_Tbo_Matrices, u_Matrix_Index + 1),
+								texelFetch(u_Tbo_Matrices, u_Matrix_Index + 2),
+								texelFetch(u_Tbo_Matrices, u_Matrix_Index + 3));
+	mat3 normalMatrix = mat3(	texelFetch(u_Tbo_Matrices, u_Matrix_Index + 4).rgb,
+								texelFetch(u_Tbo_Matrices, u_Matrix_Index + 5).rgb,
+								texelFetch(u_Tbo_Matrices, u_Matrix_Index + 6).rgb);	
 
 	position  = (modelMatrix * vec4(position, 1.0)).xyz;
 	normal    = mat3(normalMatrix) * normal;
+
+	gl_Position = u_ModelViewProjectionMatrix * vec4(position, 1.0);
 
   #if defined(PER_PIXEL_LIGHTING)
 	tangent   = mat3(normalMatrix) * tangent;

@@ -228,7 +228,6 @@ void R_AddWeatherSurfaces()
 			REFENTITYNUM_WORLD,
 			tr.weatherInternalShader,
 			0, /* fogIndex */
-			qfalse, /* dlightMap */
 			qfalse, /* postRender */
 			0, /* cubemapIndex */
 			0 /* distance */

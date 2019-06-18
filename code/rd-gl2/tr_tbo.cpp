@@ -100,7 +100,7 @@ struct tboBlockInfo_t
 	int size;
 };
 
-const int MatricesMaxSize =			sizeof(matricesBlock) * MAX_REFENTITIES;
+const int MatricesMaxSize =			sizeof(matricesBlock) * MAX_REFENTITIES/4;
 const int MaterialsMaxSize =		sizeof(shaderBlock) * MAX_SHADERS *
 									sizeof(stageBlock) * 4 + //just assume we have an average of 4 stages max else it would be MAX_SHADER_STAGES
 									sizeof(textureBlock) * MAX_DRAWIMAGES;
@@ -108,7 +108,7 @@ const int MaterialsMaxSize =		sizeof(shaderBlock) * MAX_SHADERS *
 const int LightComponentsMaxSize =	sizeof(dlight_t) * MAX_DLIGHTS;
 
 const tboBlockInfo_t tboBlocksInfo[TBO_COUNT] = {
-	{ TB_TBO_MATRICES, "TBO_Matrices", GL_RGBA32F, GL_STATIC_DRAW, MatricesMaxSize },
+	{ TB_TBO_MATRICES, "TBO_Matrices", GL_RGBA32F, GL_DYNAMIC_DRAW, MatricesMaxSize },
 	{ TB_TBO_MATERIALS, "TBO_Materials", GL_RG16UI, GL_DYNAMIC_DRAW, MaterialsMaxSize },
 	{ TB_TBO_LIGHTS, "TBO_LightComponents", GL_RGBA16F, GL_DYNAMIC_DRAW, LightComponentsMaxSize }
 };
@@ -230,6 +230,8 @@ void R_TBOUpdateModelMatricesBuffer(const trRefdef_t *refDef)
 
 		Matrix16Inverse(modelMatrix, invModelMatrix);
 		Matrix16Transpose(invModelMatrix, transInvModelMatrix);
+
+		assert(ent.hash - 1 < MatricesMaxSize);
 
 		Matrix16Copy(modelMatrix, buffer[ent.hash - 1].modelMatrix);
 		Matrix16Copy(transInvModelMatrix, buffer[ent.hash - 1].normalMatrix);

@@ -120,7 +120,7 @@ void R_AddPolygonSurfaces(const trRefdef_t *refdef) {
 		VectorSubtract(poly->verts[0].xyz, tr.refdef.vieworg, transformed);
 		float distance = VectorLength(transformed);
 
-		R_AddDrawSurf( ( surfaceType_t * )poly, REFENTITYNUM_WORLD, sh, poly->fogIndex, qfalse, qfalse, 0 /* cubemapIndex */ , distance);
+		R_AddDrawSurf( ( surfaceType_t * )poly, REFENTITYNUM_WORLD, sh, poly->fogIndex, qfalse, 0 /* cubemapIndex */ , distance);
 	}
 }
 

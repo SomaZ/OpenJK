@@ -63,20 +63,6 @@ out vec4 var_OldPosition;
 out mat4 var_ModelMatrix;
 #endif
 
-mat4 GetModelMatrixFromTBO(int matrixIndex)
-{
-	return mat4(	texelFetch(u_Tbo_Matrices, matrixIndex + 0),
-					texelFetch(u_Tbo_Matrices, matrixIndex + 1),
-					texelFetch(u_Tbo_Matrices, matrixIndex + 2),
-					texelFetch(u_Tbo_Matrices, matrixIndex + 3));
-}
-mat3 GetNormalMatrixFromTBO(int matrixIndex)
-{
-	return mat3(	texelFetch(u_Tbo_Matrices, matrixIndex + 4).rgb,
-					texelFetch(u_Tbo_Matrices, matrixIndex + 5).rgb,
-					texelFetch(u_Tbo_Matrices, matrixIndex + 6).rgb);
-}
-
 #if defined(USE_DEFORM_VERTEXES)
 float GetNoiseValue( float x, float y, float z, float t )
 {
@@ -291,22 +277,27 @@ void main()
 	normal = DeformNormal( position, normal );
 #endif
 
-	mat4 modelMatrix = GetModelMatrixFromTBO(u_Matrix_Index);
-	mat3 normalMatrix = GetNormalMatrixFromTBO(u_Matrix_Index);
-
-	gl_Position = u_ModelViewProjectionMatrix * modelMatrix * vec4(position, 1.0);
+	mat4 modelMatrix = mat4(	texelFetch(u_Tbo_Matrices, u_Matrix_Index + 0),
+								texelFetch(u_Tbo_Matrices, u_Matrix_Index + 1),
+								texelFetch(u_Tbo_Matrices, u_Matrix_Index + 2),
+								texelFetch(u_Tbo_Matrices, u_Matrix_Index + 3));
+	mat3 normalMatrix = mat3(	texelFetch(u_Tbo_Matrices, u_Matrix_Index + 4).rgb,
+								texelFetch(u_Tbo_Matrices, u_Matrix_Index + 5).rgb,
+								texelFetch(u_Tbo_Matrices, u_Matrix_Index + 6).rgb);	
 	
 	#if !defined(USE_CUBEMAP_TRANSFORMS)
-	#if defined(USE_G_BUFFERS)
-	var_CurrentPosition = gl_Position;
-	var_OldPosition = (u_PrevViewProjectionMatrix * modelMatrix) * vec4(position, 1.0);
-	#endif
 	position  = (modelMatrix * vec4(position, 1.0)).xyz;
 	#else
 	var_ModelMatrix = modelMatrix;
 	#endif
 
+	gl_Position = u_ModelViewProjectionMatrix * vec4(position, 1.0);
+
 	#if defined(USE_G_BUFFERS)
+		#if !defined(USE_CUBEMAP_TRANSFORMS)
+		var_CurrentPosition = gl_Position;
+		var_OldPosition = u_PrevViewProjectionMatrix * vec4(position, 1.0);
+		#endif
 		normal    = mat3(normalMatrix) * normal;
 		tangent   = mat3(normalMatrix) * tangent;
 		vec3 bitangent = cross(normal, tangent) * (attr_Tangent.w * 2.0 - 1.0);

@@ -1222,14 +1222,13 @@ static void RB_PrepareForEntity(int entityNum, int *oldDepthRange, float origina
 			depthRange = 1;
 		}
 	}
-	else {
+	else
+	{
 		backEnd.currentEntity = &tr.worldEntity;
 		backEnd.refdef.floatTime = originalTime;
 		backEnd.ori = backEnd.viewParms.world;
-
-		// we have to reset the shaderTime as well otherwise image animations on
-		// the world (like water) continue with the wrong frame
 		tess.shaderTime = backEnd.refdef.floatTime - tess.shader->timeOffset;
+		backEnd.currentEntity->e.hash = 1;
 	}
 
 	GL_SetModelviewMatrix(backEnd.ori.modelViewMatrix);
@@ -1330,10 +1329,6 @@ static void RB_SubmitDrawSurfsForDepthFill(
 		{
 			RB_PrepareForEntity(entityNum, &oldDepthRange, originalTime);
 			oldEntityNum = entityNum;
-			
-			// pushBack the modelMatrix
-			if (entityNum == REFENTITYNUM_WORLD)
-				backEnd.currentEntity->e.hash = 1;
 		}
 
 		// add the triangles for this surface
@@ -1358,7 +1353,6 @@ static void RB_SubmitDrawSurfs(
 	int oldSort = -1;
 	int oldFogNum = -1;
 	int oldDepthRange = 0;
-	int oldDlighted = 0;
 	int oldPostRender = 0;
 	int oldCubemapIndex = -1;
 
@@ -1370,19 +1364,16 @@ static void RB_SubmitDrawSurfs(
 		int postRender;
 		int entityNum;
 		int fogNum;
-		int dlighted;
 
 		R_DecomposeSort(drawSurf->sort, &entityNum, &shader, &cubemapIndex, &postRender);
 		assert(shader != nullptr);
 		fogNum = drawSurf->fogIndex;
-		dlighted = drawSurf->dlightBits;
 
 		if (shader == oldShader &&
 			fogNum == oldFogNum &&
 			postRender == oldPostRender &&
 			cubemapIndex == oldCubemapIndex &&
-			entityNum == oldEntityNum &&
-			dlighted == oldDlighted)
+			entityNum == oldEntityNum)
 		{
 			// fast path, same as previous sort
 			rb_surfaceTable[*drawSurf->surface](drawSurf->surface);
@@ -1397,7 +1388,6 @@ static void RB_SubmitDrawSurfs(
 		// entities merged into a single batch, like smoke and blood puff sprites
 		if ((shader != oldShader ||
 			fogNum != oldFogNum ||
-			dlighted != oldDlighted ||
 			postRender != oldPostRender ||
 			cubemapIndex != oldCubemapIndex ||
 			(entityNum != oldEntityNum && !shader->entityMergable)))
@@ -1411,7 +1401,6 @@ static void RB_SubmitDrawSurfs(
 			backEnd.pc.c_surfBatches++;
 			oldShader = shader;
 			oldFogNum = fogNum;
-			oldDlighted = dlighted;
 			oldPostRender = postRender;
 			oldCubemapIndex = cubemapIndex;
 		}
@@ -1419,21 +1408,7 @@ static void RB_SubmitDrawSurfs(
 		if (entityNum != oldEntityNum)
 		{
 			RB_PrepareForEntity(entityNum, &oldDepthRange, originalTime);
-
-			// set up the dynamic lighting if needed
-			if (entityNum == REFENTITYNUM_WORLD || backEnd.currentEntity->needDlights)
-			{
-				R_TransformDlights(
-					backEnd.refdef.num_dlights,
-					backEnd.refdef.dlights,
-					&backEnd.ori);
-			}
-
 			oldEntityNum = entityNum;
-
-			// pushBack the modelMatrix
-			if (entityNum == REFENTITYNUM_WORLD)
-				backEnd.currentEntity->e.hash = -1;
 		}
 
 		// add the triangles for this surface

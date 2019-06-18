@@ -393,7 +393,6 @@ typedef struct trRefEntity_s {
 
 	float		axisLength;		// compensate for non-normalized axis
 
-	qboolean	needDlights;	// true for bmodels that touch a dlight
 	qboolean	lightingCalculated;
 	qboolean	mirrored;		// mirrored matrix, needs reversed culling
 	vec3_t		lightDir;		// normalized direction towards light, in world space
@@ -1494,7 +1493,6 @@ typedef struct {
 	int			numDrawSurfs;
 	struct drawSurf_s	*drawSurfs;
 
-	unsigned int dlightMask;
 	int         num_pshadows;
 	struct pshadow_s *pshadows;
 
@@ -1636,7 +1634,6 @@ compared quickly during the qsorting process
 
 typedef struct drawSurf_s {
 	uint32_t sort; // bit combination for fast compares
-	uint32_t dlightBits;
 	surfaceType_t *surface; // any of surface*_t
 	int fogIndex;
 	int currentDistanceBucket;
@@ -1705,7 +1702,6 @@ typedef struct srfBspSurface_s
 	surfaceType_t   surfaceType;
 
 	// dynamic lighting information
-	int				dlightBits;
 	int             pshadowBits;
 
 	// culling information
@@ -1939,13 +1935,11 @@ typedef struct {
 	int			numsurfaces;
 	msurface_t	*surfaces;
 	int         *surfacesViewCount;
-	int         *surfacesDlightBits;
 	int			*surfacesPshadowBits;
 
 	int			numMergedSurfaces;
 	msurface_t	*mergedSurfaces;
 	int         *mergedSurfacesViewCount;
-	int         *mergedSurfacesDlightBits;
 	int			*mergedSurfacesPshadowBits;
 
 	int			nummarksurfaces;
@@ -2708,7 +2702,7 @@ void R_AddPolygonSurfaces(const trRefdef_t *refdef);
 
 void R_DecomposeSort(uint32_t sort, int *entityNum, shader_t **shader, int *cubemap, int *postRender);
 uint32_t R_CreateSortKey(int entityNum, int sortedShaderIndex, int cubemapIndex, int postRender);
-void R_AddDrawSurf( surfaceType_t *surface, int entityNum, shader_t *shader, int fogIndex, int dlightMap, int postRender, int cubemap, float distance);
+void R_AddDrawSurf( surfaceType_t *surface, int entityNum, shader_t *shader, int fogIndex, int postRender, int cubemap, float distance);
 bool R_IsPostRenderEntity(const trRefEntity_t *refEntity);
 
 void R_CalcTexDirs(vec3_t sdir, vec3_t tdir, const vec3_t v1, const vec3_t v2, const vec3_t v3, const vec2_t w1, const vec2_t w2, const vec2_t w3);
@@ -2866,7 +2860,6 @@ struct shaderCommands_s
 	int				cubemapIndex;
 	int				currentDistanceBucket;
 
-	int				dlightBits;	// or together of all vertexDlightBits
 	int				pshadowBits;
 
 	int				firstIndex;
@@ -2924,7 +2917,7 @@ WORLD MAP
 ============================================================
 */
 
-void R_AddBrushModelSurfaces( trRefEntity_t *e, int entityNum );
+void R_AddBrushModelSurfaces(trRefEntity_t *ent, int entityNum);
 void R_AddWorldSurfaces( viewParms_t *viewParms, trRefdef_t *refdef );
 
 /*
@@ -2944,9 +2937,7 @@ LIGHTS
 ============================================================
 */
 
-void R_DlightBmodel(bmodel_t *bmodel, trRefEntity_t *ent);
 void R_SetupEntityLighting( const trRefdef_t *refdef, trRefEntity_t *ent );
-void R_TransformDlights( int count, dlight_t *dl, orientationr_t *ori );
 int	R_LightForPoint( vec3_t point, vec3_t ambientLight, vec3_t directedLight, vec3_t lightDir );
 int	R_LightDirForPoint( vec3_t point, vec3_t lightDir, vec3_t normal, world_t *world );
 int	R_CubemapForPoint( const vec3_t point );
