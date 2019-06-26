@@ -4187,8 +4187,8 @@ void RE_LoadWorldMap( const char *name ) {
 
 	// set default tone mapping settings
 	tr.toneMinAvgMaxLevel[0] = -8.0f;
-	tr.toneMinAvgMaxLevel[1] = -2.0f;
-	tr.toneMinAvgMaxLevel[2] = 0.0f;
+	tr.toneMinAvgMaxLevel[1] = 0.0f;
+	tr.toneMinAvgMaxLevel[2] = 2.0f;
 
 	world_t *world = R_LoadBSP(name);
 	if (world == nullptr)
