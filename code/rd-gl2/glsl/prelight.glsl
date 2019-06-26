@@ -443,7 +443,7 @@ const vec3 BinarySearch(in vec3 dir, in vec3 hitCoord)
 		else
 			hitCoord -= dir;
     }
-	float hitScore = mix (1.0, 0.0, abs((1.0 / hitCoord.z) - textureLod(u_ShadowMap, hitCoord.xy, 0).r) * 12.0) ;
+	float hitScore = mix (1.0, 0.0, abs((1.0 / hitCoord.z) - textureLod(u_ShadowMap, hitCoord.xy, 0).r) * 18.0) ;
 
 	return vec3(hitCoord.xy, hitScore);
 }
@@ -591,7 +591,7 @@ vec4 traceSSRRay(in float roughness, in vec3 wsNormal, in vec3 E, in vec3 viewPo
 	vec3 reflection;
 	bool NdotR, VdotR;
 
-	for (int i = 0; i < 3; i++) 
+	for (int i = 0; i < 12; i++) 
 	{
 		sample = int(mod(sample + 3, SAMPLES));
 		vec2 Xi = halton[sample];
@@ -651,37 +651,36 @@ vec4 resolveSSRRay(	in sampler2D packedTexture,
 	const vec2 bufferScale = 2.0 / r_FBufInvScale;
 	vec4 diffuseSample	= vec4(0.0);
 	vec4 packedHitPos = texelFetch(packedTexture, coordinate, 0);
-
-	if (packedHitPos.a > 0.01)
-	{
-		float depth = textureLod(u_ScreenDepthMap, packedHitPos.xy , 1.0).r;
-		vec3 hitViewPos = WorldPosFromDepth(depth, packedHitPos.xy);
-
-		vec3 L  = normalize(hitViewPos - viewPos); 
-		vec3 E  = normalize(-viewPos);
-		vec3 H  = normalize(L + E);
 	
-		float NH = max(1e-8, dot(viewNormal, H));
-		float NE = max(1e-8, dot(viewNormal, E));
-		float NL = max(1e-8, dot(viewNormal, L));
+	float depth = textureLod(u_ScreenDepthMap, packedHitPos.xy , 1.0).r;
+	vec3 hitViewPos = WorldPosFromDepth(depth, packedHitPos.xy);
 
-		float weight = CalcSpecular(vec3(1.0), NH, NL, NE, 0.0, roughness) * packedHitPos.z * packedHitPos.a;
+	vec3 L  = normalize(hitViewPos - viewPos); 
+	vec3 E  = normalize(-viewPos);
+	vec3 H  = normalize(L + E);
 
-		float coneTangent = mix(0.0, roughness * (1.0 - brdfBias), NE * sqrt(roughness));
-		coneTangent *= mix(clamp (NE * 2.0, 0.0, 1.0), 1.0, sqrt(roughness));
+	float NH = max(1e-8, dot(viewNormal, H));
+	float NE = max(1e-8, dot(viewNormal, E));
+	float NL = max(1e-8, dot(viewNormal, L));
 
-		float intersectionCircleRadius = coneTangent * distance(hitViewPos, viewPos);
-		float mip = clamp(log2( intersectionCircleRadius ), 0.0, 4.0);
+	float weight = CalcSpecular(vec3(1.0), NH, NL, NE, 0.0, roughness) * packedHitPos.z;
 
-		vec2 velocity		= texture(velocityTexture, packedHitPos.xy).rg;
-		diffuseSample		= textureLod(u_ScreenImageMap, packedHitPos.xy - velocity, mip);
+	float coneTangent = mix(0.0, roughness * (1.0 - brdfBias), NE * sqrt(roughness));
+	coneTangent *= mix(clamp (NE * 2.0, 0.0, 1.0), 1.0, sqrt(roughness));
 
-		diffuseSample.rgb *= diffuseSample.rgb;
-		diffuseSample.a = packedHitPos.a;
-		diffuseSample *= weight;
+	float intersectionCircleRadius = coneTangent * distance(hitViewPos, viewPos);
+	float mip = clamp(log2( intersectionCircleRadius ), 0.0, 4.0);
+	
+	vec2 velocity		= texture(velocityTexture, packedHitPos.xy).rg;
+	diffuseSample		= textureLod(u_ScreenImageMap, packedHitPos.xy - velocity, mip);
 
-		weightSum += weight;
-	}
+	diffuseSample.rgb *= diffuseSample.rgb;
+	diffuseSample.a = packedHitPos.a;
+
+	diffuseSample.rgb /= 1.0 + luma(diffuseSample.rgb);
+	diffuseSample *= weight;
+	weightSum += weight;
+
 	return diffuseSample;
 }
 #endif
@@ -793,9 +792,11 @@ void main()
 			offsetUV = ivec2(offset[index] * (roughness * 3.0 + 1.0));
 			diffuseOut += resolveSSRRay(u_ScreenOffsetMap2, windowCoord + offsetUV, u_ShadowMap, viewPos, viewNormal, roughness, weightSum);
 		#endif
-}
+	}
 
 	diffuseOut /= weightSum;
+	diffuseOut.rgb /= 1.0 - luma(diffuseOut.rgb);
+	diffuseOut *= diffuseOut.a;
 
 #elif defined(TEMPORAL_FILTER)
 /*
@@ -862,11 +863,11 @@ SOFTWARE.
 	vec4 previous = texture(u_ScreenDepthMap, tc);
 
 	previous = clip_aabb(currentMin.xyz, currentMax.xyz, clamp(cmc, currentMin, currentMax), previous);
-	float temp = clamp(1.0 - (length(minVelocity * r_FBufScale) * 0.08), 0.7, 0.98);
+	float temp = clamp(1.0 - (length(minVelocity * r_FBufScale) * 0.16), 0.7, 0.98);
 
 	specularOut		= mix(cmc, previous, temp);
 	diffuseOut.rgb	= sqrt(specularOut.rgb * (specularAndGloss.rgb * EnvBRDF.x + EnvBRDF.y));
-	diffuseOut *= specularOut.a * specularOut.a;
+	diffuseOut.a	= 1.0 - specularOut.a;
 
 #elif defined(POINT_LIGHT)
 	vec4 lightVec		= vec4(var_Position.xyz - position + (N*0.01), var_Position.w);
