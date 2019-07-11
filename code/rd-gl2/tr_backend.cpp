@@ -2553,7 +2553,7 @@ void RB_RenderAllRealTimeLightTypes()
 	FBO_t *fbo = glState.currentFBO;
 	// clear all content of lighting buffers
 	FBO_Bind(tr.preLightFbo[PRELIGHT_DIFFUSE_SPECULAR_FBO]);
-	qglClearColor(0.f, 0.f, 0.f, 0.0f);
+	qglClearColor(0.f, 0.f, 0.f, 1.0f);
 	qglClear(GL_COLOR_BUFFER_BIT);
 
 	if ((backEnd.viewParms.flags & VPF_DEPTHSHADOW) ||
