@@ -231,12 +231,12 @@ vec3 CalcSpecular(
 	in float roughness
 )
 {
+	float denominator = max((4.0 * max(NE,0.0) * max(NL,0.0)),0.001);
 	float distrib = spec_D(NH,roughness);
 	float vis = spec_G(NL, NE, roughness);
 	#if defined(SSR_RESOLVE) || defined(SSR)
-		return distrib * vis;
+		return (distrib * vis) / denominator;
 	#else
-		float denominator = max((4.0 * max(NE,0.0) * max(NL,0.0)),0.001);
 		vec3 fresnel = spec_F(EH,specular);
 		return (distrib * fresnel * vis) / denominator;
 	#endif
@@ -628,9 +628,9 @@ vec4 traceSSRRay(in float roughness, in vec3 wsNormal, in vec3 E, in vec3 viewPo
 	screenCoord.z *= screenEdgefactor;
 	screenCoord.z *= clamp(fade, 0.0, 1.0);
 
-	float pdf = 1.0 / H.w;
+	float pdf = H.w / (4.0 * dot(E,H.xyz)) + 0.0001;
 	// return intersection, pdf and hitScore
-	return vec4(screenCoord.xy, pdf, clamp(screenCoord.z, 0.0, 1.0));
+	return vec4(screenCoord.xy, 1.0 / pdf, clamp(screenCoord.z, 0.0, 1.0));
 }
 
 #endif
@@ -665,7 +665,7 @@ vec4 resolveSSRRay(	in sampler2D packedTexture,
 
 	float weight = CalcSpecular(vec3(1.0), NH, NL, NE, 0.0, roughness) * packedHitPos.z;
 
-	float coneTangent = mix(0.0, roughness * (1.0 - brdfBias), NE * sqrt(roughness));
+	float coneTangent = mix(0.0, roughness, NE * sqrt(roughness));
 	coneTangent *= mix(clamp (NE * 2.0, 0.0, 1.0), 1.0, sqrt(roughness));
 
 	float intersectionCircleRadius = coneTangent * distance(hitViewPos, viewPos);
@@ -712,13 +712,7 @@ void main()
 	ivec2 windowCoord = ivec2(gl_FragCoord.xy);
 
 #if defined(SSR)
-	const vec2 jitter[4] = vec2[4](
-		vec2(0.0, 0.0),
-		vec2(1.0, 0.0),
-		vec2(1.0, 1.0),
-		vec2(0.0, 1.0)
-	);
-	vec2 coord = windowCoord + jitter[int(mod(u_ViewInfo.z, 4))];
+	vec2 coord = windowCoord + 0.5;
 	coord /= vec2(textureSize(u_ShadowMap, 0));
 	float depth = texture(u_ShadowMap, coord).r;
 
@@ -737,7 +731,7 @@ void main()
 #endif
 
 	vec4 normal = texture(u_NormalMap, coord);
-	float roughness = max(1.0 - normal.a, 0.01);
+	float roughness = max(1.0 - normal.a, 0.02);
 
 	//vec3 N = normalize(DecodeNormal(normal.rg));
 	vec3 N = normalize(normal.rgb);
@@ -847,8 +841,8 @@ SOFTWARE.
 	vec4 currentMax = max(ctl, max(ctc, max(ctr, max(cml, max(cmc, max(cmr, max(cbl, max(cbc, cbr))))))));
 
 	vec4 center = (currentMin + currentMax) * 0.5;
-	currentMin = (currentMin - center) * 128.0 + center;
-	currentMax = (currentMax - center) * 128.0 + center;
+	currentMin = (currentMin - center) * 6.0 + center;
+	currentMax = (currentMax + center) * 6.0 - center;
 
 	vec2 uvTraced = texture(u_ScreenOffsetMap, tc).xy;
 	vec2 minVelocity = texture(u_ShadowMap, uvTraced).xy;
@@ -863,7 +857,7 @@ SOFTWARE.
 	vec4 previous = texture(u_ScreenDepthMap, tc);
 
 	previous = clip_aabb(currentMin.xyz, currentMax.xyz, clamp(cmc, currentMin, currentMax), previous);
-	float temp = clamp(1.0 - (length(minVelocity * r_FBufScale) * 0.16), 0.7, 0.98);
+	float temp = clamp(1.0 - (length(minVelocity * r_FBufScale) * 0.16), min(0.2 + (roughness * 1.7), 0.98), 0.98);
 
 	specularOut		= mix(cmc, previous, temp);
 	diffuseOut.rgb	= sqrt(specularOut.rgb * (specularAndGloss.rgb * EnvBRDF.x + EnvBRDF.y));
