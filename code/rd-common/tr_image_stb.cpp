@@ -70,7 +70,7 @@ void LoadHDR ( const char *filename, byte **data, int *width, int *height, int *
 	{
 		return;
 	}
-	stbi_set_flip_vertically_on_load(1);
+	stbi_set_flip_vertically_on_load(0);
 	*data = (byte *)stbi_loadf_from_memory(buf, len, &x, &y, &n, 3);
 
 	ri.FS_FreeFile(buf);

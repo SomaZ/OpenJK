@@ -393,8 +393,12 @@ static	void R_LoadLightmaps( world_t *worldData, lump_t *l, lump_t *surfs ) {
 				if (hdrLightmap)
 				{
 					vec4_t color;
+					int column = (j % lightmapWidth);
+					int rowIndex = ((lightmapHeight - (int)floor(j / lightmapHeight))-1) * lightmapHeight;
 
-					memcpy(color, &hdrL[j * 3], 12);
+					int index = column + rowIndex;
+
+					memcpy(color, &hdrL[index * 3], 12);
 
 					color[3] = 1.0f;
 
@@ -3221,7 +3225,7 @@ void R_RenderMissingCubemaps()
 
 	if (!tr.skyboxCubemap.image)
 	{
-		tr.skyboxCubemap.image = R_CreateImage("*skyboxCubemap", NULL, r_cubemapSize->integer, r_cubemapSize->integer, 0, IMGTYPE_COLORALPHA, IMGFLAG_MIPMAP | IMGFLAG_CUBEMAP, cubemapFormat);
+		tr.skyboxCubemap.image = R_CreateImage("*skyboxCubemap", NULL, r_cubemapSize->integer, r_cubemapSize->integer, 0, IMGTYPE_COLORALPHA, IMGFLAG_MIPMAP | IMGFLAG_NOLIGHTSCALE | IMGFLAG_CUBEMAP, cubemapFormat);
 		for (int j = 0; j < 6; j++)
 		{
 			RE_ClearScene();
@@ -3252,7 +3256,7 @@ void R_RenderMissingCubemaps()
 											r_cubemapSize->integer * 2, 
 											0, 
 											IMGTYPE_COLORALPHA, 
-											IMGFLAG_MIPMAP, 
+											IMGFLAG_MIPMAP | IMGFLAG_NOLIGHTSCALE,
 											cubemapFormat) :
 										R_CreateImage(
 											va("*cubeMap%d", i), 
@@ -3261,7 +3265,7 @@ void R_RenderMissingCubemaps()
 											r_cubemapSize->integer, 
 											0, 
 											IMGTYPE_COLORALPHA, 
-											IMGFLAG_CLAMPTOEDGE | IMGFLAG_MIPMAP | IMGFLAG_CUBEMAP, 
+											IMGFLAG_CLAMPTOEDGE | IMGFLAG_MIPMAP | IMGFLAG_NOLIGHTSCALE | IMGFLAG_CUBEMAP,
 											cubemapFormat);
 
 			for (int j = 0; j < 6; j++)
@@ -4187,8 +4191,8 @@ void RE_LoadWorldMap( const char *name ) {
 
 	// set default tone mapping settings
 	tr.toneMinAvgMaxLevel[0] = -8.0f;
-	tr.toneMinAvgMaxLevel[1] = -2.0f;
-	tr.toneMinAvgMaxLevel[2] = 0.0f;
+	tr.toneMinAvgMaxLevel[1] = 0.0f;
+	tr.toneMinAvgMaxLevel[2] = 2.0f;
 
 	world_t *world = R_LoadBSP(name);
 	if (world == nullptr)

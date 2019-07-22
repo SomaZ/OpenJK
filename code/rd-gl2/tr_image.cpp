@@ -2117,6 +2117,33 @@ static void Upload32(byte *data, int width, int height, imgType_t type, int flag
 	int			i, c;
 	byte		*scan;
 
+	if (internalFormat == GL_RGBA32F || internalFormat == GL_RGB32F)
+	{
+		int dataFormat = GL_RGB;
+		int dataType = GL_FLOAT;
+
+		if (ShouldUseImmutableTextures(flags, internalFormat))
+		{
+			int numLevels = (flags & IMGFLAG_MIPMAP) ? CalcNumMipmapLevels(width, height) : 1;
+
+			qglTexStorage2D(GL_TEXTURE_2D, numLevels, internalFormat, width, height);
+
+			if (data != NULL)
+			{
+				qglTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, width, height, dataFormat, dataType, data);
+			}
+		}
+		else
+		{
+			qglTexImage2D(GL_TEXTURE_2D, 0, internalFormat, width, height, 0, dataFormat, dataType, data);
+		}
+
+		if (flags & IMGFLAG_MIPMAP)
+			qglGenerateMipmap(GL_TEXTURE_2D);
+
+		return;
+	}
+
 	if (!IsPowerOfTwo(width) || !IsPowerOfTwo(height))
 	{
 		RawImage_ScaleToPower2(&data, &width, &height, &scaled_width, &scaled_height, type, flags, &resampledBuffer);

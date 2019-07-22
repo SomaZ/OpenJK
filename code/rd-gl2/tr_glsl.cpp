@@ -407,6 +407,7 @@ static size_t GLSL_GetShaderHeader(
 		numRoughnessMips = MAX(1, numRoughnessMips - 4);
 
 		Q_strcat(dest, size, va("#define ROUGHNESS_MIPS float(%i)\n", numRoughnessMips));
+		Q_strcat(dest, size, va("#define CUBEMAP_RESOLUTION float(%i)\n", r_cubemapSize->integer));
 
 		if (r_cubeMapping->integer > 1)
 			Q_strcat(dest, size, "#define EQUIRECTANGULAR_CUBEMAPS\n");
