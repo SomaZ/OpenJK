@@ -2292,7 +2292,7 @@ static void ParseSkyParms( const char **text ) {
 	static const char	*suf[6] = {"rt", "lf", "bk", "ft", "up", "dn"};
 	char		pathname[MAX_QPATH];
 	int			i;
-	int imgFlags = IMGFLAG_MIPMAP | IMGFLAG_PICMIP;
+	int imgFlags = IMGFLAG_MIPMAP | IMGFLAG_PICMIP | IMGFLAG_NOLIGHTSCALE;
 
 	if (shader.noTC)
 		imgFlags |= IMGFLAG_NO_COMPRESSION;

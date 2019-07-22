@@ -2129,6 +2129,9 @@ static const void *RB_PrefilterEnvMap(const void *data) {
 		vec4_t viewInfo;
 		VectorSet4(viewInfo, cmd->cubeSide, level, numRoughnessMips, level / numRoughnessMips);
 		GLSL_SetUniformVec4(&tr.prefilterEnvMapShader, UNIFORM_VIEWINFO, viewInfo); 
+
+		qglTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAX_LEVEL, level- 1);
+
 		qglDrawArrays(GL_TRIANGLES, 0, 3);
 
 		if (r_cubeMapping->integer > 1)
@@ -3645,9 +3648,9 @@ const void *RB_BuildSphericalHarmonics(const void *data)
 
 						VectorSet2(uv, (float)u / (float)shSize, (float)v / (float)shSize);
 						VectorSet(colorSample,
-							pow((p[0]), 2.f),
-							pow((p[1]), 2.f),
-							pow((p[2]), 2.f)
+							sRGBtoRGB(p[0]),
+							sRGBtoRGB(p[1]),
+							sRGBtoRGB(p[2])
 							);
 
 						//TODO: weight with solid angle!
@@ -3668,7 +3671,7 @@ const void *RB_BuildSphericalHarmonics(const void *data)
 			// scale spherical harmonics coefficients by number of samples
 			for (int i = 0; i < 9; i++)
 			{
-				VectorScale(shC->coefficents[i], M_PI/(float)numSamples, shC->coefficents[i]);
+				VectorScale(shC->coefficents[i], 1.0/(float)numSamples, shC->coefficents[i]);
 			}
 			buildedSphericalHarmonics++;
 		}

@@ -797,7 +797,7 @@ void main()
 	reflectance += CalcSpecular(specular.rgb, NH, NL, NE, fresnel, roughness);
   #endif
 
-	out_Color.rgb  = lightColor   * reflectance * (attenuation * NL);
+	out_Color.rgb  = lightColor * reflectance * (attenuation * NL);
 	if (u_EnableTextures.x == 0.0)
 		out_Color.rgb += ambientColor * diffuse.rgb;
 
