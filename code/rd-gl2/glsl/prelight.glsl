@@ -150,7 +150,7 @@ float linearDepth(in float depthSample, in float zNear, in float zFar)
 float depthSample(in float linearDepth, in float zNear, in float zFar)
 {
     float nonLinearDepth = (zFar + zNear - 2.0 * zNear * zFar / linearDepth) / (zFar - zNear);
-    nonLinearDepth = (nonLinearDepth + 1.0) / 2.0;
+    nonLinearDepth = (nonLinearDepth + 1.0) * 0.5;
     return nonLinearDepth;
 }
 
@@ -591,7 +591,7 @@ vec4 traceSSRRay(in float roughness, in vec3 wsNormal, in vec3 E, in vec3 viewPo
 	vec3 reflection;
 	bool NdotR, VdotR;
 
-	for (int i = 0; i < 12; i++) 
+	for (int i = 0; i < 3; i++) 
 	{
 		sample = int(mod(sample + 3, SAMPLES));
 		vec2 Xi = halton[sample];
@@ -713,7 +713,7 @@ void main()
 
 #if defined(SSR)
 	vec2 coord = windowCoord + 0.5;
-	coord /= vec2(textureSize(u_ShadowMap, 0));
+	coord *= 2.0 * r_FBufInvScale;
 	float depth = texture(u_ShadowMap, coord).r;
 
 	if (depth < (u_ViewInfo.y - 0.1))
@@ -763,16 +763,16 @@ void main()
 	const vec2 offset[12] = vec2[12](
 		vec2(0.0, 0.0),
 		vec2(-1.0, 1.0),
-		vec2(0.0, 1.0),
-		vec2(1.0, -1.0),
+		vec2(0.0, 2.0),
+		vec2(2.0, -1.0),
 		vec2(0.0, 0.0),
 		vec2(0.0, -1.0),
 		vec2(-1.0, 0.0),
-		vec2(-1.0, -1.0),
+		vec2(-2.0, -2.0),
 		vec2(0.0, 0.0),
-		vec2(1.0, 0.0),
+		vec2(2.0, 0.0),
 		vec2(1.0, 1.0),
-		vec2(0.0, -1.0)
+		vec2(0.0, -2.0)
 	);
 
 	for( int i = 0; i < samples; i++)

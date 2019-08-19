@@ -2618,7 +2618,7 @@ void RB_RenderAllRealTimeLightTypes()
 		GLSL_SetUniformVec3(sp, UNIFORM_VIEWUP, viewBasis[2]);
 		GLSL_SetUniformVec3(sp, UNIFORM_VIEWORIGIN, backEnd.viewParms.ori.origin);
 		const float samples = 64.0f;
-		vec4_t viewInfo = { tr.viewParms.zNear, tr.viewParms.zFar, Q_flrand(0.f, samples), Q_flrand(32.f, samples) };
+		vec4_t viewInfo = { tr.viewParms.zNear, tr.viewParms.zFar, Q_flrand(-9.f, 9.f), Q_flrand(samples / 2.0f, samples) };
 		GLSL_SetUniformVec4(sp, UNIFORM_VIEWINFO, viewInfo);
 		
 		matrix_t invModelViewMatrix;
@@ -3157,10 +3157,7 @@ void RB_StoreFrameData() {
 	RB_SetGL2D();
 
 	//store viewProjectionMatrix for reprojecting
-	Matrix16Multiply(backEnd.viewParms.projectionMatrix, backEnd.ori.modelViewMatrix, tr.preViewProjectionMatrix);
-
-	//store renderDepth for reprojecting
-	//FBO_BlitFromTexture(tr.renderDepthImage, NULL, NULL, tr.prevDepthFbo, NULL, NULL, NULL, 0);
+	Matrix16Multiply(backEnd.viewParms.projectionMatrix, backEnd.viewParms.world.modelViewMatrix, tr.preViewProjectionMatrix);
 
 	// build blured image buffer for ssr
 	int width = tr.renderImage->width;
