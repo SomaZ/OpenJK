@@ -1869,11 +1869,31 @@ int C_GetLevel(void)
 	return tr.currentLevel;
 }
 
+#ifndef JKA_MP
+static qboolean gbAllowScreenDissolve = qtrue;
+#endif // !JKA_MP
+
 void C_LevelLoadEnd(void)
 {
+#ifdef JKA_MP
 	CModelCache->LevelLoadEnd(qfalse);
 	ri.SND_RegisterAudio_LevelLoadEnd(qfalse);
 	ri.S_RestartMusic();
+#else
+	CModelCache->LevelLoadEnd(qfalse);
+	//RE_RegisterImages_LevelLoadEnd();
+	ri.SND_RegisterAudio_LevelLoadEnd(qfalse);
+
+	if (gbAllowScreenDissolve)
+	{
+		// TODO: Implement InitDissolve
+		//RE_InitDissolve(qfalse);
+	}
+
+	ri.S_RestartMusic();
+
+	*(ri.gbAlreadyDoingLoad()) = qfalse;
+#endif // JKA_MP
 }
 
 //bool inServer = false;

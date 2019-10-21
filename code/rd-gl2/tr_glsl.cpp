@@ -53,6 +53,7 @@ static uniformInfo_t uniformsInfo[] =
 	{ "u_LevelsMap",  GLSL_INT, 1 },
 	{ "u_CubeMap",    GLSL_INT, 1 },
 	{ "u_EnvBrdfMap", GLSL_INT, 1 },
+	{ "u_RandomMap",  GLSL_INT, 1 },
 
 	{ "u_ScreenImageMap", GLSL_INT, 1 },
 	{ "u_ScreenDepthMap", GLSL_INT, 1 },
@@ -1680,6 +1681,7 @@ static int GLSL_LoadGPUProgramPrelight(
 		GLSL_SetUniformInt(&tr.prelightShader[i], UNIFORM_SCREENOFFSETMAP, 4);
 		GLSL_SetUniformInt(&tr.prelightShader[i], UNIFORM_SCREENOFFSETMAP2, 5);
 		GLSL_SetUniformInt(&tr.prelightShader[i], UNIFORM_ENVBRDFMAP, 7);
+		GLSL_SetUniformInt(&tr.prelightShader[i], UNIFORM_RANDOMMAP, 11);
 		
 		GLSL_SetUniformInt(&tr.prelightShader[i], UNIFORM_SHADOWMAP, 6);
 		GLSL_SetUniformInt(&tr.prelightShader[i], UNIFORM_SHADOWMAP2, 8);
@@ -2760,7 +2762,8 @@ void GLSL_LoadGPUShaders()
 	numEtcShaders += GLSL_LoadGPUProgramShadowMask(builder, allocator);
 	numEtcShaders += GLSL_LoadGPUProgramSSAO(builder, allocator);
 	numEtcShaders += GLSL_LoadGPUProgramRefraction(builder, allocator);
-	numEtcShaders += GLSL_LoadGPUProgramPrefilterEnvMap(builder, allocator);
+	if (r_cubeMapping->integer)
+		numEtcShaders += GLSL_LoadGPUProgramPrefilterEnvMap(builder, allocator);
 	numEtcShaders += GLSL_LoadGPUProgramDepthBlur(builder, allocator);
 	numEtcShaders += GLSL_LoadGPUProgramGaussianBlur(builder, allocator);
 	numEtcShaders += GLSL_LoadGPUProgramDynamicGlowUpsample(builder, allocator);

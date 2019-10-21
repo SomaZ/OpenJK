@@ -554,9 +554,9 @@ void main()
 	out_Color	= vec4(N, specular.a);
 
 	#if !defined(USE_CUBEMAP_TRANSFORMS)
-		vec2 a = (var_CurrentPosition.xy / var_CurrentPosition.w) * 0.5 + 0.5;
-		vec2 b = (var_OldPosition.xy / var_OldPosition.w) * 0.5 + 0.5;
-		out_Velocity = (a - b);
+		vec2 a = var_CurrentPosition.xy / var_CurrentPosition.w;
+		vec2 b = var_OldPosition.xy / var_OldPosition.w;
+		out_Velocity = (a - b) * 0.5;
 	#endif
 #endif
 }
