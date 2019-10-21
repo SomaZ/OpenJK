@@ -524,9 +524,7 @@ void RB_BeginDrawingView (void) {
 	backEnd.projection2D = qfalse;
 
 	// clear content of the pre buffers
-	if (r_ssr->integer &&
-		(backEnd.viewParms.targetFbo == NULL ||
-		 backEnd.viewParms.targetFbo == tr.renderFbo))
+	if (r_ssr->integer)
 	{
 		FBO_Bind(tr.preBuffersFbo);
 		qglClearColor(0.0f, 0.0f, 0.0f, 0.0f);
@@ -3433,6 +3431,9 @@ const void *RB_PostProcess(const void *data)
 
 		FBO_BlitFromTexture (tr.glowFboScaled[0]->colorImage[0], NULL, NULL, NULL, NULL, NULL, color, blendFunc);
 	}
+
+	qglBindFramebuffer(GL_FRAMEBUFFER, 0);
+	glState.currentFBO = NULL;
 
 	backEnd.framePostProcessed = qtrue;
 

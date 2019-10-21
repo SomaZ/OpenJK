@@ -761,6 +761,8 @@ const void *RB_TakeScreenshotCmd(const void *data) {
 	if (tess.numIndexes)
 		RB_EndSurface();
 
+	qglReadBuffer(GL_COLOR_ATTACHMENT0);
+
 	switch (cmd->format) {
 	case SSF_JPEG:
 		RB_TakeScreenshotJPEG(cmd->x, cmd->y, cmd->width, cmd->height, cmd->fileName);
