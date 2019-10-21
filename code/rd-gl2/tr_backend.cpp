@@ -2601,6 +2601,7 @@ void RB_RenderAllRealTimeLightTypes()
 	{
 		GL_BindToTMU(tr.prevRenderDepthImage, 6);
 		GL_BindToTMU(tr.prevRenderImage, 0);
+		GL_BindToTMU(tr.randomImage, 11);
 
 		FBO_Bind(tr.preLightFbo[PRELIGHT_PRE_SSR_FBO]);
 		qglClear(GL_COLOR_BUFFER_BIT);
@@ -2618,7 +2619,7 @@ void RB_RenderAllRealTimeLightTypes()
 		GLSL_SetUniformVec3(sp, UNIFORM_VIEWUP, viewBasis[2]);
 		GLSL_SetUniformVec3(sp, UNIFORM_VIEWORIGIN, backEnd.viewParms.ori.origin);
 		const float samples = 64.0f;
-		vec4_t viewInfo = { tr.viewParms.zNear, tr.viewParms.zFar, Q_flrand(-9.f, 9.f), Q_flrand(samples / 2.0f, samples) };
+		vec4_t viewInfo = { tr.viewParms.zNear, tr.viewParms.zFar, tr.frameCount % 8, Q_flrand(samples / 2.0f, samples) };
 		GLSL_SetUniformVec4(sp, UNIFORM_VIEWINFO, viewInfo);
 		
 		matrix_t invModelViewMatrix;
@@ -3342,7 +3343,7 @@ const void *RB_PostProcess(const void *data)
 	if (r_debugVisuals->integer)
 	{
 		vec4i_t dstBox;
-		VectorSet4(dstBox, 0, glConfig.vidHeight - 256, 256, 256);
+		/*VectorSet4(dstBox, 0, glConfig.vidHeight - 256, 256, 256);
 		FBO_BlitFromTexture(tr.preSSRImage[0], NULL, NULL, NULL, dstBox, NULL, NULL, 0);
 		VectorSet4(dstBox, 0, glConfig.vidHeight - 512, 256, 256);
 		FBO_BlitFromTexture(tr.preSSRImage[1], NULL, NULL, NULL, dstBox, NULL, NULL, 0);
@@ -3357,8 +3358,8 @@ const void *RB_PostProcess(const void *data)
 		VectorSet4(dstBox, 1024, glConfig.vidHeight - 256, 256, 256);
 		FBO_BlitFromTexture(tr.specularLightingImage, NULL, NULL, NULL, dstBox, NULL, NULL, 0);
 		VectorSet4(dstBox, 1280, glConfig.vidHeight - 256, 256, 256);
-		FBO_BlitFromTexture(tr.normalBufferImage, NULL, NULL, NULL, dstBox, NULL, NULL, 0);
-		VectorSet4(dstBox, 1536, glConfig.vidHeight - 256, 256, 256);
+		FBO_BlitFromTexture(tr.normalBufferImage, NULL, NULL, NULL, dstBox, NULL, NULL, 0);*/
+		VectorSet4(dstBox, 0, 0, glConfig.vidWidth, glConfig.vidHeight);
 		FBO_BlitFromTexture(tr.resolveImage, NULL, NULL, NULL, dstBox, NULL, NULL, 0);
 	}
 
