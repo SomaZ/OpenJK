@@ -2132,7 +2132,7 @@ void RB_StageIteratorGeneric( void )
 	// update vertex buffer data
 	// 
 	uint32_t vertexAttribs = RB_CalcShaderVertexAttribs( input->shader );
-	if (tess.useInternalVBO)
+	if ( input->useInternalVBO )
 	{
 		RB_DeformTessGeometry();
 		RB_UpdateVBOs(vertexAttribs);
@@ -2146,7 +2146,7 @@ void RB_StageIteratorGeneric( void )
 	// vertex arrays
 	//
 	VertexArraysProperties vertexArrays;
-	if ( tess.useInternalVBO )
+	if ( input->useInternalVBO )
 	{
 		CalculateVertexArraysProperties(vertexAttribs, &vertexArrays);
 		for ( int i = 0; i < vertexArrays.numVertexArrays; i++ )
@@ -2160,7 +2160,10 @@ void RB_StageIteratorGeneric( void )
 		CalculateVertexArraysFromVBO(vertexAttribs, glState.currentVBO, &vertexArrays);
 	}
 
-	if (backEnd.renderPass != MAIN_PASS)
+	if (input->shader == tr.shadowShader && backEnd.renderPass == MAIN_PASS && r_shadows->integer == 2) {
+		RB_ShadowTessEnd( input, &vertexArrays );
+	}
+	else if (backEnd.renderPass != MAIN_PASS)
 	{
 		RB_IterateStagesGeneric( input, &vertexArrays );
 	}
@@ -2257,11 +2260,6 @@ void RB_EndSurface( void ) {
 	}	
 	if (input->xyz[SHADER_MAX_VERTEXES-1][0] != 0) {
 		ri.Error (ERR_DROP, "RB_EndSurface() - SHADER_MAX_VERTEXES hit");
-	}
-
-	if ( tess.shader == tr.shadowShader ) {
-		RB_ShadowTessEnd();
-		return;
 	}
 
 	// for debugging of sort order issues, stop rendering after a given sort value

@@ -2516,6 +2516,7 @@ typedef struct trGlobals_s {
 	shaderProgram_t refractionShader[REFRACTION_COUNT];
 	shaderProgram_t shadowmapShader;
 	shaderProgram_t pshadowShader;
+	shaderProgram_t volumeShadowShader;
 	shaderProgram_t down4xShader;
 	shaderProgram_t bokehShader;
 	shaderProgram_t tonemapShader;
@@ -2939,7 +2940,7 @@ SHADOWS
 ============================================================
 */
 
-void RB_ShadowTessEnd( void );
+void RB_ShadowTessEnd( shaderCommands_t *input, const VertexArraysProperties *vertexArrays );
 void RB_ShadowFinish( void );
 void RB_ProjectionShadowDeform( void );
 

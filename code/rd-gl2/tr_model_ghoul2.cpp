@@ -2334,11 +2334,11 @@ void RenderSurfaces(CRenderSurface &RS, const trRefEntity_t *ent, int entityNum)
 		}
 
 		// stencil shadows can't do personal models unless I polyhedron clip
-		if (!RS.personalModel
-			&& r_shadows->integer == 2
-			&& RS.fogNum == 0
-			&& !(RS.renderfx & (RF_NOSHADOW | RF_DEPTHHACK))
-			&& shader->sort == SS_OPAQUE) {
+		if (!RS.personalModel &&
+			r_shadows->integer == 2 &&
+			RS.fogNum == 0 &&
+			(RS.renderfx & (RF_NOSHADOW | RF_DEPTHHACK)) &&
+			shader->sort == SS_OPAQUE) {
 
 			CRenderableSurface *newSurf = AllocRS();
 			newSurf->vboMesh = &RS.currentModel->data.glm->vboModels[RS.lod].vboMeshes[RS.surfaceNum];
