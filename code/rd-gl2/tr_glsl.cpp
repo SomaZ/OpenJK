@@ -134,6 +134,7 @@ static uniformInfo_t uniformsInfo[] =
 	{ "u_VertexLerp" ,   GLSL_FLOAT, 1 },
 	{ "u_NormalScale",   GLSL_VEC4, 1 },
 	{ "u_SpecularScale", GLSL_VEC4, 1 },
+	{ "u_Disintegration", GLSL_VEC4, 1 },
 
 	{ "u_ViewInfo",				GLSL_VEC4, 1 },
 	{ "u_ViewOrigin",			GLSL_VEC3, 1 },
@@ -351,9 +352,13 @@ static size_t GLSL_GetShaderHeader(
 			"#define alphaGen_t\n"
 			"#define AGEN_LIGHTING_SPECULAR %i\n"
 			"#define AGEN_PORTAL %i\n"
+			"#define AGEN_DISINTEGRATE1 %i\n"
+			"#define AGEN_DISINTEGRATE2 %i\n"
 			"#endif\n",
 			AGEN_LIGHTING_SPECULAR,
-			AGEN_PORTAL));
+			AGEN_PORTAL, 
+			AGEN_DISINTEGRATE1,
+			AGEN_DISINTEGRATE2));
 
 	Q_strcat(dest, size,
 		va("#ifndef texenv_t\n"
@@ -600,8 +605,6 @@ static void GLSL_BindShaderInterface(shaderProgram_t *program)
 		"attr_Tangent",  // ATTR_INDEX_TANGENT
 		"attr_Normal",  // ATTR_INDEX_NORMAL
 		"attr_Color",  // ATTR_INDEX_COLOR
-		"attr_PaintColor",  // ATTR_INDEX_PAINTCOLOR
-		"attr_LightDirection",  // ATTR_INDEX_LIGHTDIRECTION
 		"attr_BoneIndexes",  // ATTR_INDEX_BONE_INDEXES
 		"attr_BoneWeights",  // ATTR_INDEX_BONE_WEIGHTS
 		"attr_Position2",  // ATTR_INDEX_POSITION2
@@ -1820,15 +1823,6 @@ static int GLSL_LoadGPUProgramLightAll(
 
 		extradefines[0] = '\0';
 
-		if (r_dlightMode->integer >= 2)
-			Q_strcat(extradefines, sizeof(extradefines), "#define USE_SHADOWMAP\n");
-
-		if (1)
-			Q_strcat(extradefines, sizeof(extradefines), "#define SWIZZLE_NORMALMAP\n");
-
-		if (r_hdr->integer && !glRefConfig.floatLightmap)
-			Q_strcat(extradefines, sizeof(extradefines), "#define RGBM_LIGHTMAP\n");
-
 		if (lightType)
 		{
 			Q_strcat(extradefines, sizeof(extradefines), "#define USE_LIGHT\n");
@@ -1845,7 +1839,7 @@ static int GLSL_LoadGPUProgramLightAll(
 				if (r_deluxeMapping->integer && !useFastLight)
 					Q_strcat(extradefines, sizeof(extradefines), "#define USE_DELUXEMAP\n");
 
-				attribs |= ATTR_TEXCOORD1 | ATTR_LIGHTDIRECTION;
+				attribs |= ATTR_TEXCOORD1;
 				break;
 			}
 
@@ -1858,7 +1852,6 @@ static int GLSL_LoadGPUProgramLightAll(
 			case LIGHTDEF_USE_LIGHT_VERTEX:
 			{
 				Q_strcat(extradefines, sizeof(extradefines), "#define USE_LIGHT_VERTEX\n");
-				attribs |= ATTR_LIGHTDIRECTION;
 				break;
 			}
 
@@ -1894,9 +1887,7 @@ static int GLSL_LoadGPUProgramLightAll(
 		{
 			Q_strcat(extradefines, sizeof(extradefines), "#define USE_SHADOWMAP\n");
 
-			if (r_sunlightMode->integer == 1)
-				Q_strcat(extradefines, sizeof(extradefines), "#define SHADOWMAP_MODULATE\n");
-			else if (r_sunlightMode->integer == 2)
+			if (r_sunlightMode->integer > 0)
 				Q_strcat(extradefines, sizeof(extradefines), "#define USE_PRIMARY_LIGHT\n");
 		}
 
@@ -2173,7 +2164,7 @@ static int GLSL_LoadGPUProgramVShadow(
 
 	extradefines[0] = '\0';
 	Q_strcat(extradefines, sizeof(extradefines), "#define USE_SKELETAL_ANIMATION\n"); 
-	uint32_t shaderTypes = GPUSHADER_VERTEX | GPUSHADER_GEOMETRY | GPUSHADER_FRAGMENT;
+	uint32_t shaderTypes = GPUSHADER_VERTEX | GPUSHADER_GEOMETRY;
 
 	if (!GLSL_LoadGPUShader(builder, &tr.volumeShadowShader, "shadowvolume", attribs, NO_XFB_VARS,
 		extradefines, *programDesc, shaderTypes))
@@ -2962,8 +2953,6 @@ void GL_VertexArraysToAttribs(vertexAttribute_t *attribs,
 		{ 4, GL_FALSE, GL_UNSIGNED_INT_2_10_10_10_REV, GL_TRUE }, // tangent
 		{ 4, GL_FALSE, GL_UNSIGNED_INT_2_10_10_10_REV, GL_TRUE }, // normal
 		{ 4, GL_FALSE, GL_FLOAT, GL_FALSE }, // color
-		{ 0, GL_FALSE, GL_NONE, GL_FALSE }, // paint color
-		{ 4, GL_FALSE, GL_UNSIGNED_INT_2_10_10_10_REV, GL_TRUE }, // light direction
 		{ 4, GL_TRUE,  GL_UNSIGNED_BYTE, GL_FALSE }, // bone indices
 		{ 4, GL_FALSE, GL_UNSIGNED_BYTE, GL_TRUE }, // bone weights
 		{ 3, GL_FALSE, GL_FLOAT, GL_FALSE }, // pos2

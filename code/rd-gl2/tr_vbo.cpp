@@ -399,9 +399,6 @@ void CalculateVertexArraysProperties(uint32_t attributes, VertexArraysProperties
 
 		if (attributes & ATTR_COLOR)
 			AddVertexArray(properties, ATTR_INDEX_COLOR, sizeof(tess.vertexColors[0]), 0, properties->vertexDataSize, tess.vertexColors);
-
-		if (attributes & ATTR_LIGHTDIRECTION)
-			AddVertexArray(properties, ATTR_INDEX_LIGHTDIRECTION, sizeof(tess.lightdir[0]), 0, properties->vertexDataSize, tess.lightdir);
 	}
 	else
 	{
@@ -411,7 +408,6 @@ void CalculateVertexArraysProperties(uint32_t attributes, VertexArraysProperties
 		AddVertexArray(properties, ATTR_INDEX_NORMAL, sizeof(tess.normal[0]), 0, properties->vertexDataSize, tess.normal);
 		AddVertexArray(properties, ATTR_INDEX_TANGENT, sizeof(tess.tangent[0]), 0, properties->vertexDataSize, tess.tangent);
 		AddVertexArray(properties, ATTR_INDEX_COLOR, sizeof(tess.vertexColors[0]), 0, properties->vertexDataSize, tess.vertexColors);
-		AddVertexArray(properties, ATTR_INDEX_LIGHTDIRECTION, sizeof(tess.lightdir[0]), 0, properties->vertexDataSize, tess.lightdir);
 	}
 
 	for ( int i = 0; i < properties->numVertexArrays; i++ )
