@@ -6,12 +6,6 @@ set -x
 host="$1"
 shift 1
 
-# macOS is special
-if [ "${TRAVIS_OS_NAME}" = "osx" ]; then
-	brew install libpng sdl2 --universal
-	exit 0
-fi
-
 sudo apt-get update -yq
 
 # This is what Travis does using the apt-addon. Didn't want to duplicate a load

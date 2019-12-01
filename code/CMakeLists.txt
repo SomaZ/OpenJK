@@ -1,5 +1,5 @@
 #============================================================================
-# Copyright (C) 2013 - 2015, OpenJK contributors
+# Copyright (C) 2013 - 2018, OpenJK contributors
 #
 # This file is part of the OpenJK source code.
 #
@@ -402,6 +402,12 @@ if(BuildSPEngine)
 		endif(WIN32)
 
 		if(MakeApplicationBundles)
+			install(CODE "
+				include(BundleUtilities)
+				set(BU_CHMOD_BUNDLE_ITEMS ON)
+				fixup_bundle(\"${CMAKE_BINARY_DIR}/${ProjectName}.app\" \"\" \"\")
+				"
+				COMPONENT Runtime)
 			install(TARGETS ${ProjectName}
 				BUNDLE
 				DESTINATION ${InstallDir}
