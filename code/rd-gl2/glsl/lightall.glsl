@@ -24,10 +24,6 @@ in uvec4 attr_BoneIndexes;
 in vec4 attr_BoneWeights;
 #endif
 
-#if defined(USE_LIGHT) && !defined(USE_LIGHT_VECTOR)
-in vec3 attr_LightDirection;
-#endif
-
 #if defined(USE_DELUXEMAP)
 uniform vec4   u_EnableTextures; // x = normal, y = deluxe, z = specular, w = cube
 #endif
@@ -54,6 +50,9 @@ uniform vec4 u_BaseColor;
 uniform vec4 u_VertColor;
 uniform mat4 u_ModelMatrix;
 uniform mat4 u_NormalMatrix;
+
+uniform int u_AlphaGen;
+uniform vec4 u_Disintegration; // origin, threshhold
 
 #if defined(USE_VERTEX_ANIMATION)
 uniform float u_VertexLerp;
@@ -154,7 +153,6 @@ vec2 ModTexCoords(vec2 st, vec3 position, vec4 texMatrix, vec4 offTurb)
 }
 #endif
 
-
 float CalcLightAttenuation(float distance, float radius)
 {
 	float d = pow(distance / radius, 4.0);
@@ -167,6 +165,43 @@ float CalcLightAttenuation(float distance, float radius)
 	return clamp(attenuation, 0.0, 1.0);
 }
 
+vec4 CalcColor(vec3 position)
+{
+	vec4 color = u_VertColor * attr_Color + u_BaseColor;
+
+	if (u_AlphaGen == AGEN_DISINTEGRATE1)
+	{
+		vec3 delta = u_Disintegration.xyz - position;
+		float distance = dot(delta, delta);
+		if (distance < u_Disintegration.w)
+		{
+			color *= 0.0;
+		}
+		else if (distance < u_Disintegration.w + 60.0)
+		{
+			color *= vec4(0.0, 0.0, 0.0, 1.0);
+		}
+		else if (distance < u_Disintegration.w + 150.0)
+		{
+			color *= vec4(0.435295, 0.435295, 0.435295, 1.0);
+		}
+		else if (distance < u_Disintegration.w + 180.0)
+		{
+			color *= vec4(0.6862745, 0.6862745, 0.6862745, 1.0);
+		}
+
+	}
+	else if (u_AlphaGen == AGEN_DISINTEGRATE2)
+	{
+		vec3 delta = u_Disintegration.xyz - position;
+		float distance = dot(delta, delta);
+		if (distance < u_Disintegration.w)
+		{
+			color *= 0.0;
+		}
+	}
+	return color;
+}
 
 void main()
 {
@@ -213,6 +248,21 @@ void main()
 	var_TexCoords.xy = texCoords;
 #endif
 
+    if ( u_FXVolumetricBase > 0.0 )
+	{
+		vec3 viewForward = u_ViewForward;
+
+		float d = clamp(dot(normalize(viewForward), normalize(normal)), 0.0, 1.0);
+		d = d * d;
+		d = d * d;
+
+		var_Color = vec4(u_FXVolumetricBase * (1.0 - d));
+	}
+	else
+	{
+		var_Color = CalcColor(position);
+	}
+
 	gl_Position = u_ModelViewProjectionMatrix * vec4(position, 1.0);
 
 	position  = (u_ModelMatrix * vec4(position, 1.0)).xyz;
@@ -225,36 +275,14 @@ void main()
 #if defined(USE_LIGHT_VECTOR)
 	vec3 L = u_LightOrigin.xyz - (position * u_LightOrigin.w);
 #elif defined(PER_PIXEL_LIGHTING)
-	vec3 L = attr_LightDirection * 2.0 - vec3(1.0);
-	L = (u_ModelMatrix * vec4(L, 0.0)).xyz;
+	vec3 L = vec3(0.0);
 #endif
 
 #if defined(USE_LIGHTMAP)
 	var_TexCoords.zw = GenTexCoords(u_TCGen1, vec3(0.0), vec3(0.0), vec3(0.0), vec3(0.0));
 #endif
 
-	if ( u_FXVolumetricBase > 0.0 )
-	{
-		vec3 viewForward = u_ViewForward;
-
-		float d = clamp(dot(normalize(viewForward), normalize(normal)), 0.0, 1.0);
-		d = d * d;
-		d = d * d;
-
-		var_Color = vec4(u_FXVolumetricBase * (1.0 - d));
-	}
-	else
-	{
-		var_Color = u_VertColor * attr_Color + u_BaseColor;
-
-#if defined(USE_LIGHT_VECTOR) && defined(USE_FAST_LIGHT)
-		float lightDist = length(L);
-		float attenuation = CalcLightAttenuation(lightDist, u_LightRadius);
-		float NL = clamp(dot(normalize(normal), L) / lightDist, 0.0, 1.0);
-
-		var_Color.rgb *= u_DirectedLight * (u_LightRadius + float(u_LightRadius < 1.0)) * (attenuation * NL) + u_AmbientLight;
-#endif
-	}
+	
 
 #if defined(USE_PRIMARY_LIGHT) || defined(USE_SHADOWMAP)
 	var_PrimaryLightDir.xyz = u_PrimaryLightOrigin.xyz - (position * u_PrimaryLightOrigin.w);
@@ -386,11 +414,7 @@ out vec4 out_Glow;
 #if defined(USE_PARALLAXMAP)
 float SampleDepth(sampler2D normalMap, vec2 t)
 {
-  #if defined(SWIZZLE_NORMALMAP)
-	return 1.0 - texture(normalMap, t).r;
-  #else
-	return 1.0 - texture(normalMap, t).a;
-  #endif
+  return 1.0 - texture(normalMap, t).r;
 }
 
 float RayIntersectDisplaceMap(vec2 dp, vec2 ds, sampler2D normalMap)
@@ -552,12 +576,7 @@ vec3 CalcNormal( in vec3 vertexNormal, in vec2 texCoords, in mat3 tangentToWorld
 	vec3 N = vertexNormal;
 
 #if defined(USE_NORMALMAP)
-  #if defined(SWIZZLE_NORMALMAP)
 	N.xy = texture(u_NormalMap, texCoords).ag - vec2(0.5);
-  #else
-	N.xy = texture(u_NormalMap, texCoords).rg - vec2(0.5);
-  #endif
-
 	N.xy *= u_NormalScale.xy;
 	N.z = sqrt(clamp((0.25 - N.x * N.x) - N.y * N.y, 0.0, 1.0));
 	N = tangentToWorld * N;
@@ -662,15 +681,6 @@ void main()
 	vec3 gridCell = (position - u_LightGridOrigin) * u_LightGridCellInverseSize * invGridSize;
 #endif
 
-#if defined(USE_LIGHTMAP)
-	vec4 lightmapColor = texture(u_LightMap, var_TexCoords.zw);
-  #if defined(RGBM_LIGHTMAP)
-	lightmapColor.rgb *= lightmapColor.a;
-  #endif
-	//lightmapColor.rgb *= lightmapColor.rgb;
-	//lightmapColor.rgb = sqrt(lightmapColor.rgb);
-#endif
-
 	vec2 texCoords = var_TexCoords.xy;
 	vec4 diffuse;
 
@@ -688,17 +698,16 @@ void main()
 	L /= lightDist;
 
 	vec3 ambientLight = texture(u_LightGridAmbientLightMap, gridCell).rgb * isLightgrid;
-	//ambientLight *= ambientLight;
 
 	vertexColor = var_Color.rgb * var_Color.rgb;
 	#if defined(USE_LIGHT_VECTOR)
 	  L -= normalize(texture(u_LightGridDirectionMap, gridCell).rgb * 2.0 - vec3(1.0)) * isLightgrid;
 	  vec3 directedLight = texture(u_LightGridDirectionalLightMap, gridCell).rgb * isLightgrid;
-	  //directedLight *= directedLight;
 	#endif
 
 	ambientColor = ambientLight * vertexColor;
   #if defined(USE_LIGHTMAP)
+    vec4 lightmapColor = texture(u_LightMap, var_TexCoords.zw);
 	lightColor	 = lightmapColor.rgb * vertexColor;
 	attenuation  = 1.0;
   #elif defined(USE_LIGHT_VECTOR)
@@ -709,7 +718,6 @@ void main()
 		attenuation *= getShadowValue(var_LightDir);
 	}
 	#endif
-	
   #elif defined(USE_LIGHT_VERTEX)
 	lightColor	 = vertexColor;
 	attenuation  = 1.0;
@@ -741,15 +749,7 @@ void main()
 	N = CalcNormal(var_Normal.xyz, texCoords, tangentToWorld);
 
   #if defined(USE_SHADOWMAP) 
-	vec2 shadowTex = gl_FragCoord.xy * r_FBufInvScale;
-	float shadowValue = texture(u_ShadowMap, shadowTex).r;
-
-	// surfaces not facing the light are always shadowed
-	shadowValue *= clamp(dot(N, var_PrimaryLightDir.xyz), 0.0, 1.0);
-
-    #if defined(SHADOWMAP_MODULATE)
-	lightColor *= shadowValue * (1.0 - u_PrimaryLightAmbient.r) + u_PrimaryLightAmbient.r;
-    #endif
+	
   #endif
 
   #if defined(USE_LIGHTMAP) || defined(USE_LIGHT_VERTEX)
@@ -767,7 +767,7 @@ void main()
   #if defined(USE_SPECULARMAP)
 	vec4 specular = texture(u_SpecularMap, texCoords);
   #else
-	vec4 specular = vec4(1.0);
+	vec4 specular = vec4(0.04);
   #endif
 	specular *= u_SpecularScale;
 
@@ -860,15 +860,12 @@ void main()
 	vec3 fresnel2 = spec_F(EH2, specular.rgb);
 	
 	reflectance  = CalcSpecular(specular.rgb, NH2, NL2, NE, fresnel2, roughness);
-
-	// bit of a hack, with modulated shadowmaps, ignore diffuse
-    #if !defined(SHADOWMAP_MODULATE)
 	reflectance += CalcDiffuse(diffuse.rgb, fresnel2, roughness);
-    #endif
 
-	lightColor = u_PrimaryLightColor * var_Color.rgb;
+	lightColor = u_PrimaryLightColor;
 
     #if defined(USE_SHADOWMAP)
+	float shadowValue = texelFetch(u_ShadowMap, windowCoordinate, 0).r;
 	lightColor *= shadowValue;
     #endif
 

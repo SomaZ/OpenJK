@@ -860,19 +860,13 @@ void Multiply_3x4Matrix(mdxaBone_t *out, const  mdxaBone_t *in2, const mdxaBone_
 
 static int G2_GetBonePoolIndex(const mdxaHeader_t *pMDXAHeader, int iFrame, int iBone)
 {
-	assert(iFrame >= 0 && iFrame<pMDXAHeader->numFrames);
-	assert(iBone >= 0 && iBone<pMDXAHeader->numBones);
-	const int iOffsetToIndex = (iFrame * pMDXAHeader->numBones * 3) + (iBone * 3);
+	assert(iFrame >= 0 && iFrame < pMDXAHeader->numFrames);
+	assert(iBone >= 0 && iBone < pMDXAHeader->numBones);
 
+	const int iOffsetToIndex = (iFrame * pMDXAHeader->numBones * 3) + (iBone * 3);
 	mdxaIndex_t *pIndex = (mdxaIndex_t *)((byte*)pMDXAHeader + pMDXAHeader->ofsFrames + iOffsetToIndex);
 
-#ifdef Q3_BIG_ENDIAN
-	int tmp = pIndex->iIndex & 0xFFFFFF00;
-	LL(tmp);
-	return tmp;
-#else
-	return pIndex->iIndex & 0x00FFFFFF;
-#endif
+	return (pIndex->iIndex[2] << 16) + (pIndex->iIndex[1] << 8) + (pIndex->iIndex[0]);
 }
 
 
@@ -2334,11 +2328,11 @@ void RenderSurfaces(CRenderSurface &RS, const trRefEntity_t *ent, int entityNum)
 		}
 
 		// stencil shadows can't do personal models unless I polyhedron clip
-		if (!RS.personalModel
-			&& r_shadows->integer == 2
-			&& RS.fogNum == 0
-			&& !(RS.renderfx & (RF_NOSHADOW | RF_DEPTHHACK))
-			&& shader->sort == SS_OPAQUE) {
+		if (!RS.personalModel &&
+			r_shadows->integer == 2 &&
+			RS.fogNum == 0 &&
+			(RS.renderfx & (RF_NOSHADOW | RF_DEPTHHACK)) &&
+			shader->sort == SS_OPAQUE) {
 
 			CRenderableSurface *newSurf = AllocRS();
 			newSurf->vboMesh = &RS.currentModel->data.glm->vboModels[RS.lod].vboMeshes[RS.surfaceNum];

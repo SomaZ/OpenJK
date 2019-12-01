@@ -41,6 +41,8 @@ uniform mat4 u_ModelViewProjectionMatrix;
 uniform mat4 u_PrevViewProjectionMatrix;
 uniform mat4 u_ModelMatrix;
 uniform mat4 u_NormalMatrix;
+uniform int u_AlphaGen;
+uniform vec4 u_Disintegration; // origin, threshhold
 
 #if defined(USE_VERTEX_ANIMATION)
 uniform float u_VertexLerp;
@@ -50,6 +52,7 @@ uniform mat4x3 u_BoneMatrices[20];
 
 out vec4 var_TexCoords;
 out vec3 var_Position;
+out float var_Alpha;
 
 #if defined(USE_G_BUFFERS)
 out vec4 var_Normal;
@@ -236,6 +239,44 @@ vec2 ModTexCoords(vec2 st, vec3 position, vec4 texMatrix, vec4 offTurb)
 	return st2 + texOffset * amplitude;	
 }
 
+vec4 CalcColor(vec3 position)
+{
+	vec4 color = vec4(1.0);
+
+	if (u_AlphaGen == AGEN_DISINTEGRATE1)
+	{
+		vec3 delta = u_Disintegration.xyz - position;
+		float distance = dot(delta, delta);
+		if (distance < u_Disintegration.w)
+		{
+			color *= 0.0;
+		}
+		else if (distance < u_Disintegration.w + 60.0)
+		{
+			color *= vec4(0.0, 0.0, 0.0, 1.0);
+		}
+		else if (distance < u_Disintegration.w + 150.0)
+		{
+			color *= vec4(0.435295, 0.435295, 0.435295, 1.0);
+		}
+		else if (distance < u_Disintegration.w + 180.0)
+		{
+			color *= vec4(0.6862745, 0.6862745, 0.6862745, 1.0);
+		}
+
+	}
+	else if (u_AlphaGen == AGEN_DISINTEGRATE2)
+	{
+		vec3 delta = u_Disintegration.xyz - position;
+		float distance = dot(delta, delta);
+		if (distance < u_Disintegration.w)
+		{
+			color *= 0.0;
+		}
+	}
+	return color;
+}
+
 void main()
 {
 #if defined(USE_VERTEX_ANIMATION)
@@ -280,7 +321,7 @@ void main()
 #endif
 
 	gl_Position = u_ModelViewProjectionMatrix * vec4(position, 1.0);
-
+	var_Alpha = CalcColor(position).a;
 	#if !defined(USE_CUBEMAP_TRANSFORMS)
 	#if defined(USE_G_BUFFERS)
 	var_CurrentPosition = gl_Position;
@@ -379,6 +420,7 @@ in vec3	  fs_Position;
 in vec4   var_TexCoords;
 in vec3	  var_Position;
 #endif
+in float  var_Alpha;
 
 #if defined(USE_G_BUFFERS)
 
@@ -528,7 +570,7 @@ void main()
   #endif
 #endif
 	vec4 diffuse = texture(u_DiffuseMap, texCoords);
-	
+	diffuse.a *= var_Alpha;
 	if (u_AlphaTestFunction == ATEST_CMP_GE){
 		if (diffuse.a < u_AlphaTestValue)
 			discard;

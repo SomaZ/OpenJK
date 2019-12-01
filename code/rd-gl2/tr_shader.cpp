@@ -2977,16 +2977,6 @@ static void ComputeVertexAttribs(void)
 			{
 				shader.vertexAttribs |= ATTR_TANGENT;
 			}
-
-			switch (pStage->glslShaderIndex & LIGHTDEF_LIGHTTYPE_MASK)
-			{
-				case LIGHTDEF_USE_LIGHTMAP:
-				case LIGHTDEF_USE_LIGHT_VERTEX:
-					shader.vertexAttribs |= ATTR_LIGHTDIRECTION;
-					break;
-				default:
-					break;
-			}
 		}
 
 		for (i = 0; i < NUM_TEXTURE_BUNDLES; i++)

@@ -134,6 +134,7 @@ static uniformInfo_t uniformsInfo[] =
 	{ "u_VertexLerp" ,   GLSL_FLOAT, 1 },
 	{ "u_NormalScale",   GLSL_VEC4, 1 },
 	{ "u_SpecularScale", GLSL_VEC4, 1 },
+	{ "u_Disintegration", GLSL_VEC4, 1 },
 
 	{ "u_ViewInfo",				GLSL_VEC4, 1 },
 	{ "u_ViewOrigin",			GLSL_VEC3, 1 },
@@ -351,9 +352,13 @@ static size_t GLSL_GetShaderHeader(
 			"#define alphaGen_t\n"
 			"#define AGEN_LIGHTING_SPECULAR %i\n"
 			"#define AGEN_PORTAL %i\n"
+			"#define AGEN_DISINTEGRATE1 %i\n"
+			"#define AGEN_DISINTEGRATE2 %i\n"
 			"#endif\n",
 			AGEN_LIGHTING_SPECULAR,
-			AGEN_PORTAL));
+			AGEN_PORTAL, 
+			AGEN_DISINTEGRATE1,
+			AGEN_DISINTEGRATE2));
 
 	Q_strcat(dest, size,
 		va("#ifndef texenv_t\n"
@@ -600,8 +605,6 @@ static void GLSL_BindShaderInterface(shaderProgram_t *program)
 		"attr_Tangent",  // ATTR_INDEX_TANGENT
 		"attr_Normal",  // ATTR_INDEX_NORMAL
 		"attr_Color",  // ATTR_INDEX_COLOR
-		"attr_PaintColor",  // ATTR_INDEX_PAINTCOLOR
-		"attr_LightDirection",  // ATTR_INDEX_LIGHTDIRECTION
 		"attr_BoneIndexes",  // ATTR_INDEX_BONE_INDEXES
 		"attr_BoneWeights",  // ATTR_INDEX_BONE_WEIGHTS
 		"attr_Position2",  // ATTR_INDEX_POSITION2
@@ -1820,15 +1823,6 @@ static int GLSL_LoadGPUProgramLightAll(
 
 		extradefines[0] = '\0';
 
-		if (r_dlightMode->integer >= 2)
-			Q_strcat(extradefines, sizeof(extradefines), "#define USE_SHADOWMAP\n");
-
-		if (1)
-			Q_strcat(extradefines, sizeof(extradefines), "#define SWIZZLE_NORMALMAP\n");
-
-		if (r_hdr->integer && !glRefConfig.floatLightmap)
-			Q_strcat(extradefines, sizeof(extradefines), "#define RGBM_LIGHTMAP\n");
-
 		if (lightType)
 		{
 			Q_strcat(extradefines, sizeof(extradefines), "#define USE_LIGHT\n");
@@ -1845,7 +1839,7 @@ static int GLSL_LoadGPUProgramLightAll(
 				if (r_deluxeMapping->integer && !useFastLight)
 					Q_strcat(extradefines, sizeof(extradefines), "#define USE_DELUXEMAP\n");
 
-				attribs |= ATTR_TEXCOORD1 | ATTR_LIGHTDIRECTION;
+				attribs |= ATTR_TEXCOORD1;
 				break;
 			}
 
@@ -1858,7 +1852,6 @@ static int GLSL_LoadGPUProgramLightAll(
 			case LIGHTDEF_USE_LIGHT_VERTEX:
 			{
 				Q_strcat(extradefines, sizeof(extradefines), "#define USE_LIGHT_VERTEX\n");
-				attribs |= ATTR_LIGHTDIRECTION;
 				break;
 			}
 
@@ -1894,9 +1887,7 @@ static int GLSL_LoadGPUProgramLightAll(
 		{
 			Q_strcat(extradefines, sizeof(extradefines), "#define USE_SHADOWMAP\n");
 
-			if (r_sunlightMode->integer == 1)
-				Q_strcat(extradefines, sizeof(extradefines), "#define SHADOWMAP_MODULATE\n");
-			else if (r_sunlightMode->integer == 2)
+			if (r_sunlightMode->integer > 0)
 				Q_strcat(extradefines, sizeof(extradefines), "#define USE_PRIMARY_LIGHT\n");
 		}
 
@@ -2156,6 +2147,33 @@ static int GLSL_LoadGPUProgramPShadow(
 	qglUseProgram(0);
 
 	GLSL_FinishGPUShader(&tr.pshadowShader);
+
+	return 1;
+}
+
+static int GLSL_LoadGPUProgramVShadow(
+	ShaderProgramBuilder& builder,
+	Allocator& scratchAlloc)
+{
+	Allocator allocator(scratchAlloc.Base(), scratchAlloc.GetSize());
+
+	char extradefines[1200];
+	const GPUProgramDesc *programDesc =
+		LoadProgramSource("shadowvolume", allocator, fallback_shadowvolumeProgram);
+	const uint32_t attribs = ATTR_POSITION | ATTR_BONE_INDEXES | ATTR_BONE_WEIGHTS;
+
+	extradefines[0] = '\0';
+	Q_strcat(extradefines, sizeof(extradefines), "#define USE_SKELETAL_ANIMATION\n"); 
+	uint32_t shaderTypes = GPUSHADER_VERTEX | GPUSHADER_GEOMETRY;
+
+	if (!GLSL_LoadGPUShader(builder, &tr.volumeShadowShader, "shadowvolume", attribs, NO_XFB_VARS,
+		extradefines, *programDesc, shaderTypes))
+	{
+		ri.Error(ERR_FATAL, "Could not load shadowvolume shader!");
+	}
+
+	GLSL_InitUniforms(&tr.volumeShadowShader);
+	GLSL_FinishGPUShader(&tr.volumeShadowShader);
 
 	return 1;
 }
@@ -2755,6 +2773,7 @@ void GLSL_LoadGPUShaders()
 	numEtcShaders += GLSL_LoadGPUProgramEquirectangular(builder, allocator);
 	numEtcShaders += GLSL_LoadGPUProgramDepthFill(builder, allocator);
 	numEtcShaders += GLSL_LoadGPUProgramPShadow(builder, allocator);
+	numEtcShaders += GLSL_LoadGPUProgramVShadow(builder, allocator);
 	numEtcShaders += GLSL_LoadGPUProgramDownscale4x(builder, allocator);
 	numEtcShaders += GLSL_LoadGPUProgramBokeh(builder, allocator);
 	numEtcShaders += GLSL_LoadGPUProgramTonemap(builder, allocator);
@@ -2812,6 +2831,7 @@ void GLSL_ShutdownGPUShaders(void)
 
 	GLSL_DeleteGPUShader(&tr.shadowmapShader);
 	GLSL_DeleteGPUShader(&tr.pshadowShader);
+	GLSL_DeleteGPUShader(&tr.volumeShadowShader);
 	GLSL_DeleteGPUShader(&tr.down4xShader);
 	GLSL_DeleteGPUShader(&tr.bokehShader);
 	GLSL_DeleteGPUShader(&tr.tonemapShader);
@@ -2933,8 +2953,6 @@ void GL_VertexArraysToAttribs(vertexAttribute_t *attribs,
 		{ 4, GL_FALSE, GL_UNSIGNED_INT_2_10_10_10_REV, GL_TRUE }, // tangent
 		{ 4, GL_FALSE, GL_UNSIGNED_INT_2_10_10_10_REV, GL_TRUE }, // normal
 		{ 4, GL_FALSE, GL_FLOAT, GL_FALSE }, // color
-		{ 0, GL_FALSE, GL_NONE, GL_FALSE }, // paint color
-		{ 4, GL_FALSE, GL_UNSIGNED_INT_2_10_10_10_REV, GL_TRUE }, // light direction
 		{ 4, GL_TRUE,  GL_UNSIGNED_BYTE, GL_FALSE }, // bone indices
 		{ 4, GL_FALSE, GL_UNSIGNED_BYTE, GL_TRUE }, // bone weights
 		{ 3, GL_FALSE, GL_FLOAT, GL_FALSE }, // pos2

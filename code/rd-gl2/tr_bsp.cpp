@@ -1881,7 +1881,6 @@ struct packedVertex_t
 	uint32_t tangent;
 	vec2_t texcoords[1 + MAXLIGHTMAPS];
 	vec4_t colors[MAXLIGHTMAPS];
-	uint32_t lightDirection;
 };
 
 /*
@@ -2065,8 +2064,6 @@ static void R_CreateWorldVBOs( world_t *worldData )
 				{
 					VectorCopy4 (bspSurf->verts[i].vertexColors[j], vert.colors[j]);
 				}
-
-				vert.lightDirection = R_VboPackNormal (bspSurf->verts[i].lightdir);
 			}
 		}
 
@@ -2083,7 +2080,6 @@ static void R_CreateWorldVBOs( world_t *worldData )
 		vbo->offsets[ATTR_INDEX_TEXCOORD3] = offsetof(packedVertex_t, texcoords[3]);
 		vbo->offsets[ATTR_INDEX_TEXCOORD4] = offsetof(packedVertex_t, texcoords[4]);
 		vbo->offsets[ATTR_INDEX_COLOR] = offsetof(packedVertex_t, colors);
-		vbo->offsets[ATTR_INDEX_LIGHTDIRECTION] = offsetof(packedVertex_t, lightDirection);
 
 		const size_t packedVertexSize = sizeof(packedVertex_t);
 		vbo->strides[ATTR_INDEX_POSITION] = packedVertexSize;
@@ -2095,7 +2091,6 @@ static void R_CreateWorldVBOs( world_t *worldData )
 		vbo->strides[ATTR_INDEX_TEXCOORD3] = packedVertexSize;
 		vbo->strides[ATTR_INDEX_TEXCOORD4] = packedVertexSize;
 		vbo->strides[ATTR_INDEX_COLOR] = packedVertexSize;
-		vbo->strides[ATTR_INDEX_LIGHTDIRECTION] = packedVertexSize;
 
 		vbo->sizes[ATTR_INDEX_POSITION] = sizeof(verts->position);
 		vbo->sizes[ATTR_INDEX_NORMAL] = sizeof(verts->normal);
@@ -2105,7 +2100,6 @@ static void R_CreateWorldVBOs( world_t *worldData )
 		vbo->sizes[ATTR_INDEX_TEXCOORD3] = sizeof(verts->texcoords[0]);
 		vbo->sizes[ATTR_INDEX_TEXCOORD4] = sizeof(verts->texcoords[0]);
 		vbo->sizes[ATTR_INDEX_TANGENT] = sizeof(verts->tangent);
-		vbo->sizes[ATTR_INDEX_LIGHTDIRECTION] = sizeof(verts->lightDirection);
 		vbo->sizes[ATTR_INDEX_COLOR] = sizeof(verts->colors);
 
 		// point bsp surfaces to VBO

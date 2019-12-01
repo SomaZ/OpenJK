@@ -454,14 +454,6 @@ static void RB_SurfaceVertsAndIndexes( int numVerts, srfVert_t *verts, int numIn
 			VectorCopy4(dv->vertexColors[0], color);
 	}
 
-	if ( tess.shader->vertexAttribs & ATTR_LIGHTDIRECTION )
-	{
-		dv = verts;
-		lightdir = &tess.lightdir[ tess.numVertexes ];
-		for ( i = 0 ; i < numVerts ; i++, dv++, lightdir++ )
-			*lightdir = R_VboPackNormal(dv->lightdir);
-	}
-
 #if 0  // nothing even uses vertex dlightbits
 	for ( i = 0 ; i < numVerts ; i++ ) {
 		tess.vertexDlightBits[ tess.numVertexes + i ] = dlightBits;
@@ -1872,7 +1864,6 @@ static void RB_SurfaceBSPGrid( srfBspSurface_t *srf ) {
 		texCoords = tess.texCoords[numVertexes][0];
 		lightCoords = tess.texCoords[numVertexes][1];
 		color = tess.vertexColors[numVertexes];
-		lightdir = &tess.lightdir[numVertexes];
 		//vDlightBits = &tess.vertexDlightBits[numVertexes];
 
 		for ( i = 0 ; i < rows ; i++ ) {
@@ -1912,13 +1903,6 @@ static void RB_SurfaceBSPGrid( srfBspSurface_t *srf ) {
 					VectorCopy4(dv->vertexColors[0], color);
 					color += 4;
 				}
-
-				if ( tess.shader->vertexAttribs & ATTR_LIGHTDIRECTION )
-				{
-					*lightdir++ = R_VboPackNormal(dv->lightdir);
-				}
-
-				//*vDlightBits++ = dlightBits;
 			}
 		}
 

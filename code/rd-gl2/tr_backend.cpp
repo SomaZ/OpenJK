@@ -197,6 +197,10 @@ void GL_State( uint32_t stateBits )
 		{
 			qglDepthFunc( GL_GREATER );
 		}
+		else if (stateBits & GLS_DEPTHFUNC_LESS)
+		{
+			qglDepthFunc( GL_LESS );
+		}
 		else
 		{
 			qglDepthFunc( GL_LEQUAL );
@@ -524,9 +528,7 @@ void RB_BeginDrawingView (void) {
 	backEnd.projection2D = qfalse;
 
 	// clear content of the pre buffers
-	if (r_ssr->integer &&
-		(backEnd.viewParms.targetFbo == NULL ||
-		 backEnd.viewParms.targetFbo == tr.renderFbo))
+	if (r_ssr->integer)
 	{
 		FBO_Bind(tr.preBuffersFbo);
 		qglClearColor(0.0f, 0.0f, 0.0f, 0.0f);
@@ -2381,21 +2383,9 @@ static void RB_RenderDepthOnly(drawSurf_t *drawSurfs, int numDrawSurfs)
 
 	if (backEnd.renderPass == DEPTH_PASS)
 		qglColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
-	if (backEnd.renderPass == PRE_PASS) 
-	{
-		qglStencilMask(0xff);
-		qglClear(GL_STENCIL_BUFFER_BIT);
-
-		qglEnable(GL_STENCIL_TEST);
-		qglStencilFunc(GL_ALWAYS, 1, 0xff);
-		qglStencilMask(0xff);
-		qglStencilOp(GL_KEEP, GL_KEEP, GL_REPLACE);
-	}
 
 	RB_RenderDrawSurfList(drawSurfs, numDrawSurfs);
 
-	if (backEnd.renderPass == PRE_PASS)
-		qglDisable(GL_STENCIL_TEST);
 	if (backEnd.renderPass == DEPTH_PASS)
 		qglColorMask(
 			!backEnd.colorMask[0],
@@ -2699,11 +2689,6 @@ void RB_RenderAllRealTimeLightTypes()
 		GL_BindToTMU(NULL, 5);
 	}
 
-	// only compute lighting for non sky pixels
-	qglEnable(GL_STENCIL_TEST);
-	qglStencilFunc(GL_EQUAL, 1, 0xff);
-	qglStencilMask(0);
-
 	//render cubemaps where SSR  didn't render
 	//buggy! don't enable for now, finish when cubemap arrarys or bindless textures are available
 	int numCubemaps = tr.numCubemaps;
@@ -2877,7 +2862,6 @@ void RB_RenderAllRealTimeLightTypes()
 		}
 	}
 
-	qglDisable(GL_STENCIL_TEST);
 	FBO_Bind(fbo);
 }
 
@@ -3433,6 +3417,9 @@ const void *RB_PostProcess(const void *data)
 
 		FBO_BlitFromTexture (tr.glowFboScaled[0]->colorImage[0], NULL, NULL, NULL, NULL, NULL, color, blendFunc);
 	}
+
+	qglBindFramebuffer(GL_FRAMEBUFFER, 0);
+	glState.currentFBO = NULL;
 
 	backEnd.framePostProcessed = qtrue;
 

@@ -20,9 +20,7 @@ in vec2 attr_TexCoord1;
 uniform vec4 u_DiffuseTexMatrix;
 uniform vec4 u_DiffuseTexOffTurb;
 
-#if defined(USE_TCGEN) || defined(USE_RGBAGEN)
 uniform vec3 u_LocalViewOrigin;
-#endif
 
 #if defined(USE_TCGEN)
 uniform int u_TCGen0;
@@ -45,14 +43,14 @@ uniform vec4 u_VertColor;
 uniform vec3 u_ViewForward;
 uniform float u_FXVolumetricBase;
 
-#if defined(USE_RGBAGEN)
+
 uniform int u_ColorGen;
 uniform int u_AlphaGen;
 uniform vec3 u_AmbientLight;
 uniform vec3 u_DirectedLight;
 uniform vec3 u_ModelLightDir;
 uniform float u_PortalRange;
-#endif
+uniform vec4 u_Disintegration; // origin, threshhold
 
 #if defined(USE_VERTEX_ANIMATION)
 uniform float u_VertexLerp;
@@ -248,7 +246,6 @@ vec2 ModTexCoords(vec2 st, vec3 position, vec4 texMatrix, vec4 offTurb)
 }
 #endif
 
-#if defined(USE_RGBAGEN)
 vec4 CalcColor(vec3 position, vec3 normal)
 {
 	vec4 color = u_VertColor * attr_Color + u_BaseColor;
@@ -262,7 +259,38 @@ vec4 CalcColor(vec3 position, vec3 normal)
 	
 	vec3 viewer = u_LocalViewOrigin - position;
 
-	if (u_AlphaGen == AGEN_LIGHTING_SPECULAR)
+	if (u_AlphaGen == AGEN_DISINTEGRATE1)
+	{
+		vec3 delta = u_Disintegration.xyz - position;
+		float distance = dot(delta, delta);
+		if (distance < u_Disintegration.w)
+		{
+			color *= 0.0;
+		}
+		else if (distance < u_Disintegration.w + 60.0)
+		{
+			color *= vec4(0.0, 0.0, 0.0, 1.0);
+		}
+		else if (distance < u_Disintegration.w + 150.0)
+		{
+			color *= vec4(0.435295, 0.435295, 0.435295, 1.0);
+		}
+		else if (distance < u_Disintegration.w + 180.0)
+		{
+			color *= vec4(0.6862745, 0.6862745, 0.6862745, 1.0);
+		}
+
+	}
+	else if (u_AlphaGen == AGEN_DISINTEGRATE2)
+	{
+		vec3 delta = u_Disintegration.xyz - position;
+		float distance = dot(delta, delta);
+		if (distance < u_Disintegration.w)
+		{
+			color *= 0.0;
+		}
+	}
+	else if (u_AlphaGen == AGEN_LIGHTING_SPECULAR)
 	{
 		vec3 lightDir = normalize(vec3(-960.0, 1980.0, 96.0) - position);
 		vec3 reflected = -reflect(lightDir, normal);
@@ -278,7 +306,6 @@ vec4 CalcColor(vec3 position, vec3 normal)
 	
 	return color;
 }
-#endif
 
 void main()
 {
@@ -330,11 +357,7 @@ void main()
 	}
 	else
 	{
-#if defined(USE_RGBAGEN)
-		var_Color = CalcColor(position, normal);
-#else
-		var_Color = u_VertColor * attr_Color + u_BaseColor;
-#endif
+	var_Color = CalcColor(position, normal);
 	}
 
 #if defined(USE_FOG)
