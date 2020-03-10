@@ -873,6 +873,11 @@ static qboolean R_LoadMD3(model_t * mod, int lod, void *buffer, const char *modN
 			vboSurf->vbo->sizes[ATTR_INDEX_TEXCOORD0] = sizeof(*texcoords);
 			vboSurf->vbo->sizes[ATTR_INDEX_TANGENT] = sizeof(*tangents);
 
+			vboSurf->vbo->animation_offsets[ATTR_INDEX_POSITION] = surf->numVerts * sizeof(*verts);
+			vboSurf->vbo->animation_offsets[ATTR_INDEX_NORMAL] = surf->numVerts * sizeof(*normals);
+			vboSurf->vbo->animation_offsets[ATTR_INDEX_TANGENT] = surf->numVerts * sizeof(*tangents);
+			vboSurf->vbo->animation_offsets[ATTR_INDEX_TEXCOORD0] = 0;
+
 			R_Free(data);
 
 			vboSurf->ibo = R_CreateIBO((byte *)surf->indexes, sizeof(glIndex_t) * surf->numIndexes, VBO_USAGE_STATIC);
