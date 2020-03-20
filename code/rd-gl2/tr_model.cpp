@@ -859,19 +859,28 @@ static qboolean R_LoadMD3(model_t * mod, int lod, void *buffer, const char *modN
 			vboSurf->vbo = R_CreateVBO(data, dataSize, VBO_USAGE_STATIC);
 
 			vboSurf->vbo->offsets[ATTR_INDEX_POSITION] = ofs_xyz;
+			vboSurf->vbo->offsets[ATTR_INDEX_POSITION2] = ofs_xyz;
 			vboSurf->vbo->offsets[ATTR_INDEX_NORMAL] = ofs_normal;
-			vboSurf->vbo->offsets[ATTR_INDEX_TEXCOORD0] = ofs_st;
+			vboSurf->vbo->offsets[ATTR_INDEX_NORMAL2] = ofs_normal;
 			vboSurf->vbo->offsets[ATTR_INDEX_TANGENT] = ofs_tangent;
+			vboSurf->vbo->offsets[ATTR_INDEX_TANGENT2] = ofs_tangent;
+			vboSurf->vbo->offsets[ATTR_INDEX_TEXCOORD0] = ofs_st;
 
 			vboSurf->vbo->strides[ATTR_INDEX_POSITION] = sizeof(*verts);
+			vboSurf->vbo->strides[ATTR_INDEX_POSITION2] = sizeof(*verts);
 			vboSurf->vbo->strides[ATTR_INDEX_NORMAL] = sizeof(*normals);
-			vboSurf->vbo->strides[ATTR_INDEX_TEXCOORD0] = sizeof(*st);
+			vboSurf->vbo->strides[ATTR_INDEX_NORMAL2] = sizeof(*normals);
 			vboSurf->vbo->strides[ATTR_INDEX_TANGENT] = sizeof(*tangents);
+			vboSurf->vbo->strides[ATTR_INDEX_TANGENT2] = sizeof(*tangents);
+			vboSurf->vbo->strides[ATTR_INDEX_TEXCOORD0] = sizeof(*st);
 
 			vboSurf->vbo->sizes[ATTR_INDEX_POSITION] = sizeof(*verts);
+			vboSurf->vbo->sizes[ATTR_INDEX_POSITION2] = sizeof(*verts);
 			vboSurf->vbo->sizes[ATTR_INDEX_NORMAL] = sizeof(*normals);
-			vboSurf->vbo->sizes[ATTR_INDEX_TEXCOORD0] = sizeof(*texcoords);
+			vboSurf->vbo->sizes[ATTR_INDEX_NORMAL2] = sizeof(*normals);
 			vboSurf->vbo->sizes[ATTR_INDEX_TANGENT] = sizeof(*tangents);
+			vboSurf->vbo->sizes[ATTR_INDEX_TANGENT2] = sizeof(*tangents);
+			vboSurf->vbo->sizes[ATTR_INDEX_TEXCOORD0] = sizeof(*texcoords);
 
 			vboSurf->vbo->animation_offsets[ATTR_INDEX_POSITION] = surf->numVerts * sizeof(*verts);
 			vboSurf->vbo->animation_offsets[ATTR_INDEX_NORMAL] = surf->numVerts * sizeof(*normals);
