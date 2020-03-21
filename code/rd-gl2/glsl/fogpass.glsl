@@ -202,8 +202,9 @@ void main()
 
 /*[Fragment]*/
 uniform vec4 u_Color;
-uniform int u_AlphaTestFunction;
-uniform float u_AlphaTestValue;
+#if defined(USE_ALPHA_TEST)
+uniform int u_AlphaTestType;
+#endif
 
 uniform vec4 u_FogPlane;
 uniform float u_FogDepthToOpaque;
@@ -216,6 +217,8 @@ out vec4 out_Glow;
 
 float CalcFog(in vec3 viewOrigin, in vec3 position, in vec4 fogPlane, in float depthToOpaque, in bool hasPlane)
 {
+	bool inFog = dot(viewOrigin, fogPlane.xyz) - fogPlane.w >= 0.0 || !hasPlane;
+
 	// line: x = o + tv
 	// plane: (x . n) + d = 0
 	// intersects: dot(o + tv, n) + d = 0
@@ -227,22 +230,13 @@ float CalcFog(in vec3 viewOrigin, in vec3 position, in vec4 fogPlane, in float d
 	// fogPlane is inverted in tr_bsp for some reason.
 	float t = -(fogPlane.w + dot(viewOrigin, -fogPlane.xyz)) / dot(V, -fogPlane.xyz);
 
-	bool inFog = ((dot(viewOrigin, fogPlane.xyz) - fogPlane.w) >= 0.0) || !hasPlane;
-	bool intersects = (t > 0.0 && t <= 1.0);
+	float distToVertexFromViewOrigin = length(V);
+	float distToIntersectionFromViewOrigin = max(t, 0.0) * distToVertexFromViewOrigin;
 
-	// this is valid only when t > 0.0. When t < 0.0, then intersection point is behind
-	// the camera, meaning we're facing away from the fog plane, which probably means
-	// we're inside the fog volume.
-	vec3 intersectsAt = viewOrigin + t*V;
+	float distOutsideFog = max(distToVertexFromViewOrigin - distToIntersectionFromViewOrigin, 0.0);
+	float distThroughFog = mix(distToVertexFromViewOrigin, distOutsideFog, !inFog);
 
-	float distToVertexFromIntersection = distance(intersectsAt, position);
-	float distToVertexFromViewOrigin = distance(viewOrigin, position);
-
-	float distToVertex = mix(distToVertexFromViewOrigin,
-							 distToVertexFromIntersection,
-							 !inFog && intersects);
-
-	float z = depthToOpaque * distToVertex;
+	float z = depthToOpaque * distThroughFog;
 	return 1.0 - clamp(exp(-(z * z)), 0.0, 1.0);
 }
 
@@ -250,24 +244,34 @@ void main()
 {
 	float fog = CalcFog(u_ViewOrigin, var_WSPosition, u_FogPlane, u_FogDepthToOpaque, u_FogHasPlane);
 	out_Color.rgb = u_Color.rgb;
-	out_Color.a = sqrt(clamp(fog, 0.0, 1.0));
+	out_Color.a = fog;
 
-	if (u_AlphaTestFunction == ATEST_CMP_GE){
-		if (out_Color.a < u_AlphaTestValue)
+#if defined(USE_ALPHA_TEST)
+	if (u_AlphaTestType == ALPHA_TEST_GT0)
+	{
+		if (out_Color.a == 0.0)
 			discard;
 	}
-	else if (u_AlphaTestFunction == ATEST_CMP_LT){
-		if (out_Color.a >= u_AlphaTestValue)
-			discard;
-	}	
-	else if (u_AlphaTestFunction == ATEST_CMP_GT){
-		if (out_Color.a <= u_AlphaTestValue)
+	else if (u_AlphaTestType == ALPHA_TEST_LT128)
+	{
+		if (out_Color.a >= 0.5)
 			discard;
 	}
+	else if (u_AlphaTestType == ALPHA_TEST_GE128)
+	{
+		if (out_Color.a < 0.5)
+			discard;
+	}
+	else if (u_AlphaTestType == ALPHA_TEST_GE192)
+	{
+		if (out_Color.a < 0.75)
+			discard;
+	}
+#endif
 
 #if defined(USE_GLOW_BUFFER)
 	out_Glow = out_Color;
 #else
-	out_Glow = vec4(0.0);
+	out_Glow = vec4(0.0, 0.0, 0.0, out_Color.a);
 #endif
 }
