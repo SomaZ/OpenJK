@@ -173,6 +173,21 @@ vec3 DeformPosition(const vec3 pos, const vec3 normal, const vec2 st)
 
 			return pos - (lightPos * (dot( pos, ground ) + groundDist));
 		}
+
+		case DEFORM_DISINTEGRATION:
+		{
+			vec3 delta = u_Disintegration.xyz - pos;
+			float distance = dot(delta, delta);
+			if ( distance < u_Disintegration.w )
+			{
+				return normal * vec3(2.0, 2.0, 0.5) + pos;
+			}
+			else if ( distance < u_Disintegration.w + 50 )
+			{
+				return normal * vec3(1.0, 1.0, 0.0) + pos;
+			}
+			return pos - normal * 0.01;
+		}
 	}
 }
 
@@ -263,10 +278,7 @@ vec4 CalcColor(vec3 position, vec3 normal)
 
 		color.rgb = clamp(u_DirectedLight * incoming + u_AmbientLight, 0.0, 1.0);
 	}
-	
-	vec3 viewer = u_LocalViewOrigin - position;
-
-	if (u_AlphaGen == AGEN_DISINTEGRATE1)
+	else if (u_ColorGen == CGEN_DISINTEGRATION_1)
 	{
 		vec3 delta = u_Disintegration.xyz - position;
 		float distance = dot(delta, delta);
@@ -286,9 +298,9 @@ vec4 CalcColor(vec3 position, vec3 normal)
 		{
 			color *= vec4(0.6862745, 0.6862745, 0.6862745, 1.0);
 		}
-
+		return color;
 	}
-	else if (u_AlphaGen == AGEN_DISINTEGRATE2)
+	else if (u_ColorGen == CGEN_DISINTEGRATION_2)
 	{
 		vec3 delta = u_Disintegration.xyz - position;
 		float distance = dot(delta, delta);
@@ -296,8 +308,12 @@ vec4 CalcColor(vec3 position, vec3 normal)
 		{
 			color *= 0.0;
 		}
+		return color;
 	}
-	else if (u_AlphaGen == AGEN_LIGHTING_SPECULAR)
+	
+	vec3 viewer = u_LocalViewOrigin - position;
+
+	if (u_AlphaGen == AGEN_LIGHTING_SPECULAR)
 	{
 		vec3 lightDir = normalize(vec3(-960.0, 1980.0, 96.0) - position);
 		vec3 reflected = -reflect(lightDir, normal);
@@ -433,7 +449,7 @@ float CalcFog(in vec3 viewOrigin, in vec3 position, in vec4 fogPlane, in float d
 void main()
 {
 	vec4 color  = texture(u_DiffuseMap, var_DiffuseTex);
-
+	color.a *= var_Color.a;
 if (u_AlphaTestFunction == ATEST_CMP_GE){
 	if (color.a < u_AlphaTestValue)
 		discard;
@@ -452,7 +468,7 @@ else if (u_AlphaTestFunction == ATEST_CMP_GT){
 	color *= vec4(1.0) - u_FogColorMask * fog;
 #endif
 
-	out_Color = color * var_Color;
+	out_Color = vec4(color.rgb * var_Color.rgb, color.a);
 
 #if defined(USE_GLOW_BUFFER)
 	out_Glow = out_Color;

@@ -514,7 +514,8 @@ typedef enum {
 	DEFORM_TEXT4,
 	DEFORM_TEXT5,
 	DEFORM_TEXT6,
-	DEFORM_TEXT7
+	DEFORM_TEXT7,
+	DEFORM_DISINTEGRATION
 } deform_t;
 
 // deformVertexes types that can be handled by the GPU
@@ -547,9 +548,7 @@ typedef enum {
 	AGEN_LIGHTING_SPECULAR,
 	AGEN_WAVEFORM,
 	AGEN_PORTAL,
-	AGEN_CONST,
-	AGEN_DISINTEGRATE1,
-	AGEN_DISINTEGRATE2
+	AGEN_CONST
 } alphaGen_t;
 
 typedef enum {
@@ -569,6 +568,8 @@ typedef enum {
 	CGEN_FOG,				// standard fog
 	CGEN_CONST,				// fixed color
 	CGEN_LIGHTMAPSTYLE,		// lightmap style
+	CGEN_DISINTEGRATION_1,
+	CGEN_DISINTEGRATION_2
 } colorGen_t;
 
 typedef enum {

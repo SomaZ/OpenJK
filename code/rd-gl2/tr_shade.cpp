@@ -337,6 +337,12 @@ static void ComputeDeformValues(deform_t *type, genFunc_t *waveFunc, float defor
 	*type = DEFORM_NONE;
 	*waveFunc = GF_NONE;
 
+	if (backEnd.currentEntity->e.renderfx & RF_DISINTEGRATE2)
+	{
+		*type = DEFORM_DISINTEGRATION;
+		return;
+	}
+
 	if(!ShaderRequiresCPUDeforms(tess.shader))
 	{
 		deformStage_t  *ds;
@@ -1577,7 +1583,7 @@ static void RB_IterateStagesGeneric( shaderCommands_t *input, const VertexArrays
 		int index = 0;
 		bool forceRefraction = false;
 		bool useAlphaTestGE192 = false;
-		bool disintegrate = false;
+		vec4_t disintegrationInfo;
 
 		if ( !pStage )
 		{
@@ -1597,12 +1603,23 @@ static void RB_IterateStagesGeneric( shaderCommands_t *input, const VertexArrays
 
 			if ( backEnd.currentEntity->e.renderfx & ( RF_DISINTEGRATE1 | RF_DISINTEGRATE2 ))
 			{
-				// we want to be able to rip a hole in the thing being
-				// disintegrated, and by doing the depth-testing it avoids some
-				// kinds of artefacts, but will probably introduce others?
-				stateBits = GLS_SRCBLEND_SRC_ALPHA | GLS_DSTBLEND_ONE_MINUS_SRC_ALPHA | GLS_DEPTHMASK_TRUE;
-				useAlphaTestGE192 = true;
-				disintegrate = true;
+				if (backEnd.currentEntity->e.renderfx & RF_DISINTEGRATE1)
+				{
+					// we want to be able to rip a hole in the thing being
+					// disintegrated, and by doing the depth-testing it avoids some
+					// kinds of artefacts, but will probably introduce others?
+					stateBits = GLS_SRCBLEND_SRC_ALPHA | GLS_DSTBLEND_ONE_MINUS_SRC_ALPHA | GLS_DEPTHMASK_TRUE;
+					forceRGBGen = CGEN_DISINTEGRATION_1;
+					useAlphaTestGE192 = true;
+				}
+				else
+					forceRGBGen = CGEN_DISINTEGRATION_2;
+
+				disintegrationInfo[0] = backEnd.currentEntity->e.oldorigin[0];
+				disintegrationInfo[1] = backEnd.currentEntity->e.oldorigin[1];
+				disintegrationInfo[2] = backEnd.currentEntity->e.oldorigin[2];
+				disintegrationInfo[3] = (backEnd.refdef.time - backEnd.currentEntity->e.endTime) * 0.045f;
+				disintegrationInfo[3] *= disintegrationInfo[3];
 			}
 
 			if (backEnd.currentEntity->e.renderfx & RF_ALPHA_FADE)
@@ -1677,6 +1694,11 @@ static void RB_IterateStagesGeneric( shaderCommands_t *input, const VertexArrays
 			uniformDataWriter.SetUniformFloat(UNIFORM_TIME, tess.shaderTime);
 		}
 
+		if (disintegrationInfo != NULL)
+		{
+			uniformDataWriter.SetUniformVec4(UNIFORM_DISINTEGRATION, disintegrationInfo);
+		}
+
 		if ( input->fogNum ) {
 			const fog_t *fog = tr.world->fogs + input->fogNum;
 
@@ -1744,20 +1766,6 @@ static void RB_IterateStagesGeneric( shaderCommands_t *input, const VertexArrays
 		if (pStage->alphaGen == AGEN_PORTAL)
 		{
 			uniformDataWriter.SetUniformFloat(UNIFORM_PORTALRANGE, tess.shader->portalRange);
-		}
-		if (disintegrate)
-		{
-			vec4_t disintegrationInfo;
-			disintegrationInfo[0] = backEnd.currentEntity->e.oldorigin[0];
-			disintegrationInfo[1] = backEnd.currentEntity->e.oldorigin[1];
-			disintegrationInfo[2] = backEnd.currentEntity->e.oldorigin[2];
-			disintegrationInfo[3] = (backEnd.refdef.time - backEnd.currentEntity->e.endTime) * 0.045f;
-			disintegrationInfo[3] *= disintegrationInfo[3];
-			if (backEnd.currentEntity->e.renderfx & RF_DISINTEGRATE1)
-				forceAlphaGen = AGEN_DISINTEGRATE1;
-			else
-				forceAlphaGen = AGEN_DISINTEGRATE2;
-			uniformDataWriter.SetUniformVec4(UNIFORM_DISINTEGRATION, disintegrationInfo);
 		}
 
 		uniformDataWriter.SetUniformInt(UNIFORM_COLORGEN, forceRGBGen);
