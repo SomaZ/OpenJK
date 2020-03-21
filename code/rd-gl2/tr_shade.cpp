@@ -1088,12 +1088,12 @@ static void ForwardDlight( const shaderCommands_t *input,  VertexArraysPropertie
 }
 
 
-static void ProjectPshadowVBOGLSL( const shaderCommands_t *input, const VertexArraysProperties *vertexArrays) {
+static void ProjectPshadowVBOGLSL(const shaderCommands_t *input, const VertexArraysProperties *vertexArrays) {
 	int		l;
 	vec3_t	origin;
 	float	radius;
 
-	if ( !backEnd.refdef.num_pshadows ) {
+	if (!backEnd.refdef.num_pshadows) {
 		return;
 	}
 
@@ -1106,18 +1106,17 @@ static void ProjectPshadowVBOGLSL( const shaderCommands_t *input, const VertexAr
 	vertexAttribute_t attribs[ATTR_INDEX_MAX] = {};
 	GL_VertexArraysToAttribs(attribs, ARRAY_LEN(attribs), vertexArrays);
 
-	for ( l = 0 ; l < backEnd.refdef.num_pshadows ; l++ ) {
+	for (l = 0; l < backEnd.refdef.num_pshadows; l++) {
 		pshadow_t	*ps;
 		shaderProgram_t *sp;
 		vec4_t vector;
-		vec3_t vector2;
 
-		if ( !( tess.pshadowBits & ( 1 << l ) ) ) {
+		if (!(tess.pshadowBits & (1 << l))) {
 			continue;	// this surface definately doesn't have any of this shadow
 		}
 
 		ps = &backEnd.refdef.pshadows[l];
-		VectorCopy( ps->lightOrigin, origin );
+		VectorCopy(ps->lightOrigin, origin);
 		radius = ps->lightRadius;
 
 		sp = &tr.pshadowShader;
@@ -1130,18 +1129,17 @@ static void ProjectPshadowVBOGLSL( const shaderCommands_t *input, const VertexAr
 		vector[3] = 1.0f;
 		uniformDataWriter.SetUniformVec4(UNIFORM_LIGHTORIGIN, vector);
 
-		VectorCopy(origin, vector2);
-		VectorScale(ps->lightViewAxis[0], 1.0f / ps->viewRadius, vector2);
-		uniformDataWriter.SetUniformVec3(UNIFORM_LIGHTFORWARD, vector2);
+		VectorScale(ps->lightViewAxis[0], 1.0f, vector);
+		uniformDataWriter.SetUniformVec3(UNIFORM_LIGHTFORWARD, vector);
 
-		VectorScale(ps->lightViewAxis[1], 1.0f / ps->viewRadius, vector2);
-		uniformDataWriter.SetUniformVec3(UNIFORM_LIGHTRIGHT, vector2);
+		VectorScale(ps->lightViewAxis[1], 1.0f / ps->viewRadius, vector);
+		uniformDataWriter.SetUniformVec3(UNIFORM_LIGHTRIGHT, vector);
 
-		VectorScale(ps->lightViewAxis[2], 1.0f / ps->viewRadius, vector2);
-		uniformDataWriter.SetUniformVec3(UNIFORM_LIGHTUP, vector2);
+		VectorScale(ps->lightViewAxis[2], 1.0f / ps->viewRadius, vector);
+		uniformDataWriter.SetUniformVec3(UNIFORM_LIGHTUP, vector);
 
 		uniformDataWriter.SetUniformFloat(UNIFORM_LIGHTRADIUS, radius);
-	  
+
 		// include GLS_DEPTHFUNC_EQUAL so alpha tested surfaces don't add light
 		// where they aren't rendered
 		uint32_t stateBits = 0;
@@ -1152,13 +1150,10 @@ static void ProjectPshadowVBOGLSL( const shaderCommands_t *input, const VertexAr
 		CaptureDrawData(input, pStage, 0, 0);
 
 		DrawItem item = {};
-
-		// include GLS_DEPTHFUNC_EQUAL so alpha tested surfaces don't add light
-		// where they aren't rendered
 		item.renderState.stateBits = stateBits;
 		item.renderState.cullType = cullType;
-		item.renderState.depthRange = RB_GetDepthRange(backEnd.currentEntity, input->shader);
 		item.program = sp;
+		item.renderState.depthRange = RB_GetDepthRange(backEnd.currentEntity, input->shader);
 		item.ibo = input->externalIBO ? input->externalIBO : backEndData->currentFrame->dynamicIbo;
 
 		item.numAttributes = vertexArrays->numVertexArrays;
@@ -1177,7 +1172,7 @@ static void ProjectPshadowVBOGLSL( const shaderCommands_t *input, const VertexAr
 		RB_AddDrawItem(backEndData->currentPass, key, item);
 
 		backEnd.pc.c_totalIndexes += tess.numIndexes;
-		//backEnd.pc.c_dlightIndexes += tess.numIndexes;
+
 		RB_BinTriangleCounts();
 	}
 }

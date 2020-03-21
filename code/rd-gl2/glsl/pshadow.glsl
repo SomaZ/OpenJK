@@ -29,10 +29,23 @@ in vec3 var_Normal;
 
 out vec4 out_Color;
 
+#define PCF_SAMPLES 9
+#define TEXTURE_SCALE float(1.0/1024.0)
+
+const vec2 poissonDisc[PCF_SAMPLES] = vec2[PCF_SAMPLES](
+vec2(-0.7055767, 0.196515),    vec2(0.3524343, -0.7791386),
+vec2(0.2391056, 0.9189604),    vec2(-0.07580382, -0.09224417),
+vec2(0.5784913, -0.002528916), vec2(0.192888, 0.4064181),
+vec2(-0.6335801, -0.5247476),  vec2(-0.5579782, 0.7491854),
+vec2(0.7320465, 0.6317794)
+);
+
 void main()
 {
 	vec3 lightToPos = var_Position - u_LightOrigin.xyz;
 	vec2 st = vec2(-dot(u_LightRight, lightToPos), dot(u_LightUp, lightToPos));
+	vec3 L = normalize(-lightToPos);
+	vec3 normal = normalize(var_Normal);
 
 	float fade = length(st);
 
@@ -47,38 +60,31 @@ void main()
 
 	st = st * 0.5 + vec2(0.5);
 
-#if defined(USE_SOLID_PSHADOWS)
-	float intensity = max(sign(u_LightRadius - length(lightToPos)), 0.0);
-#else
 	float intensity = clamp((1.0 - dot(lightToPos, lightToPos) / (u_LightRadius * u_LightRadius)) * 2.0, 0.0, 1.0);
-#endif
-
 	float lightDist = length(lightToPos);
-	float dist;
 
 #if defined(USE_DISCARD)
-	if (dot(u_LightForward, lightToPos) <= 0.0)
+	if (dot(normalize(-u_LightForward), L) <= 0.0)
 	{
 		discard;
 	}
 
-	if (dot(var_Normal, lightToPos) > 0.0)
+	if (dot(normal, L) <= 0.0)
 	{
 		discard;
 	}
-#else
-	intensity *= max(sign(dot(u_LightForward, lightToPos)), 0.0);
-	intensity *= max(sign(-dot(var_Normal, lightToPos)), 0.0);
 #endif
 
+	intensity *= max(dot(normal, L), 0.0);
 	intensity *= fade;
 
-	float part;
+	float part = 0.0;
 #if defined(USE_PCF)
-	part = float(texture(u_ShadowMap, st + vec2(-1.0 / 512.0, -1.0 / 512.0)).r != 1.0);
-	part += float(texture(u_ShadowMap, st + vec2(1.0 / 512.0, -1.0 / 512.0)).r != 1.0);
-	part += float(texture(u_ShadowMap, st + vec2(-1.0 / 512.0, 1.0 / 512.0)).r != 1.0);
-	part += float(texture(u_ShadowMap, st + vec2(1.0 / 512.0, 1.0 / 512.0)).r != 1.0);
+	float offsetScale = pow(lightDist, 4.0) * TEXTURE_SCALE * 0.0000001;
+	for (int i = 0; i < PCF_SAMPLES; ++i)
+	{
+		part += float(texture(u_ShadowMap, st + offsetScale * poissonDisc[i]).r != 1.0);
+	}
 #else
 	part = float(texture(u_ShadowMap, st).r != 1.0);
 #endif
@@ -89,7 +95,7 @@ void main()
 	}
 
 #if defined(USE_PCF)
-	intensity *= part * 0.25;
+	intensity *= part * 0.111;
 #else
 	intensity *= part;
 #endif
