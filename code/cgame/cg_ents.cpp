@@ -339,8 +339,7 @@ Ghoul2 Insert End
 	memset (&ent, 0, sizeof(ent));
 
 	// set frame
-
-	if ( cent->currentState.eFlags & EF_DISABLE_SHADER_ANIM )
+	if ( s1->eFlags & EF_DISABLE_SHADER_ANIM )
 	{
 		// by setting the shader time to the current time, we can force an animating shader to not animate
 		ent.shaderTime = cg.time * 0.001f;
@@ -352,24 +351,50 @@ Ghoul2 Insert End
 		ent.renderfx|=RF_SETANIMINDEX;
 		ent.skinNum = s1->frame;
 	}
-	else if ( s1->eFlags & EF_ANIM_ONCE )
-	{
-		//s1->frame++;
-		//ent.frame = s1->frame;
-		ent.frame = cent->gent->s.frame;
-		ent.renderfx|=RF_CAP_FRAMES;
-	}
-	else if ( s1->eFlags & EF_ANIM_ALLFAST )
-	{
-		ent.frame = (cg.time / 55);
-		ent.renderfx|=RF_WRAP_FRAMES;
-	}
 	else
 	{
-		ent.frame = s1->frame;
+
+		int startFrame = cent->gent->startFrame;
+		int endFrame = cent->gent->endFrame;
+		int prevFrame = -1;
+		//reverse playback?
+		if (cent->gent->startFrame > cent->gent->endFrame)
+		{
+			startFrame = cent->gent->endFrame;
+			endFrame = cent->gent->startFrame;
+			prevFrame = 1;
+		}
+
+		if (s1->eFlags & EF_ANIM_ONCE)
+		{
+			ent.frame = cent->gent->s.frame;
+			ent.oldframe = ent.frame + prevFrame;
+			ent.backlerp = 1.0f - ((cg.time % 100) / 100.0f);
+			ent.renderfx |= RF_CAP_FRAMES;
+		}
+		else if (s1->eFlags & EF_ANIM_ALLFAST)
+		{
+			ent.frame = (cg.time / 100);
+			ent.oldframe = ent.frame + prevFrame;
+			ent.backlerp = 1.0f - ((cg.time % 100) / 100.0f);
+			ent.renderfx |= RF_WRAP_FRAMES;
+		}
+		else
+		{
+			ent.frame = s1->frame;
+			ent.oldframe = ent.frame + prevFrame;
+			if (ent.oldframe >= startFrame && ent.frame < endFrame)
+			{
+				ent.backlerp = 1.0f - ((cg.time % 100) / 100.0f);
+			}
+			else
+			{
+				ent.backlerp = 0;
+				ent.oldframe = ent.frame;
+			}
+		}
 	}
-	ent.oldframe = ent.frame;
-	ent.backlerp = 0;
+
 /*
 Ghoul2 Insert Start
 */
@@ -1388,19 +1413,44 @@ Ghoul2 Insert End
 
 	//We're a normal model being moved, animate our model
 	ent.skinNum = 0;
-	if ( s1->eFlags & EF_ANIM_ONCE )
-	{//FIXME: needs to anim at once per 100 ms
-		ent.frame = cent->gent->s.frame;
-		ent.renderfx|=RF_CAP_FRAMES;
+	int startFrame = cent->gent->startFrame;
+	int endFrame = cent->gent->endFrame;
+	int prevFrame = -1;
+	//reverse playback?
+	if (cent->gent->startFrame > cent->gent->endFrame)
+	{
+		startFrame = cent->gent->endFrame;
+		endFrame = cent->gent->startFrame;
+		prevFrame = 1;
 	}
-	else if ( s1->eFlags & EF_ANIM_ALLFAST )
+
+	if (s1->eFlags & EF_ANIM_ONCE)
+	{
+		ent.frame = cent->gent->s.frame;
+		ent.oldframe = ent.frame + prevFrame;
+		ent.backlerp = 1.0f - ((cg.time % 100) / 100.0f);
+		ent.renderfx |= RF_CAP_FRAMES;
+	}
+	else if (s1->eFlags & EF_ANIM_ALLFAST)
 	{
 		ent.frame = (cg.time / 100);
-		ent.renderfx|=RF_WRAP_FRAMES;
+		ent.oldframe = ent.frame + prevFrame;
+		ent.backlerp = 1.0f - ((cg.time % 100) / 100.0f);
+		ent.renderfx |= RF_WRAP_FRAMES;
 	}
 	else
 	{
 		ent.frame = s1->frame;
+		ent.oldframe = ent.frame + prevFrame;
+		if (ent.oldframe >= startFrame && ent.frame < endFrame)
+		{
+			ent.backlerp = 1.0f - ((cg.time % 100) / 100.0f);
+		}
+		else
+		{
+			ent.backlerp = 0;
+			ent.oldframe = ent.frame;
+		}
 	}
 
 	if ( s1->eFlags & EF_SHADER_ANIM )
