@@ -1808,7 +1808,6 @@ void R_AddDrawSurf( surfaceType_t *surface, int entityNum, shader_t *shader,  in
 	surf->dlightBits = dlightMap;
 	surf->surface = surface;
 	surf->fogIndex = fogIndex;
-	surf->currentDistanceBucket = (int)(Q_min(distance / backEnd.viewParms.zFar, 1.0f) * 8);
 
 	tr.refdef.numDrawSurfs++;
 }
@@ -2654,7 +2653,6 @@ static float CalcSplit(float n, float f, float i, float m)
 
 void R_RenderSunShadowMaps(const refdef_t *fd, int level)
 {
-	viewParms_t shadowParms;
 	vec4_t lightDir, lightCol;
 	vec3_t lightViewAxis[3];
 	vec3_t lightOrigin;

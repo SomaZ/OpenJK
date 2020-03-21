@@ -1621,7 +1621,6 @@ typedef struct drawSurf_s {
 	uint32_t dlightBits;
 	surfaceType_t *surface; // any of surface*_t
 	int fogIndex;
-	int currentDistanceBucket;
 } drawSurf_t;
 
 #define	MAX_FACE_POINTS		64
@@ -2846,7 +2845,6 @@ struct shaderCommands_s
 	float			shaderTime;
 	int				fogNum;
 	int				cubemapIndex;
-	int				currentDistanceBucket;
 
 	int				dlightBits;	// or together of all vertexDlightBits
 	int				pshadowBits;
