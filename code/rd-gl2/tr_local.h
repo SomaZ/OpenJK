@@ -435,6 +435,7 @@ typedef struct VBO_s
 	uint32_t		offsets[ATTR_INDEX_MAX];
 	uint32_t		strides[ATTR_INDEX_MAX];
 	uint32_t		sizes[ATTR_INDEX_MAX];
+	uint32_t		animation_offsets[ATTR_INDEX_MAX];
 } VBO_t;
 
 typedef struct IBO_s
