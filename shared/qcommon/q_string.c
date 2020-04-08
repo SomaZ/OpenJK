@@ -445,7 +445,7 @@ int Q_parseSaberColor( const char *p, float *color ) {
             return 1;
         deg = (((c|32) - 'a') * 360) / 24;
         angle = (DEG2RAD(deg % 120));
-        v = ((cos(angle) / cos((M_PI / 3) - angle)) + 1) / 3;
+        v = ((cosf(angle) / cosf((M_PI / 3) - angle)) + 1) / 3;
         if ( deg <= 120) {
             color[0] = v;
             color[1] = 1-v;

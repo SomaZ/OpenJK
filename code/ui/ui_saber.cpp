@@ -532,7 +532,7 @@ void UI_DoSFXSaber( vec3_t blade_muz, vec3_t blade_dir, float lengthMax, float r
 	
 	if ( crystals & SABER_CRYSTAL_UNSTABLE )
 	{
-		coreradius *= 0.9;
+		coreradius *= 0.9f;
 	}
 	
 	{
