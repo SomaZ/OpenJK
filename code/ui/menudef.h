@@ -36,6 +36,7 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 #define ITEM_TYPE_BIND				13		// multiple list setting, enumerated
 #define ITEM_TYPE_TEXTSCROLL		14		// scrolling text
 #define ITEM_TYPE_SLIDER_INTEGER	15
+#define ITEM_TYPE_SLIDER_ROTATE     16
 
 
 #define ITEM_ALIGN_LEFT 0                 // left alignment
@@ -111,6 +112,9 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 #define FEEDER_SABER2_SKIN_3				0x20
 #define FEEDER_SABER2_SKIN_4				0x21
 #define FEEDER_SABER2_SKIN_5				0x22
+
+#define FEEDER_SABER_SINGLE_INFO			0x23
+#define FEEDER_SABER_STAFF_INFO				0x24
 
 
 #define UI_VERSION				200

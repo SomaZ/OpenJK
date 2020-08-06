@@ -4,7 +4,8 @@ set -e
 set -x
 
 host="$1"
-shift 1
+flavour="$2"
+shift 2
 
 # macOS is special
 if [ "${TRAVIS_OS_NAME}" = "osx" ]; then

@@ -159,7 +159,7 @@ void CG_RegisterWeapon( int weaponNum ) {
 		// Init the ghoul2 model
 		weaponInfo->g2_skin = gi.RE_RegisterSkin(weaponData[weaponNum].skinPath);
 		weaponInfo->g2_index = gi.G2API_InitGhoul2Model(weaponInfo->ghoul2, path,
-														G_ModelIndex(path), G_SkinIndex(weaponData[weaponNum].skinPath), NULL, 0, 0);
+														G_ModelIndex(path), G_SkinIndex(weaponData[weaponNum].skinPath), NULL_HANDLE, 0, 0);
 		gi.G2API_SetSkin(&weaponInfo->ghoul2[weaponInfo->g2_index], 0, weaponInfo->g2_skin);
 		// Add flash bolt
 		weaponInfo->g2_flashbolt = gi.G2API_AddBolt(&weaponInfo->ghoul2[weaponInfo->g2_index], "*flash");

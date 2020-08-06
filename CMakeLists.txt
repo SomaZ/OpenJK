@@ -97,7 +97,7 @@ if(APPLE)
 endif()
 
 # Custom CMake Modules needed
-list(INSERT CMAKE_MODULE_PATH 0 "${CMAKE_SOURCE_DIR}/CMakeModules")
+list(INSERT CMAKE_MODULE_PATH 0 "${CMAKE_SOURCE_DIR}/cmake/Modules")
 
 Include(CheckTypeSize)
 check_type_size("void*" CMAKE_SIZEOF_VOID_P)
@@ -208,6 +208,7 @@ if(MSVC)
 	set(SharedDefines ${SharedDefines} "_CRT_SECURE_NO_WARNINGS")
 	set(SharedDefines ${SharedDefines} "_SCL_SECURE_NO_WARNINGS")
 	set(SharedDefines ${SharedDefines} "_CRT_NONSTDC_NO_DEPRECATE")
+	set(SharedDefines ${SharedDefines} "WINDOWS_IGNORE_PACKING_MISMATCH")
 
 	set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} /arch:SSE2")
 	set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} /MP")

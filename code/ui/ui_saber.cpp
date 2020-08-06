@@ -104,20 +104,22 @@ void UI_CacheSaberGlowGraphics( void )
 	blackSaberBladeShader = re.RegisterShader( "SFX_Sabers/black_blade" );
 }
 
-qboolean UI_ParseLiteral( const char **data, const char *string )
+qboolean UI_ParseLiteral( const char **data, const char *string, qboolean silent )
 {
 	const char	*token;
 
 	token = COM_ParseExt( data, qtrue );
 	if ( token[0] == 0 )
 	{
-		ui.Printf( "unexpected EOF\n" );
+		if (!silent)
+			ui.Printf( "unexpected EOF\n" );
 		return qtrue;
 	}
 
 	if ( Q_stricmp( token, string ) )
 	{
-		ui.Printf( "required string '%s' missing\n", string );
+		if (!silent)
+			ui.Printf( "required string '%s' missing\n", string );
 		return qtrue;
 	}
 
@@ -162,7 +164,7 @@ qboolean UI_SaberParseParm( const char *saberName, const char *parmname, char *s
 		return qfalse;
 	}
 
-	if ( UI_ParseLiteral( &p, "{" ) )
+	if ( UI_ParseLiteral( &p, "{", qfalse ) )
 	{
 		COM_EndParseSession(  );
 		return qfalse;
@@ -464,6 +466,109 @@ void UI_SaberLoadParms( void )
 			marker += len;
 		}
 	}
+}
+
+
+qboolean UI_SaberValidForPlayerInSP(const char* saberName)
+{
+	char allowed[8] = { 0 };
+	if (!UI_SaberParseParm(saberName, "notInMP", allowed))
+	{//not defined, default is yes
+		return qtrue;
+	}
+	if (!allowed[0])
+	{//not defined, default is yes
+		return qtrue;
+	}
+	else
+	{//return value
+		return ((qboolean)(atoi(allowed) == 0));
+	}
+}
+
+qboolean UI_IsSaberTwoHanded(const char* saberName)
+{
+	int twoHanded;
+	char	twoHandedString[8] = { 0 };
+	UI_SaberParseParm(saberName, "twoHanded", twoHandedString);
+	if (!twoHandedString[0])
+	{//not defined defaults to "no"
+		return qfalse;
+	}
+	twoHanded = atoi(twoHandedString);
+	return ((qboolean)(twoHanded != 0));
+}
+
+void UI_SaberGetHiltInfo(const char* singleHilts[MAX_SABER_HILTS], const char* staffHilts[MAX_SABER_HILTS])
+{
+	int	numSingleHilts = 0, numStaffHilts = 0;
+	const char* saberName;
+	const char* token;
+	const char* p;
+
+	//check the sabers have been loaded
+	if (!ui_saber_parms_parsed)
+	{
+		UI_SaberLoadParms();
+	}
+
+	//go through all the loaded sabers and put the valid ones in the proper list
+	p = SaberParms;
+	COM_BeginParseSession();
+
+	// look for a saber
+	while (p)
+	{
+		token = COM_ParseExt(&p, qtrue);
+		if (token[0] == 0)
+		{//invalid name
+			continue;
+		}
+		saberName = String_Alloc(token);
+		//see if there's a "{" on the next line
+		SkipRestOfLine(&p);
+
+		if (UI_ParseLiteral(&p, "{", qtrue))
+		{//nope, not a name, keep looking
+			continue;
+		}
+
+		//this is a saber name
+		if (!UI_SaberValidForPlayerInSP(saberName))
+		{
+			SkipBracedSection(&p);
+			continue;
+		}
+
+		if (UI_IsSaberTwoHanded(saberName))
+		{
+			if (numStaffHilts < MAX_SABER_HILTS - 1)//-1 because we have to NULL terminate the list
+			{
+				staffHilts[numStaffHilts++] = saberName;
+			}
+			else
+			{
+				Com_Printf("WARNING: too many two-handed sabers, ignoring saber '%s'\n", saberName);
+			}
+		}
+		else
+		{
+			if (numSingleHilts < MAX_SABER_HILTS - 1)//-1 because we have to NULL terminate the list
+			{
+				singleHilts[numSingleHilts++] = saberName;
+			}
+			else
+			{
+				Com_Printf("WARNING: too many one-handed sabers, ignoring saber '%s'\n", saberName);
+			}
+		}
+		//skip the whole braced section and move on to the next entry
+		SkipBracedSection(&p);
+	}
+	//null terminate the list so the UI code knows where to stop listing them
+	singleHilts[numSingleHilts] = NULL;
+	staffHilts[numStaffHilts] = NULL;
+	COM_EndParseSession();
 }
 
 void UI_DoSFXSaber( vec3_t blade_muz, vec3_t blade_dir, float lengthMax, float radius, saber_colors_t color, saber_crystals_t crystals, int whichSaber )

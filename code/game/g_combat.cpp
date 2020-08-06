@@ -50,6 +50,7 @@ extern cvar_t		*d_slowmodeath;
 extern gentity_t *player;
 extern cvar_t	*debug_subdivision;
 extern cvar_t	*g_dismemberProbabilities;
+extern cvar_t   *g_broadsword;
 
 gentity_t *g_lastClientDamaged;
 
@@ -4649,7 +4650,7 @@ extern void RunEmplacedWeapon( gentity_t *ent, usercmd_t **ucmd );
 	self->client->respawnTime = level.time + 2000;//self->client->ps.legsAnimTimer;
 
 //rww - RAGDOLL_BEGIN
-	if (gi.Cvar_VariableIntegerValue("broadsword"))
+	if (g_broadsword->integer)
 	{
 		if ( self->client && (!self->NPC || !G_StandardHumanoid( self ) ) )
 		{

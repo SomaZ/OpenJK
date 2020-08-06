@@ -34,6 +34,7 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 #include "ui_shared.h"
 
 #define MAX_DEFERRED_SCRIPT		1024
+#define MAX_SABER_HILTS			256
 
 //
 // ui_qmenu.c

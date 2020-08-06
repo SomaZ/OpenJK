@@ -4297,11 +4297,7 @@ void G_CheckClientIdle( gentity_t *ent, usercmd_t *ucmd )
 	{
 		return;
 	}
-	if ( !ent->s.number && (cg_trueguns.integer || (!cg.renderingThirdPerson && (ent->client->ps.weapon == WP_SABER || ent->client->ps.weapon == WP_MELEE)) ) )
-	{
-		return;
-	}
-	if ( !ent->s.number && ( /*!cg.renderingThirdPerson ||*/ cg.zoomMode ) )
+	if ( !ent->s.number && ( !cg.renderingThirdPerson || cg.zoomMode ) )
 	{
 		if ( ent->client->idleTime < level.time )
 		{

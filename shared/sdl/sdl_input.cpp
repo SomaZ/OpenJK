@@ -435,7 +435,7 @@ static void IN_ActivateMouse( void )
 	}
 
 	// in_nograb makes no sense in fullscreen mode
-	if( !Cvar_VariableIntegerValue("r_fullscreen") )
+	if( !cls.glconfig.isFullscreen )
 	{
 		if( in_nograb->modified || !mouseActive )
 		{
@@ -463,7 +463,7 @@ static void IN_DeactivateMouse( void )
 
 	// Always show the cursor when the mouse is disabled,
 	// but not when fullscreen
-	if( !Cvar_VariableIntegerValue("r_fullscreen") )
+	if( !cls.glconfig.isFullscreen )
 		SDL_ShowCursor( 1 );
 
 	if( !mouseAvailable )
@@ -615,6 +615,14 @@ void IN_Init( void *windowData )
 	SDL_StartTextInput( );
 
 	mouseAvailable = (qboolean)( in_mouse->value != 0 );
+	if ( in_mouse->integer == 2 ) {
+		Com_DPrintf( "Not using raw mouse input\n" );
+		SDL_SetHint( "SDL_MOUSE_RELATIVE_MODE_WARP", "1" );
+	}
+	else {
+		Com_DPrintf( "Using raw mouse input\n" );
+		SDL_SetHint( "SDL_MOUSE_RELATIVE_MODE_WARP", "0" );
+	}
 	IN_DeactivateMouse( );
 
 	int appState = SDL_GetWindowFlags( SDL_window );

@@ -699,6 +699,10 @@ extern gitem_t	*FindItemForInventory( int inv );
                     RegisterItem( FindItemForWeapon( (weapon_t)i++ ) );
                 }
             }
+            else
+            {
+                i++;
+            }
             /* Get next token: */
             var = strtok( NULL, " " );
         }

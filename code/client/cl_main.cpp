@@ -1084,6 +1084,7 @@ void CL_InitRef( void ) {
 	static refimport_t rit;
 	char		dllName[MAX_OSPATH];
 	GetRefAPI_t	GetRefAPI;
+	qboolean fallback = qfalse;
 
 	Com_Printf( "----- Initializing Renderer ----\n" );
     cl_renderer = Cvar_Get( "cl_renderer", DEFAULT_RENDER_LIBRARY, CVAR_ARCHIVE|CVAR_LATCH|CVAR_PROTECTED );
@@ -1092,6 +1093,7 @@ void CL_InitRef( void ) {
 
 	if( !(rendererLib = Sys_LoadDll( dllName, qfalse )) && strcmp( cl_renderer->string, cl_renderer->resetString ) )
 	{
+		fallback = qtrue;
 		Com_Printf( "failed: trying to load fallback renderer\n" );
 		Cvar_ForceReset( "cl_renderer" );
 
@@ -1106,7 +1108,20 @@ void CL_InitRef( void ) {
 	memset( &rit, 0, sizeof( rit ) );
 
 	GetRefAPI = (GetRefAPI_t)Sys_LoadFunction( rendererLib, "GetRefAPI" );
-	if ( !GetRefAPI )
+	if (!GetRefAPI && !fallback)
+	{
+		Sys_UnloadLibrary(rendererLib);
+		fallback = qtrue;
+		Com_Printf("Can't load symbol GetRefAPI: trying to load fallback renderer\n");
+		Cvar_ForceReset("cl_renderer");
+
+		Com_sprintf(dllName, sizeof(dllName), DEFAULT_RENDER_LIBRARY "_" ARCH_STRING DLL_EXT);
+		rendererLib = Sys_LoadDll(dllName, qfalse);
+		if (rendererLib)
+			GetRefAPI = (GetRefAPI_t)Sys_LoadFunction(rendererLib, "GetRefAPI");
+	}
+
+	if (!GetRefAPI )
 		Com_Error( ERR_FATAL, "Can't load symbol GetRefAPI: '%s'", Sys_LibraryError() );
 
 #define RIT(y)	rit.y = y
@@ -1188,6 +1203,25 @@ void CL_InitRef( void ) {
 	rit.saved_game = &ojk::SavedGame::get_instance();
 
 	ret = GetRefAPI( REF_API_VERSION, &rit );
+
+	if (!ret && !fallback)
+	{
+		Sys_UnloadLibrary(rendererLib);
+		fallback = qtrue;
+		Com_Printf("Version mismatch: trying to load fallback renderer\n");
+		Cvar_ForceReset("cl_renderer");
+
+		Com_sprintf(dllName, sizeof(dllName), DEFAULT_RENDER_LIBRARY "_" ARCH_STRING DLL_EXT);
+		rendererLib = Sys_LoadDll(dllName, qfalse);
+		if (rendererLib)
+		{
+			GetRefAPI = (GetRefAPI_t)Sys_LoadFunction(rendererLib, "GetRefAPI");
+			if (GetRefAPI)
+			{
+				ret = GetRefAPI(REF_API_VERSION, &rit);
+			}
+		}
+	}
 
 	if ( !ret ) {
 		Com_Error (ERR_FATAL, "Couldn't initialize refresh" );

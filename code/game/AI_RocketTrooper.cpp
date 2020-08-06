@@ -389,10 +389,6 @@ void RT_FlyStart( gentity_t *self )
 		G_SoundOnEnt( self, CHAN_ITEM, "sound/chars/boba/bf_blast-off.wav" );
 		//jet loop sound
 		self->s.loopSound = G_SoundIndex( "sound/chars/boba/bf_jetpack_lp.wav"  );
-		if ( self->NPC )
-		{
-			self->count = Q3_INFINITE; // SEEKER shot ammo count
-		}
 	}
 }
 
@@ -417,7 +413,6 @@ void RT_FlyStop( gentity_t *self )
 
 	if ( self->NPC )
 	{
-		self->count = 0; // SEEKER shot ammo count
 		TIMER_Set( self, "jetRecharge", Q_irand( 1000, 5000 ) );
 		TIMER_Set( self, "jumpChaseDebounce", Q_irand( 500, 2000 ) );
 	}
