@@ -4113,6 +4113,29 @@ static qboolean IsShader ( const shader_t *sh, const char *name, const int *ligh
 	return qtrue;
 }
 
+/*
+===============
+R_FindLightmaps
+===============
+*/
+static inline const int *R_FindLightmaps(const int *lightmapIndexes)
+{
+	image_t          *image;
+	char          fileName[MAX_QPATH];
+
+	// don't bother with vertex lighting
+	if (*lightmapIndexes < 0)
+		return lightmapIndexes;
+
+	// do the lightmaps exist?
+	for (int i = 0; i < MAXLIGHTMAPS; i++)
+	{
+		if (lightmapIndexes[i] >= tr.numLightmaps || tr.lightmaps[lightmapIndexes[i]] == NULL)
+			return lightmapsVertex;
+	}
+	return lightmapIndexes;
+}
+
 
 /*
 ===============
@@ -4162,6 +4185,8 @@ shader_t *R_FindShader( const char *name, const int *lightmapIndexes, const byte
 		ri.Printf( PRINT_WARNING, "WARNING: shader '%s' has invalid lightmap index of %d\n", name, lightmapIndexes[0]  );
 		lightmapIndexes = lightmapsVertex;
 	}
+
+	lightmapIndexes = R_FindLightmaps(lightmapIndexes);
 
 	COM_StripExtension(name, strippedName, sizeof(strippedName));
 

@@ -676,7 +676,7 @@ static void GLimp_InitExtensions( void )
 	}
 
 #if !defined(__APPLE__)
-	qglStencilOpSeparate = (PFNGLSTENCILOPSEPARATEPROC)ri->GL_GetProcAddress("glStencilOpSeparate");
+	qglStencilOpSeparate = (PFNGLSTENCILOPSEPARATEPROC)ri.GL_GetProcAddress("glStencilOpSeparate");
 	if (qglStencilOpSeparate)
 	{
 		glConfig.doStencilShadowsInOneDrawcall = qtrue;
