@@ -373,7 +373,6 @@ static	void R_LoadLightmaps( world_t *worldData, lump_t *l, lump_t *surfs ) {
 			
 			if (externalLightmap)
 			{
-				ri.Printf(PRINT_ALL, "externalLightmap found: %s bbpc: %i\n", filename, bppc);
 				int newImageSize = lightmapWidth * lightmapHeight * 4 * 2;
 				if (r_mergeLightmaps->integer && (lightmapWidth != tr.lightmapSize || lightmapHeight != tr.lightmapSize))
 				{
