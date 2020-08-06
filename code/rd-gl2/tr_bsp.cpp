@@ -490,10 +490,10 @@ static	void R_LoadLightmaps( world_t *worldData, lump_t *l, lump_t *surfs ) {
 					IMGFLAG_NOLIGHTSCALE |
 					IMGFLAG_NO_COMPRESSION |
 					IMGFLAG_CLAMPTOEDGE,
-					0);
+					textureInternalFormat);
 
-			//if (hdrLightmap)
-				//R_Free(hdrLightmap);
+			if (hdrLightmap)
+				R_Free(hdrLightmap);
 		}
 
 		if (tr.worldDeluxeMapping)
