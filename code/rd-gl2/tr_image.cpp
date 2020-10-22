@@ -2492,6 +2492,10 @@ image_t *R_CreateImage3D(const char *name, byte *data, int width, int height, in
 	image = (image_t *)R_Hunk_Alloc(sizeof(image_t), qtrue);
 	qglGenTextures(1, &image->texnum);
 
+	GLenum dataFormat = GL_UNSIGNED_BYTE;
+	if (internalFormat == GL_RGB16F)
+		dataFormat = GL_FLOAT;
+
 	image->type = IMGTYPE_COLORALPHA;
 	image->flags = IMGFLAG_3D;
 
@@ -2507,12 +2511,18 @@ image_t *R_CreateImage3D(const char *name, byte *data, int width, int height, in
 		qglTexStorage3D(GL_TEXTURE_3D, 1, internalFormat, width, height, depth);
 		if (data)
 		{
-			qglTexSubImage3D(GL_TEXTURE_3D, 0, 0, 0, 0, width, height, depth, GL_RGBA, GL_UNSIGNED_BYTE, data);
+			if (dataFormat == GL_FLOAT)
+				qglTexSubImage3D(GL_TEXTURE_3D, 0, 0, 0, 0, width, height, depth, GL_RGBA, dataFormat, (float*)data);
+			else
+				qglTexSubImage3D(GL_TEXTURE_3D, 0, 0, 0, 0, width, height, depth, GL_RGBA, dataFormat, data);
 		}
 	}
 	else
 	{
-		qglTexImage3D(GL_TEXTURE_3D, 0, internalFormat, width, height, depth, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
+		if (dataFormat == GL_FLOAT)
+			qglTexImage3D(GL_TEXTURE_3D, 0, internalFormat, width, height, depth, 0, GL_RGBA, dataFormat, (float*)data);
+		else
+			qglTexImage3D(GL_TEXTURE_3D, 0, internalFormat, width, height, depth, 0, GL_RGBA, dataFormat, data);
 	}
 
 	qglTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);

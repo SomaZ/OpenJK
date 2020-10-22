@@ -4120,9 +4120,6 @@ R_FindLightmaps
 */
 static inline const int *R_FindLightmaps(const int *lightmapIndexes)
 {
-	image_t          *image;
-	char          fileName[MAX_QPATH];
-
 	// don't bother with vertex lighting
 	if (*lightmapIndexes < 0)
 		return lightmapIndexes;

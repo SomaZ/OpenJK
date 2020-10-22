@@ -137,11 +137,12 @@ R_ColorShiftLightingFloats
 
 ===============
 */
-static void R_ColorShiftLightingFloats(float in[4], float out[4], float scale )
+static void R_ColorShiftLightingFloats(float in[4], float out[4], float scale, bool overbrightBits = true)
 {
 	float r, g, b;
 
-	scale *= pow(2.0f, r_mapOverBrightBits->integer - tr.overbrightBits);
+	if (overbrightBits)
+		scale *= pow(2.0f, r_mapOverBrightBits->integer - tr.overbrightBits);
 
 	r = in[0] * scale;
 	g = in[1] * scale;
@@ -218,6 +219,7 @@ static	void R_LoadLightmaps( world_t *worldData, lump_t *l, lump_t *surfs ) {
 
 	bool hdr_capable = glRefConfig.floatLightmap && r_hdr->integer;
 
+	tr.lightmapSize = DEFAULT_LIGHTMAP_SIZE;
 
 	len = l->filelen;
 	// test for external lightmaps
@@ -243,8 +245,6 @@ static	void R_LoadLightmaps( world_t *worldData, lump_t *l, lump_t *surfs ) {
 	
 	// we are about to upload textures
 	R_IssuePendingRenderCommands();
-
-	tr.lightmapSize = DEFAULT_LIGHTMAP_SIZE;
 
 	// check for deluxe mapping
 	if (numLightmaps <= 1)
@@ -436,7 +436,7 @@ static	void R_LoadLightmaps( world_t *worldData, lump_t *l, lump_t *surfs ) {
 
 						color[3] = 1.0f;
 
-						R_ColorShiftLightingFloats(color, color, 1.0f);
+						R_ColorShiftLightingFloats(color, color, 1.0f, false);
 
 						ColorToRGBA16F(color, (uint16_t *)(&image[j * 8]));
 					}
@@ -799,11 +799,13 @@ static void ParseFace( const world_t *worldData, dsurface_t *ds, drawVert_t *ver
 			cv->verts[i].lightmap[j][0] = FatPackU(LittleFloat(verts[i].lightmap[j][0]), ds->lightmapNum[j]);
 			cv->verts[i].lightmap[j][1] = FatPackV(LittleFloat(verts[i].lightmap[j][1]), ds->lightmapNum[j]);
 
+			float scale = 1.0f / 255.0f;
 			if (hdrVertColors)
 			{
 				color[0] = hdrVertColors[(ds->firstVert + i) * 3    ];
 				color[1] = hdrVertColors[(ds->firstVert + i) * 3 + 1];
 				color[2] = hdrVertColors[(ds->firstVert + i) * 3 + 2];
+				float scale = 1.0f;
 			}
 			else
 			{
@@ -824,7 +826,7 @@ static void ParseFace( const world_t *worldData, dsurface_t *ds, drawVert_t *ver
 			}
 			color[3] = verts[i].color[j][3] / 255.0f;
 
-			R_ColorShiftLightingFloats( color, cv->verts[i].vertexColors[j], 1.0f / 255.0f );
+			R_ColorShiftLightingFloats(color, cv->verts[i].vertexColors[j], scale, hdrVertColors != NULL);
 		}
 	}
 
@@ -948,11 +950,14 @@ static void ParseMesh ( const world_t *worldData, dsurface_t *ds, drawVert_t *ve
 			points[i].lightmap[j][0] = FatPackU(LittleFloat(verts[i].lightmap[j][0]), ds->lightmapNum[j]);
 			points[i].lightmap[j][1] = FatPackV(LittleFloat(verts[i].lightmap[j][1]), ds->lightmapNum[j]);
 
+			float scale = 1.0f / 255.0f;
 			if (hdrVertColors)
 			{
-				color[0] = hdrVertColors[(ds->firstVert + i) * 3    ];
-				color[1] = hdrVertColors[(ds->firstVert + i) * 3 + 1];
-				color[2] = hdrVertColors[(ds->firstVert + i) * 3 + 2];
+				float *hdrColor = hdrVertColors + (ds->firstVert + i) * 3;
+				color[0] = hdrColor[0];
+				color[1] = hdrColor[1];
+				color[2] = hdrColor[2];
+				scale = 1.0f;
 			}
 			else
 			{
@@ -972,7 +977,7 @@ static void ParseMesh ( const world_t *worldData, dsurface_t *ds, drawVert_t *ve
 			}
 			color[3] = verts[i].color[j][3] / 255.0f;
 
-			R_ColorShiftLightingFloats( color, points[i].vertexColors[j], 1.0f / 255.0f );
+			R_ColorShiftLightingFloats(color, points[i].vertexColors[j], scale, hdrVertColors != NULL);
 		}
 	}
 
@@ -1061,11 +1066,14 @@ static void ParseTriSurf( const world_t *worldData, dsurface_t *ds, drawVert_t *
 			cv->verts[i].lightmap[j][0] = FatPackU(LittleFloat(verts[i].lightmap[j][0]), ds->lightmapNum[j]);
 			cv->verts[i].lightmap[j][1] = FatPackV(LittleFloat(verts[i].lightmap[j][1]), ds->lightmapNum[j]);
 
+			float scale = 1.0f / 255.0f;
 			if (hdrVertColors)
 			{
-				color[0] = hdrVertColors[(ds->firstVert + i) * 3    ];
-				color[1] = hdrVertColors[(ds->firstVert + i) * 3 + 1];
-				color[2] = hdrVertColors[(ds->firstVert + i) * 3 + 2];
+				float *hdrColor = hdrVertColors + ((ds->firstVert + i) * 3);
+				color[0] = hdrColor[0];
+				color[1] = hdrColor[1];
+				color[2] = hdrColor[2];
+				scale = 1.0f;
 			}
 			else
 			{
@@ -1085,7 +1093,7 @@ static void ParseTriSurf( const world_t *worldData, dsurface_t *ds, drawVert_t *
 			}
 			color[3] = verts[i].color[j][3] / 255.0f;
 
-			R_ColorShiftLightingFloats( color, cv->verts[i].vertexColors[j], 1.0f / 255.0f );
+			R_ColorShiftLightingFloats(color, cv->verts[i].vertexColors[j], scale, hdrVertColors != NULL);
 		}
 	}
 
@@ -2719,31 +2727,25 @@ void R_LoadLightGrid( world_t *worldData, lump_t *l ) {
 		int size;
 
 		Com_sprintf( filename, sizeof( filename ), "maps/%s/lightgrid.raw", worldData->baseName);
-		//ri.Printf(PRINT_ALL, "looking for %s\n", filename);
-
 		size = ri.FS_ReadFile(filename, (void **)&hdrLightGrid);
 
 		if (hdrLightGrid)
 		{
-			float lightScale = pow(2.0f, r_mapOverBrightBits->integer - tr.overbrightBits);
-
-			//ri.Printf(PRINT_ALL, "found!\n");
-
-			if (size != sizeof(float) * 6 * numGridDataElements)
+			if (size != sizeof(float) * 6 * worldData->lightGridBounds[0] * worldData->lightGridBounds[1] * worldData->lightGridBounds[2])
 			{
-				ri.Error(ERR_DROP, "Bad size for %s (%i, expected %i)!", filename, size, (int)(sizeof(float)) * 6 * numGridDataElements);
+				ri.Error(ERR_DROP, "Bad size for %s (%i, expected %i)!", filename, size, (int)(sizeof(float)) * 6 * worldData->lightGridBounds[0] * worldData->lightGridBounds[1] * worldData->lightGridBounds[2]);
 			}
 
 			worldData->hdrLightGrid = (float *)R_Hunk_Alloc(size, qtrue);
 
-			for (i = 0; i < numGridDataElements ; i++)
+			for (i = 0; i < worldData->lightGridBounds[0] * worldData->lightGridBounds[1] * worldData->lightGridBounds[2]; i++)
 			{
-				worldData->hdrLightGrid[i * 6    ] = hdrLightGrid[i * 6    ] * lightScale;
-				worldData->hdrLightGrid[i * 6 + 1] = hdrLightGrid[i * 6 + 1] * lightScale;
-				worldData->hdrLightGrid[i * 6 + 2] = hdrLightGrid[i * 6 + 2] * lightScale;
-				worldData->hdrLightGrid[i * 6 + 3] = hdrLightGrid[i * 6 + 3] * lightScale;
-				worldData->hdrLightGrid[i * 6 + 4] = hdrLightGrid[i * 6 + 4] * lightScale;
-				worldData->hdrLightGrid[i * 6 + 5] = hdrLightGrid[i * 6 + 5] * lightScale;
+				worldData->hdrLightGrid[i * 6    ] = hdrLightGrid[i * 6    ];
+				worldData->hdrLightGrid[i * 6 + 1] = hdrLightGrid[i * 6 + 1];
+				worldData->hdrLightGrid[i * 6 + 2] = hdrLightGrid[i * 6 + 2];
+				worldData->hdrLightGrid[i * 6 + 3] = hdrLightGrid[i * 6 + 3];
+				worldData->hdrLightGrid[i * 6 + 4] = hdrLightGrid[i * 6 + 4];
+				worldData->hdrLightGrid[i * 6 + 5] = hdrLightGrid[i * 6 + 5];
 			}
 		}
 
@@ -3885,15 +3887,31 @@ static void R_GenerateSurfaceSprites( const world_t *world )
 static void R_BuildLightGridTextures(world_t *world)
 {
 	// Upload light grid as 3D textures
-	byte *ambientBase = (byte *)R_Malloc(world->numGridArrayElements * sizeof(byte) * 4, TAG_TEMP_WORKSPACE, qtrue);
-	byte *directionalBase = (byte *)R_Malloc(world->numGridArrayElements * sizeof(byte) * 4, TAG_TEMP_WORKSPACE, qtrue);
 	byte *directionBase = (byte *)R_Malloc(world->numGridArrayElements * sizeof(byte) * 4, TAG_TEMP_WORKSPACE, qtrue);
+
+	byte *ambientBase;
+	byte *directionalBase;
+	float *ambientHDRBase;
+	float *directionalHDRBase;
+	if (world->hdrLightGrid)
+	{
+		ambientHDRBase = (float *)R_Malloc(world->numGridArrayElements * sizeof(float) * 4, TAG_TEMP_WORKSPACE, qtrue);
+		directionalHDRBase = (float *)R_Malloc(world->numGridArrayElements * sizeof(float) * 4, TAG_TEMP_WORKSPACE, qtrue);
+	}
+	else
+	{
+		ambientBase = (byte *)R_Malloc(world->numGridArrayElements * sizeof(byte) * 4, TAG_TEMP_WORKSPACE, qtrue);
+		directionalBase = (byte *)R_Malloc(world->numGridArrayElements * sizeof(byte) * 4, TAG_TEMP_WORKSPACE, qtrue);
+	}
 
 	if (world->lightGridData)
 	{
+		byte *direction = directionBase;
 		byte *ambient = ambientBase;
 		byte *directional = directionalBase;
-		byte *direction = directionBase;
+		float *ambientHDR = ambientHDRBase;
+		float *directionalHDR = directionalHDRBase;
+
 		for (int i = 0; i < world->numGridArrayElements; i++)
 		{
 
@@ -3902,15 +3920,32 @@ static void R_BuildLightGridTextures(world_t *world)
 
 			mgrid_t *data = world->lightGridData + world->lightGridArray[i];
 
-			ambient[0] = data->ambientLight[0][0];
-			ambient[1] = data->ambientLight[0][1];
-			ambient[2] = data->ambientLight[0][2];
-			ambient[3] = 0;
+			if (world->hdrLightGrid)
+			{
+				float *hdrData = world->hdrLightGrid + (i * 6);
 
-			directional[0] = data->directLight[0][0];
-			directional[1] = data->directLight[0][1];
-			directional[2] = data->directLight[0][2];
-			directional[3] = 0;
+				ambientHDR[0] = hdrData[0];
+				ambientHDR[1] = hdrData[1];
+				ambientHDR[2] = hdrData[2];
+				ambientHDR[3] = 1.0f;
+
+				directionalHDR[0] = hdrData[3];
+				directionalHDR[1] = hdrData[3];
+				directionalHDR[2] = hdrData[4];
+				directionalHDR[3] = 1.0f;
+			}
+			else
+			{
+				ambient[0] = data->ambientLight[0][0];
+				ambient[1] = data->ambientLight[0][1];
+				ambient[2] = data->ambientLight[0][2];
+				ambient[3] = 0;
+
+				directional[0] = data->directLight[0][0];
+				directional[1] = data->directLight[0][1];
+				directional[2] = data->directLight[0][2];
+				directional[3] = 0;
+			}
 
 			lat = (data->latLong[1] / 255.0f) * 2.0f * M_PI;
 			lng = (data->latLong[0] / 255.0f) * 2.0f * M_PI;
@@ -3932,22 +3967,42 @@ static void R_BuildLightGridTextures(world_t *world)
 			ambient += 4;
 			directional += 4;
 			direction += 4;
+
+			ambientHDR += 4; directionalHDR += 4;
 		}
 
-		world->ambientLightImages[0] = R_CreateImage3D(
-			"*bsp_ambientLightGrid", ambientBase,
-			world->lightGridBounds[0],
-			world->lightGridBounds[1],
-			world->lightGridBounds[2],
-			GL_RGB8);
+		if (world->hdrLightGrid)
+		{
+			world->ambientLightImages[0] = R_CreateImage3D(
+				"*bsp_ambientLightGrid", (byte*)ambientHDRBase,
+				world->lightGridBounds[0],
+				world->lightGridBounds[1],
+				world->lightGridBounds[2],
+				GL_RGB16F);
 
-		world->directionalLightImages[0] = R_CreateImage3D(
-			"*bsp_directionalLightGrid", directionalBase,
-			world->lightGridBounds[0],
-			world->lightGridBounds[1],
-			world->lightGridBounds[2],
-			GL_RGB8);
+			world->directionalLightImages[0] = R_CreateImage3D(
+				"*bsp_directionalLightGrid", (byte*)directionalHDRBase,
+				world->lightGridBounds[0],
+				world->lightGridBounds[1],
+				world->lightGridBounds[2],
+				GL_RGB16F);
+		}
+		else
+		{
+			world->ambientLightImages[0] = R_CreateImage3D(
+				"*bsp_ambientLightGrid", ambientBase,
+				world->lightGridBounds[0],
+				world->lightGridBounds[1],
+				world->lightGridBounds[2],
+				GL_RGB8);
 
+			world->directionalLightImages[0] = R_CreateImage3D(
+				"*bsp_directionalLightGrid", directionalBase,
+				world->lightGridBounds[0],
+				world->lightGridBounds[1],
+				world->lightGridBounds[2],
+				GL_RGB8);
+		}
 		world->directionImages = R_CreateImage3D(
 			"*bsp_directionsGrid", directionBase,
 			world->lightGridBounds[0],
@@ -3956,8 +4011,16 @@ static void R_BuildLightGridTextures(world_t *world)
 			GL_RGB8);
 	}
 
-	R_Free(ambientBase);
-	R_Free(directionalBase);
+	if (world->hdrLightGrid)
+	{
+		R_Free(ambientHDRBase);
+		R_Free(directionalHDRBase);
+	}
+	else
+	{
+		R_Free(ambientBase);
+		R_Free(directionalBase);
+	}
 	R_Free(directionBase);
 
 	if (world->numGridArrayElements && world->lightGridData)
