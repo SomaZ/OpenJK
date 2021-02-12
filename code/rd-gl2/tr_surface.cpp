@@ -388,7 +388,6 @@ static void RB_SurfaceVertsAndIndexes( int numVerts, srfVert_t *verts, int numIn
 	glIndex_t      *inIndex;
 	srfVert_t      *dv;
 	float          *xyz, *texCoords, *lightCoords;
-	uint32_t        *lightdir;
 	uint32_t        *normal;
 	uint32_t        *tangent;
 	glIndex_t      *outIndex;
@@ -1776,7 +1775,6 @@ static void RB_SurfaceBSPGrid( srfBspSurface_t *srf ) {
 	uint32_t *normal;
 	uint32_t *tangent;
 	float   *color;
-	uint32_t *lightdir;
 	srfVert_t	*dv;
 	int		rows, irows, vrows;
 	int		used;

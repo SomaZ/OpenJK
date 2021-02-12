@@ -102,7 +102,6 @@ namespace
 		const vec3_t forward =	{ -1.0f,  0.0f,  0.0f};
 		const vec3_t up =		{ 0.0f, 1.0f,  0.0f};
 
-		matrix3_t viewAxes;
 		vec3_t viewOrigin;
 		VectorMA(tr.world->bmodels[0].bounds[1], 0.5f, mapSize, viewOrigin);
 

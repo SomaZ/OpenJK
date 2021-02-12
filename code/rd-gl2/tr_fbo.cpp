@@ -600,10 +600,14 @@ void FBO_Init(void)
 		for( i = 0; i < MAX_DRAWN_PSHADOWS; i++)
 		{
 			tr.pshadowFbos[i] = FBO_Create(va("_shadowmap%i", i), tr.pshadowMaps[i]->width, tr.pshadowMaps[i]->height);
-
 			FBO_Bind(tr.pshadowFbos[i]);
 			FBO_CreateBuffer(tr.pshadowFbos[i], GL_DEPTH_COMPONENT24, 0, 0);
+
+			qglDrawBuffer(GL_NONE);
+			qglReadBuffer(GL_NONE);
+
 			R_AttachFBOTextureDepth(tr.pshadowMaps[i]->texnum);
+
 			FBO_SetupDrawBuffers();
 
 			R_CheckFBO(tr.pshadowFbos[i]);
