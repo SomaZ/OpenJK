@@ -1932,7 +1932,7 @@ static void RB_IterateStagesGeneric( shaderCommands_t *input, const VertexArrays
 						samplerBindingsWriter.AddStaticImage(tr.whiteImage, TB_SPECULARMAP);
 					}
 
-					if ( renderSolid ) {
+					if ( renderSolid && pStage->rgbGen != CGEN_LIGHTMAPSTYLE) {
 						samplerBindingsWriter.AddStaticImage(tr.diffuseLightingImage, TB_DIFFUSELIGHTBUFFER);
 						samplerBindingsWriter.AddStaticImage(tr.specularLightingImage, TB_SPECLIGHTBUFFER);
 					}
