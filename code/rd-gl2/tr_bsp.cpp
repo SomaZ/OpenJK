@@ -4148,6 +4148,9 @@ world_t *R_LoadBSP(const char *name, int *bspIndex)
 
 	COM_StripExtension(worldData->baseName, worldData->baseName, sizeof(worldData->baseName));
 
+	Q_strncpyz(tr.worldName, worldData->name, sizeof(worldData->name));
+	COM_StripExtension(tr.worldName, tr.worldName, sizeof(tr.worldName));
+
 	byte *startMarker = (byte *)R_Hunk_Alloc(0, qtrue);
 	dheader_t *header = (dheader_t *)buffer.b;
 	fileBase = (byte *)header;
