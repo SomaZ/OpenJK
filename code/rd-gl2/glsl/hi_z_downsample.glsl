@@ -60,7 +60,7 @@ void main()
 	color.z = texelFetch(u_TextureMap, tc + ivec2( 0,-1), mip).r;
 	color.w = texelFetch(u_TextureMap, tc + ivec2(-1,-1), mip).r;
 
-	float minZ = min(min(color.x,color.y),min(color.z,color.w));
+	float minZ = max(max(color.x,color.y),max(color.z,color.w));
 
 	vec3 extra;
 	// if we are reducing an odd-width texture then fetch the edge texels
@@ -68,18 +68,18 @@ void main()
 		// if both edges are odd, fetch the top-left corner texel
 		if ( ( (bufferSize.y & 1) != 0 ) && ( int(gl_FragCoord.y) == bufferSize.y-3 ) ) {
 			extra.z = texelFetch( u_TextureMap, tc + ivec2( 1, 1), mip ).r;
-			minZ = min( minZ, extra.z );
+			minZ = max( minZ, extra.z );
 		}
 		extra.x = texelFetch( u_TextureMap, tc + ivec2( 1, 0), mip ).r;
 		extra.y = texelFetch( u_TextureMap, tc + ivec2( 1,-1), mip ).r;
-		minZ = min( minZ, min( extra.x, extra.y ) );
+		minZ = max( minZ, max( extra.x, extra.y ) );
 	} 
 	else
 		// if we are reducing an odd-height texture then fetch the edge texels
 		if ( ( (bufferSize.y & 1) != 0 ) && ( int(gl_FragCoord.y) == bufferSize.y-3 ) ) {
 			extra.x = texelFetch( u_TextureMap, tc + ivec2( 0, 1), mip ).r;
 			extra.y = texelFetch( u_TextureMap, tc + ivec2(-1, 1), mip ).r;
-			minZ = min( minZ, min( extra.x, extra.y ) );
+			minZ = max( minZ, max( extra.x, extra.y ) );
 		}
 
 	if ( true )

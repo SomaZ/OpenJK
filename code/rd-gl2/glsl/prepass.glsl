@@ -41,7 +41,7 @@ uniform mat4 u_ModelViewProjectionMatrix;
 uniform mat4 u_PrevViewProjectionMatrix;
 uniform mat4 u_ModelMatrix;
 uniform mat4 u_NormalMatrix;
-uniform int u_AlphaGen;
+uniform int u_ColorGen;
 uniform vec4 u_Disintegration; // origin, threshhold
 
 #if defined(USE_VERTEX_ANIMATION)
@@ -243,7 +243,7 @@ vec4 CalcColor(vec3 position)
 {
 	vec4 color = vec4(1.0);
 
-	if (u_AlphaGen == AGEN_DISINTEGRATE1)
+	if (u_ColorGen == CGEN_DISINTEGRATION_1)
 	{
 		vec3 delta = u_Disintegration.xyz - position;
 		float distance = dot(delta, delta);
@@ -265,7 +265,7 @@ vec4 CalcColor(vec3 position)
 		}
 
 	}
-	else if (u_AlphaGen == AGEN_DISINTEGRATE2)
+	else if (u_ColorGen == CGEN_DISINTEGRATION_2)
 	{
 		vec3 delta = u_Disintegration.xyz - position;
 		float distance = dot(delta, delta);

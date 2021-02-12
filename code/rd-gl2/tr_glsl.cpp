@@ -297,8 +297,10 @@ static size_t GLSL_GetShaderHeader(
 			"#define DEFORM_WAVE %i\n"
 			"#define DEFORM_NORMALS %i\n"
 			"#define DEFORM_BULGE %i\n"
+			"#define DEFORM_BULGE_UNIFORM %i\n"
 			"#define DEFORM_MOVE %i\n"
 			"#define DEFORM_PROJECTION_SHADOW %i\n"
+			"#define DEFORM_DISINTEGRATION %i\n"
 			"#define WF_NONE %i\n"
 			"#define WF_SIN %i\n"
 			"#define WF_SQUARE %i\n"
@@ -310,8 +312,10 @@ static size_t GLSL_GetShaderHeader(
 			DEFORM_WAVE,
 			DEFORM_NORMALS,
 			DEFORM_BULGE,
+			DEFORM_BULGE_UNIFORM,
 			DEFORM_MOVE,
 			DEFORM_PROJECTION_SHADOW,
+			DEFORM_DISINTEGRATION,
 			GF_NONE,
 			GF_SIN,
 			GF_SQUARE,
@@ -344,21 +348,21 @@ static size_t GLSL_GetShaderHeader(
 		va("#ifndef colorGen_t\n"
 			"#define colorGen_t\n"
 			"#define CGEN_LIGHTING_DIFFUSE %i\n"
+			"#define CGEN_DISINTEGRATION_1 %i\n"
+			"#define CGEN_DISINTEGRATION_2 %i\n"
 			"#endif\n",
-			CGEN_LIGHTING_DIFFUSE));
+			CGEN_LIGHTING_DIFFUSE,
+			CGEN_DISINTEGRATION_1, 
+			CGEN_DISINTEGRATION_2));
 
 	Q_strcat(dest, size,
 		va("#ifndef alphaGen_t\n"
 			"#define alphaGen_t\n"
 			"#define AGEN_LIGHTING_SPECULAR %i\n"
 			"#define AGEN_PORTAL %i\n"
-			"#define AGEN_DISINTEGRATE1 %i\n"
-			"#define AGEN_DISINTEGRATE2 %i\n"
 			"#endif\n",
 			AGEN_LIGHTING_SPECULAR,
-			AGEN_PORTAL, 
-			AGEN_DISINTEGRATE1,
-			AGEN_DISINTEGRATE2));
+			AGEN_PORTAL));
 
 	Q_strcat(dest, size,
 		va("#ifndef texenv_t\n"
@@ -3000,6 +3004,12 @@ shaderProgram_t *GLSL_GetGenericShaderProgram(int stage)
 	{
 		shaderAttribs |= GENERICDEF_USE_FOG;
 	}
+
+	if (backEnd.currentEntity->e.renderfx & (RF_DISINTEGRATE1 | RF_DISINTEGRATE2))
+		shaderAttribs |= GENERICDEF_USE_RGBAGEN;
+
+	if (backEnd.currentEntity->e.renderfx & RF_DISINTEGRATE2)
+		shaderAttribs |= GENERICDEF_USE_DEFORM_VERTEXES;
 
 	switch (pStage->rgbGen)
 	{

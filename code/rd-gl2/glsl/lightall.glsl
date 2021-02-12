@@ -51,6 +51,7 @@ uniform vec4 u_VertColor;
 uniform mat4 u_ModelMatrix;
 uniform mat4 u_NormalMatrix;
 
+uniform int u_ColorGen;
 uniform int u_AlphaGen;
 uniform vec4 u_Disintegration; // origin, threshhold
 
@@ -92,6 +93,44 @@ out vec4 var_LightDir;
 #if defined(USE_PRIMARY_LIGHT) || defined(USE_SHADOWMAP)
 out vec4 var_PrimaryLightDir;
 #endif
+
+vec4 CalcDisintegration(vec3 position)
+{
+	vec4 color = vec4(1.0);
+	if (u_ColorGen == CGEN_DISINTEGRATION_1)
+	{
+		vec3 delta = u_Disintegration.xyz - position;
+		float distance = dot(delta, delta);
+		if (distance < u_Disintegration.w)
+		{
+			color = vec4(0.0);
+		}
+		else if (distance < u_Disintegration.w + 60.0)
+		{
+			color = vec4(0.0, 0.0, 0.0, 1.0);
+		}
+		else if (distance < u_Disintegration.w + 150.0)
+		{
+			color = vec4(0.435295, 0.435295, 0.435295, 1.0);
+		}
+		else if (distance < u_Disintegration.w + 180.0)
+		{
+			color = vec4(0.6862745, 0.6862745, 0.6862745, 1.0);
+		}
+		return color;
+	}
+	else if (u_ColorGen == CGEN_DISINTEGRATION_2)
+	{
+		vec3 delta = u_Disintegration.xyz - position;
+		float distance = dot(delta, delta);
+		if (distance < u_Disintegration.w)
+		{
+			color = vec4(0.0);
+		}
+		return color;
+	}
+	return color;
+}
 
 #if defined(USE_TCGEN) || defined(USE_LIGHTMAP)
 vec2 GenTexCoords(int TCGen, vec3 position, vec3 normal, vec3 TCGenVector0, vec3 TCGenVector1)
@@ -165,44 +204,6 @@ float CalcLightAttenuation(float distance, float radius)
 	return clamp(attenuation, 0.0, 1.0);
 }
 
-vec4 CalcColor(vec3 position)
-{
-	vec4 color = u_VertColor * attr_Color + u_BaseColor;
-
-	if (u_AlphaGen == AGEN_DISINTEGRATE1)
-	{
-		vec3 delta = u_Disintegration.xyz - position;
-		float distance = dot(delta, delta);
-		if (distance < u_Disintegration.w)
-		{
-			color *= 0.0;
-		}
-		else if (distance < u_Disintegration.w + 60.0)
-		{
-			color *= vec4(0.0, 0.0, 0.0, 1.0);
-		}
-		else if (distance < u_Disintegration.w + 150.0)
-		{
-			color *= vec4(0.435295, 0.435295, 0.435295, 1.0);
-		}
-		else if (distance < u_Disintegration.w + 180.0)
-		{
-			color *= vec4(0.6862745, 0.6862745, 0.6862745, 1.0);
-		}
-
-	}
-	else if (u_AlphaGen == AGEN_DISINTEGRATE2)
-	{
-		vec3 delta = u_Disintegration.xyz - position;
-		float distance = dot(delta, delta);
-		if (distance < u_Disintegration.w)
-		{
-			color *= 0.0;
-		}
-	}
-	return color;
-}
-
 void main()
 {
 #if defined(USE_VERTEX_ANIMATION)
@@ -260,8 +261,10 @@ void main()
 	}
 	else
 	{
-		var_Color = CalcColor(position);
+		var_Color = u_VertColor * attr_Color + u_BaseColor;
 	}
+
+	var_Color *= CalcDisintegration(position);
 
 	gl_Position = u_ModelViewProjectionMatrix * vec4(position, 1.0);
 
@@ -732,6 +735,7 @@ void main()
 #endif
 
 	diffuse = texture(u_DiffuseMap, texCoords);
+	diffuse.a *= var_Color.a;
 
 	if (u_AlphaTestFunction == ATEST_CMP_GE){
 		if (diffuse.a < u_AlphaTestValue)
@@ -907,7 +911,7 @@ void main()
 	out_Color.rgb = diffuse.rgb * lightColor;
 #endif
 
-	out_Color.a = diffuse.a * var_Color.a;
+	out_Color.a = diffuse.a;
 
 #if defined(USE_GLOW_BUFFER)
 	out_Glow = out_Color;

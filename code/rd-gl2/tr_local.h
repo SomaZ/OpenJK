@@ -59,7 +59,7 @@ typedef unsigned int glIndex_t;
 
 #define MAX_CALC_PSHADOWS 64
 #define MAX_DRAWN_PSHADOWS 32 // do not increase past 32, because bit flags are used on surfaces
-#define PSHADOW_MAP_SIZE 512
+#define PSHADOW_MAP_SIZE 1024
 
 #define GAMMA		2.2f		// base gamma value
 #define INV_GAMMA	1.0f/2.2f	// inverse gamma value
@@ -502,6 +502,7 @@ typedef enum {
 	DEFORM_WAVE,
 	DEFORM_NORMALS,
 	DEFORM_BULGE,
+	DEFORM_BULGE_UNIFORM,
 	DEFORM_MOVE,
 	DEFORM_PROJECTION_SHADOW,
 	DEFORM_AUTOSPRITE,
@@ -513,7 +514,8 @@ typedef enum {
 	DEFORM_TEXT4,
 	DEFORM_TEXT5,
 	DEFORM_TEXT6,
-	DEFORM_TEXT7
+	DEFORM_TEXT7,
+	DEFORM_DISINTEGRATION
 } deform_t;
 
 // deformVertexes types that can be handled by the GPU
@@ -546,9 +548,7 @@ typedef enum {
 	AGEN_LIGHTING_SPECULAR,
 	AGEN_WAVEFORM,
 	AGEN_PORTAL,
-	AGEN_CONST,
-	AGEN_DISINTEGRATE1,
-	AGEN_DISINTEGRATE2
+	AGEN_CONST
 } alphaGen_t;
 
 typedef enum {
@@ -568,6 +568,8 @@ typedef enum {
 	CGEN_FOG,				// standard fog
 	CGEN_CONST,				// fixed color
 	CGEN_LIGHTMAPSTYLE,		// lightmap style
+	CGEN_DISINTEGRATION_1,
+	CGEN_DISINTEGRATION_2
 } colorGen_t;
 
 typedef enum {
@@ -1619,7 +1621,6 @@ typedef struct drawSurf_s {
 	uint32_t dlightBits;
 	surfaceType_t *surface; // any of surface*_t
 	int fogIndex;
-	int currentDistanceBucket;
 } drawSurf_t;
 
 #define	MAX_FACE_POINTS		64
@@ -2844,7 +2845,6 @@ struct shaderCommands_s
 	float			shaderTime;
 	int				fogNum;
 	int				cubemapIndex;
-	int				currentDistanceBucket;
 
 	int				dlightBits;	// or together of all vertexDlightBits
 	int				pshadowBits;
