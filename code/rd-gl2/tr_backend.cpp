@@ -2607,7 +2607,7 @@ void RB_RenderAllRealTimeLightTypes()
 		GLSL_SetUniformVec3(sp, UNIFORM_VIEWUP, viewBasis[2]);
 		GLSL_SetUniformVec3(sp, UNIFORM_VIEWORIGIN, backEnd.viewParms.ori.origin);
 		const float samples = 64.0f;
-		vec4_t viewInfo = { tr.viewParms.zNear, tr.viewParms.zFar, tr.frameCount % 8, Q_flrand(samples / 2.0f, samples) };
+		vec4_t viewInfo = { tr.viewParms.zNear, tr.viewParms.zFar, (float)(tr.frameCount % 8), Q_flrand(samples / 2.0f, samples) };
 		GLSL_SetUniformVec4(sp, UNIFORM_VIEWINFO, viewInfo);
 		
 		matrix_t invModelViewMatrix;

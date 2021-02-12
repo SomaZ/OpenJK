@@ -2735,6 +2735,12 @@ void RB_SurfaceGhoul(CRenderableSurface *surf)
 	}
 
 	RB_EndSurface();
+
+#ifdef _G2_GORE
+	// FIXME: implement ghoul2 marks
+	if (surf->alternateTex)
+		return;
+#endif
 	RB_BeginSurface(tess.shader, tess.fogNum, tess.cubemapIndex);
 
 	R_BindVBO(surface->vbo);
