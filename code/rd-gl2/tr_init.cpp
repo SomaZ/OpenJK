@@ -2016,7 +2016,6 @@ extern "C" Q_EXPORT refexport_t* QDECL GetRefAPI(int apiVersion, refimport_t *ri
 	re.DrawStretchPic = RE_StretchPic;
 	re.DrawRotatePic = RE_RotatePic;
 	re.DrawRotatePic2 = RE_RotatePic2;
-	re.RotatePic2RatioFix = RE_RotatePic2RatioFix;
 	REX(LAGoggles);
 	REX(Scissor);
 
@@ -2050,7 +2049,6 @@ extern "C" Q_EXPORT refexport_t* QDECL GetRefAPI(int apiVersion, refimport_t *ri
 	REX(Font_StrLenPixels);
 	REX(Font_DrawString);
 	REX(Font_StrLenChars);
-	re.FontRatioFix = RE_FontRatioFix;
 	re.Language_IsAsian = Language_IsAsian;
 	re.Language_UsesSpaces = Language_UsesSpaces;
 	re.AnyLanguage_ReadCharFromString = AnyLanguage_ReadCharFromString;
@@ -2075,6 +2073,11 @@ extern "C" Q_EXPORT refexport_t* QDECL GetRefAPI(int apiVersion, refimport_t *ri
 	re.IsShaking = stub_R_IsShaking;
 	re.AddWeatherZone = stub_RE_AddWeatherZone;
 	re.SetTempGlobalFogColor = stub_R_SetTempGlobalFogColor;
+
+#ifdef DF2_MODE
+	re.RotatePic2RatioFix = RE_RotatePic2RatioFix;
+	re.FontRatioFix = RE_FontRatioFix;
+#endif
 
 	REX(SetRangedFog);
 
@@ -2157,8 +2160,8 @@ extern "C" Q_EXPORT refexport_t* QDECL GetRefAPI(int apiVersion, refimport_t *ri
 	G2EX(StopBoneAnimIndex);
 	G2EX(StopBoneAngles);
 	G2EX(StopBoneAnglesIndex);
-
-#ifdef JK2_MODE
+	
+#ifndef DF2_MODE
 	G2EX(SetTintType);
 	G2EX(SetBoneAnglesOffset);
 #endif

@@ -227,6 +227,7 @@ if(BuildSPRdGL2)
 	endfunction(add_sp_renderer_project)
 
 	if(BuildSPRdGL2)
+		set(SPRDGL2Defines ${SPRDGL2Defines} "DF2_MODE")
 		add_sp_renderer_project(${SPRDGL2Renderer} "SP GL2 Renderer" ${SPEngine} ${JKAInstallDir} ${JKASPClientComponent})
 	endif(BuildSPRdGL2)
 	
