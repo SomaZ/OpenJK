@@ -2471,6 +2471,9 @@ infoParm_t	infoParms[] = {
 	{ "nonopaque",		~CONTENTS_OPAQUE,					SURF_NONE,			CONTENTS_NONE },		// special hack to clear opaque flag
 	{ "lava",			~CONTENTS_SOLID,					SURF_NONE,			CONTENTS_LAVA },		// very damaging
 	{ "slime",			~CONTENTS_SOLID,					SURF_NONE,			CONTENTS_SLIME },		// mildly damaging
+#ifdef DF2_MODE
+	{ "batteryacid",	~CONTENTS_SOLID,					SURF_NONE,			CONTENTS_BATTERYACID },	// mildly damaging
+#endif
 	{ "water",			~CONTENTS_SOLID,					SURF_NONE,			CONTENTS_WATER },		// 
 	{ "fog",			~CONTENTS_SOLID,					SURF_NONE,			CONTENTS_FOG},			// carves surfaces entering
 	{ "shotclip",		~CONTENTS_SOLID,					SURF_NONE,			CONTENTS_SHOTCLIP },	// block shots, but not people

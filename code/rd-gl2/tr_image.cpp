@@ -1989,6 +1989,10 @@ static void RawImage_UploadTexture(byte *data, int x, int y, int width, int heig
 		dataFormat = GL_RG;
 		dataType = GL_HALF_FLOAT;
 		break;
+	case GL_RGB16F:
+		dataFormat = GL_RGB;
+		dataType = GL_HALF_FLOAT;
+		break;
 	case GL_RGBA16F:
 		dataFormat = GL_RGBA;
 		dataType = GL_HALF_FLOAT;
