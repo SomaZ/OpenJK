@@ -2074,7 +2074,7 @@ extern "C" Q_EXPORT refexport_t* QDECL GetRefAPI(int apiVersion, refimport_t *ri
 	re.AddWeatherZone = stub_RE_AddWeatherZone;
 	re.SetTempGlobalFogColor = stub_R_SetTempGlobalFogColor;
 
-#ifdef DF2_MODE
+#if defined DF2_MODE || JK2_MODE
 	re.RotatePic2RatioFix = RE_RotatePic2RatioFix;
 	re.FontRatioFix = RE_FontRatioFix;
 #endif
