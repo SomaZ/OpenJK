@@ -2451,6 +2451,13 @@ static void RB_RenderMainPass(drawSurf_t *drawSurfs, int numDrawSurfs)
 		GL_BindToTMU(tr.world->directionImages, TB_LGDIRECTION);
 		GL_BindToTMU(tr.world->directionalLightImages[0], TB_LGLIGHTCOLOR);
 	}
+	else
+	{
+		GL_BindToTMU(tr.envBrdfImage, TB_ENVBRDFMAP);
+		GL_BindToTMU(tr.defaultAmbientLight, TB_LGAMBIENT);
+		GL_BindToTMU(tr.defaultLightVec, TB_LGDIRECTION);
+		GL_BindToTMU(tr.defaultDirectLight, TB_LGLIGHTCOLOR);
+	}
 
 	RB_RenderDrawSurfList(drawSurfs, numDrawSurfs);
 
