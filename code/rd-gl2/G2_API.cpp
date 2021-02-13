@@ -1346,7 +1346,7 @@ qboolean G2API_SetBoneAngles(CGhoul2Info *ghlInfo, const char *boneName, const v
 	const Eorientations up, const Eorientations left, const Eorientations forward,
 	qhandle_t *, int blendTime, int AcurrentTime)
 {
-	return G2API_SetBoneAnglesOffset(ghlInfo, boneName, angles, flags, up, left, forward, 0, blendTime, AcurrentTime);
+	return G2API_SetBoneAnglesOffset(ghlInfo, boneName, angles, flags, up, left, forward, 0, blendTime, AcurrentTime, 0);
 }
 
 qboolean G2API_SetBoneAnglesMatrixIndex(CGhoul2Info *ghlInfo, const int index, const mdxaBone_t &matrix,
@@ -2359,6 +2359,7 @@ bool G2_SetupModelPointers(CGhoul2Info_v &ghoul2) // returns true if any model i
 	return ret;
 }
 
+#ifndef DF2_MODE
 void G2API_SetTintType(CGhoul2Info *ghlInfo, g2Tints_t tintType)
 {
 	if (G2_SetupModelPointers(ghlInfo))
@@ -2366,5 +2367,5 @@ void G2API_SetTintType(CGhoul2Info *ghlInfo, g2Tints_t tintType)
 		ghlInfo->tintType = tintType;
 	}
 }
-
+#endif
 

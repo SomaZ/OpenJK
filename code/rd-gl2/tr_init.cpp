@@ -2074,6 +2074,11 @@ extern "C" Q_EXPORT refexport_t* QDECL GetRefAPI(int apiVersion, refimport_t *ri
 	re.AddWeatherZone = stub_RE_AddWeatherZone;
 	re.SetTempGlobalFogColor = stub_R_SetTempGlobalFogColor;
 
+#ifdef DF2_MODE
+	re.RotatePic2RatioFix = RE_RotatePic2RatioFix;
+	re.FontRatioFix = RE_FontRatioFix;
+#endif
+
 	REX(SetRangedFog);
 
 	re.TheGhoul2InfoArray = TheGhoul2InfoArray;
@@ -2137,7 +2142,6 @@ extern "C" Q_EXPORT refexport_t* QDECL GetRefAPI(int apiVersion, refimport_t *ri
 	G2EX(SetBoneAnim);
 	G2EX(SetBoneAnimIndex);
 	G2EX(SetBoneAngles);
-	G2EX(SetBoneAnglesOffset);
 	G2EX(SetBoneAnglesIndex);
 	G2EX(SetBoneAnglesMatrix);
 	G2EX(SetBoneIKState);
@@ -2156,7 +2160,12 @@ extern "C" Q_EXPORT refexport_t* QDECL GetRefAPI(int apiVersion, refimport_t *ri
 	G2EX(StopBoneAnimIndex);
 	G2EX(StopBoneAngles);
 	G2EX(StopBoneAnglesIndex);
+	
+#ifndef DF2_MODE
 	G2EX(SetTintType);
+	G2EX(SetBoneAnglesOffset);
+#endif
+
 #ifdef _G2_GORE
 	G2EX(AddSkinGore);
 	G2EX(ClearSkinGore);
