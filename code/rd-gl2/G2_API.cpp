@@ -2359,7 +2359,7 @@ bool G2_SetupModelPointers(CGhoul2Info_v &ghoul2) // returns true if any model i
 	return ret;
 }
 
-#ifdef JK2_MODE
+#ifndef DF2_MODE
 void G2API_SetTintType(CGhoul2Info *ghlInfo, g2Tints_t tintType)
 {
 	if (G2_SetupModelPointers(ghlInfo))
