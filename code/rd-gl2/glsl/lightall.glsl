@@ -702,7 +702,7 @@ void main()
 
 	vec3 ambientLight = texture(u_LightGridAmbientLightMap, gridCell).rgb * isLightgrid;
 
-	vertexColor = var_Color.rgb * var_Color.rgb;
+	vertexColor = var_Color.rgb;
 	#if defined(USE_LIGHT_VECTOR)
 	  L -= normalize(texture(u_LightGridDirectionMap, gridCell).rgb * 2.0 - vec3(1.0)) * isLightgrid;
 	  vec3 directedLight = texture(u_LightGridDirectionalLightMap, gridCell).rgb * isLightgrid;
@@ -792,7 +792,7 @@ void main()
 	
 	reflectance = CalcDiffuse(diffuse.rgb, fresnel, roughness);
 
-  #if (defined(USE_LIGHTMAP) || defined(USE_LIGHT_VERTEX)) && defined(USE_DELUXEMAP)
+  #if (defined(USE_LIGHTMAP) || defined(USE_LIGHT_VERTEX))
 	NE = abs(dot(N, E)) + 1e-5;
 	reflectance += CalcSpecular(specular.rgb, NH, NL, NE, fresnel, roughness) * 1.0;
   #endif
