@@ -368,13 +368,11 @@ Ghoul2 Insert End
 		if (s1->eFlags & EF_ANIM_ONCE)
 		{
 			ent.frame = cent->gent->s.frame;
-			ent.oldframe = ent.frame + prevFrame;
-			ent.backlerp = 1.0f - ((cg.time % 100) / 100.0f);
 			ent.renderfx |= RF_CAP_FRAMES;
 		}
 		else if (s1->eFlags & EF_ANIM_ALLFAST)
 		{
-			ent.frame = (cg.time / 100);
+			ent.frame = cg.time / 100;
 			ent.oldframe = ent.frame + prevFrame;
 			ent.backlerp = 1.0f - ((cg.time % 100) / 100.0f);
 			ent.renderfx |= RF_WRAP_FRAMES;
@@ -383,15 +381,20 @@ Ghoul2 Insert End
 		{
 			ent.frame = s1->frame;
 			ent.oldframe = ent.frame + prevFrame;
-			if (ent.oldframe >= startFrame && ent.frame < endFrame)
+
+			if (ent.oldframe >= startFrame && ent.frame <= endFrame)
 			{
-				ent.backlerp = 1.0f - ((cg.time % 100) / 100.0f);
+				ent.backlerp = 1.0f - ((cg.time % 50) / 50.0f);
 			}
 			else
 			{
-				ent.backlerp = 0;
+				ent.backlerp = 0.0f;
 				ent.oldframe = ent.frame;
 			}
+
+			//increase to stop lerping between last two frames
+			if (s1->frame == endFrame)
+				s1->frame += prevFrame;
 		}
 	}
 
@@ -1426,14 +1429,14 @@ Ghoul2 Insert End
 
 	if (s1->eFlags & EF_ANIM_ONCE)
 	{
+		// Don't interpolate oneshot animations as they have different animation 
+		// speeds in the code and we can't know it for sure here.
 		ent.frame = cent->gent->s.frame;
-		ent.oldframe = ent.frame + prevFrame;
-		ent.backlerp = 1.0f - ((cg.time % 100) / 100.0f);
 		ent.renderfx |= RF_CAP_FRAMES;
 	}
 	else if (s1->eFlags & EF_ANIM_ALLFAST)
 	{
-		ent.frame = (cg.time / 100);
+		ent.frame = cg.time / 100;
 		ent.oldframe = ent.frame + prevFrame;
 		ent.backlerp = 1.0f - ((cg.time % 100) / 100.0f);
 		ent.renderfx |= RF_WRAP_FRAMES;
@@ -1442,15 +1445,20 @@ Ghoul2 Insert End
 	{
 		ent.frame = s1->frame;
 		ent.oldframe = ent.frame + prevFrame;
-		if (ent.oldframe >= startFrame && ent.frame < endFrame)
+
+		if (ent.oldframe >= startFrame && ent.frame <= endFrame)
 		{
-			ent.backlerp = 1.0f - ((cg.time % 100) / 100.0f);
+			ent.backlerp = 1.0f - ((cg.time % 50) / 50.0f);
 		}
 		else
 		{
-			ent.backlerp = 0;
+			ent.backlerp = 0.0f;
 			ent.oldframe = ent.frame;
 		}
+
+		//increase to stop lerping between last two frames
+		if (s1->frame == endFrame)
+			s1->frame += prevFrame;
 	}
 
 	if ( s1->eFlags & EF_SHADER_ANIM )
