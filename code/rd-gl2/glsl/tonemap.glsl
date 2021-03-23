@@ -28,10 +28,8 @@ const vec3  LUMINANCE_VECTOR =   vec3(0.2125, 0.7154, 0.0721); //vec3(0.299, 0.5
 
 vec3 LinearTosRGB( in vec3 color )
 {
-	vec3 clampedColor = clamp(color, 0.0, 1.0);
-
-	vec3 lo = 12.92 * clampedColor;
-	vec3 hi = 1.055 * pow(clampedColor, vec3(0.41666)) - 0.055;
+	vec3 lo = 12.92 * color;
+	vec3 hi = 1.055 * pow(color, vec3(0.41666)) - 0.055;
 	return mix(lo, hi, greaterThanEqual(color, vec3(0.0031308)));
 }
 
@@ -81,9 +79,6 @@ vec3 Tonemap( in vec3 x)
 void main()
 {
 	vec4 color = texture(u_TextureMap, var_TexCoords) * u_Color;
-
-	color.rgb = pow(color.rgb, vec3(2.2));
-
 	vec3 minAvgMax = texture(u_LevelsMap, var_TexCoords).rgb;
 	vec3 logMinAvgMaxLum = clamp(minAvgMax * 20.0 - 10.0, -u_AutoExposureMinMax.y, -u_AutoExposureMinMax.x);
 		
@@ -95,9 +90,10 @@ void main()
 
 	vec3 fWhite = 1.0 / Tonemap(vec3(u_ToneMinAvgMaxLinear.z - u_ToneMinAvgMaxLinear.x));
 	color.rgb = Tonemap(color.rgb) * fWhite;
-	//color.rgb = LinearTosRGB(color.rgb);
 
-	color.rgb = pow(color.rgb, vec3(1.0 / 2.2));
+	#if defined(USE_LINEAR_LIGHT)
+	color.rgb = LinearTosRGB(color.rgb);
+	#endif
 	
 	out_Color = clamp(color, 0.0, 1.0);
 }

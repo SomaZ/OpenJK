@@ -1676,7 +1676,19 @@ static void RB_IterateStagesGeneric( shaderCommands_t *input, const VertexArrays
 		uniformDataWriter.SetUniformVec3(UNIFORM_LOCALVIEWORIGIN, backEnd.ori.viewOrigin);
 
 		if (backEnd.renderPass == PRE_PASS)
-			uniformDataWriter.SetUniformMatrix4x4(UNIFORM_PREVVIEWPROJECTIONMATRIX, tr.preViewProjectionMatrix);
+		{
+			// Don't compute velocity for fp weapon models
+			if (backEnd.currentEntity->e.renderfx & RF_DEPTHHACK)
+			{
+				matrix_t viewProjectionMatrix;
+				Matrix16Multiply(backEnd.viewParms.projectionMatrix, backEnd.viewParms.world.modelViewMatrix, viewProjectionMatrix);
+				uniformDataWriter.SetUniformMatrix4x4(UNIFORM_PREVVIEWPROJECTIONMATRIX, viewProjectionMatrix);
+			}
+			else
+			{
+				uniformDataWriter.SetUniformMatrix4x4(UNIFORM_PREVVIEWPROJECTIONMATRIX, tr.preViewProjectionMatrix);
+			}
+		}
 
 		if (glState.skeletalAnimation)
 		{

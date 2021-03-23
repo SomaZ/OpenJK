@@ -90,7 +90,7 @@ vec3 PrefilterEnvMap( float Roughness, vec3 R )
 			float mipLevel = Roughness == 0.0 ? 0.0 : 0.5 * log2(saSample / saTexel); 
 
 			TextureColor = textureLod(u_CubeMap, L, mipLevel).rgb;
-			PrefilteredColor += TextureColor * TextureColor * NoL;
+			PrefilteredColor += TextureColor * NoL;
 			TotalWeight += NoL;
 		}
 	}
@@ -120,5 +120,5 @@ void main()
 
 	vec3 result = PrefilterEnvMap(roughness, normal);
 			
-	out_Color = vec4(sqrt(result), 1.0);
+	out_Color = vec4(result, 1.0);
 }

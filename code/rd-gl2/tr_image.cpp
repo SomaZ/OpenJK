@@ -2496,9 +2496,13 @@ image_t *R_CreateImage3D(const char *name, byte *data, int width, int height, in
 	image = (image_t *)R_Hunk_Alloc(sizeof(image_t), qtrue);
 	qglGenTextures(1, &image->texnum);
 
-	GLenum dataFormat = GL_UNSIGNED_BYTE;
+	int dataFormat = GL_RGBA;
+	int dataType = GL_UNSIGNED_BYTE;
 	if (internalFormat == GL_RGB16F)
-		dataFormat = GL_FLOAT;
+	{
+		dataFormat = GL_RGBA;
+		dataType = GL_HALF_FLOAT;
+	}
 
 	image->type = IMGTYPE_COLORALPHA;
 	image->flags = IMGFLAG_3D;
@@ -2514,19 +2518,11 @@ image_t *R_CreateImage3D(const char *name, byte *data, int width, int height, in
 	{
 		qglTexStorage3D(GL_TEXTURE_3D, 1, internalFormat, width, height, depth);
 		if (data)
-		{
-			if (dataFormat == GL_FLOAT)
-				qglTexSubImage3D(GL_TEXTURE_3D, 0, 0, 0, 0, width, height, depth, GL_RGBA, dataFormat, (float*)data);
-			else
-				qglTexSubImage3D(GL_TEXTURE_3D, 0, 0, 0, 0, width, height, depth, GL_RGBA, dataFormat, data);
-		}
+			qglTexSubImage3D(GL_TEXTURE_3D, 0, 0, 0, 0, width, height, depth, dataFormat, dataType, data);
 	}
 	else
 	{
-		if (dataFormat == GL_FLOAT)
-			qglTexImage3D(GL_TEXTURE_3D, 0, internalFormat, width, height, depth, 0, GL_RGBA, dataFormat, (float*)data);
-		else
-			qglTexImage3D(GL_TEXTURE_3D, 0, internalFormat, width, height, depth, 0, GL_RGBA, dataFormat, data);
+		qglTexImage3D(GL_TEXTURE_3D, 0, internalFormat, width, height, depth, 0, dataFormat, dataType, data);
 	}
 
 	qglTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
@@ -2810,9 +2806,9 @@ void R_CreateDiffuseAndSpecMapsFromBaseColorAndRMO(shaderStage_t *stage, const c
 			// diffuse Color = baseColor * (1.0 - metalness) 
 			// also gamma correct again
 			// FIXME: AO should be handled in shader because it should only affect the ambient lighting
-			diffusePic[i + 0] = FloatToByte(RGBtosRGB(baseColor[0] * ao));
-			diffusePic[i + 1] = FloatToByte(RGBtosRGB(baseColor[1] * ao));
-			diffusePic[i + 2] = FloatToByte(RGBtosRGB(baseColor[2] * ao));
+			diffusePic[i + 0] = FloatToByte(RGBtosRGB(baseColor[0] * (1.0f - metalness) * ao));
+			diffusePic[i + 1] = FloatToByte(RGBtosRGB(baseColor[1] * (1.0f - metalness) * ao));
+			diffusePic[i + 2] = FloatToByte(RGBtosRGB(baseColor[2] * (1.0f - metalness) * ao));
 			diffusePic[i + 3] = FloatToByte(baseColor[3]);
 
 			// specular Color = mix(baseSpecular, baseColor, metalness)
@@ -2839,9 +2835,9 @@ void R_CreateDiffuseAndSpecMapsFromBaseColorAndRMO(shaderStage_t *stage, const c
 			// don't remove gamma correction in alpha because this is data, not color
 			baseColor[3] = ByteToFloat(baseColorPic[i + 3]);
 
-			diffusePic[i + 0] = FloatToByte(RGBtosRGB(baseColor[0]));
-			diffusePic[i + 1] = FloatToByte(RGBtosRGB(baseColor[1]));
-			diffusePic[i + 2] = FloatToByte(RGBtosRGB(baseColor[2]));
+			diffusePic[i + 0] = FloatToByte(RGBtosRGB(baseColor[0] * (1.0f - stage->metalness)));
+			diffusePic[i + 1] = FloatToByte(RGBtosRGB(baseColor[1] * (1.0f - stage->metalness)));
+			diffusePic[i + 2] = FloatToByte(RGBtosRGB(baseColor[2] * (1.0f - stage->metalness)));
 			diffusePic[i + 3] = FloatToByte(baseColor[3]);
 
 			// specular Color = mix(baseSpecular, baseColor, metalness)
@@ -3580,12 +3576,6 @@ void R_SetColorMappings(void) {
 		tr.overbrightBits = 0;
 	}
 
-	// don't allow more overbright bits than map overbright bits
-	if (tr.overbrightBits > r_mapOverBrightBits->integer) 
-	{
-		tr.overbrightBits = r_mapOverBrightBits->integer;
-	}
-
 	tr.identityLight = 1.0f / (1 << tr.overbrightBits);
 	tr.identityLightByte = 255 * tr.identityLight;
 
@@ -3603,24 +3593,13 @@ void R_SetColorMappings(void) {
 	g = r_gamma->value;
 
 	for (i = 0; i < 256; i++) {
-		int i2;
-
-		if (r_srgb->integer)
-		{
-			i2 = 255 * RGBtosRGB(i / 255.0f) + 0.5f;
-		}
-		else
-		{
-			i2 = i;
-		}
-
 		if (g == 1) {
-			inf = i2;
+			inf = i;
 		}
 		else {
-			inf = 255 * pow(i2 / 255.0f, 1.0f / g) + 0.5f;
+			inf = 255 * pow(i / 255.0f, 1.0f / g) + 0.5f;
 		}
-
+		inf <<= tr.overbrightBits;
 		if (inf < 0) {
 			inf = 0;
 		}
@@ -3630,7 +3609,7 @@ void R_SetColorMappings(void) {
 		s_gammatable[i] = inf;
 	}
 
-	for (i = 0; i<256; i++) {
+	for (i = 0; i < 256; i++) {
 		j = i * r_intensity->value;
 		if (j > 255) {
 			j = 255;

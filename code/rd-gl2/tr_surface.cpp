@@ -390,6 +390,7 @@ static void RB_SurfaceVertsAndIndexes( int numVerts, srfVert_t *verts, int numIn
 	float          *xyz, *texCoords, *lightCoords;
 	uint32_t        *normal;
 	uint32_t        *tangent;
+	uint32_t        *lightdir;
 	glIndex_t      *outIndex;
 	float          *color;
 	gpuFrame_t		*currentFrame = backEndData->currentFrame;
@@ -452,6 +453,14 @@ static void RB_SurfaceVertsAndIndexes( int numVerts, srfVert_t *verts, int numIn
 		for ( i = 0 ; i < numVerts ; i++, dv++, color+=4 )
 			VectorCopy4(dv->vertexColors[0], color);
 	}
+
+	if (tess.shader->vertexAttribs & ATTR_LIGHTDIRECTION)
+	{
+		dv = verts;
+		lightdir = &tess.lightdir[tess.numVertexes];
+		for (i = 0; i < numVerts; i++, dv++, lightdir++)
+			*lightdir = R_VboPackNormal(dv->lightdir);
+}
 
 #if 0  // nothing even uses vertex dlightbits
 	for ( i = 0 ; i < numVerts ; i++ ) {
@@ -1775,6 +1784,7 @@ static void RB_SurfaceBSPGrid( srfBspSurface_t *srf ) {
 	uint32_t *normal;
 	uint32_t *tangent;
 	float   *color;
+	uint32_t *lightdir;
 	srfVert_t	*dv;
 	int		rows, irows, vrows;
 	int		used;
@@ -1862,7 +1872,7 @@ static void RB_SurfaceBSPGrid( srfBspSurface_t *srf ) {
 		texCoords = tess.texCoords[numVertexes][0];
 		lightCoords = tess.texCoords[numVertexes][1];
 		color = tess.vertexColors[numVertexes];
-		//vDlightBits = &tess.vertexDlightBits[numVertexes];
+		lightdir = &tess.lightdir[numVertexes];
 
 		for ( i = 0 ; i < rows ; i++ ) {
 			for ( j = 0 ; j < lodWidth ; j++ ) {
@@ -1900,6 +1910,11 @@ static void RB_SurfaceBSPGrid( srfBspSurface_t *srf ) {
 				{
 					VectorCopy4(dv->vertexColors[0], color);
 					color += 4;
+				}
+
+				if (tess.shader->vertexAttribs & ATTR_LIGHTDIRECTION)
+				{
+					*lightdir++ = R_VboPackNormal(dv->lightdir);
 				}
 			}
 		}

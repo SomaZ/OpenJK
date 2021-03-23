@@ -174,49 +174,26 @@ vec3 DecodeNormal(in vec2 N)
 	return vec3(encoded * g, 1.0 - f * 0.5);
 }
 
-float spec_D(
-	float NH,
-	float roughness)
+vec3 F_Schlick(in vec3 SpecularColor, in float VH)
 {
-	// normal distribution
-	// from http://blog.selfshadow.com/publications/s2013-shading-course/karis/s2013_pbs_epic_notes_v2.pdf
-	float alpha = roughness * roughness;
-	float quotient = alpha / max(1e-8, (NH*NH*(alpha*alpha - 1.0) + 1.0));
-	return (quotient * quotient) / M_PI;
+	float Fc = pow(1 - VH, 5);
+	return clamp(50.0 * SpecularColor.g, 0.0, 1.0) * Fc + (1 - Fc) * SpecularColor; //hacky way to decide if reflectivity is too low (< 2%)
 }
 
-vec3 spec_F(
-	float EH,
-	vec3 F0)
+float D_GGX( in float NH, in float a )
 {
-	// Fresnel
-	// from http://blog.selfshadow.com/publications/s2013-shading-course/karis/s2013_pbs_epic_notes_v2.pdf
-	float pow2 = pow(2.0, (-5.55473*EH - 6.98316) * EH);
-	return F0 + (vec3(1.0) - F0) * pow2;
+	float a2 = a * a;
+	float d = (NH * a2 - NH) * NH + 1;
+	return a2 / (M_PI * d * d);
 }
 
-vec3 fresnelSchlickRoughness(float cosTheta, vec3 F0, float roughness)
+// Appoximation of joint Smith term for GGX
+// [Heitz 2014, "Understanding the Masking-Shadowing Function in Microfacet-Based BRDFs"]
+float V_SmithJointApprox(in float a, in float NV, in float NL)
 {
-	return F0 + (max(vec3(1.0 - roughness), F0) - F0) * pow(1.0 - cosTheta, 5.0);
-}
-
-float G1(
-	float NV,
-	float k)
-{
-	return NV / (NV*(1.0 - k) + k);
-}
-
-float spec_G(float NL, float NE, float roughness)
-{
-	// GXX Schlick
-	// from http://blog.selfshadow.com/publications/s2013-shading-course/karis/s2013_pbs_epic_notes_v2.pdf
-#if defined(SSR_RESOLVE) || defined(SSR)
-	float k = max(roughness * roughness / 2.0, 1e-5);
-#else
-	float k = max(((roughness + 1.0) * (roughness + 1.0)) / 8.0, 1e-5);
-#endif
-	return G1(NL, k)*G1(NE, k);
+	float Vis_SmithV = NL * (NV * (1 - a) + a);
+	float Vis_SmithL = NV * (NL * (1 - a) + a);
+	return 0.5 * (1.0 / (Vis_SmithV + Vis_SmithL));
 }
 
 #if defined(SSR_RESOLVE) || defined(SSR)
@@ -228,18 +205,17 @@ vec3 CalcSpecular(
 	in float NH,
 	in float NL,
 	in float NE,
-	in float EH,
+	in float VH,
 	in float roughness
 )
 {
-	float denominator = max((4.0 * max(NE,0.0) * max(NL,0.0)),0.001);
-	float distrib = spec_D(NH,roughness);
-	float vis = spec_G(NL, NE, roughness);
+	float D = D_GGX(NH, roughness);
+	float V = V_SmithJointApprox(roughness, NE, NL);
 	#if defined(SSR_RESOLVE) || defined(SSR)
-		return (distrib * vis) / denominator;
+		return D * V;
 	#else
-		vec3 fresnel = spec_F(EH,specular);
-		return (distrib * fresnel * vis) / denominator;
+		vec3  F = F_Schlick(specular, VH);
+		return D * F * V;
 	#endif
 }
 
@@ -592,11 +568,12 @@ vec4 resolveSSRRay(	in sampler2D packedTexture,
 	vec3 E  = normalize(-viewPos);
 	vec3 H  = normalize(L + E);
 
-	float NH = max(1e-8, dot(viewNormal, H));
-	float NE = max(1e-8, dot(viewNormal, E));
-	float NL = max(1e-8, dot(viewNormal, L));
+	float NH = clamp(dot(viewNormal, H), 0.0, 1.0);
+	float NL = clamp(dot(viewNormal, L), 0.0, 1.0);
+	float NE = abs(dot(viewNormal, E)) + 1e-5;
+	float VH = clamp(dot(E, H), 0.0, 1.0);
 
-	float weight = CalcSpecular(vec3(1.0), NH, NL, NE, 0.0, roughness) * packedHitPos.z * packedHitPos.a;
+	float weight = CalcSpecular(vec3(1.0), NH, NL, NE, VH, roughness) * packedHitPos.z * packedHitPos.a;
 
 	//from http://iryoku.com/downloads/Practical-Realtime-Strategies-for-Accurate-Indirect-Occlusion.pdf
 	float coneCos = exp2(-3.32193 * roughness * roughness * roughness * roughness);
@@ -609,7 +586,6 @@ vec4 resolveSSRRay(	in sampler2D packedTexture,
 	vec2 velocity = texture(velocityTexture, packedHitPos.xy).rg;
 	diffuseSample = textureLod(u_ScreenImageMap, packedHitPos.xy - velocity, mip);
 
-	diffuseSample.rgb *= diffuseSample.rgb;
 	diffuseSample.a = packedHitPos.a;
 
 	diffuseSample.rgb /= 1.0 + luma(diffuseSample.rgb);
@@ -640,7 +616,7 @@ vec4 clip_aabb(vec3 aabb_min, vec3 aabb_max, vec4 p, vec4 q)
 void main()
 {
 	vec3 H;
-	float NL, NH, NE, EH;
+	float NL, NH, NE, VH;
 	float attenuation;
 	vec4 diffuseOut = vec4(0.0, 0.0, 0.0, 1.0);
 	vec4 specularOut = vec4(0.0, 0.0, 0.0, 0.0);
@@ -662,7 +638,6 @@ void main()
 
 #if !defined(SSR) && !defined(SSR_RESOLVE)
 	vec4 specularAndGloss = texture(u_SpecularMap, coord);
-	specularAndGloss.rgb *= specularAndGloss.rgb;
 #endif
 
 	vec4 normal = texture(u_NormalMap, coord);
@@ -797,7 +772,7 @@ SOFTWARE.
 	float temp = clamp(1.0 - (length(minVelocity * r_FBufScale) * 0.1), min(0.2 + (roughness * 1.7), 0.875), 0.875);
 
 	specularOut		= mix(cmc, previous, temp);
-	diffuseOut.rgb	= sqrt(specularOut.rgb * (specularAndGloss.rgb * EnvBRDF.x + EnvBRDF.y));
+	diffuseOut.rgb	= specularOut.rgb * (specularAndGloss.rgb * EnvBRDF.x + EnvBRDF.y);
 	diffuseOut.a	= 1.0 - specularOut.a;
 
 #elif defined(POINT_LIGHT)
@@ -816,15 +791,17 @@ SOFTWARE.
 	#endif
 
 	H = normalize(L + E);
-	EH = max(1e-8, dot(E, H));
-	NH = max(1e-8, dot(N, H));
+	NH = clamp(dot(N, H), 0.0, 1.0);
+	NL = clamp(dot(N, L), 0.0, 1.0);
 	NE = abs(dot(N, E)) + 1e-5;
+	VH = clamp(dot(E, H), 0.0, 1.0);
 
 	vec3 reflectance = vec3(1.0, 1.0, 1.0);
-	diffuseOut.rgb = sqrt(var_LightColor * reflectance * attenuation);
+	diffuseOut.rgb = var_LightColor * reflectance * attenuation;
 
-	reflectance = CalcSpecular(specularAndGloss.rgb, NH, NL, NE, EH, roughness);
-	specularOut.rgb = sqrt(var_LightColor * reflectance * attenuation);
+	reflectance = CalcSpecular(specularAndGloss.rgb, NH, NL, NE, VH, roughness);
+	
+	specularOut.rgb = var_LightColor * reflectance * attenuation;
 #elif defined(CUBEMAP)
 	NE = clamp(dot(N, E), 0.0, 1.0);
 	vec3 EnvBRDF = texture(u_EnvBrdfMap, vec2(roughness, NE)).rgb;
@@ -850,30 +827,27 @@ SOFTWARE.
 	else
 		cubeLightColor = textureLod(u_ShadowMap4, R + parallax, ROUGHNESS_MIPS * roughness).rgb;
 
-    cubeLightColor *= cubeLightColor;
-	diffuseOut.rgb	= sqrt(cubeLightColor * (specularAndGloss.rgb * EnvBRDF.x + EnvBRDF.y) * weight);
+	diffuseOut.rgb	= cubeLightColor * (specularAndGloss.rgb * EnvBRDF.x + EnvBRDF.y) * weight;
 
 #elif defined(SUN_LIGHT)
-	vec3 L2, H2;
-	float NL2, EH2, NH2, L2H2;
 
-	L2	= (u_PrimaryLightOrigin.xyz - position * u_PrimaryLightOrigin.w);
-	H2  = normalize(L2 + E);
-    NL2 = clamp(dot(N, L2), 0.0, 1.0);
-    NL2 = max(1e-8, abs(NL2) );
-    EH2 = max(1e-8, dot(E, H2));
-    NH2 = max(1e-8, dot(N, H2));
+	vec3 L	= (u_PrimaryLightOrigin.xyz - position * u_PrimaryLightOrigin.w);
+	H  = normalize(L + E);
+    NH = clamp(dot(N, H), 0.0, 1.0);
+	NL = clamp(dot(N, L), 0.0, 1.0);
+	NE = abs(dot(N, E)) + 1e-5;
+	VH = clamp(dot(E, H), 0.0, 1.0);
 
 	float shadowValue = texelFetch(u_ShadowMap, windowCoord, 0).r;
 
-	attenuation  = NL2;
+	attenuation  = NL;
 	attenuation *= shadowValue;
 
 	vec3 reflectance = vec3(1.0);
-	diffuseOut.rgb  = sqrt(u_PrimaryLightColor * reflectance * attenuation);
+	diffuseOut.rgb  = u_PrimaryLightColor * reflectance * attenuation;
 	
-	reflectance			= CalcSpecular(specularAndGloss.rgb, NH2, NL2, NE, EH2, roughness);
-	specularOut.rgb		= sqrt(u_PrimaryLightColor * reflectance * attenuation);
+	reflectance			= CalcSpecular(specularAndGloss.rgb, NH, NL, NE, VH, roughness);
+	specularOut.rgb		= u_PrimaryLightColor * reflectance * attenuation;
 
 #elif defined(LIGHT_GRID)
   #if 1
@@ -896,14 +870,14 @@ SOFTWARE.
 
 	E = normalize(-var_ViewDir);
 	H = normalize(L + E);
-	EH = max(1e-8, dot(E, H));
-	NH = max(1e-8, dot(N, H));
-	NL = clamp(dot(N, L), 1e-8, 1.0);
+	NH = clamp(dot(N, H), 0.0, 1.0);
+	NL = clamp(dot(N, L), 0.0, 1.0);
 	NE = abs(dot(N, E)) + 1e-5;
+	VH = clamp(dot(E, H), 0.0, 1.0);
 
-	reflectance += CalcSpecular(specularAndGloss.rgb, NH, NL, NE, EH, roughness);
+	reflectance += CalcSpecular(specularAndGloss.rgb, NH, NL, NE, VH, roughness);
 
-	result = sqrt(reflectance);
+	result = reflectance;
   #else
 	// Ray marching debug visualisation
 	ivec3 gridSize = textureSize(u_LightGridDirectionalLightMap, 0);
