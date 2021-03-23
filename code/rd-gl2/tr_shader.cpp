@@ -1299,7 +1299,7 @@ static qboolean ParseStage( shaderStage_t *stage, const char **text )
 				if (r_genNormalMaps->integer)
 					flags |= IMGFLAG_GENNORMALMAP;
 
-				if (r_srgb->integer)
+				if (shader.isHDRLit == qtrue)
 					flags |= IMGFLAG_SRGB;
 
 				Q_strncpyz(bufferBaseColorTextureName, token, sizeof(bufferBaseColorTextureName));
@@ -1461,7 +1461,7 @@ static qboolean ParseStage( shaderStage_t *stage, const char **text )
 					if ( r_genNormalMaps->integer )
 						flags |= IMGFLAG_GENNORMALMAP;
 					
-					if ( r_srgb->integer )
+					if (shader.isHDRLit == qtrue)
 						flags |= IMGFLAG_SRGB;
 
 					stage->bundle[0].image[num] = R_FindImageFile( token, imgtype, flags );
@@ -2328,12 +2328,12 @@ static void ParseSkyParms( const char **text ) {
 	static const char	*suf[6] = {"rt", "lf", "bk", "ft", "up", "dn"};
 	char		pathname[MAX_QPATH];
 	int			i;
-	int imgFlags = IMGFLAG_MIPMAP | IMGFLAG_PICMIP | IMGFLAG_NOLIGHTSCALE;
+	int imgFlags = IMGFLAG_MIPMAP | IMGFLAG_PICMIP;
 
 	if (shader.noTC)
 		imgFlags |= IMGFLAG_NO_COMPRESSION;
 
-	if (r_srgb->integer)
+	if (tr.world && tr.hdrLighting == qtrue)
 		imgFlags |= IMGFLAG_SRGB;
 
 	// outerbox
@@ -2676,6 +2676,8 @@ static qboolean ParseShader( const char **text )
 			token = COM_ParseExt( text, qfalse );
 			tr.autoExposureMinMax[1] = atof( token );
 
+			tr.explicitToneMap = true;
+
 			SkipRestOfLine( text );
 			continue;
 		}
@@ -3015,6 +3017,16 @@ static void ComputeVertexAttribs(void)
 					 r_specularMapping->integer != 0))
 			{
 				shader.vertexAttribs |= ATTR_TANGENT;
+			}
+
+			switch (pStage->glslShaderIndex & LIGHTDEF_LIGHTTYPE_MASK)
+			{
+				case LIGHTDEF_USE_LIGHTMAP:
+				case LIGHTDEF_USE_LIGHT_VERTEX:
+					shader.vertexAttribs |= ATTR_LIGHTDIRECTION;
+					break;
+				default:
+					break;
 			}
 		}
 
@@ -4284,7 +4296,20 @@ shader_t *R_FindShader( const char *name, const int *lightmapIndexes, const byte
 	Q_strncpyz(shader.name, strippedName, sizeof(shader.name));
 	Com_Memcpy (shader.lightmapIndex, lightmapIndexes, sizeof (shader.lightmapIndex));
 	Com_Memcpy (shader.styles, styles, sizeof (shader.styles));
-
+	switch (lightmapIndexes[0]) {
+	case LIGHTMAP_NONE:
+	case LIGHTMAP_2D:
+	case LIGHTMAP_WHITEIMAGE:
+	{
+		shader.isHDRLit = qfalse;
+		break;
+	}
+	default:
+	{
+		shader.isHDRLit = tr.hdrLighting;
+		break;
+	}
+	}
 	//
 	// attempt to define shader from an explicit parameter file
 	//
@@ -4312,7 +4337,7 @@ shader_t *R_FindShader( const char *name, const int *lightmapIndexes, const byte
 
 	flags = IMGFLAG_NONE;
 
-	if (r_srgb->integer)
+	if (shader.isHDRLit == qtrue)
 		flags |= IMGFLAG_SRGB;
 
 	if (mipRawImage)
@@ -4350,6 +4375,8 @@ shader_t *R_FindShader( const char *name, const int *lightmapIndexes, const byte
 		stages[0].rgbGen = CGEN_EXACT_VERTEX;
 		stages[0].alphaGen = AGEN_SKIP;
 		stages[0].stateBits = GLS_DEFAULT;
+
+		shader.isHDRLit = tr.hdrLighting;
 	} else if ( shader.lightmapIndex[0] == LIGHTMAP_2D ) {
 		// GUI elements
 		stages[0].bundle[0].image[0] = image;
@@ -4385,6 +4412,8 @@ shader_t *R_FindShader( const char *name, const int *lightmapIndexes, const byte
 		stages[1].active = qtrue;
 		stages[1].rgbGen = CGEN_IDENTITY;
 		stages[1].stateBits |= GLS_SRCBLEND_DST_COLOR | GLS_DSTBLEND_ZERO;
+
+		shader.isHDRLit = tr.hdrLighting;
 	}
 
 	return FinishShader();

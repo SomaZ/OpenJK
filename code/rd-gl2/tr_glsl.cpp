@@ -609,6 +609,7 @@ static void GLSL_BindShaderInterface(shaderProgram_t *program)
 		"attr_Tangent",  // ATTR_INDEX_TANGENT
 		"attr_Normal",  // ATTR_INDEX_NORMAL
 		"attr_Color",  // ATTR_INDEX_COLOR
+		"attr_LightDirection",  // ATTR_INDEX_LIGHTDIRECTION
 		"attr_BoneIndexes",  // ATTR_INDEX_BONE_INDEXES
 		"attr_BoneWeights",  // ATTR_INDEX_BONE_WEIGHTS
 		"attr_Position2",  // ATTR_INDEX_POSITION2
@@ -1843,7 +1844,7 @@ static int GLSL_LoadGPUProgramLightAll(
 				if (r_deluxeMapping->integer && !useFastLight)
 					Q_strcat(extradefines, sizeof(extradefines), "#define USE_DELUXEMAP\n");
 
-				attribs |= ATTR_TEXCOORD1;
+				attribs |= ATTR_TEXCOORD1 | ATTR_LIGHTDIRECTION;
 				break;
 			}
 
@@ -1856,6 +1857,7 @@ static int GLSL_LoadGPUProgramLightAll(
 			case LIGHTDEF_USE_LIGHT_VERTEX:
 			{
 				Q_strcat(extradefines, sizeof(extradefines), "#define USE_LIGHT_VERTEX\n");
+				attribs |= ATTR_LIGHTDIRECTION;
 				break;
 			}
 
@@ -2247,22 +2249,30 @@ static int GLSL_LoadGPUProgramTonemap(
 
 	uint32_t shaderTypes = GPUSHADER_VERTEX | GPUSHADER_FRAGMENT;
 
-	if (!GLSL_LoadGPUShader(builder, &tr.tonemapShader, "tonemap", 0, NO_XFB_VARS,
+	if (!GLSL_LoadGPUShader(builder, &tr.tonemapShader[0], "tonemap", 0, NO_XFB_VARS,
 		extradefines, *programDesc, shaderTypes))
 	{
 		ri.Error(ERR_FATAL, "Could not load tonemap shader!");
 	}
 
-	GLSL_InitUniforms(&tr.tonemapShader);
+	Q_strcat(extradefines, sizeof(extradefines), "#define USE_LINEAR_LIGHT\n");
+	if (!GLSL_LoadGPUShader(builder, &tr.tonemapShader[1], "tonemap", 0, NO_XFB_VARS,
+		extradefines, *programDesc, shaderTypes))
+	{
+		ri.Error(ERR_FATAL, "Could not load tonemap shader!");
+	}
 
-	qglUseProgram(tr.tonemapShader.program);
-	GLSL_SetUniformInt(&tr.tonemapShader, UNIFORM_TEXTUREMAP, TB_COLORMAP);
-	GLSL_SetUniformInt(&tr.tonemapShader, UNIFORM_LEVELSMAP, TB_LEVELSMAP);
-	qglUseProgram(0);
+	for (int i = 0; i < 2; i++)
+	{
+		GLSL_InitUniforms(&tr.tonemapShader[i]);
+		qglUseProgram(tr.tonemapShader[i].program);
+		GLSL_SetUniformInt(&tr.tonemapShader[i], UNIFORM_TEXTUREMAP, TB_COLORMAP);
+		GLSL_SetUniformInt(&tr.tonemapShader[i], UNIFORM_LEVELSMAP, TB_LEVELSMAP);
+		qglUseProgram(0);
+		GLSL_FinishGPUShader(&tr.tonemapShader[i]);
+	}
 
-	GLSL_FinishGPUShader(&tr.tonemapShader);
-
-	return 1;
+	return 2;
 }
 
 static int GLSL_LoadGPUProgramCalcLuminanceLevel(
@@ -2838,7 +2848,8 @@ void GLSL_ShutdownGPUShaders(void)
 	GLSL_DeleteGPUShader(&tr.volumeShadowShader);
 	GLSL_DeleteGPUShader(&tr.down4xShader);
 	GLSL_DeleteGPUShader(&tr.bokehShader);
-	GLSL_DeleteGPUShader(&tr.tonemapShader);
+	for (i = 0; i < 2; i++)
+		GLSL_DeleteGPUShader(&tr.tonemapShader[i]);
 	GLSL_DeleteGPUShader(&tr.equirectangularShader);
 
 	for (i = 0; i < 2; i++)
@@ -2957,6 +2968,7 @@ void GL_VertexArraysToAttribs(vertexAttribute_t *attribs,
 		{ 4, GL_FALSE, GL_UNSIGNED_INT_2_10_10_10_REV, GL_TRUE }, // tangent
 		{ 4, GL_FALSE, GL_UNSIGNED_INT_2_10_10_10_REV, GL_TRUE }, // normal
 		{ 4, GL_FALSE, GL_FLOAT, GL_FALSE }, // color
+		{ 4, GL_FALSE, GL_UNSIGNED_INT_2_10_10_10_REV, GL_TRUE }, // light direction
 		{ 4, GL_TRUE,  GL_UNSIGNED_BYTE, GL_FALSE }, // bone indices
 		{ 4, GL_FALSE, GL_UNSIGNED_BYTE, GL_TRUE }, // bone weights
 		{ 3, GL_FALSE, GL_FLOAT, GL_FALSE }, // pos2

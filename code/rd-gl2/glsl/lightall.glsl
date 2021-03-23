@@ -24,6 +24,10 @@ in uvec4 attr_BoneIndexes;
 in vec4 attr_BoneWeights;
 #endif
 
+#if defined(USE_LIGHT) && !defined(USE_LIGHT_VECTOR)
+in vec3 attr_LightDirection;
+#endif
+
 #if defined(USE_DELUXEMAP)
 uniform vec4   u_EnableTextures; // x = normal, y = deluxe, z = specular, w = cube
 #endif
@@ -278,14 +282,21 @@ void main()
 #if defined(USE_LIGHT_VECTOR)
 	vec3 L = u_LightOrigin.xyz - (position * u_LightOrigin.w);
 #elif defined(PER_PIXEL_LIGHTING)
-	vec3 L = vec3(0.0);
+	vec3 L = attr_LightDirection * 2.0 - vec3(1.0);
+	L = (u_ModelMatrix * vec4(L, 0.0)).xyz;
 #endif
 
 #if defined(USE_LIGHTMAP)
 	var_TexCoords.zw = GenTexCoords(u_TCGen1, vec3(0.0), vec3(0.0), vec3(0.0), vec3(0.0));
 #endif
 
-	
+#if defined(USE_LIGHT_VECTOR) && defined(USE_FAST_LIGHT)
+	float lightDist = length(L);
+	float attenuation = CalcLightAttenuation(lightDist, u_LightRadius);
+	float NL = clamp(dot(normalize(normal), L) / lightDist, 0.0, 1.0);
+
+	var_Color.rgb *= u_DirectedLight * (u_LightRadius + float(u_LightRadius < 1.0)) * (attenuation * NL) + u_AmbientLight;
+#endif
 
 #if defined(USE_PRIMARY_LIGHT) || defined(USE_SHADOWMAP)
 	var_PrimaryLightDir.xyz = u_PrimaryLightOrigin.xyz - (position * u_PrimaryLightOrigin.w);
@@ -484,56 +495,9 @@ float RayIntersectDisplaceMap(vec2 dp, vec2 ds, sampler2D normalMap)
 }
 #endif
 
-vec3 EnvironmentBRDF(float roughness, float NE, vec3 specular)
-{
-	// from http://community.arm.com/servlet/JiveServlet/download/96891546-19496/siggraph2015-mmg-renaldas-slides.pdf
-	float v = 1.0 - max(roughness, NE);
-	v *= v * v;
-	return vec3(v) + specular;
-}
 
-float spec_D(
-  float NH,
-  float roughness)
-{
-  // normal distribution
-  // from http://blog.selfshadow.com/publications/s2013-shading-course/karis/s2013_pbs_epic_notes_v2.pdf
-  float alpha = roughness * roughness;
-  float quotient = alpha / max(1e-8,(NH*NH*(alpha*alpha-1.0)+1.0));
-  return (quotient * quotient) / M_PI;
-}
 
-vec3 spec_F(
-  float EH,
-  vec3 F0)
-{
-  // Fresnel
-  // from http://blog.selfshadow.com/publications/s2013-shading-course/karis/s2013_pbs_epic_notes_v2.pdf
-  float pow2 = pow(2.0, (-5.55473*EH - 6.98316) * EH);
-  return F0 + (vec3(1.0) - F0) * pow2;
-}
-
-vec3 fresnelSchlickRoughness(float cosTheta, vec3 F0, float roughness)
-{
-    return F0 + (max(vec3(1.0 - roughness), F0) - F0) * pow(1.0 - cosTheta, 5.0);
-} 
-
-float G1(
-  float NV,
-  float k)
-{
-  return NV / (NV*(1.0-k) +  k);
-}
-
-float spec_G(float NL, float NE, float roughness )
-{
-  // GXX Schlick
-  // from http://blog.selfshadow.com/publications/s2013-shading-course/karis/s2013_pbs_epic_notes_v2.pdf
-  float k = max(((roughness + 1.0) * (roughness + 1.0)) / 8.0, 1e-5);
-  return G1(NL,k)*G1(NE,k);
-}
-
-vec3 CalcDiffuse(vec3 diffuseAlbedo, vec3 fresnel, float roughness)
+vec3 CalcDiffuse(vec3 diffuseAlbedo)
 {
 #if defined(USE_BURLEY)
 	// modified from https://disney-animation.s3.amazonaws.com/library/s2012_pbs_disney_brdf_notes_v2.pdf
@@ -542,24 +506,46 @@ vec3 CalcDiffuse(vec3 diffuseAlbedo, vec3 fresnel, float roughness)
 	burley *= burley;
 	return diffuseAlbedo * burley;
 #else
-	return diffuseAlbedo * (vec3(1.0) - fresnel);
+	return diffuseAlbedo / M_PI;
 #endif
 }
 
+vec3 F_Schlick(in vec3 SpecularColor, in float VH)
+{
+	float Fc = pow(1 - VH, 5);
+	return clamp(50.0 * SpecularColor.g, 0.0, 1.0) * Fc + (1 - Fc) * SpecularColor; //hacky way to decide if reflectivity is too low (< 2%)
+}
+
+float D_GGX( in float NH, in float a )
+{
+	float a2 = a * a;
+	float d = (NH * a2 - NH) * NH + 1;
+	return a2 / (M_PI * d * d);
+}
+
+// Appoximation of joint Smith term for GGX
+// [Heitz 2014, "Understanding the Masking-Shadowing Function in Microfacet-Based BRDFs"]
+float V_SmithJointApprox(in float a, in float NV, in float NL)
+{
+	float Vis_SmithV = NL * (NV * (1 - a) + a);
+	float Vis_SmithL = NV * (NL * (1 - a) + a);
+	return 0.5 * (1.0 / (Vis_SmithV + Vis_SmithL));
+}
+
+// http://www.frostbite.com/2014/11/moving-frostbite-to-pbr/
 vec3 CalcSpecular(
 	in vec3 specular,
 	in float NH,
 	in float NL,
 	in float NE,
-	in vec3  fresnel,
+	in float VH,
 	in float roughness
 )
 {
-	float distrib = spec_D(NH,roughness);
-	//vec3 fresnel = spec_F(EH,specular);
-	float vis = spec_G(NL, NE, roughness);
-	float denominator = max((4.0 * max(NE,0.0) * max(NL,0.0)),0.001);
-	return (distrib * fresnel * vis) / denominator;
+	vec3  F = F_Schlick(specular, VH);
+	float D = D_GGX(NH, roughness);
+	float V = V_SmithJointApprox(roughness, NE, NL);
+	return  D * F * V;
 }
 
 float CalcLightAttenuation(float distance, float radius)
@@ -669,9 +655,9 @@ vec3 CalcSHColor(in vec3 normal)
 
 void main()
 {
-	vec3 viewDir, lightColor, ambientColor, reflectance, vertexColor, position;
-	vec3 L, N, E, H;
-	float NL, NH, NE, EH, attenuation;
+	vec3 viewDir, lightColor, ambientColor, reflectance, position;
+	vec3 L, N, E;
+	float attenuation;
 
 #if defined(PER_PIXEL_LIGHTING)
 	mat3 tangentToWorld = mat3(var_Tangent.xyz, var_Bitangent.xyz, var_Normal.xyz);
@@ -690,39 +676,32 @@ void main()
 #if defined(PER_PIXEL_LIGHTING)
 	float isLightgrid = float(var_LightDir.w < 1.0);
 	L = var_LightDir.xyz;
-  #if defined(USE_LIGHT_VERTEX)
-	L = -normalize(texture(u_LightGridDirectionMap, gridCell).rgb * 2.0 - vec3(1.0)) * (1.0 - u_EnableTextures.y);
-  #endif
   #if defined(USE_DELUXEMAP)
-	L = -normalize(texture(u_LightGridDirectionMap, gridCell).rgb  * 2.0 - vec3(1.0)) * (1.0 - u_EnableTextures.y);
+	//L = mix(texture(u_LightGridDirectionMap, gridCell).rgb, texture(u_DeluxeMap, var_TexCoords.zw).xyz, u_EnableTextures.y) - vec3(0.5);
 	L += (texture(u_DeluxeMap, var_TexCoords.zw).xyz - vec3(0.5)) * u_EnableTextures.y;
   #endif
-	float lightDist = length(L);
-	L /= lightDist;
 
-	vec3 ambientLight = texture(u_LightGridAmbientLightMap, gridCell).rgb * isLightgrid;
-
-	vertexColor = var_Color.rgb * var_Color.rgb;
 	#if defined(USE_LIGHT_VECTOR)
-	  L -= normalize(texture(u_LightGridDirectionMap, gridCell).rgb * 2.0 - vec3(1.0)) * isLightgrid;
+	  L = texture(u_LightGridDirectionMap, gridCell).rgb - vec3(0.5) * isLightgrid;
 	  vec3 directedLight = texture(u_LightGridDirectionalLightMap, gridCell).rgb * isLightgrid;
+	  vec3 ambientLight = texture(u_LightGridAmbientLightMap, gridCell).rgb * isLightgrid;
 	#endif
 
-	ambientColor = ambientLight * vertexColor;
+	float sqrLightDist = dot(L, L);
+	L /= sqrt(sqrLightDist);
+
   #if defined(USE_LIGHTMAP)
     vec4 lightmapColor = texture(u_LightMap, var_TexCoords.zw);
-	lightColor	 = lightmapColor.rgb * vertexColor;
+	lightColor	 = lightmapColor.rgb * var_Color.rgb;
+	ambientColor = vec3 (0.0);
 	attenuation  = 1.0;
   #elif defined(USE_LIGHT_VECTOR)
-	lightColor = directedLight * vertexColor * (var_LightDir.w + float(var_LightDir.w < 1.0));
-	attenuation  = CalcLightAttenuation(lightDist, var_LightDir.w);
-	#if defined(USE_DSHADOWS)
-	if (isLightgrid < 0.9) {
-		attenuation *= getShadowValue(var_LightDir);
-	}
-	#endif
+	lightColor = directedLight * var_Color.rgb;
+	ambientColor = ambientLight * var_Color.rgb;
+	attenuation  = 1.0;
   #elif defined(USE_LIGHT_VERTEX)
-	lightColor	 = vertexColor;
+	lightColor	 = var_Color.rgb;
+	ambientColor = vec3 (0.0);
 	attenuation  = 1.0;
   #endif
 
@@ -765,8 +744,11 @@ void main()
 	lightColor /= max(surfNL, 0.25);
 	// Recover any unused light as ambient, in case attenuation is over 4x or
 	// light is below the surface
-	ambientColor = max(ambientColor - lightColor * surfNL, vec3(0.0));
+	ambientColor = clamp(ambientColor - lightColor * surfNL, 0.0, 1.0);
   #endif
+
+	lightColor *= M_PI;
+	ambientColor *= M_PI;
 
   #if defined(USE_SPECULARMAP)
 	vec4 specular = texture(u_SpecularMap, texCoords);
@@ -775,30 +757,26 @@ void main()
   #endif
 	specular *= u_SpecularScale;
 
-	diffuse.rgb *= diffuse.rgb;
-	specular.rgb *= specular.rgb;
+	// energy conservation
+	diffuse.rgb *= vec3(1.0) - specular.rgb;
+	float roughness = mix(1.0, 0.01, specular.a);
 
-	// diffuse rgb is diffuse
-	// specular rgb is specular reflectance at normal incidence
-	// specular alpha is gloss
-	float roughness = 1.0 - specular.a;
-
-    H  = normalize(L + E);
-    EH = max(1e-8, dot(E, H));
-	NH = max(1e-8, dot(N, H));
-	NL = clamp(dot(N, L), 1e-8, 1.0);
-
-	vec3 fresnel = spec_F(EH, specular.rgb);
+    vec3  H  = normalize(L + E);
+	float NE = abs(dot(N, E)) + 1e-5;
+	float NL = clamp(dot(N, L), 0.0, 1.0);
 	
-	reflectance = CalcDiffuse(diffuse.rgb, fresnel, roughness);
+	diffuse.rgb = CalcDiffuse(diffuse.rgb);
+	reflectance = diffuse.rgb;
 
-  #if (defined(USE_LIGHTMAP) || defined(USE_LIGHT_VERTEX)) && defined(USE_DELUXEMAP)
-	NE = abs(dot(N, E)) + 1e-5;
-	reflectance += CalcSpecular(specular.rgb, NH, NL, NE, fresnel, roughness) * 1.0;
+  #if (defined(USE_LIGHTMAP) || defined(USE_LIGHT_VERTEX))
+	float NH = clamp(dot(N, H), 0.0, 1.0);
+	float VH = clamp(dot(E, H), 0.0, 1.0);
+	reflectance += CalcSpecular(specular.rgb, NH, NL, NE, VH, roughness);
   #endif
   #if defined(USE_LIGHT_VECTOR)
-	NE = abs(dot(N, E)) + 1e-5;
-	reflectance += CalcSpecular(specular.rgb, NH, NL, NE, fresnel, roughness);
+	float NH = clamp(dot(N, H), 0.0, 1.0);
+	float VH = clamp(dot(E, H), 0.0, 1.0);
+	reflectance += CalcSpecular(specular.rgb, NH, NL, NE, VH, roughness);
   #endif
 
 	out_Color.rgb  = lightColor * reflectance * (attenuation * NL);
@@ -807,11 +785,9 @@ void main()
 
 	ivec2 windowCoordinate = ivec2(gl_FragCoord.xy);
 	vec3 diffuseBufferColor = texelFetch(u_ScreenDiffuseMap, windowCoordinate, 0).rgb;
-	diffuseBufferColor *= diffuseBufferColor;
 	out_Color.rgb += diffuse.rgb * diffuseBufferColor;
 
 	vec4 specBufferColor = texelFetch(u_ScreenSpecularMap, windowCoordinate, 0);
-	specBufferColor.rgb *= specBufferColor.rgb;
 	out_Color.rgb += specBufferColor.rgb;
 
   #if defined(USE_CUBEMAP)
@@ -831,8 +807,6 @@ void main()
 	#else
 		vec3 cubeLightColor = textureLod(u_CubeMap, R + parallax, ROUGHNESS_MIPS * roughness).rgb * u_EnableTextures.w;
 	#endif
-
-	cubeLightColor *= cubeLightColor;
 	vec3 shColor = CalcSHColor(-N) * u_EnableTextures.x;
 
 	float horiz = 1.0;
@@ -850,21 +824,14 @@ void main()
   #endif
 
   #if defined(USE_PRIMARY_LIGHT) || defined(SHADOWMAP_MODULATE)
-	vec3 L2, H2;
-	float NL2, EH2, NH2, L2H2;
-
-	L2 = var_PrimaryLightDir.xyz;
-
-	H2  = normalize(L2 + E);
-    NL2 = clamp(dot(N, L2), 0.0, 1.0);
-    NL2 = max(1e-8, abs(NL2) );
-    EH2 = max(1e-8, dot(E, H2));
-    NH2 = max(1e-8, dot(N, H2));
-
-	vec3 fresnel2 = spec_F(EH2, specular.rgb);
+	vec3  L2   = normalize(var_PrimaryLightDir.xyz);
+	vec3  H2   = normalize(L2 + E);
+	float NL2  = clamp(dot(N,  L2), 0.0, 1.0);
+	float NH2  = clamp(dot(N,  H2), 0.0, 1.0);
+	float VH2  = clamp(dot(E, H), 0.0, 1.0);
 	
-	reflectance  = CalcSpecular(specular.rgb, NH2, NL2, NE, fresnel2, roughness);
-	reflectance += CalcDiffuse(diffuse.rgb, fresnel2, roughness);
+	reflectance  = CalcSpecular(specular.rgb, NH2, NL2, NE, VH2, roughness);
+	reflectance += diffuse.rgb;
 
 	lightColor = u_PrimaryLightColor;
 
@@ -885,11 +852,9 @@ void main()
 		out_Color.rgb = N.rgb * 0.5 + 0.5;
 	#if defined(USE_CUBEMAP)
 	if (USE_DEBUG == 4)
-		out_Color.rgb = sqrt(cubeLightColor);
+		out_Color.rgb = cubeLightColor;
 	#endif
   #endif
-
-	out_Color.rgb = sqrt(out_Color.rgb);
 
 #else
 	diffuse = texture(u_DiffuseMap, texCoords);
@@ -916,6 +881,6 @@ void main()
 #if defined(USE_GLOW_BUFFER)
 	out_Glow = out_Color;
 #else
-	out_Glow = vec4(0.0);
+	out_Glow = vec4(vec3(0.0), out_Color.a);
 #endif
 }

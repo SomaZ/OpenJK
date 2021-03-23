@@ -124,9 +124,10 @@ static	void R_ColorShiftLightingBytes( byte in[4], byte out[4] ) {
 		g = g * 255 / max;
 		b = b * 255 / max;
 	}
-	out[0] = (byte)(sRGBtoRGB((float)r / 255.f) * 255);
-	out[1] = (byte)(sRGBtoRGB((float)g / 255.f) * 255);
-	out[2] = (byte)(sRGBtoRGB((float)b / 255.f) * 255);
+
+	out[0] = r;
+	out[1] = g;
+	out[2] = b;
 	out[3] = in[3];
 }
 
@@ -220,6 +221,7 @@ static	void R_LoadLightmaps( world_t *worldData, lump_t *l, lump_t *surfs ) {
 	bool hdr_capable = glRefConfig.floatLightmap && r_hdr->integer;
 
 	tr.lightmapSize = DEFAULT_LIGHTMAP_SIZE;
+	tr.hdrLighting = qfalse;
 
 	len = l->filelen;
 	// test for external lightmaps
@@ -401,6 +403,7 @@ static	void R_LoadLightmaps( world_t *worldData, lump_t *l, lump_t *surfs ) {
 				if (bppc > 8)
 				{
 					hdrL = (float *)externalLightmap;
+					tr.hdrLighting = qtrue;
 				}
 				else
 				{
@@ -436,7 +439,7 @@ static	void R_LoadLightmaps( world_t *worldData, lump_t *l, lump_t *surfs ) {
 
 						color[3] = 1.0f;
 
-						R_ColorShiftLightingFloats(color, color, 1.0f, false);
+						R_ColorShiftLightingFloats(color, color, 1.0f / M_PI, false);
 
 						ColorToRGBA16F(color, (uint16_t *)(&image[j * 8]));
 					}
@@ -461,10 +464,6 @@ static	void R_LoadLightmaps( world_t *worldData, lump_t *l, lump_t *surfs ) {
 						color[3] = 1.0f;
 
 						R_ColorShiftLightingFloats(color, color, 1.0f / 255.0f);
-
-						color[0] = sRGBtoRGB(color[0]);
-						color[1] = sRGBtoRGB(color[1]);
-						color[2] = sRGBtoRGB(color[2]);
 
 						ColorToRGBA16F(color, (unsigned short *)(&image[j * 8]));
 					}
@@ -805,7 +804,7 @@ static void ParseFace( const world_t *worldData, dsurface_t *ds, drawVert_t *ver
 				color[0] = hdrVertColors[(ds->firstVert + i) * 3    ];
 				color[1] = hdrVertColors[(ds->firstVert + i) * 3 + 1];
 				color[2] = hdrVertColors[(ds->firstVert + i) * 3 + 2];
-				float scale = 1.0f;
+				scale = 1.0f / M_PI;
 			}
 			else
 			{
@@ -957,7 +956,7 @@ static void ParseMesh ( const world_t *worldData, dsurface_t *ds, drawVert_t *ve
 				color[0] = hdrColor[0];
 				color[1] = hdrColor[1];
 				color[2] = hdrColor[2];
-				scale = 1.0f;
+				scale = 1.0f / M_PI;
 			}
 			else
 			{
@@ -1073,7 +1072,7 @@ static void ParseTriSurf( const world_t *worldData, dsurface_t *ds, drawVert_t *
 				color[0] = hdrColor[0];
 				color[1] = hdrColor[1];
 				color[2] = hdrColor[2];
-				scale = 1.0f;
+				scale = 1.0f / M_PI;
 			}
 			else
 			{
@@ -1924,6 +1923,7 @@ struct packedVertex_t
 	uint32_t tangent;
 	vec2_t texcoords[1 + MAXLIGHTMAPS];
 	vec4_t colors[MAXLIGHTMAPS];
+	uint32_t lightDirection;
 };
 
 /*
@@ -2107,6 +2107,8 @@ static void R_CreateWorldVBOs( world_t *worldData )
 				{
 					VectorCopy4 (bspSurf->verts[i].vertexColors[j], vert.colors[j]);
 				}
+
+				vert.lightDirection = R_VboPackNormal(bspSurf->verts[i].lightdir);
 			}
 		}
 
@@ -2123,6 +2125,7 @@ static void R_CreateWorldVBOs( world_t *worldData )
 		vbo->offsets[ATTR_INDEX_TEXCOORD3] = offsetof(packedVertex_t, texcoords[3]);
 		vbo->offsets[ATTR_INDEX_TEXCOORD4] = offsetof(packedVertex_t, texcoords[4]);
 		vbo->offsets[ATTR_INDEX_COLOR] = offsetof(packedVertex_t, colors);
+		vbo->offsets[ATTR_INDEX_LIGHTDIRECTION] = offsetof(packedVertex_t, lightDirection);
 
 		const size_t packedVertexSize = sizeof(packedVertex_t);
 		vbo->strides[ATTR_INDEX_POSITION] = packedVertexSize;
@@ -2134,6 +2137,7 @@ static void R_CreateWorldVBOs( world_t *worldData )
 		vbo->strides[ATTR_INDEX_TEXCOORD3] = packedVertexSize;
 		vbo->strides[ATTR_INDEX_TEXCOORD4] = packedVertexSize;
 		vbo->strides[ATTR_INDEX_COLOR] = packedVertexSize;
+		vbo->strides[ATTR_INDEX_LIGHTDIRECTION] = packedVertexSize;
 
 		vbo->sizes[ATTR_INDEX_POSITION] = sizeof(verts->position);
 		vbo->sizes[ATTR_INDEX_NORMAL] = sizeof(verts->normal);
@@ -2144,6 +2148,7 @@ static void R_CreateWorldVBOs( world_t *worldData )
 		vbo->sizes[ATTR_INDEX_TEXCOORD4] = sizeof(verts->texcoords[0]);
 		vbo->sizes[ATTR_INDEX_TANGENT] = sizeof(verts->tangent);
 		vbo->sizes[ATTR_INDEX_COLOR] = sizeof(verts->colors);
+		vbo->sizes[ATTR_INDEX_LIGHTDIRECTION] = sizeof(verts->lightDirection);
 
 		// point bsp surfaces to VBO
 		for (currSurf = firstSurf; currSurf < lastSurf; currSurf++)
@@ -3239,7 +3244,7 @@ void R_LoadCubemaps(world_t *world)
 
 		Com_sprintf(filename, MAX_QPATH, "cubemaps/%s/%03d.dds", world->baseName, i);
 
-		cubemap->image = R_FindImageFile(filename, IMGTYPE_COLORALPHA, IMGFLAG_CLAMPTOEDGE | IMGFLAG_MIPMAP | IMGFLAG_NOLIGHTSCALE | IMGFLAG_CUBEMAP);
+		cubemap->image = R_FindImageFile(filename, IMGTYPE_COLORALPHA, IMGFLAG_CLAMPTOEDGE | IMGFLAG_MIPMAP | IMGFLAG_CUBEMAP);
 	}
 }
 
@@ -3256,7 +3261,7 @@ void R_RenderMissingCubemaps()
 
 	if (!tr.skyboxCubemap.image)
 	{
-		tr.skyboxCubemap.image = R_CreateImage("*skyboxCubemap", NULL, r_cubemapSize->integer, r_cubemapSize->integer, 0, IMGTYPE_COLORALPHA, IMGFLAG_MIPMAP | IMGFLAG_NOLIGHTSCALE | IMGFLAG_CUBEMAP, cubemapFormat);
+		tr.skyboxCubemap.image = R_CreateImage("*skyboxCubemap", NULL, r_cubemapSize->integer, r_cubemapSize->integer, 0, IMGTYPE_COLORALPHA, IMGFLAG_MIPMAP | IMGFLAG_CUBEMAP, cubemapFormat);
 		for (int j = 0; j < 6; j++)
 		{
 			RE_ClearScene();
@@ -3287,7 +3292,7 @@ void R_RenderMissingCubemaps()
 											r_cubemapSize->integer * 2, 
 											0, 
 											IMGTYPE_COLORALPHA, 
-											IMGFLAG_MIPMAP | IMGFLAG_NOLIGHTSCALE,
+											IMGFLAG_MIPMAP,
 											cubemapFormat) :
 										R_CreateImage(
 											va("*cubeMap%d", i), 
@@ -3296,7 +3301,7 @@ void R_RenderMissingCubemaps()
 											r_cubemapSize->integer, 
 											0, 
 											IMGTYPE_COLORALPHA, 
-											IMGFLAG_CLAMPTOEDGE | IMGFLAG_MIPMAP | IMGFLAG_NOLIGHTSCALE | IMGFLAG_CUBEMAP,
+											IMGFLAG_CLAMPTOEDGE | IMGFLAG_MIPMAP | IMGFLAG_CUBEMAP,
 											cubemapFormat);
 
 			for (int j = 0; j < 6; j++)
@@ -3891,12 +3896,12 @@ static void R_BuildLightGridTextures(world_t *world)
 
 	byte *ambientBase;
 	byte *directionalBase;
-	float *ambientHDRBase;
-	float *directionalHDRBase;
+	uint16_t *ambientHDRBase;
+	uint16_t *directionalHDRBase;
 	if (world->hdrLightGrid)
 	{
-		ambientHDRBase = (float *)R_Malloc(world->numGridArrayElements * sizeof(float) * 4, TAG_TEMP_WORKSPACE, qtrue);
-		directionalHDRBase = (float *)R_Malloc(world->numGridArrayElements * sizeof(float) * 4, TAG_TEMP_WORKSPACE, qtrue);
+		ambientHDRBase = (uint16_t *)R_Malloc(world->numGridArrayElements * sizeof(uint16_t) * 4, TAG_TEMP_WORKSPACE, qtrue);
+		directionalHDRBase = (uint16_t *)R_Malloc(world->numGridArrayElements * sizeof(uint16_t) * 4, TAG_TEMP_WORKSPACE, qtrue);
 	}
 	else
 	{
@@ -3906,17 +3911,26 @@ static void R_BuildLightGridTextures(world_t *world)
 
 	if (world->lightGridData)
 	{
+		uint16_t *ambientHDR;
+		uint16_t *directionalHDR;
+		byte *ambient;
+		byte *directional;
+		if (world->hdrLightGrid)
+		{
+			ambientHDR = ambientHDRBase;
+			directionalHDR = directionalHDRBase;
+		}
+		else
+		{
+			ambient = ambientBase;
+			directional = directionalBase;
+		}
 		byte *direction = directionBase;
-		byte *ambient = ambientBase;
-		byte *directional = directionalBase;
-		float *ambientHDR = ambientHDRBase;
-		float *directionalHDR = directionalHDRBase;
 
 		for (int i = 0; i < world->numGridArrayElements; i++)
 		{
 
-			float lat, lng;
-			float clat, slong, slat, clong;
+			int lat, lng;
 
 			mgrid_t *data = world->lightGridData + world->lightGridArray[i];
 
@@ -3924,51 +3938,49 @@ static void R_BuildLightGridTextures(world_t *world)
 			{
 				float *hdrData = world->hdrLightGrid + (i * 6);
 
-				ambientHDR[0] = hdrData[0];
-				ambientHDR[1] = hdrData[1];
-				ambientHDR[2] = hdrData[2];
-				ambientHDR[3] = 1.0f;
+				ambientHDR[0] = FloatToHalf(hdrData[0] / M_PI);
+				ambientHDR[1] = FloatToHalf(hdrData[1] / M_PI);
+				ambientHDR[2] = FloatToHalf(hdrData[2] / M_PI);
+				ambientHDR[3] = FloatToHalf(1.0f);
 
-				directionalHDR[0] = hdrData[3];
-				directionalHDR[1] = hdrData[3];
-				directionalHDR[2] = hdrData[4];
-				directionalHDR[3] = 1.0f;
+				directionalHDR[0] = FloatToHalf(hdrData[3] / M_PI);
+				directionalHDR[1] = FloatToHalf(hdrData[4] / M_PI);
+				directionalHDR[2] = FloatToHalf(hdrData[5] / M_PI);
+				directionalHDR[3] = FloatToHalf(1.0f);
+
+				ambientHDR += 4; directionalHDR += 4;
 			}
 			else
 			{
 				ambient[0] = data->ambientLight[0][0];
 				ambient[1] = data->ambientLight[0][1];
 				ambient[2] = data->ambientLight[0][2];
-				ambient[3] = 0;
+				ambient[3] = 255;
 
 				directional[0] = data->directLight[0][0];
 				directional[1] = data->directLight[0][1];
 				directional[2] = data->directLight[0][2];
-				directional[3] = 0;
+				directional[3] = 255;
+
+				ambient += 4;
+				directional += 4;
 			}
 
-			lat = (data->latLong[1] / 255.0f) * 2.0f * M_PI;
-			lng = (data->latLong[0] / 255.0f) * 2.0f * M_PI;
+			lat = data->latLong[1];
+			lng = data->latLong[0];
+			lat *= (FUNCTABLE_SIZE / 256);
+			lng *= (FUNCTABLE_SIZE / 256);
 
 			// decode X as cos( lat ) * sin( long )
 			// decode Y as sin( lat ) * sin( long )
 			// decode Z as cos( long )
 
-			slat = sinf(lat);
-			clat = cosf(lat);
-			slong = sinf(lng);
-			clong = cosf(lng);
+			direction[0] = FloatToByte((tr.sinTable[(lat + (FUNCTABLE_SIZE / 4))&FUNCTABLE_MASK] * tr.sinTable[lng]) * 0.5f + 0.5f);
+			direction[1] = FloatToByte((tr.sinTable[lat] * tr.sinTable[lng]) * 0.5f + 0.5f);
+			direction[2] = FloatToByte((tr.sinTable[(lng + (FUNCTABLE_SIZE / 4))&FUNCTABLE_MASK]) * 0.5f + 0.5f);
+			direction[3] = 255;
 
-			direction[0] = (byte)floorf(clat * slong);
-			direction[1] = (byte)floorf(slat * slong);
-			direction[2] = (byte)floorf(clong);
-			direction[3] = 0;
-
-			ambient += 4;
-			directional += 4;
 			direction += 4;
-
-			ambientHDR += 4; directionalHDR += 4;
 		}
 
 		if (world->hdrLightGrid)
@@ -4272,6 +4284,12 @@ void RE_LoadWorldMap( const char *name ) {
 	// clear the skyboxportal marker
 	skyboxportal = qfalse;
 
+	// set default sun color to be used if it isn't
+	// overridden by a shader
+	tr.sunLight[0] = 1.0f;
+	tr.sunLight[1] = 1.0f;
+	tr.sunLight[2] = 1.0f;
+
 	// set default sun direction to be used if it isn't
 	// overridden by a shader
 	tr.sunDirection[0] = 0.45f;
@@ -4286,8 +4304,9 @@ void RE_LoadWorldMap( const char *name ) {
 
 	// set default tone mapping settings
 	tr.toneMinAvgMaxLevel[0] = -8.0f;
-	tr.toneMinAvgMaxLevel[1] = 0.0f;
-	tr.toneMinAvgMaxLevel[2] = 2.0f;
+	tr.toneMinAvgMaxLevel[1] = -2.0f;
+	tr.toneMinAvgMaxLevel[2] = 0.0f;
+	tr.explicitToneMap = false;
 
 	world_t *world = R_LoadBSP(name);
 	if (world == nullptr)
@@ -4297,6 +4316,14 @@ void RE_LoadWorldMap( const char *name ) {
 		tr.world = nullptr;
 		return;
 	}
+
+	if (r_hdr->integer && tr.hdrLighting && !tr.explicitToneMap)
+	{
+		tr.toneMinAvgMaxLevel[0] = -8.0f;
+		tr.toneMinAvgMaxLevel[1] = 0.0f;
+		tr.toneMinAvgMaxLevel[2] = 2.0f;
+	}
+
 
 	tr.worldMapLoaded = qtrue;
 	tr.world = world;

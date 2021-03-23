@@ -326,6 +326,7 @@ enum
 	ATTR_INDEX_TANGENT,
 	ATTR_INDEX_NORMAL,
 	ATTR_INDEX_COLOR,
+	ATTR_INDEX_LIGHTDIRECTION,
 	ATTR_INDEX_BONE_INDEXES,
 	ATTR_INDEX_BONE_WEIGHTS,
 
@@ -947,6 +948,7 @@ typedef struct shader_s {
 	int			lightingStage;
 
 	void		(*optimalStageIteratorFunc)( void );
+	qboolean	isHDRLit;
 
   float clampTime;                                  // time this shader is clamped to
   float timeOffset;                                 // current time offset for this shader
@@ -1082,13 +1084,14 @@ enum
 	ATTR_TANGENT		= 0x0040,
 	ATTR_NORMAL			= 0x0080,
 	ATTR_COLOR			= 0x0100,
-	ATTR_BONE_INDEXES	= 0x0200,
-	ATTR_BONE_WEIGHTS	= 0x0400,
+	ATTR_LIGHTDIRECTION = 0x0200,
+	ATTR_BONE_INDEXES	= 0x0400,
+	ATTR_BONE_WEIGHTS	= 0x0800,
 
 	// for .md3 interpolation
-	ATTR_POSITION2		= 0x0800,
-	ATTR_TANGENT2		= 0x1000,
-	ATTR_NORMAL2		= 0x2000,
+	ATTR_POSITION2		= 0x1000,
+	ATTR_TANGENT2		= 0x2000,
+	ATTR_NORMAL2		= 0x4000,
 
 	ATTR_DEFAULT		= ATTR_POSITION,
 	ATTR_BITS			= ATTR_POSITION |
@@ -2481,6 +2484,8 @@ typedef struct trGlobals_s {
 	image_t					**lightmaps;
 	image_t					**deluxemaps;
 
+	qboolean				hdrLighting;
+
 	vec2i_t					lightmapAtlasSize;
 	vec2i_t					lightmapsPerAtlasSide;
 
@@ -2523,7 +2528,7 @@ typedef struct trGlobals_s {
 	shaderProgram_t volumeShadowShader;
 	shaderProgram_t down4xShader;
 	shaderProgram_t bokehShader;
-	shaderProgram_t tonemapShader;
+	shaderProgram_t tonemapShader[2];
 	shaderProgram_t calclevels4xShader[2];
 	shaderProgram_t shadowmaskShader;
 	shaderProgram_t ssaoShader;
@@ -2620,6 +2625,8 @@ typedef struct trGlobals_s {
 	// Specific to Jedi Academy
 	int						numBSPModels;
 	int						currentLevel;
+
+	bool					explicitToneMap;
 } trGlobals_t;
 
 struct glconfigExt_t
