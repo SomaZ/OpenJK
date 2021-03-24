@@ -112,7 +112,7 @@ static void ClearGlobalShader(void)
 		VectorSet4(stages[i].normalScale, 0.0f, 0.0f, 0.0f, 0.0f);
 		stages[i].specularScale[0] =
 		stages[i].specularScale[1] =
-		stages[i].specularScale[2] = RGBtosRGB(r_baseSpecular->value);
+		stages[i].specularScale[2] = r_baseSpecular->value;
 		stages[i].specularScale[3] = r_baseGloss->value;
 		stages[i].metalness = 0.0f;
 	}
