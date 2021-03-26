@@ -1649,6 +1649,8 @@ static void RB_IterateStagesGeneric( shaderCommands_t *input, const VertexArrays
 
 			if ((input->shader == tr.distortionShader) || backEnd.currentEntity->e.renderfx & RF_DISTORTION)
 			{
+				if (!r_refraction->integer)
+					continue;
 				forceRefraction = true;
 				renderPass = backEndData->currentPostPass;
 			}
