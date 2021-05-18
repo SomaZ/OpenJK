@@ -407,7 +407,7 @@ float Noise(vec2 U, float x) {
 
 #if defined(SSR)
 
-const vec3 BinarySearch(in vec3 dir, in vec3 hitCoord)
+vec3 BinarySearch(in vec3 dir, in vec3 hitCoord)
 {
 	float dDepth = 0.0;
     for(int i = 0; i < 14; i++)
@@ -425,7 +425,7 @@ const vec3 BinarySearch(in vec3 dir, in vec3 hitCoord)
 	return vec3(hitCoord.xy, hitScore);
 }
 
-const vec3 RayCast(in vec3 dir, in vec3 hitCoord)
+vec3 RayCast(in vec3 dir, in vec3 hitCoord)
 {
 	vec4 dDepth = vec4(0.0);
 	vec3 samplingPoints[4];

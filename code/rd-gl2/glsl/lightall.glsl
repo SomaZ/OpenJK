@@ -758,7 +758,7 @@ void main()
 	specular *= u_SpecularScale;
 
 	// energy conservation
-	diffuse.rgb *= vec3(1.0) - specular.rgb;
+	//diffuse.rgb *= vec3(1.0) - specular.rgb;
 	float roughness = mix(1.0, 0.01, specular.a);
 
     vec3  H  = normalize(L + E);
