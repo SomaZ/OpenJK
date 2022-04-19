@@ -2529,7 +2529,7 @@ static int GLSL_LoadGPUProgramGaussianBlur(
 	const uint32_t attribs = 0;
 
 	extradefines[0] = '\0';
-	Q_strcat(extradefines, sizeof(extradefines), "#define BLUR_X");
+	Q_strcat(extradefines, sizeof(extradefines), "#define BLUR_X\n");
 
 	uint32_t shaderTypes = GPUSHADER_VERTEX | GPUSHADER_FRAGMENT;
 
