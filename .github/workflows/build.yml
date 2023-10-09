@@ -54,7 +54,7 @@ jobs:
           else
             OPTIONS+=" -DBuildPortableVersion=OFF"
           fi
-          OPTIONS+=" -DBuildJK2SPEngine=ON -DBuildJK2SPGame=ON -DBuildJK2SPRdVanilla=ON --DBuildJK2SPRdRend2=ON"
+          OPTIONS+=" -DBuildJK2SPEngine=ON -DBuildJK2SPGame=ON -DBuildJK2SPRdVanilla=ON -DBuildJK2SPRdRend2=ON"
           cmake $GITHUB_WORKSPACE -A ${{ matrix.platform }} $OPTIONS
 
       - name: Build
