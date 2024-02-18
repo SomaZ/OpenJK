@@ -713,8 +713,6 @@ void RE_WorldEffectCommand(const char *command)
 
 		tr.weatherSystem->weatherSlots[WEATHER_RAIN].velocityOrientationScale = 1.0f;
 
-		
-
 		VectorSet4(tr.weatherSystem->weatherSlots[WEATHER_RAIN].color, 0.5f, 0.5f, 0.5f, 0.5f);
 		VectorScale(
 			tr.weatherSystem->weatherSlots[WEATHER_RAIN].color,
@@ -896,8 +894,6 @@ void RE_WorldEffectCommand(const char *command)
 		tr.weatherSystem->weatherSlots[WEATHER_SPACEDUST].size[1] = 2.5f;
 
 		tr.weatherSystem->weatherSlots[WEATHER_SPACEDUST].velocityOrientationScale = 0.0f;
-
-		
 
 		VectorSet4(tr.weatherSystem->weatherSlots[WEATHER_SPACEDUST].color, 0.75f, 0.75f, 0.75f, 0.75f);
 		VectorScale(

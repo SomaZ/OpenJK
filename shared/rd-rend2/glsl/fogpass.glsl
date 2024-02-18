@@ -229,6 +229,7 @@ void main()
 	gl_Position = u_viewProjectionMatrix * wsPosition;
 
 	var_WSPosition = wsPosition.xyz;
+
 #if defined(USE_ALPHA_TEST)
 	var_TexCoords = attr_TexCoord0;
 #endif
