@@ -553,6 +553,29 @@ void R_AddWeatherBrush(uint8_t numPlanes, vec4_t *planes)
 	tr.weatherSystem->numWeatherBrushes++;
 }
 
+void R_LoadWeatherImages()
+{
+	if (!tr.weatherSystem)
+		return;
+
+	// Image flags and type
+	imgType_t type = IMGTYPE_COLORALPHA;
+	int flags = IMGFLAG_CLAMPTOEDGE;
+	if (tr.hdrLighting)
+		flags |= IMGFLAG_SRGB;
+
+	if (tr.weatherSystem->weatherSlots[WEATHER_RAIN].active)
+		tr.weatherSystem->weatherSlots[WEATHER_RAIN].drawImage = R_FindImageFile("gfx/world/rain.jpg", type, flags);
+	if (tr.weatherSystem->weatherSlots[WEATHER_SNOW].active)
+		tr.weatherSystem->weatherSlots[WEATHER_SNOW].drawImage = R_FindImageFile("gfx/effects/snowflake1", type, flags);
+	if (tr.weatherSystem->weatherSlots[WEATHER_SPACEDUST].active)
+		tr.weatherSystem->weatherSlots[WEATHER_SPACEDUST].drawImage = R_FindImageFile("gfx/effects/snowpuff1", type, flags);
+	if (tr.weatherSystem->weatherSlots[WEATHER_SAND].active)
+		tr.weatherSystem->weatherSlots[WEATHER_SAND].drawImage = R_FindImageFile("gfx/effects/alpha_smoke2b", type, flags);
+	if (tr.weatherSystem->weatherSlots[WEATHER_FOG].active)
+		tr.weatherSystem->weatherSlots[WEATHER_FOG].drawImage = R_FindImageFile("gfx/effects/alpha_smoke2b", type, flags);
+}
+
 void RE_WorldEffectCommand(const char *command)
 {
 	if (!command)
@@ -690,10 +713,6 @@ void RE_WorldEffectCommand(const char *command)
 
 		tr.weatherSystem->weatherSlots[WEATHER_RAIN].velocityOrientationScale = 1.0f;
 
-		imgType_t type = IMGTYPE_COLORALPHA;
-		int flags = IMGFLAG_CLAMPTOEDGE;
-		tr.weatherSystem->weatherSlots[WEATHER_RAIN].drawImage = R_FindImageFile("gfx/world/rain.jpg", type, flags);
-
 		VectorSet4(tr.weatherSystem->weatherSlots[WEATHER_RAIN].color, 0.5f, 0.5f, 0.5f, 0.5f);
 		VectorScale(
 			tr.weatherSystem->weatherSlots[WEATHER_RAIN].color,
@@ -727,10 +746,6 @@ void RE_WorldEffectCommand(const char *command)
 		tr.weatherSystem->weatherSlots[WEATHER_RAIN].size[1] = 14.0f;
 
 		tr.weatherSystem->weatherSlots[WEATHER_RAIN].velocityOrientationScale = 1.0f;
-
-		imgType_t type = IMGTYPE_COLORALPHA;
-		int flags = IMGFLAG_CLAMPTOEDGE;
-		tr.weatherSystem->weatherSlots[WEATHER_RAIN].drawImage = R_FindImageFile("gfx/world/rain.jpg", type, flags);
 
 		VectorSet4(tr.weatherSystem->weatherSlots[WEATHER_RAIN].color, 0.5f, 0.5f, 0.5f, 0.5f);
 		VectorScale(
@@ -773,10 +788,6 @@ void RE_WorldEffectCommand(const char *command)
 
 		tr.weatherSystem->pain = 0.1f;
 
-		imgType_t type = IMGTYPE_COLORALPHA;
-		int flags = IMGFLAG_CLAMPTOEDGE;
-		tr.weatherSystem->weatherSlots[WEATHER_RAIN].drawImage = R_FindImageFile("gfx/world/rain.jpg", type, flags);
-
 		VectorSet4(tr.weatherSystem->weatherSlots[WEATHER_RAIN].color, 0.34f, 0.7f, 0.34f, 0.7f);
 		VectorScale(
 			tr.weatherSystem->weatherSlots[WEATHER_RAIN].color,
@@ -811,10 +822,6 @@ void RE_WorldEffectCommand(const char *command)
 
 		tr.weatherSystem->weatherSlots[WEATHER_RAIN].velocityOrientationScale = 1.0f;
 
-		imgType_t type = IMGTYPE_COLORALPHA;
-		int flags = IMGFLAG_CLAMPTOEDGE;
-		tr.weatherSystem->weatherSlots[WEATHER_RAIN].drawImage = R_FindImageFile("gfx/world/rain", type, flags);
-
 		VectorSet4(tr.weatherSystem->weatherSlots[WEATHER_RAIN].color, 0.5f, 0.5f, 0.5f, 0.5f);
 		VectorScale(
 			tr.weatherSystem->weatherSlots[WEATHER_RAIN].color,
@@ -843,10 +850,6 @@ void RE_WorldEffectCommand(const char *command)
 		tr.weatherSystem->weatherSlots[WEATHER_SNOW].size[1] = 1.5f;
 
 		tr.weatherSystem->weatherSlots[WEATHER_SNOW].velocityOrientationScale = 0.0f;
-
-		imgType_t type = IMGTYPE_COLORALPHA;
-		int flags = IMGFLAG_CLAMPTOEDGE;
-		tr.weatherSystem->weatherSlots[WEATHER_SNOW].drawImage = R_FindImageFile("gfx/effects/snowflake1", type, flags);
 
 		VectorSet4(tr.weatherSystem->weatherSlots[WEATHER_SNOW].color, 0.75f, 0.75f, 0.75f, 0.75f);
 		VectorScale(
@@ -892,10 +895,6 @@ void RE_WorldEffectCommand(const char *command)
 
 		tr.weatherSystem->weatherSlots[WEATHER_SPACEDUST].velocityOrientationScale = 0.0f;
 
-		imgType_t type = IMGTYPE_COLORALPHA;
-		int flags = IMGFLAG_CLAMPTOEDGE;
-		tr.weatherSystem->weatherSlots[WEATHER_SPACEDUST].drawImage = R_FindImageFile("gfx/effects/snowpuff1", type, flags);
-
 		VectorSet4(tr.weatherSystem->weatherSlots[WEATHER_SPACEDUST].color, 0.75f, 0.75f, 0.75f, 0.75f);
 		VectorScale(
 			tr.weatherSystem->weatherSlots[WEATHER_SPACEDUST].color, 
@@ -936,10 +935,6 @@ void RE_WorldEffectCommand(const char *command)
 
 		tr.weatherSystem->weatherSlots[WEATHER_SAND].velocityOrientationScale = 0.0f;
 
-		imgType_t type = IMGTYPE_COLORALPHA;
-		int flags = IMGFLAG_CLAMPTOEDGE;
-		tr.weatherSystem->weatherSlots[WEATHER_SAND].drawImage = R_FindImageFile("gfx/effects/alpha_smoke2b", type, flags);
-
 		VectorSet4(tr.weatherSystem->weatherSlots[WEATHER_SAND].color, 0.9f, 0.6f, 0.0f, 0.5f);
 	}
 
@@ -972,10 +967,6 @@ void RE_WorldEffectCommand(const char *command)
 		tr.weatherSystem->weatherSlots[WEATHER_FOG].size[1] = 300.f;
 
 		tr.weatherSystem->weatherSlots[WEATHER_FOG].velocityOrientationScale = 0.0f;
-
-		imgType_t type = IMGTYPE_COLORALPHA;
-		int flags = IMGFLAG_CLAMPTOEDGE;
-		tr.weatherSystem->weatherSlots[WEATHER_FOG].drawImage = R_FindImageFile("gfx/effects/alpha_smoke2b", type, flags);
 
 		VectorSet4(tr.weatherSystem->weatherSlots[WEATHER_FOG].color, 0.2f, 0.2f, 0.2f, 0.2f);
 		VectorScale(tr.weatherSystem->weatherSlots[WEATHER_FOG].color, 0.2f, tr.weatherSystem->weatherSlots[WEATHER_FOG].color);
@@ -1014,10 +1005,6 @@ void RE_WorldEffectCommand(const char *command)
 
 		tr.weatherSystem->weatherSlots[WEATHER_FOG].velocityOrientationScale = 0.0f;
 
-		imgType_t type = IMGTYPE_COLORALPHA;
-		int flags = IMGFLAG_CLAMPTOEDGE;
-		tr.weatherSystem->weatherSlots[WEATHER_FOG].drawImage = R_FindImageFile("gfx/effects/alpha_smoke2b", type, flags);
-
 		VectorSet4(tr.weatherSystem->weatherSlots[WEATHER_FOG].color, 0.3f, 0.3f, 0.3f, 0.3f);
 		VectorScale(tr.weatherSystem->weatherSlots[WEATHER_FOG].color, 0.3f, tr.weatherSystem->weatherSlots[WEATHER_FOG].color);
 	}
@@ -1054,10 +1041,6 @@ void RE_WorldEffectCommand(const char *command)
 		tr.weatherSystem->weatherSlots[WEATHER_FOG].size[1] = 300.f;
 
 		tr.weatherSystem->weatherSlots[WEATHER_FOG].velocityOrientationScale = 0.0f;
-
-		imgType_t type = IMGTYPE_COLORALPHA;
-		int flags = IMGFLAG_CLAMPTOEDGE;
-		tr.weatherSystem->weatherSlots[WEATHER_FOG].drawImage = R_FindImageFile("gfx/effects/alpha_smoke2b", type, flags);
 
 		VectorSet4(tr.weatherSystem->weatherSlots[WEATHER_FOG].color, 0.19f, 0.6f, 0.7f, 0.12f);
 		VectorScale(tr.weatherSystem->weatherSlots[WEATHER_FOG].color, 0.12f, tr.weatherSystem->weatherSlots[WEATHER_FOG].color);
@@ -1106,6 +1089,8 @@ void RE_WorldEffectCommand(const char *command)
 #ifdef REND2_SP
 	COM_EndParseSession();
 #endif
+	if (tr.world)
+		R_LoadWeatherImages();
 }
 
 void R_WorldEffect_f(void)

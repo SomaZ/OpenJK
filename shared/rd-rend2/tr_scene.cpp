@@ -118,12 +118,8 @@ RE_AddPolyToScene
 
 =====================
 */
-#ifndef REND2_SP
+
 void RE_AddPolyToScene( qhandle_t hShader, int numVerts, const polyVert_t *verts, int numPolys ) {
-#else
-void RE_AddPolyToScene(qhandle_t hShader, int numVerts, const polyVert_t *verts) {
-	int numPolys = 1;
-#endif
 	srfPoly_t	*poly;
 	int			i, j;
 	int			fogIndex;
@@ -215,7 +211,13 @@ void RE_AddRefEntityToScene( const refEntity_t *ent ) {
 		}
 		return;
 	}
-	if ( (int)ent->reType < 0 || ent->reType >= RT_MAX_REF_ENTITY_TYPE ) {
+
+	if (ent->reType == RT_ENT_CHAIN)
+	{ //minirefents must die.
+		return;
+	}
+
+	if ( (int)ent->reType < 0 || ent->reType >= RT_MAX_SP_REF_ENTITY_TYPE || ent->reType == RT_MAX_MP_REF_ENTITY_TYPE ) {
 		ri.Error( ERR_DROP, "RE_AddRefEntityToScene: bad reType %i", ent->reType );
 	}
 

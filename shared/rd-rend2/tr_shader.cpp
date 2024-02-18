@@ -2788,6 +2788,13 @@ static qboolean ParseShader( const char **text )
 				return qfalse;
 			}
 
+			if (tr.hdrLighting)
+			{
+				shader.fogParms.color[0] = sRGBtoRGB(shader.fogParms.color[0]);
+				shader.fogParms.color[1] = sRGBtoRGB(shader.fogParms.color[1]);
+				shader.fogParms.color[2] = sRGBtoRGB(shader.fogParms.color[2]);
+			}
+
 			token = COM_ParseExt( text, qfalse );
 			if ( !token[0] ) 
 			{
@@ -4221,6 +4228,9 @@ static shader_t *FinishShader( void ) {
 
 			if (!pStage->active)
 				continue;
+
+			if (pStage->stateBits & (GLS_DSTBLEND_BITS | GLS_SRCBLEND_BITS))
+				break;
 
 			if (pStage->alphaTestType == ALPHA_TEST_NONE)
 				shader.useSimpleDepthShader = qtrue;

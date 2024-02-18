@@ -395,6 +395,26 @@ jobs:
             artifact_name: OpenJO-rend2-macos-x86_64.tar.gz
             zip: false
 
+          - artifact_dir: OpenJO-windows-x86-Release-Non-Portable/JediOutcast
+            artifact_name: OpenJO-windows-x86.zip
+            zip: true
+
+          - artifact_dir: OpenJO-windows-x86_64-Release-Non-Portable/JediOutcast
+            artifact_name: OpenJO-windows-x86_64.zip
+            zip: true
+
+          - artifact_dir: OpenJO-linux-x86-Release-Non-Portable
+            artifact_name: OpenJO-linux-x86.tar.gz
+            zip: false
+
+          - artifact_dir: OpenJO-linux-x86_64-Release-Non-Portable
+            artifact_name: OpenJO-linux-x86_64.tar.gz
+            zip: false
+
+          - artifact_dir: OpenJO-macos-x86_64-Release-Non-Portable
+            artifact_name: OpenJO-macos-x86_64.tar.gz
+            zip: false
+
     steps:
       - uses: actions/checkout@v3
         with:
