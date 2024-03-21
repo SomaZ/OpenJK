@@ -281,7 +281,7 @@ void main()
   #endif
 
 #if defined(USE_LIGHT_VECTOR)
-	vec3 L = u_LocalLightOrigin.xyz - (position * u_LocalLightOrigin.w);
+	vec3 L = u_LocalLightOrigin.xyz;
 #elif defined(PER_PIXEL_LIGHTING)
 	vec3 L = attr_LightDirection * 2.0 - vec3(1.0);
 	L = (u_ModelMatrix * vec4(L, 0.0)).xyz;
@@ -309,7 +309,7 @@ void main()
 			float sqrLightDist = dot(L, L);
 			float NL = clamp(dot(normal, L) / sqrt(sqrLightDist), 0.0, 1.0);
 
-			var_Color.rgb *= u_DirectedLight * NL + u_AmbientLight;
+			var_Color.rgb *= mix(u_DirectedLight, u_AmbientLight, NL);
 		#endif
 	}
 	var_Color *= disintegration;
@@ -920,7 +920,7 @@ vec3 CalcDynamicLightContribution(
 	vec3 outColor = vec3(0.0);
 	vec3 position = viewOrigin - viewDir;
 
-	for ( int i = 0; i < u_NumLights; i++ )
+	for ( int i = 0; i < min(u_NumLights, MAX_DLIGHTS); i++ )
 	{
 		if ( ( u_LightMask & ( 1 << i ) ) == 0 ) {
 			continue;
