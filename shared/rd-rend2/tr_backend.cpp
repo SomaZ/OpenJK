@@ -130,15 +130,15 @@ void GL_Cull( int cullType ) {
 	if ( backEnd.projection2D )
 		cullType = CT_TWO_SIDED;
 
-	if ( cullType == CT_TWO_SIDED ) 
+	if ( cullType == CT_TWO_SIDED )
 	{
 		if ( glState.faceCulling != CT_TWO_SIDED )
 			qglDisable( GL_CULL_FACE );
-	} 
-	else 
+	}
+	else
 	{
 		qboolean cullFront = (qboolean)(cullType == CT_FRONT_SIDED);
-		
+
 		if ( glState.faceCulling == CT_TWO_SIDED )
 			qglEnable( GL_CULL_FACE );
 
@@ -272,12 +272,20 @@ void GL_State( uint32_t stateBits )
 				break;
 			}
 
-			qglEnable( GL_BLEND );
+			if (!glState.blend)
+			{
+				qglEnable(GL_BLEND);
+				glState.blend = true;
+			}
 			qglBlendFunc( srcFactor, dstFactor );
 		}
 		else
 		{
-			qglDisable( GL_BLEND );
+			if (glState.blend)
+			{
+				qglDisable(GL_BLEND);
+				glState.blend = false;
+			}
 		}
 	}
 
@@ -476,16 +484,31 @@ void GL_Draw( GLenum primitiveType, int firstVertex, int numVertices, int numIns
 void GL_SetProjectionMatrix(matrix_t matrix)
 {
 	Matrix16Copy(matrix, glState.projection);
-	Matrix16Multiply(glState.projection, glState.modelview, glState.modelviewProjection);	
+	Matrix16Multiply(glState.projection, glState.modelview, glState.modelviewProjection);
 }
-
 
 void GL_SetModelviewMatrix(matrix_t matrix)
 {
 	Matrix16Copy(matrix, glState.modelview);
-	Matrix16Multiply(glState.projection, glState.modelview, glState.modelviewProjection);	
+	Matrix16Multiply(glState.projection, glState.modelview, glState.modelviewProjection);
 }
 
+void GL_SetViewportAndScissor(int viewportX, int viewportY, int viewportWidth, int viewportHeight)
+{
+	if (glState.viewportOrigin[0] == viewportX &&
+		glState.viewportOrigin[1] == viewportY &&
+		glState.viewportSize[0] == viewportWidth &&
+		glState.viewportSize[1] == viewportHeight)
+		return;
+
+	qglViewport(viewportX, viewportY, viewportWidth, viewportHeight);
+	qglScissor(viewportX, viewportY, viewportWidth, viewportHeight);
+
+	glState.viewportOrigin[0] = viewportX;
+	glState.viewportOrigin[1] = viewportY;
+	glState.viewportSize[0] = viewportWidth;
+	glState.viewportSize[1] = viewportHeight;
+}
 
 /*
 ================
@@ -505,20 +528,8 @@ static void SetViewportAndScissor( void ) {
 	GL_SetProjectionMatrix( backEnd.viewParms.projectionMatrix );
 
 	// set the window clipping
-	qglViewport( backEnd.viewParms.viewportX, backEnd.viewParms.viewportY, 
-		backEnd.viewParms.viewportWidth, backEnd.viewParms.viewportHeight );
-
-	if ( !backEnd.viewParms.scissorX && !backEnd.viewParms.scissorY &&
-			!backEnd.viewParms.scissorWidth && !backEnd.viewParms.scissorHeight )
-	{
-		qglScissor( backEnd.viewParms.viewportX, backEnd.viewParms.viewportY, 
-			backEnd.viewParms.viewportWidth, backEnd.viewParms.viewportHeight );
-	}
-	else
-	{
-		qglScissor( backEnd.viewParms.scissorX, backEnd.viewParms.scissorY, 
-			backEnd.viewParms.scissorWidth, backEnd.viewParms.scissorHeight );
-	}
+	GL_SetViewportAndScissor(backEnd.viewParms.viewportX, backEnd.viewParms.viewportY,
+		backEnd.viewParms.viewportWidth, backEnd.viewParms.viewportHeight);
 }
 
 /*
@@ -591,7 +602,7 @@ void RB_BeginDrawingView (void) {
 		(!(backEnd.refdef.rdflags & RDF_NOWORLDMODEL)))
 	{
 		if (tr.world && tr.world->globalFog)
-		{ 
+		{
 			const fog_t		*fog = tr.world->globalFog;
 
 			clearBits |= GL_COLOR_BUFFER_BIT;
@@ -1113,7 +1124,7 @@ static void RB_DrawItems(
 					drawItem.draw.params.indexed.numIndices,
 					drawItem.draw.params.indexed.indexType,
 					drawItem.draw.params.indexed.firstIndex,
-					drawItem.draw.numInstances, 
+					drawItem.draw.numInstances,
 					drawItem.draw.params.indexed.baseVertex);
 				break;
 			}
@@ -1521,8 +1532,7 @@ void	RB_SetGL2D (void) {
 	}
 
 	// set 2D virtual screen size
-	qglViewport( 0, 0, width, height );
-	qglScissor( 0, 0, width, height );
+	GL_SetViewportAndScissor(0, 0, width, height);
 
 	Matrix16Ortho(0, 640, 480, 0, 0, 1, matrix);
 	GL_SetProjectionMatrix(matrix);
@@ -1615,7 +1625,7 @@ void RE_StretchRaw (int x, int y, int w, int h, int cols, int rows, const byte *
 	VectorSet2(texCoords[3], 0.5f / cols,          (rows - 0.5f) / rows);
 
 	GLSL_BindProgram(&tr.textureColorShader);
-	
+
 	GLSL_SetUniformMatrix4x4(&tr.textureColorShader, UNIFORM_MODELVIEWPROJECTIONMATRIX, glState.modelviewProjection);
 	GLSL_SetUniformVec4(&tr.textureColorShader, UNIFORM_COLOR, colorWhite);
 
@@ -1634,7 +1644,7 @@ void RE_UploadCinematic (int cols, int rows, const byte *data, int client, qbool
 		qglTexParameterf( GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR );
 		qglTexParameterf( GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR );
 		qglTexParameterf( GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE );
-		qglTexParameterf( GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE );	
+		qglTexParameterf( GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE );
 	} else {
 		if (dirty) {
 			// otherwise, just subimage upload it so that drivers can tell we are going to be changing
@@ -1751,7 +1761,7 @@ static const void *RB_StretchPic ( const void *data ) {
 RB_DrawRotatePic
 =============
 */
-static const void *RB_RotatePic ( const void *data ) 
+static const void *RB_RotatePic ( const void *data )
 {
 	const rotatePicCommand_t	*cmd;
 	shader_t *shader;
@@ -1844,7 +1854,7 @@ static const void *RB_RotatePic ( const void *data )
 RB_DrawRotatePic2
 =============
 */
-static const void *RB_RotatePic2 ( const void *data ) 
+static const void *RB_RotatePic2 ( const void *data )
 {
 	const rotatePicCommand_t	*cmd;
 	shader_t *shader;
@@ -2015,8 +2025,7 @@ static const void *RB_PrefilterEnvMap(const void *data) {
 		GL_BindToTMU(tr.renderCubeImage, TB_CUBEMAP);
 		GLSL_BindProgram(&tr.prefilterEnvMapShader);
 
-		qglViewport(0, 0, width, height);
-		qglScissor(0, 0, width, height);
+		GL_SetViewportAndScissor(0, 0, width, height);
 
 		vec4_t viewInfo;
 		VectorSet4(viewInfo, 0, level, roughnessMips, level / roughnessMips);
@@ -2038,8 +2047,7 @@ static void RB_RenderSSAO()
 
 	FBO_Bind(tr.quarterFbo[0]);
 
-	qglViewport(0, 0, tr.quarterFbo[0]->width, tr.quarterFbo[0]->height);
-	qglScissor(0, 0, tr.quarterFbo[0]->width, tr.quarterFbo[0]->height);
+	GL_SetViewportAndScissor(0, 0, tr.quarterFbo[0]->width, tr.quarterFbo[0]->height);
 
 	GL_State( GLS_DEPTHTEST_DISABLE );
 
@@ -2052,8 +2060,7 @@ static void RB_RenderSSAO()
 
 	FBO_Bind(tr.quarterFbo[1]);
 
-	qglViewport(0, 0, tr.quarterFbo[1]->width, tr.quarterFbo[1]->height);
-	qglScissor(0, 0, tr.quarterFbo[1]->width, tr.quarterFbo[1]->height);
+	GL_SetViewportAndScissor(0, 0, tr.quarterFbo[1]->width, tr.quarterFbo[1]->height);
 
 	GLSL_BindProgram(&tr.depthBlurShader[0]);
 
@@ -2065,8 +2072,7 @@ static void RB_RenderSSAO()
 
 	FBO_Bind(tr.screenSsaoFbo);
 
-	qglViewport(0, 0, tr.screenSsaoFbo->width, tr.screenSsaoFbo->height);
-	qglScissor(0, 0, tr.screenSsaoFbo->width, tr.screenSsaoFbo->height);
+	GL_SetViewportAndScissor(0, 0, tr.screenSsaoFbo->width, tr.screenSsaoFbo->height);
 
 	GLSL_BindProgram(&tr.depthBlurShader[1]);
 
@@ -2139,21 +2145,21 @@ static void RB_RenderMainPass( drawSurf_t *drawSurfs, int numDrawSurfs )
 
 	if (r_drawSun->integer)
 	{
-		RB_DrawSun(0.1, tr.sunShader);
+		RB_DrawSun(0.1f, tr.sunShader);
 	}
 
 	if (r_drawSunRays->integer)
 	{
 		FBO_t *oldFbo = glState.currentFBO;
 		FBO_Bind(tr.sunRaysFbo);
-		
+
 		qglClearColor( 0.0f, 0.0f, 0.0f, 1.0f );
 		qglClear( GL_COLOR_BUFFER_BIT );
 
 		tr.sunFlareQueryActive[tr.sunFlareQueryIndex] = qtrue;
 		qglBeginQuery(GL_SAMPLES_PASSED, tr.sunFlareQuery[tr.sunFlareQueryIndex]);
 
-		RB_DrawSun(0.3, tr.sunFlareShader);
+		RB_DrawSun(0.3f, tr.sunFlareShader);
 
 		qglEndQuery(GL_SAMPLES_PASSED);
 
@@ -2519,7 +2525,7 @@ void RB_AddShaderToShaderInstanceUBO(shader_t *shader)
 		shader->ShaderInstanceUboOffset = -1;
 		return;
 	}
-	
+
 	ShaderInstanceBlock shaderInstanceBlock = {};
 	ComputeDeformValues(
 		shader,
@@ -2703,7 +2709,7 @@ static const void *RB_ColorMask(const void *data)
 	backEnd.colorMask[3] = (qboolean)(!cmd->rgba[3]);
 
 	qglColorMask(cmd->rgba[0], cmd->rgba[1], cmd->rgba[2], cmd->rgba[3]);
-	
+
 	return (const void *)(cmd + 1);
 }
 
@@ -2716,7 +2722,7 @@ RB_ClearDepth
 static const void *RB_ClearDepth(const void *data)
 {
 	const clearDepthCommand_t *cmd = (clearDepthCommand_t *)data;
-	
+
 	// finish any 2D drawing if needed
 	if(tess.numIndexes)
 		RB_EndSurface();
@@ -2743,7 +2749,7 @@ static const void *RB_ClearDepth(const void *data)
 		qglClear(GL_DEPTH_BUFFER_BIT);
 	}
 
-	
+
 	return (const void *)(cmd + 1);
 }
 

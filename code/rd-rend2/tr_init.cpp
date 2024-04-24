@@ -313,7 +313,7 @@ static void R_Splash()
 {
 	const GLfloat black[] = { 0.0f, 0.0f, 0.0f, 1.0f };
 
-	qglViewport( 0, 0, glConfig.vidWidth, glConfig.vidHeight );
+	GL_SetViewportAndScissor( 0, 0, glConfig.vidWidth, glConfig.vidHeight );
 	qglClearBufferfv(GL_COLOR, 0, black);
 	qglClear(GL_DEPTH_BUFFER_BIT);
 
@@ -1122,17 +1122,18 @@ RB_TakeVideoFrameCmd
 const void *RB_TakeVideoFrameCmd( const void *data )
 {
 	const videoFrameCommand_t	*cmd;
-	byte				*cBuf;
-	size_t				memcount, linelen;
-	int				padwidth, avipadwidth, padlen, avipadlen;
-	GLint packAlign;
-
+	
 	// finish any 2D drawing if needed
 	if (tess.numIndexes)
 		RB_EndSurface();
 
 	cmd = (const videoFrameCommand_t *)data;
 #ifndef REND2_SP
+	byte				*cBuf;
+	size_t				memcount, linelen;
+	int				padwidth, avipadwidth, padlen, avipadlen;
+	GLint packAlign;
+
 	qglGetIntegerv(GL_PACK_ALIGNMENT, &packAlign);
 
 	linelen = cmd->width * 3;
@@ -1239,6 +1240,7 @@ void GL_SetDefaultState( void )
 	qglEnable(GL_PROGRAM_POINT_SIZE);
 	qglDisable( GL_CULL_FACE );
 	qglDisable( GL_BLEND );
+	glState.blend = false;
 
 	qglEnable(GL_TEXTURE_CUBE_MAP_SEAMLESS);
 

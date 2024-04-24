@@ -235,7 +235,7 @@ vec3 DeformNormal( const in vec3 position, const in vec3 normal )
 
 	vec3 outNormal = normal;
 	const float scale = 0.98;
-	
+
 	outNormal.x += amplitude * GetNoiseValue(
 		position.x * scale,
 		position.y * scale,
@@ -283,7 +283,8 @@ vec2 GenTexCoords(int TCGen, vec3 position, vec3 normal, vec3 TCGenVector0, vec3
 
 		case TCGEN_ENVIRONMENT_MAPPED:
 		{
-			vec3 viewer = normalize(u_ViewOrigin - position);
+			vec3 localOrigin = (inverse(u_ModelMatrix) * vec4(u_ViewOrigin, 1.0)).xyz;
+			vec3 viewer = normalize(localOrigin - position);
 			vec2 ref = reflect(viewer, normal).yz;
 			tex.s = ref.x * -0.5 + 0.5;
 			tex.t = ref.y *  0.5 + 0.5;
@@ -292,7 +293,8 @@ vec2 GenTexCoords(int TCGen, vec3 position, vec3 normal, vec3 TCGenVector0, vec3
 
 		case TCGEN_ENVIRONMENT_MAPPED_SP:
 		{
-			vec3 viewer = normalize(u_ViewOrigin - position);
+			vec3 localOrigin = (inverse(u_ModelMatrix) * vec4(u_ViewOrigin, 1.0)).xyz;
+			vec3 viewer = normalize(localOrigin - position);
 			vec2 ref = reflect(viewer, normal).xy;
 			tex.s = ref.x * -0.5;
 			tex.t = ref.y * -0.5;
@@ -313,7 +315,7 @@ vec2 GenTexCoords(int TCGen, vec3 position, vec3 normal, vec3 TCGenVector0, vec3
 		}
 		break;
 	}
-	
+
 	return tex;
 }
 #endif
@@ -328,10 +330,10 @@ vec2 ModTexCoords(vec2 st, vec3 position, vec4 texMatrix, vec4 offTurb)
 	st2.y = st.x * texMatrix.y + (st.y * texMatrix.w + offTurb.y);
 
 	vec2 offsetPos = vec2(position.x + position.z, position.y);
-	
+
 	vec2 texOffset = sin(offsetPos * (2.0 * M_PI / 1024.0) + vec2(phase));
-	
-	return st2 + texOffset * amplitude;	
+
+	return st2 + texOffset * amplitude;
 }
 #endif
 
@@ -339,7 +341,7 @@ vec2 ModTexCoords(vec2 st, vec3 position, vec4 texMatrix, vec4 offTurb)
 vec4 CalcColor(vec3 position, vec3 normal)
 {
 	vec4 color = u_VertColor * attr_Color + u_BaseColor;
-	
+
 	if (u_ColorGen == CGEN_LIGHTING_DIFFUSE)
 	{
 		float incoming = clamp(dot(normal, u_ModelLightDir), 0.0, 1.0);
@@ -379,14 +381,15 @@ vec4 CalcColor(vec3 position, vec3 normal)
 		return color;
 	}
 
-	vec3 viewer = u_ViewOrigin - position;
+	vec3 localOrigin = (inverse(u_ModelMatrix) * vec4(u_ViewOrigin, 1.0)).xyz;
+	vec3 viewer = localOrigin - position;
 
 	if (u_AlphaGen == AGEN_LIGHTING_SPECULAR)
 	{
 		// TODO: Handle specular on player models and misc_model_statics correctly
 		vec3 lightDir = normalize(vec3(-960.0, 1980.0, 96.0) - position);
 		vec3 reflected = -reflect(lightDir, normal);
-		
+
 		color.a = clamp(dot(reflected, normalize(viewer)), 0.0, 1.0);
 		color.a *= color.a;
 		color.a *= color.a;
@@ -395,7 +398,7 @@ vec4 CalcColor(vec3 position, vec3 normal)
 	{
 		color.a = clamp(length(viewer) / u_PortalRange, 0.0, 1.0);
 	}
-	
+
 	return color;
 }
 #endif
@@ -441,7 +444,7 @@ void main()
 	gl_Position = u_viewProjectionMatrix * wsPosition;
 
 #if defined(USE_TCGEN)
-	vec2 tex = GenTexCoords(u_TCGen0, wsPosition.xyz, normal, u_TCGen0Vector0, u_TCGen0Vector1);
+	vec2 tex = GenTexCoords(u_TCGen0, position.xyz, normal, u_TCGen0Vector0, u_TCGen0Vector1);
 #else
 	vec2 tex = attr_TexCoord0.st;
 #endif
@@ -464,7 +467,7 @@ void main()
 	else
 	{
 #if defined(USE_RGBAGEN)
-		var_Color = CalcColor(wsPosition.xyz, normal);
+		var_Color = CalcColor(position.xyz, normal);
 #else
 		var_Color = u_VertColor * attr_Color + u_BaseColor;
 #endif
@@ -546,7 +549,7 @@ float CalcFog(in vec3 viewOrigin, in vec3 position, in Fog fog)
 
 	// fogPlane is inverted in tr_bsp for some reason.
 	float t = -(fog.plane.w + dot(viewOrigin, -fog.plane.xyz)) / dot(V, -fog.plane.xyz);
-	
+
 	bool intersects = (t > 0.0 && t < 0.995);
 	if (inFog == intersects)
 		return 0.0;
