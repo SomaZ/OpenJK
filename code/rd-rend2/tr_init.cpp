@@ -35,6 +35,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 static size_t STATIC_UNIFORM_BUFFER_SIZE = 1 * 1024 * 1024;
 static size_t FRAME_UNIFORM_BUFFER_SIZE = 8*1024*1024;
+static size_t FRAME_SCENE_UNIFORM_BUFFER_SIZE = 1 * 1024 * 1024;
 static size_t FRAME_VERTEX_BUFFER_SIZE = 12*1024*1024;
 static size_t FRAME_INDEX_BUFFER_SIZE = 4*1024*1024;
 
@@ -1731,11 +1732,19 @@ static void R_InitBackEndFrameData()
 		gpuFrame_t *frame = backEndData->frames + i;
 		const GLbitfield mapBits = GL_MAP_WRITE_BIT | GL_MAP_COHERENT_BIT | GL_MAP_PERSISTENT_BIT;
 
-		frame->ubo = ubos[i];
-		frame->uboWriteOffset = 0;
-		frame->uboSize = FRAME_UNIFORM_BUFFER_SIZE;
-		qglBindBuffer(GL_UNIFORM_BUFFER, frame->ubo);
-		glState.currentGlobalUBO = frame->ubo;
+		for (byte j = 0; j < MAX_SCENCES; j++)
+		{
+			size_t BUFFER_SIZE = j == 0 ? FRAME_UNIFORM_BUFFER_SIZE : FRAME_SCENE_UNIFORM_BUFFER_SIZE;
+			frame->ubo[j] = ubos[i * MAX_SCENCES + j];
+			frame->uboWriteOffset[j] = 0;
+			frame->uboSize[j] = BUFFER_SIZE;
+			qglBindBuffer(GL_UNIFORM_BUFFER, frame->ubo[j]);
+			glState.currentGlobalUBO = frame->ubo[j];
+
+			// TODO: persistently mapped UBOs
+			qglBufferData(GL_UNIFORM_BUFFER, BUFFER_SIZE,
+				nullptr, GL_DYNAMIC_DRAW);
+		}
 
 		// TODO: persistently mapped UBOs
 		qglBufferData(GL_UNIFORM_BUFFER, FRAME_UNIFORM_BUFFER_SIZE,
@@ -1782,7 +1791,7 @@ static void R_InitGoreVao()
 {
 	tr.goreVBO = R_CreateVBO(
 		nullptr,
-		sizeof(g2GoreVert_t) * MAX_LODS * MAX_GORE_RECORDS * MAX_GORE_VERTS * MAX_FRAMES,
+		sizeof(g2GoreVert_t) * MAX_GORE_RECORDS * MAX_GORE_VERTS * MAX_FRAMES,
 		VBO_USAGE_DYNAMIC);
 	tr.goreVBO->offsets[ATTR_INDEX_POSITION] = offsetof(g2GoreVert_t, position);
 	tr.goreVBO->offsets[ATTR_INDEX_NORMAL] = offsetof(g2GoreVert_t, normal);
@@ -1807,11 +1816,13 @@ static void R_InitGoreVao()
 
 	tr.goreIBO = R_CreateIBO(
 		nullptr,
-		sizeof(glIndex_t) * MAX_LODS * MAX_GORE_RECORDS * MAX_GORE_INDECIES * MAX_FRAMES,
+		sizeof(glIndex_t) * MAX_GORE_RECORDS * MAX_GORE_INDECIES * MAX_FRAMES,
 		VBO_USAGE_DYNAMIC);
 
 	tr.goreIBOCurrentIndex = 0;
 	tr.goreVBOCurrentIndex = 0;
+
+	GL_CheckErrors();
 }
 #endif
 
@@ -1934,7 +1945,7 @@ static void R_ShutdownBackEndFrameData()
 			frame->sync = NULL;
 		}
 
-		qglDeleteBuffers(1, &frame->ubo);
+		qglDeleteBuffers(MAX_SCENCES, frame->ubo);
 
 		if ( glRefConfig.immutableBuffers )
 		{
