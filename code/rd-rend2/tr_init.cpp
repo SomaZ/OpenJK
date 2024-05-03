@@ -1724,18 +1724,19 @@ static void R_InitBackEndFrameData()
 	GLuint timerQueries[MAX_GPU_TIMERS*MAX_FRAMES];
 	qglGenQueries(MAX_GPU_TIMERS*MAX_FRAMES, timerQueries);
 
-	GLuint ubos[MAX_FRAMES];
-	qglGenBuffers(MAX_FRAMES, ubos);
+	GLuint ubos[MAX_FRAMES * MAX_SCENES];
+	qglGenBuffers(MAX_FRAMES * MAX_SCENES, ubos);
+
 
 	for ( int i = 0; i < MAX_FRAMES; i++ )
 	{
 		gpuFrame_t *frame = backEndData->frames + i;
 		const GLbitfield mapBits = GL_MAP_WRITE_BIT | GL_MAP_COHERENT_BIT | GL_MAP_PERSISTENT_BIT;
 
-		for (byte j = 0; j < MAX_SCENCES; j++)
+		for (byte j = 0; j < MAX_SCENES; j++)
 		{
 			size_t BUFFER_SIZE = j == 0 ? FRAME_UNIFORM_BUFFER_SIZE : FRAME_SCENE_UNIFORM_BUFFER_SIZE;
-			frame->ubo[j] = ubos[i * MAX_SCENCES + j];
+			frame->ubo[j] = ubos[i * MAX_SCENES + j];
 			frame->uboWriteOffset[j] = 0;
 			frame->uboSize[j] = BUFFER_SIZE;
 			qglBindBuffer(GL_UNIFORM_BUFFER, frame->ubo[j]);
@@ -1945,7 +1946,7 @@ static void R_ShutdownBackEndFrameData()
 			frame->sync = NULL;
 		}
 
-		qglDeleteBuffers(MAX_SCENCES, frame->ubo);
+		qglDeleteBuffers(MAX_SCENES, frame->ubo);
 
 		if ( glRefConfig.immutableBuffers )
 		{
@@ -1970,6 +1971,7 @@ void R_ClearStuffToStopGhoul2CrashingThings(void)
 	memset(&tr, 0, sizeof(tr));
 }
 
+static bool r_inited = false;
 /*
 ===============
 R_Init
@@ -1978,6 +1980,9 @@ R_Init
 void R_Init( void ) {
 	byte *ptr;
 	int i;
+
+	if (r_inited)
+		return;
 	
 	ri.Printf( PRINT_ALL, "----- R_Init -----\n" );
 
@@ -2091,6 +2096,7 @@ void R_Init( void ) {
 
 	// print info
 	GfxInfo_f();
+	r_inited = true;
 	ri.Printf( PRINT_ALL, "----- finished R_Init -----\n" );
 }
 
@@ -2116,21 +2122,23 @@ void RE_Shutdown( qboolean destroyWindow, qboolean restarting ) {
 	R_ShutdownWeatherSystem();
 
 	R_ShutdownFonts();
-	if ( tr.registered ) {
+
+	if (r_inited)
+	{
 		R_ShutDownQueries();
 		FBO_Shutdown();
 		R_DeleteTextures();
 		R_DestroyGPUBuffers();
 		GLSL_ShutdownGPUShaders();
+	}
 
-		if ( destroyWindow && restarting )
-		{
-			ri.Z_Free((void *)glConfig.extensions_string);
-			ri.Z_Free((void *)glConfigExt.originalExtensionString);
+	if (destroyWindow && restarting && tr.registered)
+	{
+		ri.Z_Free((void *)glConfig.extensions_string);
+		ri.Z_Free((void *)glConfigExt.originalExtensionString);
 
-			qglDeleteVertexArrays(1, &tr.globalVao);
-			SaveGhoul2InfoArray();
-		}
+		qglDeleteVertexArrays(1, &tr.globalVao);
+		SaveGhoul2InfoArray();
 	}
 
 	// shut down platform specific OpenGL stuff
@@ -2139,6 +2147,7 @@ void RE_Shutdown( qboolean destroyWindow, qboolean restarting ) {
 	}
 
 	tr.registered = qfalse;
+	r_inited = false;
 	backEndData = NULL;
 }
 
