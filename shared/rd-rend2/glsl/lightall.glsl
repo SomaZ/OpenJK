@@ -380,6 +380,7 @@ uniform sampler2D u_DiffuseMap;
 uniform sampler2D u_LightMap;
 #endif
 
+#if defined(PER_PIXEL_LIGHTING)
 #if defined(USE_NORMALMAP)
 uniform sampler2D u_NormalMap;
 #endif
@@ -408,6 +409,7 @@ uniform sampler2DArrayShadow u_ShadowMap2;
 uniform samplerCube u_CubeMap;
 uniform sampler2D u_EnvBrdfMap;
 #endif
+#endif
 
 // x = glow out, y = deluxe, z = screen shadow, w = cube
 uniform vec4 u_EnableTextures;
@@ -423,7 +425,6 @@ uniform vec4 u_CubeMapInfo;
 #if defined(USE_ALPHA_TEST)
 uniform int u_AlphaTestType;
 #endif
-
 
 in vec4 var_TexCoords;
 in vec4 var_Color;
@@ -524,7 +525,7 @@ float PCF(const sampler2DArrayShadow shadowmap, const float layer, const vec2 st
 	return mult;
 }
 
-float sunShadow(in vec3 viewOrigin, in vec3 viewDir, in vec3 biasOffset)
+float sunShadow(in vec3 viewOrigin, in vec3 viewDir, in vec3 biasOffset, in sampler2DArrayShadow shadowMapCascades)
 {
 	vec4 biasPos = vec4(viewOrigin - viewDir + biasOffset, 1.0);
 	float cameraDistance = length(viewDir);
@@ -541,7 +542,7 @@ float sunShadow(in vec3 viewOrigin, in vec3 viewDir, in vec3 biasOffset)
 	{
 		vec3 dCoords = smoothstep(0.3, 0.45, abs(shadowpos.xyz - vec3(0.5)));
 		edgefactor = 2.0 * PCFScale * clamp(dCoords.x + dCoords.y + dCoords.z, 0.0, 1.0);
-		result = PCF(u_ShadowMap,
+		result = PCF(shadowMapCascades,
 					 0.0,
 					 shadowpos.xy,
 					 shadowpos.z,
@@ -555,7 +556,7 @@ float sunShadow(in vec3 viewOrigin, in vec3 viewDir, in vec3 biasOffset)
 		{
 			vec3 dCoords = smoothstep(0.3, 0.45, abs(shadowpos.xyz - vec3(0.5)));
 			edgefactor = 0.5 * PCFScale * clamp(dCoords.x + dCoords.y + dCoords.z, 0.0, 1.0);
-			result = PCF(u_ShadowMap,
+			result = PCF(shadowMapCascades,
 						 1.0,
 						 shadowpos.xy,
 						 shadowpos.z,
@@ -567,7 +568,7 @@ float sunShadow(in vec3 viewOrigin, in vec3 viewDir, in vec3 biasOffset)
 			shadowpos.xyz = shadowpos.xyz / shadowpos.w * 0.5 + 0.5;
 			if (all(lessThanEqual(abs(shadowpos.xyz - vec3(0.5)), vec3(1.0))))
 			{
-				result = PCF(u_ShadowMap,
+				result = PCF(shadowMapCascades,
 							 2.0,
 							 shadowpos.xy,
 							 shadowpos.z,
@@ -1069,7 +1070,7 @@ void main()
 	vec3 primaryLightDir = normalize(u_PrimaryLightOrigin.xyz);
 	float NPL = clamp(dot(N, primaryLightDir), -1.0, 1.0);
 	vec3 normalBias = vertexNormal * (1.0 - NPL);
-	float shadowValue = sunShadow(u_ViewOrigin, viewDir, normalBias) * NPL;
+	float shadowValue = sunShadow(u_ViewOrigin, viewDir, normalBias, u_ShadowMap) * NPL;
 
 	// surfaces not facing the light are always shadowed
 	
