@@ -1078,7 +1078,8 @@ static void RB_FogPass( shaderCommands_t *input, const VertexArraysProperties *v
 		GetEntityBlockUniformBinding(backEnd.currentEntity),
 		GetShaderInstanceBlockUniformBinding(
 			backEnd.currentEntity, input->shader),
-		GetBonesBlockUniformBinding()
+		GetBonesBlockUniformBinding(),
+		GetSceneBlockUniformBinding()
 	};
 
 	SamplerBindingsWriter samplerBindingsWriter;
