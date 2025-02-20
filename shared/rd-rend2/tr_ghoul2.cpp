@@ -3519,7 +3519,7 @@ void RB_TransformBones(const trRefEntity_t *ent, const trRefdef_t *refdef, int c
 		if (!backEndData->cachePreviousFrameUbos)
 		{
 			bc->uboPreviousOffset = -1;
-			return;
+			continue;
 		}
 
 		if (frame->numCachedGhoulUboOffsets == MAX_GENTITIES)
