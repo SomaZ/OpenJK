@@ -566,7 +566,9 @@ static void InitOpenGL( void )
 		GLuint vao;
 		qglGenVertexArrays(1, &vao);
 		qglBindVertexArray(vao);
+#ifndef __APPLE__
 		if (glRefConfig.annotateResources) qglObjectLabel(GL_VERTEX_ARRAY, vao, -1, "GlobalVAO");
+#endif
 		tr.globalVao = vao;
 
 		// set default state
