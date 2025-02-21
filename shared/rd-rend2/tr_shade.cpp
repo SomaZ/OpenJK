@@ -1642,8 +1642,10 @@ static void RB_IterateStagesGeneric( shaderCommands_t *input, const VertexArrays
 		assert(sp);
 
 		uniformDataWriter.Start(sp);
-		
-		if ( input->fogNum ) {
+
+		if ( input->fogNum
+			 && pStage->glslShaderGroup != tr.lightallShader
+			 && backEnd.depthFill ) {
 			vec4_t fogColorMask;
 			ComputeFogColorMask(pStage, fogColorMask);
 			uniformDataWriter.SetUniformVec4(UNIFORM_FOGCOLORMASK, fogColorMask);

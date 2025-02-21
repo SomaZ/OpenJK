@@ -131,6 +131,8 @@ FBO_t          *FBO_Create(const char *name, int width, int height)
 
 	qglGenFramebuffers(1, &fbo->frameBuffer);
 
+	if (glRefConfig.annotateResources) qglObjectLabel(GL_FRAMEBUFFER, fbo->frameBuffer, -1, fbo->name);
+
 	return fbo;
 }
 
@@ -211,6 +213,8 @@ void FBO_CreateBuffer(FBO_t *fbo, int format, int index, int multisample)
 		else
 			qglFramebufferRenderbuffer(GL_FRAMEBUFFER, attachment, GL_RENDERBUFFER, *pRenderBuffer);
 	}
+
+	if (glRefConfig.annotateResources) qglObjectLabel(GL_RENDERBUFFER, *pRenderBuffer, -1, va("%s_%i_MS%i", fbo->name, index, multisample));
 }
 
 
@@ -471,7 +475,7 @@ void FBO_Init(void)
 		for ( int i = 0; i < ARRAY_LEN(tr.glowImageScaled); i++ )
 		{
 			tr.glowFboScaled[i] = FBO_Create(
-				va("*glowScaled%d", i), tr.glowImageScaled[i]->width,
+				va("_glowScaled%d", i), tr.glowImageScaled[i]->width,
 				tr.glowImageScaled[i]->height);
 
 			FBO_Bind (tr.glowFboScaled[i]);
