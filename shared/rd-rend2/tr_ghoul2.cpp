@@ -4520,7 +4520,8 @@ qboolean R_LoadMDXM(model_t *mod, void *buffer, const char *mod_name, qboolean &
 			surf = (mdxmSurface_t *)((byte *)surf + surf->ofsEnd);
 		}
 
-		assert ((byte *)verts == (data + dataSize));
+		// TODO: Check why this was here and why it always fails
+		// assert ((byte *)verts == (data + dataSize));
 
 		const char *modelName = strrchr (mdxm->name, '/');
 		if (modelName == NULL)

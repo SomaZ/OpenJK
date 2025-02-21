@@ -131,7 +131,8 @@ FBO_t          *FBO_Create(const char *name, int width, int height)
 
 	qglGenFramebuffers(1, &fbo->frameBuffer);
 
-	if (glRefConfig.annotateResources) qglObjectLabel(GL_FRAMEBUFFER, fbo->frameBuffer, -1, fbo->name);
+	FBO_Bind(fbo);
+	if (glRefConfig.annotateResources) qglObjectLabel(GL_FRAMEBUFFER, fbo->frameBuffer, -1, name);
 
 	return fbo;
 }
