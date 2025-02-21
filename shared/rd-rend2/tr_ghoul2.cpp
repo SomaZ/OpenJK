@@ -81,7 +81,11 @@ void G2Time_ReportTimers(void)
 
 //rww - RAGDOLL_END
 
-static const int MAX_RENDERABLE_SURFACES = 2048;
+#ifdef REND2_SP
+extern cvar_t* sv_mapname;
+#endif
+
+static const int MAX_RENDERABLE_SURFACES = 4096;
 static CRenderableSurface renderSurfHeap[MAX_RENDERABLE_SURFACES];
 static int currentRenderSurfIndex = 0;
 
