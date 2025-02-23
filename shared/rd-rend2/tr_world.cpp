@@ -397,12 +397,8 @@ void R_AddBrushModelSurfaces ( trRefEntity_t *ent, int entityNum ) {
 	world_t *world = R_GetWorld(bmodel->worldIndex);
 	for ( int i = 0 ; i < bmodel->numSurfaces ; i++ ) {
 		int surf = bmodel->firstSurface + i;
-		
-		if (world->surfacesViewCount[surf] != tr.viewCount)
-		{
-			world->surfacesViewCount[surf] = tr.viewCount;
-			R_AddWorldSurface(world->surfaces + surf, ent, entityNum, ent->needDlights, 0);
-		}
+
+		R_AddWorldSurface(world->surfaces + surf, ent, entityNum, ent->needDlights, 0);
 	}
 }
 
