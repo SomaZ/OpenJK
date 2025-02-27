@@ -1787,11 +1787,6 @@ void R_AddDrawSurf(
 	int index;
 	drawSurf_t *surf;
 
-	if (tr.refdef.rdflags & RDF_NOFOG)
-	{
-		fogIndex = 0;
-	}
-
 	if ( (shader->surfaceFlags & SURF_FORCESIGHT) && !(tr.refdef.rdflags & RDF_ForceSightOn) )
 	{	//if shader is only seen with ForceSight and we don't have ForceSight on, then don't draw
 		return;
