@@ -88,6 +88,9 @@ out vec4 var_Normal;
 out vec4 var_Tangent;
 out vec4 var_ViewDir;
 out vec4 var_TangentViewDir;
+#else
+out vec3 var_Position;
+out vec3 var_Normal;
 #endif
 
 #if defined(PER_PIXEL_LIGHTING)
@@ -292,8 +295,7 @@ void main()
 		#if defined(USE_LIGHT_VECTOR) && defined(USE_FAST_LIGHT)
 			float sqrLightDist = dot(L, L);
 			float NL = clamp(dot(normal, L) / sqrt(sqrLightDist), 0.0, 1.0);
-
-			var_Color.rgb *= mix(u_DirectedLight, u_AmbientLight, NL);
+			var_Color.rgb *= u_DirectedLight * NL + u_AmbientLight;
 		#endif
 	}
 	var_Color *= disintegration;
@@ -316,6 +318,9 @@ void main()
 	vec3 bitangent = cross(normal, tangent) * var_Tangent.w;
 	mat3 TBN = mat3(tangent, bitangent, normal);
 	var_TangentViewDir = vec4(var_ViewDir.xyz * TBN, 0.0);
+#else
+	var_Normal = normal;
+	var_Position = position;
 #endif
 }
 
@@ -435,6 +440,9 @@ in vec4 var_Tangent;
 in vec4 var_ViewDir;
 in vec4 var_TangentViewDir;
 in vec4 var_LightDir;
+#else
+in vec3 var_Position;
+in vec3 var_Normal;
 #endif
 
 out vec4 out_Color;
@@ -888,6 +896,7 @@ float getLightDepth(in vec3 Vec, in float f)
 }
 #endif
 
+#if defined(PER_PIXEL_LIGHTING)
 vec3 CalcDynamicLightContribution(
 	in float roughness,
 	in vec3 N,
@@ -897,8 +906,7 @@ vec3 CalcDynamicLightContribution(
 	in float NE,
 	in vec3 diffuse,
 	in vec3 specular,
-	in vec3 vertexNormal
-)
+	in vec3 vertexNormal)
 {
 	vec3 outColor = vec3(0.0);
 	vec3 position = viewOrigin - viewDir;
@@ -925,18 +933,42 @@ vec3 CalcDynamicLightContribution(
 			L /= sqrt(sqrLightDist);
 		#endif
 
-		vec3  H  = normalize(L + E);
 		float NL = clamp(dot(N, L), 0.0, 1.0);
+		#if defined(USE_SPECULARMAP)
+		vec3  H  = normalize(L + E);
 		float LH = clamp(dot(L, H), 0.0, 1.0);
 		float NH = clamp(dot(N, H), 0.0, 1.0);
 		float VH = clamp(dot(E, H), 0.0, 1.0);
-
 		vec3 reflectance = diffuse + CalcSpecular(specular, NH, NL, NE, LH, VH, roughness);
-
+		#else
+		vec3 reflectance = diffuse;
+		#endif
 		outColor += light.color * reflectance * attenuation * NL;
 	}
 	return outColor;
 }
+#else
+vec3 CalcDynamicLightContribution(
+	in vec3 position,
+	in vec3 N )
+{
+	vec3 outLight = vec3(0.0);
+	for ( int i = 0; i < min(u_NumLights, MAX_DLIGHTS); i++ )
+	{
+		if ( ( u_LightMask & ( 1 << i ) ) == 0 ) {
+			continue;
+		}
+		Light light = u_Lights[i];
+		vec3 L = light.origin.xyz - position;
+		float sqrLightDist = dot(L, L);
+		float attenuation = CalcLightAttenuation(light.radius * light.radius / sqrLightDist);
+		L /= sqrt(sqrLightDist);
+		float NL = clamp(dot(N, L), 0.0, 1.0);
+		outLight += light.color * attenuation * NL;
+	}
+	return outLight;
+}
+#endif
 
 float luma(vec3 color)
 {
@@ -955,7 +987,7 @@ vec3 CalcIBLContribution(
 	in vec3 lighting
 )
 {
-#if defined(PER_PIXEL_LIGHTING) && defined(USE_CUBEMAP)
+#if defined(PER_PIXEL_LIGHTING) && defined(USE_CUBEMAP) && defined(USE_SPECULARMAP)
 	// parallax corrected cubemap (cheaper trick)
 	// from http://seblagarde.wordpress.com/2012/09/29/image-based-lighting-approaches-and-parallax-corrected-cubemap/
 	vec3 parallax = u_CubeMapInfo.xyz + u_CubeMapInfo.w * viewDir;
@@ -1144,6 +1176,7 @@ void main()
 	vec3  Fd = CalcDiffuse(diffuse.rgb, NE, NL, LH, roughness);
 	vec3  Fs = vec3(0.0);
 
+  #if defined(USE_SPECULARMAP)
   #if defined(USE_LIGHT_VECTOR)
 	float NH = clamp(dot(N, H), 0.0, 1.0);
 	float VH = clamp(dot(E, H), 0.0, 1.0);
@@ -1154,6 +1187,7 @@ void main()
 	float NH = clamp(dot(N, H), 0.0, 1.0);
 	float VH = clamp(dot(E, H), 0.0, 1.0);
 	Fs = CalcSpecular(specular.rgb, NH, NL, NE, LH, VH, roughness) * r_deluxeSpecular;
+  #endif
   #endif
 
 	vec3 reflectance = Fd + Fs;
@@ -1187,6 +1221,7 @@ void main()
   #if defined(USE_LIGHTMAP) 
 	lightColor *= lightmapColor.rgb;
   #endif
+	lightColor += CalcDynamicLightContribution(var_Position, var_Normal);
 
     out_Color.rgb = diffuse.rgb * lightColor;
 #endif
