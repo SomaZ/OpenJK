@@ -564,13 +564,8 @@ static void InitOpenGL( void )
 		GLimp_InitExtensions();
 
 		// Create the default VAO
-		GLuint vao;
-		qglGenVertexArrays(1, &vao);
-		qglBindVertexArray(vao);
-#ifndef __APPLE__
-		if (glRefConfig.annotateResources) qglObjectLabel(GL_VERTEX_ARRAY, vao, -1, "GlobalVAO");
-#endif
-		tr.globalVao = vao;
+		tr.globalVao = R_CreateVAO("GlobalVAO");
+		R_BindVAO(tr.globalVao);
 
 		// set default state
 		GL_SetDefaultState();
@@ -579,6 +574,10 @@ static void InitOpenGL( void )
 	}
 	else
 	{
+		// Create the default VAO
+		tr.globalVao = R_CreateVAO("GlobalVAO");
+		R_BindVAO(tr.globalVao);
+
 		// set default state
 		GL_SetDefaultState();
 	}
@@ -2140,7 +2139,6 @@ void RE_Shutdown( qboolean destroyWindow, qboolean restarting ) {
 		ri.Z_Free((void *)glConfig.extensions_string);
 		ri.Z_Free((void *)glConfigExt.originalExtensionString);
 
-		qglDeleteVertexArrays(1, &tr.globalVao);
 		SaveGhoul2InfoArray();
 	}
 

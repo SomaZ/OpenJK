@@ -489,6 +489,11 @@ typedef struct IBO_s
 //  uint32_t        ofsIndexes;
 } IBO_t;
 
+typedef struct VAO_s
+{
+	uint32_t		attributesVAO;
+} VAO_t;
+
 //===============================================================================
 
 typedef enum {
@@ -1880,7 +1885,7 @@ typedef struct srfBspSurface_s
 	glIndex_t       maxIndex;
 
 	// static render data
-	VBO_t          *vbo;
+	VAO_t          *vao;
 	IBO_t          *ibo;
 
 	// SF_GRID specific variables after here
@@ -2360,14 +2365,12 @@ typedef struct glstate_s {
 	uint32_t	glStateBits;
 	uint32_t		vertexAttribsState;
 	vertexAttribute_t currentVaoAttribs[ATTR_INDEX_MAX];
-	uint32_t        vertexAttribsNewFrame;
-	uint32_t        vertexAttribsOldFrame;
-	float           vertexAttribsInterpolation;
 	qboolean        vertexAnimation;
 	qboolean		skeletalAnimation;
 	qboolean		genShadows;
 	shaderProgram_t *currentProgram;
 	FBO_t          *currentFBO;
+	VAO_t          *currentVAO;
 	VBO_t          *currentVBO;
 	IBO_t          *currentIBO;
 	bufferBinding_t currentXFBBO;
@@ -2529,7 +2532,7 @@ typedef struct trGlobals_s {
 
 	int						frameSceneNum;	// zeroed at RE_BeginFrame
 
-	GLuint					globalVao;
+	VAO_t					*globalVao;
 
 	qboolean				worldMapLoaded;
 	qboolean				worldInternalLightmapping; // qtrue indicates lightmap atlasing
@@ -2741,6 +2744,9 @@ typedef struct trGlobals_s {
 
 	int						numFBOs;
 	FBO_t					*fbos[MAX_FBOS];
+
+	int						numVAOs;
+	VAO_t					*vaos[MAX_VBOS];
 
 	int						numVBOs;
 	VBO_t					*vbos[MAX_VBOS];
@@ -3182,8 +3188,9 @@ struct shaderCommands_s
 	uint32_t    lightdir[SHADER_MAX_VERTEXES] QALIGN(16);
 	//int			vertexDlightBits[SHADER_MAX_VERTEXES] QALIGN(16);
 
+	VAO_t		*externalVAO;
+	VBO_t		*externalVBO;
 	IBO_t		*externalIBO;
-	qboolean    useInternalVBO;
 
 	stageVars_t	svars QALIGN(16);
 
@@ -3367,9 +3374,11 @@ uint32_t R_VboPackNormal(vec3_t v);
 void R_VboUnpackTangent(vec4_t v, uint32_t b);
 void R_VboUnpackNormal(vec3_t v, uint32_t b);
 
+VAO_t          *R_CreateVAO(const char *debugName);
 VBO_t          *R_CreateVBO(byte * vertexes, int vertexesSize, vboUsage_t usage, const char *debugName);
 IBO_t          *R_CreateIBO(byte * indexes, int indexesSize, vboUsage_t usage, const char *debugName);
 
+void            R_BindVAO(VAO_t * vao);
 void            R_BindVBO(VBO_t * vbo);
 void            R_BindNullVBO(void);
 
@@ -4037,6 +4046,7 @@ struct DrawItem
 {
 	RenderState renderState;
 
+	VAO_t *vao;
 	IBO_t *ibo;
 	shaderProgram_t *program;
 

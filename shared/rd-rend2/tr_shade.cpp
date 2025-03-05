@@ -46,7 +46,7 @@ R_DrawElements
 void R_DrawElementsVBO( int numIndexes, glIndex_t firstIndex, glIndex_t minIndex, glIndex_t maxIndex )
 {
 	int offset = firstIndex * sizeof(glIndex_t) +
-		(tess.useInternalVBO ? backEndData->currentFrame->dynamicIboCommitOffset : 0);
+		(!tess.externalVBO ? backEndData->currentFrame->dynamicIboCommitOffset : 0);
 
 	GL_DrawIndexed(GL_TRIANGLES, numIndexes, GL_INDEX_TYPE, offset, 1, 0);
 }
@@ -155,8 +155,9 @@ void RB_BeginSurface( shader_t *shader, int fogNum, int cubemapIndex ) {
 	tess.xstages = state->stages;
 	tess.numPasses = state->numUnfoggedPasses;
 	tess.currentStageIteratorFunc = state->optimalStageIteratorFunc;
+	tess.externalVAO = nullptr;
 	tess.externalIBO = nullptr;
-	tess.useInternalVBO = qtrue;
+	tess.externalVBO = nullptr;
 
 	tess.shaderTime = backEnd.refdef.floatTime - tess.shader->timeOffset;
 	if (tess.shader->clampTime && tess.shaderTime >= tess.shader->clampTime) {
@@ -169,11 +170,8 @@ void RB_BeginSurface( shader_t *shader, int fogNum, int cubemapIndex ) {
 	}
 }
 
-
-
 extern float EvalWaveForm( const waveForm_t *wf );
 extern float EvalWaveFormClamped( const waveForm_t *wf );
-
 
 static void ComputeTexMods( shaderStage_t *pStage, int bundleNum, float *outMatrix, float *outOffTurb)
 {
@@ -694,7 +692,7 @@ void RB_FillDrawCommand(
 	else
 	{
 		int offset = input->firstIndex * sizeof(glIndex_t) +
-			(input->useInternalVBO ? backEndData->currentFrame->dynamicIboCommitOffset : 0);
+			(!input->externalVBO ? backEndData->currentFrame->dynamicIboCommitOffset : 0);
 
 		drawCmd.type = DRAW_COMMAND_INDEXED;
 		drawCmd.params.indexed.indexType = GL_INDEX_TYPE;
@@ -1007,8 +1005,16 @@ static void DrawTris(shaderCommands_t *input, const VertexArraysProperties *vert
 		item.samplerBindings = samplerBindingsWriter.Finish(
 			frameAllocator, &item.numSamplerBindings);
 
-		DrawItemSetVertexAttributes(
-			item, attribs, vertexArrays->numVertexArrays, frameAllocator);
+		if (input->externalVAO)
+		{
+			item.vao = input->externalVAO;
+		}
+		else
+		{
+			item.vao = nullptr;
+			DrawItemSetVertexAttributes(
+				item, attribs, vertexArrays->numVertexArrays, frameAllocator);
+		}
 		DrawItemSetUniformBlockBindings(
 			item, uniformBlockBindings, frameAllocator);
 
@@ -1048,6 +1054,8 @@ static void ProjectPshadowVBOGLSL( const shaderCommands_t *input, const VertexAr
 
 	vertexAttribute_t attribs[ATTR_INDEX_MAX] = {};
 	GL_VertexArraysToAttribs(attribs, ARRAY_LEN(attribs), vertexArrays);
+
+	Allocator& frameAllocator = *backEndData->perFrameMemory;
 
 	for ( l = 0; l < backEnd.refdef.num_pshadows; l++ ) {
 		pshadow_t	*ps;
@@ -1099,11 +1107,16 @@ static void ProjectPshadowVBOGLSL( const shaderCommands_t *input, const VertexAr
 		item.renderState.depthRange = RB_GetDepthRange(backEnd.currentEntity, input->shader);
 		item.ibo = input->externalIBO ? input->externalIBO : backEndData->currentFrame->dynamicIbo;
 
-		item.numAttributes = vertexArrays->numVertexArrays;
-		item.attributes = ojkAllocArray<vertexAttribute_t>(
-			*backEndData->perFrameMemory, vertexArrays->numVertexArrays);
-		memcpy(item.attributes, attribs, sizeof(*item.attributes)*vertexArrays->numVertexArrays);
-
+		if (input->externalVAO)
+		{
+			item.vao = input->externalVAO;
+		}
+		else
+		{
+			item.vao = nullptr;
+			DrawItemSetVertexAttributes(
+				item, attribs, vertexArrays->numVertexArrays, frameAllocator);
+		}
 		item.uniformData = uniformDataWriter.Finish(*backEndData->perFrameMemory);
 		// FIXME: This is a bit ugly with the casting
 		item.samplerBindings = samplerBindingsWriter.Finish(
@@ -1237,8 +1250,16 @@ static void RB_FogPass( shaderCommands_t *input, const VertexArraysProperties *v
 	item.samplerBindings = samplerBindingsWriter.Finish(
 		frameAllocator, &item.numSamplerBindings);
 
-	DrawItemSetVertexAttributes(
-		item, attribs, vertexArrays->numVertexArrays, frameAllocator);
+	if (input->externalVAO)
+	{
+		item.vao = input->externalVAO;
+	}
+	else
+	{
+		item.vao = nullptr;
+		DrawItemSetVertexAttributes(
+			item, attribs, vertexArrays->numVertexArrays, frameAllocator);
+	}
 	DrawItemSetUniformBlockBindings(
 		item, uniformBlockBindings, frameAllocator);
 
@@ -1295,8 +1316,16 @@ static void RB_FogPass( shaderCommands_t *input, const VertexArraysProperties *v
 		backItem.samplerBindings = samplerBindingsWriter.Finish(
 			frameAllocator, &item.numSamplerBindings);
 
-		DrawItemSetVertexAttributes(
-			backItem, attribs, vertexArrays->numVertexArrays, frameAllocator);
+		if (input->externalVAO)
+		{
+			backItem.vao = input->externalVAO;
+		}
+		else
+		{
+			backItem.vao = nullptr;
+			DrawItemSetVertexAttributes(
+				backItem, attribs, vertexArrays->numVertexArrays, frameAllocator);
+		}
 		DrawItemSetUniformBlockBindings(
 			backItem, uniformBlockBindings, frameAllocator);
 
@@ -1536,14 +1565,13 @@ void RB_ShadowTessEnd(shaderCommands_t *input, const VertexArraysProperties *ver
 		return;
 	}
 
-	if (!input->numVertexes || !input->numIndexes || input->useInternalVBO)
+	if (!input->numVertexes || !input->numIndexes || !input->externalVBO)
 	{
 		return;
 	}
 
 	vertexAttribute_t attribs[ATTR_INDEX_MAX] = {};
 	GL_VertexArraysToAttribs(attribs, ARRAY_LEN(attribs), vertexArrays);
-	GL_VertexAttribPointers(vertexArrays->numVertexArrays, attribs);
 
 	Allocator& frameAllocator = *backEndData->perFrameMemory;
 
@@ -1565,8 +1593,16 @@ void RB_ShadowTessEnd(shaderCommands_t *input, const VertexArraysProperties *ver
 	item.program = &tr.volumeShadowShader;
 	item.ibo = input->externalIBO ? input->externalIBO : backEndData->currentFrame->dynamicIbo;
 
-	DrawItemSetVertexAttributes(
-		item, attribs, vertexArrays->numVertexArrays, frameAllocator);
+	if (input->externalVAO)
+	{
+		item.vao = input->externalVAO;
+	}
+	else
+	{
+		item.vao = nullptr;
+		DrawItemSetVertexAttributes(
+			item, attribs, vertexArrays->numVertexArrays, frameAllocator);
+	}
 	DrawItemSetUniformBlockBindings(
 		item, uniformBlockBindings, frameAllocator);
 
@@ -2069,8 +2105,16 @@ static void RB_IterateStagesGeneric( shaderCommands_t *input, const VertexArrays
 		item.samplerBindings = samplerBindingsWriter.Finish(
 			frameAllocator, &item.numSamplerBindings);
 
-		DrawItemSetVertexAttributes(
-			item, attribs, vertexArrays->numVertexArrays, frameAllocator);
+		if (input->externalVAO)
+		{
+			item.vao = input->externalVAO;
+		}
+		else
+		{
+			item.vao = nullptr;
+			DrawItemSetVertexAttributes(
+				item, attribs, vertexArrays->numVertexArrays, frameAllocator);
+		}
 		DrawItemSetUniformBlockBindings(
 			item, uniformBlockBindings, frameAllocator);
 
@@ -2120,7 +2164,7 @@ void RB_StageIteratorGeneric( void )
 	// update vertex buffer data
 	//
 	uint32_t vertexAttribs = RB_CalcShaderVertexAttribs( input->shader );
-	if (tess.useInternalVBO)
+	if (!tess.externalVBO)
 	{
 		RB_DeformTessGeometry();
 		RB_UpdateVBOs(vertexAttribs);
@@ -2133,8 +2177,10 @@ void RB_StageIteratorGeneric( void )
 	//
 	// vertex arrays
 	//
-	VertexArraysProperties vertexArrays;
-	if ( tess.useInternalVBO )
+	VertexArraysProperties vertexArrays = {};
+	if ( tess.externalVAO )
+	{ }
+	else if ( !tess.externalVBO )
 	{
 		CalculateVertexArraysProperties(vertexAttribs, &vertexArrays);
 		for ( int i = 0; i < vertexArrays.numVertexArrays; i++ )
@@ -2145,7 +2191,7 @@ void RB_StageIteratorGeneric( void )
 	}
 	else
 	{
-		CalculateVertexArraysFromVBO(vertexAttribs, glState.currentVBO, &vertexArrays);
+		CalculateVertexArraysFromVBO(vertexAttribs, tess.externalVBO, &vertexArrays);
 	}
 
 	if ( backEnd.depthFill )
@@ -2287,6 +2333,7 @@ void RB_EndSurface( void ) {
 	tess.numVertexes = 0;
 	tess.firstIndex = 0;
 	tess.multiDrawPrimitives = 0;
+	tess.externalVAO = nullptr;
 	tess.externalIBO = nullptr;
 #ifdef REND2_SP_GORE
 	tess.fade = false;

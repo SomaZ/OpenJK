@@ -2923,7 +2923,7 @@ void GLSL_VertexAttribsState(uint32_t stateBits, VertexArraysProperties *vertexA
 		vertexArrays = &vertexArraysLocal;
 	}
 
-	if ( tess.useInternalVBO )
+	if ( !tess.externalVBO )
 	{
 		CalculateVertexArraysProperties(stateBits, vertexArrays);
 		for ( int i = 0; i < vertexArrays->numVertexArrays; i++ )
@@ -2934,7 +2934,7 @@ void GLSL_VertexAttribsState(uint32_t stateBits, VertexArraysProperties *vertexA
 	}
 	else
 	{
-		CalculateVertexArraysFromVBO(stateBits, glState.currentVBO, vertexArrays);
+		CalculateVertexArraysFromVBO(stateBits, tess.externalVBO, vertexArrays);
 	}
 
 	GLSL_VertexAttribPointers(vertexArrays);
@@ -2979,7 +2979,7 @@ void GL_VertexArraysToAttribs(
 		int attributeIndex = vertexArrays->enabledAttributes[i];
 		vertexAttribute_t& attrib = attribs[i];
 
-		attrib.vbo = glState.currentVBO;
+		attrib.vbo = tess.externalVBO ? tess.externalVBO : backEndData->currentFrame->dynamicVbo;
 		attrib.index = attributeIndex;
 		attrib.numComponents = attributes[attributeIndex].numComponents;
 		attrib.integerAttribute = attributes[attributeIndex].integerAttribute;

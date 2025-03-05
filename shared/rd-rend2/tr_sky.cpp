@@ -420,7 +420,7 @@ static void DrawSkySide( struct image_s *image, const int mins[2], const int max
 
 	tess.minIndex = firstVertex;
 	tess.maxIndex = tess.numVertexes;
-	tess.useInternalVBO = qtrue;
+	//tess.useInternalVBO = qtrue;
 
 	RB_UpdateVBOs(SKY_BOX_VERTEX_ATTRIBUTES);
 
@@ -487,7 +487,7 @@ static void DrawSkySide( struct image_s *image, const int mins[2], const int max
 
 	RB_CommitInternalBufferData();
 
-	tess.useInternalVBO = qfalse;
+	//tess.useInternalVBO = qfalse;
 	tess.numIndexes = tess.firstIndex;
 	tess.numVertexes = firstVertex;
 	tess.firstIndex = 0;
@@ -707,7 +707,8 @@ void R_BuildCloudData( shaderCommands_t *input )
 	tess.numIndexes = 0;
 	tess.numVertexes = 0;
 	tess.firstIndex = 0;
-	tess.useInternalVBO = qtrue;
+	//tess.useInternalVBO = qtrue;
+	tess.externalVBO = nullptr;
 	tess.externalIBO = nullptr;
 
 	if ( shader->sky.cloudHeight )

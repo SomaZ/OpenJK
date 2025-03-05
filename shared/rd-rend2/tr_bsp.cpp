@@ -2054,6 +2054,7 @@ static void R_CreateWorldVBOs( world_t *worldData )
 	msurface_t   *surface, **firstSurf, **lastSurf, **currSurf;
 	msurface_t  **surfacesSorted;
 
+	VAO_t *vao;
 	VBO_t *vbo;
 	IBO_t *ibo;
 
@@ -2266,12 +2267,48 @@ static void R_CreateWorldVBOs( world_t *worldData )
 		vbo->sizes[ATTR_INDEX_LIGHTDIRECTION] = sizeof(verts->lightDirection);
 		vbo->sizes[ATTR_INDEX_COLOR] = sizeof(verts->colors);
 
+		VertexArraysProperties vertexArrays;
+		CalculateVertexArraysFromVBO((1 << ATTR_INDEX_MAX)-1, vbo, &vertexArrays);
+		vertexAttribute_t attributes[ATTR_INDEX_MAX] = {};
+		GL_VertexArraysToAttribs(attributes, ARRAY_LEN(attributes), &vertexArrays);
+
+		vao = R_CreateVAO(va("%s_%i", worldData->baseName, k));
+		R_BindVAO(vao);
+		R_BindVBO(vbo);
+		for (i = 0; i < vertexArrays.numVertexArrays; i++)
+		{
+			vertexAttribute_t& attrib = attributes[i];
+			
+			if (attrib.integerAttribute)
+			{
+				qglVertexAttribIPointer(attrib.index,
+					attrib.numComponents,
+					attrib.type,
+					attrib.stride,
+					BUFFER_OFFSET(attrib.offset));
+			}
+			else
+			{
+				qglVertexAttribPointer(attrib.index,
+					attrib.numComponents,
+					attrib.type,
+					attrib.normalize,
+					attrib.stride,
+					BUFFER_OFFSET(attrib.offset));
+			}
+			qglVertexAttribDivisor(attrib.index, attrib.stepRate);
+			qglEnableVertexAttribArray(i);
+		}
+		R_BindNullVBO();
+		R_BindVAO(tr.globalVao);
+		
+
 		// point bsp surfaces to VBO
 		for (currSurf = firstSurf; currSurf < lastSurf; currSurf++)
 		{
 			srfBspSurface_t *bspSurf = (srfBspSurface_t *) (*currSurf)->data;
 
-			bspSurf->vbo = vbo;
+			bspSurf->vao = vao;
 			bspSurf->ibo = ibo;
 		}
 
@@ -3378,350 +3415,350 @@ void R_LoadWeatherZones(world_t *worldData, lump_t *brushesLump, lump_t *sidesLu
 	}
 }
 
-
-/*
-=================
-R_MergeLeafSurfaces
-
-Merges surfaces that share a common leaf
-=================
-*/
-static void R_MergeLeafSurfaces(world_t *worldData)
-{
-	int i, j, k;
-	int numWorldSurfaces;
-	int mergedSurfIndex;
-	int numMergedSurfaces;
-	int numUnmergedSurfaces;
-	VBO_t *vbo;
-	IBO_t *ibo;
-
-	msurface_t *mergedSurf;
-
-	glIndex_t *iboIndexes, *outIboIndexes;
-	int numIboIndexes;
-
-	int startTime, endTime;
-
-	startTime = ri.Milliseconds();
-
-	numWorldSurfaces = worldData->numWorldSurfaces;
-
-	// use viewcount to keep track of mergers
-	for (i = 0; i < numWorldSurfaces; i++)
-	{
-		worldData->surfacesViewCount[i] = -1;
-	}
-
-	// mark matching surfaces
-	for (i = 0; i < worldData->numnodes - worldData->numDecisionNodes; i++)
-	{
-		mnode_t *leaf = worldData->nodes + worldData->numDecisionNodes + i;
-
-		for (j = 0; j < leaf->nummarksurfaces; j++)
-		{
-			msurface_t *surf1;
-			shader_t *shader1;
-			int fogIndex1;
-			int cubemapIndex1;
-			int surfNum1;
-
-			surfNum1 = *(worldData->marksurfaces + leaf->firstmarksurface + j);
-
-			if (worldData->surfacesViewCount[surfNum1] != -1)
-				continue;
-
-			surf1 = worldData->surfaces + surfNum1;
-
-			if ((*surf1->data != SF_GRID) &&
-				(*surf1->data != SF_TRIANGLES) &&
-				(*surf1->data != SF_FACE))
-			{
-				continue;
-			}
-
-			shader1 = surf1->shader;
-
-			if(shader1->isSky)
-				continue;
-
-			if(shader1->isPortal)
-				continue;
-
-			if(ShaderRequiresCPUDeforms(shader1))
-				continue;
-
-			fogIndex1 = surf1->fogIndex;
-			cubemapIndex1 = surf1->cubemapIndex;
-
-			worldData->surfacesViewCount[surfNum1] = surfNum1;
-
-			for (k = j + 1; k < leaf->nummarksurfaces; k++)
-			{
-				msurface_t *surf2;
-				shader_t *shader2;
-				int fogIndex2;
-				int cubemapIndex2;
-				int surfNum2;
-
-				surfNum2 = *(worldData->marksurfaces + leaf->firstmarksurface + k);
-
-				if (worldData->surfacesViewCount[surfNum2] != -1)
-					continue;
-
-				surf2 = worldData->surfaces + surfNum2;
-
-				if ((*surf2->data != SF_GRID) &&
-					(*surf2->data != SF_TRIANGLES) &&
-					(*surf2->data != SF_FACE))
-					continue;
-
-				shader2 = surf2->shader;
-
-				if (shader1 != shader2)
-					continue;
-
-				fogIndex2 = surf2->fogIndex;
-
-				if (fogIndex1 != fogIndex2)
-					continue;
-
-				cubemapIndex2 = surf2->cubemapIndex;
-
-				if (cubemapIndex1 != cubemapIndex2)
-					continue;
-
-				worldData->surfacesViewCount[surfNum2] = surfNum1;
-			}
-		}
-	}
-
-	// don't add surfaces that don't merge to any others to the merged list
-	for (i = 0; i < numWorldSurfaces; i++)
-	{
-		qboolean merges = qfalse;
-
-		if (worldData->surfacesViewCount[i] != i)
-			continue;
-
-		for (j = 0; j < numWorldSurfaces; j++)
-		{
-			if (j == i)
-				continue;
-
-			if (worldData->surfacesViewCount[j] == i)
-			{
-				merges = qtrue;
-				break;
-			}
-		}
-
-		if (!merges)
-			worldData->surfacesViewCount[i] = -1;
-	}
-
-	// count merged/unmerged surfaces
-	numMergedSurfaces = 0;
-	numUnmergedSurfaces = 0;
-	for (i = 0; i < numWorldSurfaces; i++)
-	{
-		if (worldData->surfacesViewCount[i] == i)
-		{
-			numMergedSurfaces++;
-		}
-		else if (worldData->surfacesViewCount[i] == -1)
-		{
-			numUnmergedSurfaces++;
-		}
-	}
-
-	// Allocate merged surfaces
-	worldData->mergedSurfaces =
-		(msurface_t *)Hunk_Alloc(
-			sizeof(*worldData->mergedSurfaces) * numMergedSurfaces, h_low);
-	worldData->mergedSurfacesViewCount =
-		(int *)Hunk_Alloc(
-			sizeof(*worldData->mergedSurfacesViewCount) * numMergedSurfaces, h_low);
-	worldData->mergedSurfacesDlightBits =
-		(int *)Hunk_Alloc(
-			sizeof(*worldData->mergedSurfacesDlightBits) * numMergedSurfaces, h_low);
-	worldData->mergedSurfacesPshadowBits =
-		(int *)Hunk_Alloc(
-			sizeof(*worldData->mergedSurfacesPshadowBits) * numMergedSurfaces, h_low);
-	worldData->numMergedSurfaces = numMergedSurfaces;
-
-	// view surfaces are like mark surfaces, except negative ones represent merged surfaces
-	// -1 represents 0, -2 represents 1, and so on
-	worldData->viewSurfaces =
-		(int *)Hunk_Alloc(
-			sizeof(*worldData->viewSurfaces) * worldData->nummarksurfaces, h_low);
-
-	// copy view surfaces into mark surfaces
-	for (i = 0; i < worldData->nummarksurfaces; i++)
-	{
-		worldData->viewSurfaces[i] = worldData->marksurfaces[i];
-	}
-
-	// need to be synched here
-	R_IssuePendingRenderCommands();
-
-	// actually merge surfaces
-	numIboIndexes = 0;
-	mergedSurfIndex = 0;
-	mergedSurf = worldData->mergedSurfaces;
-	for (i = 0; i < numWorldSurfaces; i++)
-	{
-		msurface_t *surf1;
-
-		vec3_t bounds[2];
-
-		int numSurfsToMerge;
-		int numIndexes;
-		int numVerts;
-		int firstIndex;
-
-		srfBspSurface_t *vboSurf;
-
-		if (worldData->surfacesViewCount[i] != i)
-			continue;
-
-		surf1 = worldData->surfaces + i;
-
-		// retrieve vbo
-		vbo = ((srfBspSurface_t *)(surf1->data))->vbo;
-
-		// count verts, indexes, and surfaces
-		numSurfsToMerge = 0;
-		numIndexes = 0;
-		numVerts = 0;
-		for (j = i; j < numWorldSurfaces; j++)
-		{
-			msurface_t *surf2;
-			srfBspSurface_t *bspSurf;
-
-			if (worldData->surfacesViewCount[j] != i)
-				continue;
-
-			surf2 = worldData->surfaces + j;
-
-			bspSurf = (srfBspSurface_t *) surf2->data;
-			numIndexes += bspSurf->numIndexes;
-			numVerts += bspSurf->numVerts;
-			numSurfsToMerge++;
-		}
-
-		if (numVerts == 0 || numIndexes == 0 || numSurfsToMerge < 2)
-		{
-			continue;
-		}
-
-		// create ibo
-		ibo = tr.ibos[tr.numIBOs++] = (IBO_t*)Hunk_Alloc(sizeof(*ibo), h_low);
-		memset(ibo, 0, sizeof(*ibo));
-		numIboIndexes = 0;
-
-		// allocate indexes
-   		iboIndexes = outIboIndexes = (glIndex_t*)Z_Malloc(numIndexes * sizeof(*outIboIndexes), TAG_BSP);
-
-		// Merge surfaces (indexes) and calculate bounds
-		ClearBounds(bounds[0], bounds[1]);
-		firstIndex = numIboIndexes;
-		for (j = i; j < numWorldSurfaces; j++)
-		{
-			msurface_t *surf2;
-			srfBspSurface_t *bspSurf;
-
-			if (worldData->surfacesViewCount[j] != i)
-				continue;
-
-			surf2 = worldData->surfaces + j;
-
-			AddPointToBounds(surf2->cullinfo.bounds[0], bounds[0], bounds[1]);
-			AddPointToBounds(surf2->cullinfo.bounds[1], bounds[0], bounds[1]);
-
-			bspSurf = (srfBspSurface_t *) surf2->data;
-			for (k = 0; k < bspSurf->numIndexes; k++)
-			{
-				*outIboIndexes++ = bspSurf->indexes[k] + bspSurf->firstVert;
-				numIboIndexes++;
-			}
-			break;
-		}
-
-		vboSurf = (srfBspSurface_t *)Hunk_Alloc(sizeof(*vboSurf), h_low);
-		memset(vboSurf, 0, sizeof(*vboSurf));
-		vboSurf->surfaceType = SF_VBO_MESH;
-
-		vboSurf->vbo = vbo;
-		vboSurf->ibo = ibo;
-
-		vboSurf->numIndexes = numIndexes;
-		vboSurf->numVerts = numVerts;
-		vboSurf->firstIndex = firstIndex;
-
-		vboSurf->minIndex = *(iboIndexes + firstIndex);
-		vboSurf->maxIndex = *(iboIndexes + firstIndex);
-
-		for (j = 0; j < numIndexes; j++)
-		{
-			vboSurf->minIndex = MIN(vboSurf->minIndex, *(iboIndexes + firstIndex + j));
-			vboSurf->maxIndex = MAX(vboSurf->maxIndex, *(iboIndexes + firstIndex + j));
-		}
-
-		VectorCopy(bounds[0], vboSurf->cullBounds[0]);
-		VectorCopy(bounds[1], vboSurf->cullBounds[1]);
-
-		VectorCopy(bounds[0], mergedSurf->cullinfo.bounds[0]);
-		VectorCopy(bounds[1], mergedSurf->cullinfo.bounds[1]);
-
-		mergedSurf->cullinfo.type = CULLINFO_BOX;
-		mergedSurf->data          = (surfaceType_t *)vboSurf;
-		mergedSurf->fogIndex      = surf1->fogIndex;
-		mergedSurf->cubemapIndex  = surf1->cubemapIndex;
-		mergedSurf->shader        = surf1->shader;
-
-		// finish up the ibo
-		qglGenBuffers(1, &ibo->indexesVBO);
-
-		R_BindIBO(ibo);
-		qglBufferData(GL_ELEMENT_ARRAY_BUFFER, numIboIndexes * sizeof(*iboIndexes), iboIndexes, GL_STATIC_DRAW);
-		R_BindNullIBO();
-
-		GL_CheckErrors();
-
-   		Z_Free(iboIndexes);
-
-		// redirect view surfaces to this surf
-		for (j = 0; j < numWorldSurfaces; j++)
-		{
-			if (worldData->surfacesViewCount[j] != i)
-				continue;
-
-			for (k = 0; k < worldData->nummarksurfaces; k++)
-			{
-				int *mark = worldData->marksurfaces + k;
-				int *view = worldData->viewSurfaces + k;
-
-				if (*mark == j)
-					*view = -(mergedSurfIndex + 1);
-			}
-		}
-
-		mergedSurfIndex++;
-		mergedSurf++;
-	}
-
-	endTime = ri.Milliseconds();
-
-	ri.Printf(PRINT_ALL, "Processed %d surfaces into %d merged, %d unmerged in %5.2f seconds\n",
-		numWorldSurfaces, numMergedSurfaces, numUnmergedSurfaces, (endTime - startTime) / 1000.0f);
-
-	// reset viewcounts
-	for (i = 0; i < numWorldSurfaces; i++)
-	{
-		worldData->surfacesViewCount[i] = -1;
-	}
-}
+//
+///*
+//=================
+//R_MergeLeafSurfaces
+//
+//Merges surfaces that share a common leaf
+//=================
+//*/
+//static void R_MergeLeafSurfaces(world_t *worldData)
+//{
+//	int i, j, k;
+//	int numWorldSurfaces;
+//	int mergedSurfIndex;
+//	int numMergedSurfaces;
+//	int numUnmergedSurfaces;
+//	VBO_t *vbo;
+//	IBO_t *ibo;
+//
+//	msurface_t *mergedSurf;
+//
+//	glIndex_t *iboIndexes, *outIboIndexes;
+//	int numIboIndexes;
+//
+//	int startTime, endTime;
+//
+//	startTime = ri.Milliseconds();
+//
+//	numWorldSurfaces = worldData->numWorldSurfaces;
+//
+//	// use viewcount to keep track of mergers
+//	for (i = 0; i < numWorldSurfaces; i++)
+//	{
+//		worldData->surfacesViewCount[i] = -1;
+//	}
+//
+//	// mark matching surfaces
+//	for (i = 0; i < worldData->numnodes - worldData->numDecisionNodes; i++)
+//	{
+//		mnode_t *leaf = worldData->nodes + worldData->numDecisionNodes + i;
+//
+//		for (j = 0; j < leaf->nummarksurfaces; j++)
+//		{
+//			msurface_t *surf1;
+//			shader_t *shader1;
+//			int fogIndex1;
+//			int cubemapIndex1;
+//			int surfNum1;
+//
+//			surfNum1 = *(worldData->marksurfaces + leaf->firstmarksurface + j);
+//
+//			if (worldData->surfacesViewCount[surfNum1] != -1)
+//				continue;
+//
+//			surf1 = worldData->surfaces + surfNum1;
+//
+//			if ((*surf1->data != SF_GRID) &&
+//				(*surf1->data != SF_TRIANGLES) &&
+//				(*surf1->data != SF_FACE))
+//			{
+//				continue;
+//			}
+//
+//			shader1 = surf1->shader;
+//
+//			if(shader1->isSky)
+//				continue;
+//
+//			if(shader1->isPortal)
+//				continue;
+//
+//			if(ShaderRequiresCPUDeforms(shader1))
+//				continue;
+//
+//			fogIndex1 = surf1->fogIndex;
+//			cubemapIndex1 = surf1->cubemapIndex;
+//
+//			worldData->surfacesViewCount[surfNum1] = surfNum1;
+//
+//			for (k = j + 1; k < leaf->nummarksurfaces; k++)
+//			{
+//				msurface_t *surf2;
+//				shader_t *shader2;
+//				int fogIndex2;
+//				int cubemapIndex2;
+//				int surfNum2;
+//
+//				surfNum2 = *(worldData->marksurfaces + leaf->firstmarksurface + k);
+//
+//				if (worldData->surfacesViewCount[surfNum2] != -1)
+//					continue;
+//
+//				surf2 = worldData->surfaces + surfNum2;
+//
+//				if ((*surf2->data != SF_GRID) &&
+//					(*surf2->data != SF_TRIANGLES) &&
+//					(*surf2->data != SF_FACE))
+//					continue;
+//
+//				shader2 = surf2->shader;
+//
+//				if (shader1 != shader2)
+//					continue;
+//
+//				fogIndex2 = surf2->fogIndex;
+//
+//				if (fogIndex1 != fogIndex2)
+//					continue;
+//
+//				cubemapIndex2 = surf2->cubemapIndex;
+//
+//				if (cubemapIndex1 != cubemapIndex2)
+//					continue;
+//
+//				worldData->surfacesViewCount[surfNum2] = surfNum1;
+//			}
+//		}
+//	}
+//
+//	// don't add surfaces that don't merge to any others to the merged list
+//	for (i = 0; i < numWorldSurfaces; i++)
+//	{
+//		qboolean merges = qfalse;
+//
+//		if (worldData->surfacesViewCount[i] != i)
+//			continue;
+//
+//		for (j = 0; j < numWorldSurfaces; j++)
+//		{
+//			if (j == i)
+//				continue;
+//
+//			if (worldData->surfacesViewCount[j] == i)
+//			{
+//				merges = qtrue;
+//				break;
+//			}
+//		}
+//
+//		if (!merges)
+//			worldData->surfacesViewCount[i] = -1;
+//	}
+//
+//	// count merged/unmerged surfaces
+//	numMergedSurfaces = 0;
+//	numUnmergedSurfaces = 0;
+//	for (i = 0; i < numWorldSurfaces; i++)
+//	{
+//		if (worldData->surfacesViewCount[i] == i)
+//		{
+//			numMergedSurfaces++;
+//		}
+//		else if (worldData->surfacesViewCount[i] == -1)
+//		{
+//			numUnmergedSurfaces++;
+//		}
+//	}
+//
+//	// Allocate merged surfaces
+//	worldData->mergedSurfaces =
+//		(msurface_t *)Hunk_Alloc(
+//			sizeof(*worldData->mergedSurfaces) * numMergedSurfaces, h_low);
+//	worldData->mergedSurfacesViewCount =
+//		(int *)Hunk_Alloc(
+//			sizeof(*worldData->mergedSurfacesViewCount) * numMergedSurfaces, h_low);
+//	worldData->mergedSurfacesDlightBits =
+//		(int *)Hunk_Alloc(
+//			sizeof(*worldData->mergedSurfacesDlightBits) * numMergedSurfaces, h_low);
+//	worldData->mergedSurfacesPshadowBits =
+//		(int *)Hunk_Alloc(
+//			sizeof(*worldData->mergedSurfacesPshadowBits) * numMergedSurfaces, h_low);
+//	worldData->numMergedSurfaces = numMergedSurfaces;
+//
+//	// view surfaces are like mark surfaces, except negative ones represent merged surfaces
+//	// -1 represents 0, -2 represents 1, and so on
+//	worldData->viewSurfaces =
+//		(int *)Hunk_Alloc(
+//			sizeof(*worldData->viewSurfaces) * worldData->nummarksurfaces, h_low);
+//
+//	// copy view surfaces into mark surfaces
+//	for (i = 0; i < worldData->nummarksurfaces; i++)
+//	{
+//		worldData->viewSurfaces[i] = worldData->marksurfaces[i];
+//	}
+//
+//	// need to be synched here
+//	R_IssuePendingRenderCommands();
+//
+//	// actually merge surfaces
+//	numIboIndexes = 0;
+//	mergedSurfIndex = 0;
+//	mergedSurf = worldData->mergedSurfaces;
+//	for (i = 0; i < numWorldSurfaces; i++)
+//	{
+//		msurface_t *surf1;
+//
+//		vec3_t bounds[2];
+//
+//		int numSurfsToMerge;
+//		int numIndexes;
+//		int numVerts;
+//		int firstIndex;
+//
+//		srfBspSurface_t *vboSurf;
+//
+//		if (worldData->surfacesViewCount[i] != i)
+//			continue;
+//
+//		surf1 = worldData->surfaces + i;
+//
+//		// retrieve vbo
+//		vbo = ((srfBspSurface_t *)(surf1->data))->vbo;
+//
+//		// count verts, indexes, and surfaces
+//		numSurfsToMerge = 0;
+//		numIndexes = 0;
+//		numVerts = 0;
+//		for (j = i; j < numWorldSurfaces; j++)
+//		{
+//			msurface_t *surf2;
+//			srfBspSurface_t *bspSurf;
+//
+//			if (worldData->surfacesViewCount[j] != i)
+//				continue;
+//
+//			surf2 = worldData->surfaces + j;
+//
+//			bspSurf = (srfBspSurface_t *) surf2->data;
+//			numIndexes += bspSurf->numIndexes;
+//			numVerts += bspSurf->numVerts;
+//			numSurfsToMerge++;
+//		}
+//
+//		if (numVerts == 0 || numIndexes == 0 || numSurfsToMerge < 2)
+//		{
+//			continue;
+//		}
+//
+//		// create ibo
+//		ibo = tr.ibos[tr.numIBOs++] = (IBO_t*)Hunk_Alloc(sizeof(*ibo), h_low);
+//		memset(ibo, 0, sizeof(*ibo));
+//		numIboIndexes = 0;
+//
+//		// allocate indexes
+//   		iboIndexes = outIboIndexes = (glIndex_t*)Z_Malloc(numIndexes * sizeof(*outIboIndexes), TAG_BSP);
+//
+//		// Merge surfaces (indexes) and calculate bounds
+//		ClearBounds(bounds[0], bounds[1]);
+//		firstIndex = numIboIndexes;
+//		for (j = i; j < numWorldSurfaces; j++)
+//		{
+//			msurface_t *surf2;
+//			srfBspSurface_t *bspSurf;
+//
+//			if (worldData->surfacesViewCount[j] != i)
+//				continue;
+//
+//			surf2 = worldData->surfaces + j;
+//
+//			AddPointToBounds(surf2->cullinfo.bounds[0], bounds[0], bounds[1]);
+//			AddPointToBounds(surf2->cullinfo.bounds[1], bounds[0], bounds[1]);
+//
+//			bspSurf = (srfBspSurface_t *) surf2->data;
+//			for (k = 0; k < bspSurf->numIndexes; k++)
+//			{
+//				*outIboIndexes++ = bspSurf->indexes[k] + bspSurf->firstVert;
+//				numIboIndexes++;
+//			}
+//			break;
+//		}
+//
+//		vboSurf = (srfBspSurface_t *)Hunk_Alloc(sizeof(*vboSurf), h_low);
+//		memset(vboSurf, 0, sizeof(*vboSurf));
+//		vboSurf->surfaceType = SF_VBO_MESH;
+//
+//		vboSurf->vbo = vbo;
+//		vboSurf->ibo = ibo;
+//
+//		vboSurf->numIndexes = numIndexes;
+//		vboSurf->numVerts = numVerts;
+//		vboSurf->firstIndex = firstIndex;
+//
+//		vboSurf->minIndex = *(iboIndexes + firstIndex);
+//		vboSurf->maxIndex = *(iboIndexes + firstIndex);
+//
+//		for (j = 0; j < numIndexes; j++)
+//		{
+//			vboSurf->minIndex = MIN(vboSurf->minIndex, *(iboIndexes + firstIndex + j));
+//			vboSurf->maxIndex = MAX(vboSurf->maxIndex, *(iboIndexes + firstIndex + j));
+//		}
+//
+//		VectorCopy(bounds[0], vboSurf->cullBounds[0]);
+//		VectorCopy(bounds[1], vboSurf->cullBounds[1]);
+//
+//		VectorCopy(bounds[0], mergedSurf->cullinfo.bounds[0]);
+//		VectorCopy(bounds[1], mergedSurf->cullinfo.bounds[1]);
+//
+//		mergedSurf->cullinfo.type = CULLINFO_BOX;
+//		mergedSurf->data          = (surfaceType_t *)vboSurf;
+//		mergedSurf->fogIndex      = surf1->fogIndex;
+//		mergedSurf->cubemapIndex  = surf1->cubemapIndex;
+//		mergedSurf->shader        = surf1->shader;
+//
+//		// finish up the ibo
+//		qglGenBuffers(1, &ibo->indexesVBO);
+//
+//		R_BindIBO(ibo);
+//		qglBufferData(GL_ELEMENT_ARRAY_BUFFER, numIboIndexes * sizeof(*iboIndexes), iboIndexes, GL_STATIC_DRAW);
+//		R_BindNullIBO();
+//
+//		GL_CheckErrors();
+//
+//   		Z_Free(iboIndexes);
+//
+//		// redirect view surfaces to this surf
+//		for (j = 0; j < numWorldSurfaces; j++)
+//		{
+//			if (worldData->surfacesViewCount[j] != i)
+//				continue;
+//
+//			for (k = 0; k < worldData->nummarksurfaces; k++)
+//			{
+//				int *mark = worldData->marksurfaces + k;
+//				int *view = worldData->viewSurfaces + k;
+//
+//				if (*mark == j)
+//					*view = -(mergedSurfIndex + 1);
+//			}
+//		}
+//
+//		mergedSurfIndex++;
+//		mergedSurf++;
+//	}
+//
+//	endTime = ri.Milliseconds();
+//
+//	ri.Printf(PRINT_ALL, "Processed %d surfaces into %d merged, %d unmerged in %5.2f seconds\n",
+//		numWorldSurfaces, numMergedSurfaces, numUnmergedSurfaces, (endTime - startTime) / 1000.0f);
+//
+//	// reset viewcounts
+//	for (i = 0; i < numWorldSurfaces; i++)
+//	{
+//		worldData->surfacesViewCount[i] = -1;
+//	}
+//}
 
 
 static void R_CalcVertexLightDirs( world_t *worldData )
@@ -4469,10 +4506,10 @@ world_t *R_LoadBSP(const char *name, int *bspIndex)
 
 	// create static VBOS from the world
 	R_CreateWorldVBOs(worldData);
-	if (r_mergeLeafSurfaces->integer)
+	/*if (r_mergeLeafSurfaces->integer)
 	{
 		R_MergeLeafSurfaces(worldData);
-	}
+	}*/
 
 	worldData->dataSize = (const byte *)Hunk_Alloc(0, h_low) - startMarker;
 

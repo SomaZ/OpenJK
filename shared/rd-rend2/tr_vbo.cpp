@@ -78,6 +78,41 @@ static GLenum GetGLBufferUsage ( vboUsage_t usage )
 
 /*
 ============
+R_CreateVAO
+============
+*/
+VAO_t *R_CreateVAO(const char *debugName)
+{
+	VAO_t          *vao;
+
+	if (tr.numVAOs == MAX_VBOS) {
+		ri.Error(ERR_DROP, "R_CreateVAO: MAX_VAOS hit");
+	}
+
+	R_IssuePendingRenderCommands();
+
+	vao = tr.vaos[tr.numVAOs] = (VAO_t *)Hunk_Alloc(sizeof(*vao), h_low);
+
+	memset(vao, 0, sizeof(*vao));
+
+	qglGenVertexArrays(1, &vao->attributesVAO);
+	tr.numVAOs++;
+
+	qglBindVertexArray(vao->attributesVAO);
+
+#ifndef __APPLE__
+	if (glRefConfig.annotateResources) qglObjectLabel(GL_VERTEX_ARRAY, vao->attributesVAO, -1, debugName);
+#endif
+
+	qglBindVertexArray(0);
+
+	GL_CheckErrors();
+
+	return vao;
+}
+
+/*
+============
 R_CreateVBO
 ============
 */
@@ -180,6 +215,37 @@ IBO_t *R_CreateIBO(byte * indexes, int indexesSize, vboUsage_t usage, const char
 R_BindVBO
 ============
 */
+void R_BindVAO(VAO_t * vao)
+{
+	if (!vao)
+	{
+		//R_BindNullVBO();
+		ri.Error(ERR_DROP, "R_BindVAO: NULL vbo");
+		return;
+	}
+
+	if (r_logFile->integer)
+	{
+		GLimp_LogComment("--- R_BindVAO() ---\n");
+	}
+
+	if (glState.currentVAO != vao)
+	{
+		glState.currentVAO = vao;
+		//glState.currentVBO = nullptr;
+
+		glState.vertexAnimation = qfalse;
+		glState.skeletalAnimation = qfalse;
+
+		qglBindVertexArray(vao->attributesVAO);
+	}
+}
+
+/*
+============
+R_BindVBO
+============
+*/
 void R_BindVBO(VBO_t * vbo)
 {
 	if(!vbo)
@@ -198,9 +264,6 @@ void R_BindVBO(VBO_t * vbo)
 	{
 		glState.currentVBO = vbo;
 
-		glState.vertexAttribsInterpolation = 0;
-		glState.vertexAttribsOldFrame = 0;
-		glState.vertexAttribsNewFrame = 0;
 		glState.vertexAnimation = qfalse;
 		glState.skeletalAnimation = qfalse;
 
@@ -346,6 +409,15 @@ void R_DestroyGPUBuffers(void)
 		}
 	}
 
+	for (int i = 0; i < tr.numVAOs; i++)
+	{
+		VAO_t *vao = tr.vaos[i];
+
+		if (vao->attributesVAO)
+			qglDeleteVertexArrays(1, &vao->attributesVAO);
+	}
+
+	tr.numVAOs = 0;
 	tr.numVBOs = 0;
 	tr.numIBOs = 0;
 }
@@ -619,6 +691,7 @@ void RB_UpdateVBOs(unsigned int attribBits)
 			return;
 		}
 
+		R_BindVAO(tr.globalVao);
 		R_BindVBO(frameVbo);
 
 		void *dstPtr;
@@ -706,6 +779,7 @@ void RB_UpdateGoreVertexData(gpuFrame_t *currentFrame, srfG2GoreSurface_t *goreS
 			currentFrame->goreVBOCurrentIndex = 0;
 	}
 
+	R_BindVAO(tr.globalVao);
 	R_BindVBO(currentFrame->goreVBO);
 	qglBufferSubData(
 		GL_ARRAY_BUFFER,

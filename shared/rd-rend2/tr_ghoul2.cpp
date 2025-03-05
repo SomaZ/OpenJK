@@ -3680,6 +3680,7 @@ void RB_SurfaceGhoul( CRenderableSurface *surf )
 			R_BindVBO(backEndData->currentFrame->goreVBO);
 			R_BindIBO(backEndData->currentFrame->goreIBO);
 		}
+		tess.externalVBO = backEndData->currentFrame->goreVBO;
 		tess.externalIBO = backEndData->currentFrame->goreIBO;
 
 		numIndexes = surf->alternateTex->numIndexes;
@@ -3728,6 +3729,7 @@ void RB_SurfaceGhoul( CRenderableSurface *surf )
 
 		R_BindVBO(surface->vbo);
 		R_BindIBO(surface->ibo);
+		tess.externalVBO = surface->vbo;
 		tess.externalIBO = surface->ibo;
 
 		glState.genShadows = surf->genShadows;
@@ -3816,7 +3818,6 @@ void RB_SurfaceGhoul( CRenderableSurface *surf )
 
 	tess.numIndexes += numIndexes;
 	tess.numVertexes += numVertexes;
-	tess.useInternalVBO = qfalse;
 	tess.dlightBits |= surf->dlightBits;
 
 	glState.skeletalAnimation = qtrue;

@@ -1109,12 +1109,18 @@ static void RB_DrawItems(
 	{
 		const DrawItem& drawItem = drawItems[drawOrder[i]];
 
+		if (drawItem.vao != nullptr)
+			R_BindVAO(drawItem.vao);
+		else
+			R_BindVAO(tr.globalVao);
+
 		if (drawItem.ibo != nullptr)
 			R_BindIBO(drawItem.ibo);
 
 		GLSL_BindProgram(drawItem.program);
 
-		GL_VertexAttribPointers(drawItem.numAttributes, drawItem.attributes);
+		if (drawItem.vao == nullptr)
+			GL_VertexAttribPointers(drawItem.numAttributes, drawItem.attributes);
 		RB_BindTextures(drawItem.numSamplerBindings, drawItem.samplerBindings);
 		RB_BindUniformBlocks(
 			drawItem.numUniformBlockBindings,

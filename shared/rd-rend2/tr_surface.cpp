@@ -81,7 +81,7 @@ void RB_CheckVBOandIBO(VBO_t *vbo, IBO_t *ibo)
 	if (vbo != backEndData->currentFrame->dynamicVbo &&
 		ibo != backEndData->currentFrame->dynamicIbo)
 	{
-		tess.useInternalVBO = qfalse;
+		tess.externalVBO = vbo;
 	}
 
 	if ( ibo != backEndData->currentFrame->dynamicIbo )
@@ -211,7 +211,9 @@ void RB_InstantQuad2(vec4_t quadVerts[4], vec2_t texCoords[4])
 	tess.indexes[tess.numIndexes++] = 3;
 	tess.minIndex = 0;
 	tess.maxIndex = 3;
-	tess.useInternalVBO = qtrue;
+	//tess.useInternalVBO = qtrue;
+
+	R_BindVAO(tr.globalVao);
 
 	RB_UpdateVBOs(ATTR_POSITION | ATTR_TEXCOORD0);
 
@@ -226,7 +228,7 @@ void RB_InstantQuad2(vec4_t quadVerts[4], vec2_t texCoords[4])
 	tess.firstIndex = 0;
 	tess.minIndex = 0;
 	tess.maxIndex = 0;
-	tess.useInternalVBO = qfalse;
+	//tess.useInternalVBO = qfalse;
 }
 
 
@@ -477,14 +479,14 @@ static void RB_SurfaceVertsAndIndexes( int numVerts, srfVert_t *verts, int numIn
 	tess.numVertexes += numVerts;
 }
 
-static qboolean RB_SurfaceVbo(
-		VBO_t *vbo, IBO_t *ibo, int numVerts, int numIndexes, int firstIndex,
+static qboolean RB_SurfaceVao(
+		VAO_t *vao, IBO_t *ibo, int numVerts, int numIndexes, int firstIndex,
 		int minIndex, int maxIndex, int dlightBits, int pshadowBits, qboolean shaderCheck)
 {
 	int i, mergeForward, mergeBack;
 	GLvoid *firstIndexOffset, *lastIndexOffset;
 
-	if (!vbo || !ibo)
+	if (!vao || !ibo)
 	{
 		return qfalse;
 	}
@@ -497,7 +499,18 @@ static qboolean RB_SurfaceVbo(
 		return qfalse;
 	}
 
-	RB_CheckVBOandIBO(vbo, ibo);
+	if (vao != tess.externalVAO
+		|| ibo != tess.externalIBO
+		|| tess.multiDrawPrimitives >= MAX_MULTIDRAW_PRIMITIVES)
+	{
+		RB_EndSurface();
+		RB_BeginSurface(tess.shader, tess.fogNum, tess.cubemapIndex);
+	}
+
+	tess.externalVAO = vao;
+	tess.externalIBO = ibo;
+
+	//tess.useInternalVBO = qfalse;
 
 	tess.dlightBits |= dlightBits;
 	tess.pshadowBits |= pshadowBits;
@@ -591,7 +604,7 @@ RB_SurfaceBSPTriangles
 =============
 */
 static void RB_SurfaceBSPTriangles( srfBspSurface_t *srf ) {
-	if( RB_SurfaceVbo (srf->vbo, srf->ibo, srf->numVerts, srf->numIndexes,
+	if( RB_SurfaceVao(srf->vao, srf->ibo, srf->numVerts, srf->numIndexes,
 				srf->firstIndex, srf->minIndex, srf->maxIndex, srf->dlightBits, srf->pshadowBits, qtrue ) )
 	{
 		return;
@@ -675,7 +688,7 @@ static void RB_SurfaceBeam( void )
 
 	tess.minIndex = 0;
 	tess.maxIndex = tess.numVertexes;
-	tess.useInternalVBO = qtrue;
+	//tess.useInternalVBO = qtrue;
 
 	// FIXME: A lot of this can probably be removed for speed, and refactored into a more convenient function
 	RB_UpdateVBOs(ATTR_POSITION);
@@ -696,7 +709,7 @@ static void RB_SurfaceBeam( void )
 	tess.firstIndex = 0;
 	tess.minIndex = 0;
 	tess.maxIndex = 0;
-	tess.useInternalVBO = qfalse;
+	//tess.useInternalVBO = qfalse;
 }
 
 //------------------
@@ -1771,7 +1784,7 @@ RB_SurfaceFace
 ==============
 */
 static void RB_SurfaceBSPFace( srfBspSurface_t *srf ) {
-	if( RB_SurfaceVbo(srf->vbo, srf->ibo, srf->numVerts, srf->numIndexes,
+	if( RB_SurfaceVao(srf->vao, srf->ibo, srf->numVerts, srf->numIndexes,
 				srf->firstIndex, srf->minIndex, srf->maxIndex, srf->dlightBits, srf->pshadowBits, qtrue ) )
 	{
 		return;
@@ -1839,7 +1852,7 @@ static void RB_SurfaceBSPGrid( srfBspSurface_t *srf ) {
 	int     pshadowBits;
 	//int		*vDlightBits;
 
-	if( RB_SurfaceVbo (srf->vbo, srf->ibo, srf->numVerts, srf->numIndexes,
+	if( RB_SurfaceVao (srf->vao, srf->ibo, srf->numVerts, srf->numIndexes,
 				srf->firstIndex, srf->minIndex, srf->maxIndex, srf->dlightBits, srf->pshadowBits, qtrue ) )
 	{
 		return;
@@ -2443,7 +2456,7 @@ static void RB_SurfaceFlare(srfFlare_t *surf)
 
 static void RB_SurfaceVBOMesh(srfBspSurface_t * srf)
 {
-	RB_SurfaceVbo (srf->vbo, srf->ibo, srf->numVerts, srf->numIndexes, srf->firstIndex,
+	RB_SurfaceVao (srf->vao, srf->ibo, srf->numVerts, srf->numIndexes, srf->firstIndex,
 			srf->minIndex, srf->maxIndex, srf->dlightBits, srf->pshadowBits, qfalse );
 }
 
