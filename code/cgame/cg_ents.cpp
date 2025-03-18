@@ -370,7 +370,19 @@ Ghoul2 Insert End
 			// Don't interpolate oneshot animations as they have different animation 
 			// speeds in the code and we can't know it for sure here.
 			ent.frame = cent->gent->s.frame;
+			ent.oldframe = ent.frame + prevFrame;
+
 			ent.renderfx |= RF_CAP_FRAMES;
+
+			if (ent.oldframe >= startFrame && ent.frame <= endFrame)
+			{
+				ent.backlerp = 1.0f - ((cg.time % 50) / 50.0f);
+			}
+			else
+			{
+				ent.backlerp = 0.0f;
+				ent.oldframe = ent.frame;
+			}
 		}
 		else if (s1->eFlags & EF_ANIM_ALLFAST)
 		{
@@ -383,11 +395,20 @@ Ghoul2 Insert End
 		{
 			ent.frame = s1->frame;
 			ent.oldframe = ent.frame + prevFrame;
+			ent.renderfx |= RF_CAP_FRAMES;
 
-			if (ent.oldframe >= startFrame && ent.frame < endFrame)
+			// Animation ended
+			if (ent.frame > endFrame)
+			{
+				ent.backlerp = 0.0f;
+				ent.frame = endFrame;
+			}
+			// Animation in flight
+			else if (ent.oldframe >= startFrame && ent.frame <= endFrame)
 			{
 				ent.backlerp = 1.0f - ((cg.time % 50) / 50.0f);
 			}
+			// Animation hasn't started yet
 			else
 			{
 				ent.backlerp = 0.0f;
@@ -1414,7 +1435,19 @@ Ghoul2 Insert End
 		// Don't interpolate oneshot animations as they have different animation 
 		// speeds in the code and we can't know it for sure here.
 		ent.frame = cent->gent->s.frame;
+		ent.oldframe = ent.frame + prevFrame;
+
 		ent.renderfx |= RF_CAP_FRAMES;
+
+		if (ent.oldframe >= startFrame && ent.frame <= endFrame)
+		{
+			ent.backlerp = 1.0f - ((cg.time % 50) / 50.0f);
+		}
+		else
+		{
+			ent.backlerp = 0.0f;
+			ent.oldframe = ent.frame;
+		}
 	}
 	else if (s1->eFlags & EF_ANIM_ALLFAST)
 	{
@@ -1427,8 +1460,9 @@ Ghoul2 Insert End
 	{
 		ent.frame = s1->frame;
 		ent.oldframe = ent.frame + prevFrame;
+		ent.renderfx |= RF_CAP_FRAMES;
 
-		if (ent.oldframe >= startFrame && ent.frame < endFrame)
+		if (ent.oldframe >= startFrame && ent.frame <= endFrame)
 		{
 			ent.backlerp = 1.0f - ((cg.time % 50) / 50.0f);
 		}
