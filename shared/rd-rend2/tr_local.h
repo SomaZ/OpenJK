@@ -4145,4 +4145,9 @@ uint32_t RB_CreateSortKey( const DrawItem& item, int stage, int layer );
 void RB_AddDrawItem( Pass *pass, uint32_t sortKey, const DrawItem& drawItem );
 DepthRange RB_GetDepthRange( const trRefEntity_t *re, const shader_t *shader );
 
+typedef struct refExtensionFunc_s {
+	const char	*funcName;  // Renderer function name used to identify what the engine is asking for
+	void		*function;  // Renderer function address given to the engine
+} refExtensionFunc_t;
+
 #endif //TR_LOCAL_H

@@ -383,7 +383,13 @@ typedef struct {
 
 extern	clientStatic_t		cls;
 
+typedef struct {
+	// This struct is manually filled by the engine, so the order does not have to match anything in the renderer (only the function signature must match)
+	float				(*Font_StrLenPixels)					( const char *text, const int iFontIndex, const float scale );
+} refExtensionFuncs_t;
+
 extern	refexport_t		*re;		// interface to refresh .dll
+extern	refExtensionFuncs_t	reExt;
 
 //
 // cvars

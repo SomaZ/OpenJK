@@ -1913,3 +1913,8 @@ void R_AddDecals( void );
 void RB_DrawSurfaceSprites( shaderStage_t *stage, shaderCommands_t *input);
 
 qboolean ShaderHashTableExists(void);
+
+typedef struct refExtensionFunc_s {
+	const char	*funcName;  // Renderer function name used to identify what the engine is asking for
+	void		*function;  // Renderer function address given to the engine
+} refExtensionFunc_t;
