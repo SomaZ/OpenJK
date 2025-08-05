@@ -1963,6 +1963,38 @@ extern qboolean R_InitializeWireframeAutomap( void ); //tr_world.cpp
 
 extern qhandle_t RE_RegisterServerSkin( const char *name );
 
+static refExtensionFunc_t refExtensionFuncs[] = {
+	{ "OJK_Font_StrLenPixelsNew",              (void*)&RE_Font_StrLenPixelsNew },
+};
+
+refExtensionFunc_t *RefExtension_FindFunction( const char *funcName )
+{
+	refExtensionFunc_t *entry;
+	size_t i;
+
+	// Sanity check
+	if ( !funcName ) return NULL;
+
+	// Go through table and return the entry of the function
+	for ( i = 0, entry = refExtensionFuncs; i < ARRAY_LEN(refExtensionFuncs); i++, entry++ ) {
+		if ( entry->funcName && !strcmp(entry->funcName, funcName) )
+			return entry;
+	}
+
+	// Return NULL if we couldn't find the function
+	return NULL;
+}
+
+static void *GetRefExtensionFunc( const char *identifier ) {
+	refExtensionFunc_t *entry = RefExtension_FindFunction( identifier );
+
+	// Debug output
+	ri.Printf( PRINT_DEVELOPER, "GetRefExtensionFunc: %s\n", identifier );
+
+	if ( entry ) return entry->function;
+	return NULL;
+}
+
 /*
 @@@@@@@@@@@@@@@@@@@@@
 GetRefAPI
@@ -2158,7 +2190,7 @@ Q_EXPORT refexport_t* QDECL GetRefAPI( int apiVersion, refimport_t *rimp ) {
 	// this is set in R_Init
 	//re.G2VertSpaceServer	= G2VertSpaceServer;
 
-	re.ext.Font_StrLenPixels				= RE_Font_StrLenPixelsNew;
+	re.GetRefExtensionFunc					= GetRefExtensionFunc;
 
 	return &re;
 }

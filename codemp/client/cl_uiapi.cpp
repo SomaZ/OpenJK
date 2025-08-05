@@ -1424,7 +1424,7 @@ void CL_BindUI( void ) {
 		uii.G2API_GetSurfaceName				= CL_G2API_GetSurfaceName;
 		uii.G2API_AttachG2Model					= CL_G2API_AttachG2Model;
 
-		uii.ext.R_Font_StrLenPixels				= re->ext.Font_StrLenPixels;
+		uii.ext.R_Font_StrLenPixels				= reExt.Font_StrLenPixels;
 		uii.ext.AddCommand						= CL_AddUICommand;
 		uii.ext.RemoveCommand					= UIVM_Cmd_RemoveCommand;
 

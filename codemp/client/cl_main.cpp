@@ -126,6 +126,7 @@ char cl_reconnectArgs[MAX_OSPATH] = {0};
 
 // Structure containing functions exported from refresh DLL
 refexport_t	*re = NULL;
+refExtensionFuncs_t reExt = { 0 };
 static void	*rendererLib = NULL;
 
 ping_t	cl_pinglist[MAX_PINGREQUESTS];
@@ -2319,6 +2320,7 @@ static void CL_ShutdownRef( qboolean restarting ) {
 	}
 
 	re = NULL;
+	memset( &reExt, 0, sizeof(reExt) );
 
 	if ( rendererLib != NULL ) {
 		Sys_UnloadDll (rendererLib);
@@ -2538,6 +2540,9 @@ void CL_InitRef( void ) {
 	}
 
 	re = ret;
+
+	// Additional renderer functions
+	reExt.Font_StrLenPixels = (float (*)(const char*, const int, const float))re->GetRefExtensionFunc( "OJK_Font_StrLenPixelsNew" );
 
 	// unpause so the cgame definately gets a snapshot and renders a frame
 	Cvar_Set( "cl_paused", "0" );
