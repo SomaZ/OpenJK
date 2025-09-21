@@ -200,11 +200,15 @@ int SFxHelper::GetOriginAxisFromBolt(const centity_t &cent, int modelNum, int bo
 		}
 	}
 
+	// Meh, need to copy the modelScale for it to be non const. 
+	// Maybe better to change the mp renderer abi to use const for scale
+	vec3_t modelScale;
+	VectorCopy(cent.currentState.modelScale, modelScale);
 	// go away and get me the bolt position for this frame please
 	doesBoltExist = gi.G2API_GetBoltMatrix(cent.gent->ghoul2, modelNum,
 		boltNum, &boltMatrix, G2Angles,
 		cent.lerpOrigin, cg.time, cgs.model_draw,
-		cent.currentState.modelScale);
+		modelScale);
 	// set up the axis and origin we need for the actual effect spawning
 	origin[0] = boltMatrix.matrix[0][3];
 	origin[1] = boltMatrix.matrix[1][3];

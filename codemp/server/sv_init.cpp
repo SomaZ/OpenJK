@@ -810,7 +810,11 @@ extern void *gpvCachedMapDiskImage;
 extern qboolean gbUsingCachedMapDataRightNow;
 
 static char *GetSharedMemory( void ) { return sv.mSharedMemory; }
-static vm_t *GetCurrentVM( void ) { return currentVM; }
+static vmSlots_t GetCurrentVMSlot( void ) {
+	if ( !currentVM )
+		return MAX_VM;
+	return currentVM->slot;
+}
 static void *CM_GetCachedMapDiskImage( void ) { return gpvCachedMapDiskImage; }
 static void CM_SetCachedMapDiskImage( void *ptr ) { gpvCachedMapDiskImage = ptr; }
 static void CM_SetUsingCache( qboolean usingCache ) { gbUsingCachedMapDataRightNow = usingCache; }
@@ -896,7 +900,7 @@ static void SV_InitRef( void ) {
 	ri.GetSharedMemory = GetSharedMemory;
 
 	// (c)g vm callbacks
-	ri.GetCurrentVM = GetCurrentVM;
+	ri.GetCurrentVMSlot = GetCurrentVMSlot;
 //	ri.CGVMLoaded = CGVMLoaded;
 //	ri.CGVM_RagCallback = CGVM_RagCallback;
 

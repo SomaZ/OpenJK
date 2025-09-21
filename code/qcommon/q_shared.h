@@ -284,6 +284,11 @@ typedef enum {
 #define UI_INVERSE		0x00002000
 #define UI_PULSE		0x00004000
 
+typedef enum {
+	h_high,
+	h_low,
+	h_dontcare
+} ha_pref;
 
 #define Com_Memset memset
 #define Com_Memcpy memcpy

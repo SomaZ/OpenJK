@@ -317,7 +317,7 @@ typedef struct refimport_s {
 	char *			(*GetSharedMemory)					( void ); // cl.mSharedMemory
 
 	// (c)g vm callbacks
-	vm_t *			(*GetCurrentVM)						( void );
+	vmSlots_t		(*GetCurrentVMSlot)					( void );
 	qboolean		(*CGVMLoaded)						( void );
 	int				(*CGVM_RagCallback)					( int callType );
 

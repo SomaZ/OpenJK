@@ -85,6 +85,11 @@ surfaceInfo_t():
 #define BONE_ANGLES_PREMULT			0x0001
 #define BONE_ANGLES_POSTMULT		0x0002
 #define BONE_ANGLES_REPLACE			0x0004
+
+//added for a trace optimization. set in routines where a bone is
+//set to be transformed in any way. -rww
+#define	BONE_NEED_TRANSFORM			0x8000
+
 //rww - RAGDOLL_BEGIN
 #define BONE_ANGLES_RAGDOLL			0x2000  // the rag flags give more details
 #define BONE_ANGLES_IK				0x4000  // the rag flags give more details

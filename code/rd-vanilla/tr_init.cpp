@@ -1899,25 +1899,11 @@ extern float tr_distortionAlpha;
 extern float tr_distortionStretch;
 extern qboolean tr_distortionPrePost;
 extern qboolean tr_distortionNegate;
-
-float *get_tr_distortionAlpha( void )
-{
-	return &tr_distortionAlpha;
-}
-
-float *get_tr_distortionStretch( void )
-{
-	return &tr_distortionStretch;
-}
-
-qboolean *get_tr_distortionPrePost( void )
-{
-	return &tr_distortionPrePost;
-}
-
-qboolean *get_tr_distortionNegate( void )
-{
-	return &tr_distortionNegate;
+static void SetRefractionProperties( float distortionAlpha, float distortionStretch, qboolean distortionPrePost, qboolean distortionNegate ) {
+	tr_distortionAlpha = distortionAlpha;
+	tr_distortionStretch = distortionStretch;
+	tr_distortionPrePost = distortionPrePost;
+	tr_distortionNegate = distortionNegate;
 }
 
 float g_oldRangedFog = 0.0f;
@@ -2019,11 +2005,10 @@ extern "C" Q_EXPORT refexport_t* QDECL GetRefAPI ( int apiVersion, refimport_t *
 
 	REX(ClearScene);
 	REX(AddRefEntityToScene);
-	REX(GetLighting);
+	re.LightForPoint = RE_GetLighting;
 	REX(AddPolyToScene);
 	REX(AddLightToScene);
 	REX(RenderScene);
-	REX(GetLighting);
 
 	REX(SetColor);
 	re.DrawStretchPic = RE_StretchPic;
@@ -2056,7 +2041,7 @@ extern "C" Q_EXPORT refexport_t* QDECL GetRefAPI ( int apiVersion, refimport_t *
 	REX(SetLightStyle);
 	REX(GetBModelVerts);
 	re.WorldEffectCommand = R_WorldEffectCommand;
-	REX(GetModelBounds);
+	re.ModelBoundsRef = RE_GetModelBounds;
 
 	REX(SVModelInit);
 
@@ -2076,10 +2061,7 @@ extern "C" Q_EXPORT refexport_t* QDECL GetRefAPI ( int apiVersion, refimport_t *
 	re.R_ClearStuffToStopGhoul2CrashingThings = R_ClearStuffToStopGhoul2CrashingThings;
 	re.inPVS = R_inPVS;
 
-	re.tr_distortionAlpha = get_tr_distortionAlpha;
-	re.tr_distortionStretch = get_tr_distortionStretch;
-	re.tr_distortionPrePost = get_tr_distortionPrePost;
-	re.tr_distortionNegate = get_tr_distortionNegate;
+	re.SetRefractionProperties = SetRefractionProperties;
 
 	re.GetWindVector = R_GetWindVector;
 	re.GetWindGusting = R_GetWindGusting;
@@ -2099,7 +2081,7 @@ extern "C" Q_EXPORT refexport_t* QDECL GetRefAPI ( int apiVersion, refimport_t *
 	G2EX(AddBolt);
 	G2EX(AddBoltSurfNum);
 	G2EX(AddSurface);
-	G2EX(AnimateG2Models);
+	re.G2API_AnimateG2ModelsRag	= G2API_AnimateG2Models;
 	G2EX(AttachEnt);
 	G2EX(AttachG2Model);
 	G2EX(CollisionDetect);

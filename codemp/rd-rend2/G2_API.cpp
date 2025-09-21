@@ -752,9 +752,7 @@ void G2API_CleanGhoul2Models(CGhoul2Info_v **ghoul2Ptr)
 
 qboolean G2_ShouldRegisterServer(void)
 {
-	vm_t *currentVM = ri.GetCurrentVM();
-
-	if ( currentVM && currentVM->slot == VM_GAME )
+	if ( ri.GetCurrentVMSlot() == VM_GAME )
 	{
 		if ( ri.Cvar_VariableIntegerValue( "cl_running" ) &&
 			ri.Com_TheHunkMarkHasBeenMade() && ShaderHashTableExists())
@@ -1337,7 +1335,7 @@ qboolean G2API_GetBoneAnim(CGhoul2Info_v& ghoul2, int modelIndex, const char *bo
 	{
 		int aCurrentTime=G2API_GetTime(currentTime);
  		qboolean ret=G2_Get_Bone_Anim(ghlInfo, ghlInfo->mBlist, boneName, aCurrentTime, currentFrame,
-			startFrame, endFrame, flags, animSpeed, modelList, ghlInfo->mModelindex);
+			startFrame, endFrame, flags, animSpeed);
 #ifdef _DEBUG
 		/*
 		assert(*endFrame>0);
@@ -1555,8 +1553,6 @@ qboolean G2API_SetBoneAngles(
 				up,
 				left,
 				forward,
-				modelList,
-				ghlInfo->mModelindex,
 				blendTime,
 				currentTime);
 		}

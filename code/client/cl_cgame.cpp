@@ -986,10 +986,7 @@ intptr_t CL_CgameSystemCalls( intptr_t *args ) {
 	case CG_ANYLANGUAGE_READFROMSTRING2:
 		return re.AnyLanguage_ReadCharFromString2( (char **) VMA(1), (qboolean *) VMA(3) );
 	case CG_R_SETREFRACTIONPROP:
-		*(re.tr_distortionAlpha()) = VMF(1);
-		*(re.tr_distortionStretch()) = VMF(2);
-		*(re.tr_distortionPrePost()) = (qboolean)args[3];
-		*(re.tr_distortionNegate()) = (qboolean)args[4];
+		re.SetRefractionProperties( VMF(1), VMF(2), (qboolean)args[3], (qboolean)args[4] );
 		return 0;
 	case CG_R_CLEARSCENE:
 		re.ClearScene();
@@ -1002,7 +999,7 @@ intptr_t CL_CgameSystemCalls( intptr_t *args ) {
 		return re.inPVS((float *) VMA(1), (float *) VMA(2), (byte *) VMA(3));
 
 	case CG_R_GETLIGHTING:
-		return re.GetLighting( (const float * ) VMA(1), (float *) VMA(2), (float *) VMA(3), (float *) VMA(4) );
+		return re.LightForPoint( (float * ) VMA(1), (float *) VMA(2), (float *) VMA(3), (float *) VMA(4) );
 	case CG_R_ADDPOLYTOSCENE:
 		re.AddPolyToScene( args[1], args[2], (const polyVert_t *) VMA(3), 1 );
 		return 0;

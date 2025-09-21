@@ -306,7 +306,7 @@ Ghoul2 Insert Start
 	void		(*G2API_DetachEnt)(int *boltInfo);
 
 	qboolean	(*G2API_GetBoltMatrix)(CGhoul2Info_v &ghoul2, const int modelIndex, const int boltIndex, mdxaBone_t *matrix,
-			const vec3_t angles, const vec3_t position, const int frameNum, qhandle_t *modelList, const vec3_t scale);
+			const vec3_t angles, const vec3_t position, const int frameNum, qhandle_t *modelList, vec3_t scale);
 
 	void		(*G2API_ListSurfaces)(CGhoul2Info *ghlInfo);
 	void		(*G2API_ListBones)(CGhoul2Info *ghlInfo, int frame);

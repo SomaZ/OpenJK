@@ -524,9 +524,7 @@ int R_CubemapForPoint( const vec3_t point )
 	return cubemapIndex + 1;
 }
 
-#ifdef REND2_SP
-//pass in origin
-qboolean RE_GetLighting(const vec3_t origin, vec3_t ambientLight, vec3_t directedLight, vec3_t lightDir) {
+int RE_GetLighting(vec3_t origin, vec3_t ambientLight, vec3_t directedLight, vec3_t lightDir) {
 	trRefEntity_t tr_ent;
 
 	if (!tr.world || !tr.world->lightGridData) {
@@ -549,4 +547,3 @@ qboolean RE_GetLighting(const vec3_t origin, vec3_t ambientLight, vec3_t directe
 	VectorCopy(tr_ent.lightDir, lightDir);
 	return qtrue;
 }
-#endif

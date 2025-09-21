@@ -16,9 +16,7 @@
 	#include "ghoul2/G2.h"
 #endif
 
-#if !defined (MINIHEAP_H_INC)
-	#include "qcommon/MiniHeap.h"
-#endif
+#include "qcommon/MiniHeap.h"
 
 #define G2_MODEL_OK(g) ((g)&&(g)->mValid&&(g)->aHeader&&(g)->currentModel&&(g)->animModel)
 
@@ -401,7 +399,7 @@ int G2_DecideTraceLod(CGhoul2Info &ghoul2, int useLod)
 	return returnLod;
 }
 
-void R_TransformEachSurface( const mdxmSurface_t *surface, vec3_t scale, CMiniHeap *G2VertSpace, intptr_t *TransformedVertsArray, CBoneCache *boneCache)
+void R_TransformEachSurface( const mdxmSurface_t *surface, vec3_t scale, IHeapAllocator *G2VertSpace, intptr_t *TransformedVertsArray, CBoneCache *boneCache)
 {
 	int				 j, k;
 	mdxmVertex_t 	*v;
@@ -514,7 +512,7 @@ void R_TransformEachSurface( const mdxmSurface_t *surface, vec3_t scale, CMiniHe
 }
 
 void G2_TransformSurfaces(int surfaceNum, surfaceInfo_v &rootSList, 
-					CBoneCache *boneCache, const model_t *currentModel, int lod, vec3_t scale, CMiniHeap *G2VertSpace, intptr_t* TransformedVertArray, bool secondTimeAround)
+					CBoneCache *boneCache, const model_t *currentModel, int lod, vec3_t scale, IHeapAllocator *G2VertSpace, intptr_t* TransformedVertArray, bool secondTimeAround)
 {
 	int	i;
 	assert(currentModel);
@@ -556,9 +554,9 @@ void G2_TransformSurfaces(int surfaceNum, surfaceInfo_v &rootSList,
 
 // main calling point for the model transform for collision detection. At this point all of the skeleton has been transformed.
 #ifdef _G2_GORE
-void G2_TransformModel(CGhoul2Info_v& ghoul2, const int frameNum, vec3_t scale, CMiniHeap* G2VertSpace, int useLod, bool ApplyGore, SSkinGoreData* gore)
+void G2_TransformModel(CGhoul2Info_v& ghoul2, const int frameNum, vec3_t scale, IHeapAllocator* G2VertSpace, int useLod, bool ApplyGore, SSkinGoreData* gore)
 #else
-void G2_TransformModel(CGhoul2Info_v& ghoul2, const int frameNum, vec3_t scale, CMiniHeap* G2VertSpace, int useLod)
+void G2_TransformModel(CGhoul2Info_v& ghoul2, const int frameNum, vec3_t scale, IHeapAllocator* G2VertSpace, int useLod)
 #endif
 {
 	int				i, lod;

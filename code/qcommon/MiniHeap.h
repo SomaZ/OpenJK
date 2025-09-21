@@ -23,8 +23,18 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 #if !defined(MINIHEAP_H_INC)
 #define MINIHEAP_H_INC
 
+#include "../qcommon/q_shared.h"
 
-class CMiniHeap
+class IHeapAllocator
+{
+public:
+	virtual ~IHeapAllocator() {}
+
+	virtual void ResetHeap() = 0;
+	virtual char *MiniHeapAlloc ( int size ) = 0;
+};
+
+class CMiniHeap : public IHeapAllocator
 {
 	char	*mHeap;
 	char	*mCurrentHeap;
@@ -49,7 +59,7 @@ void ResetHeap()
 // initialise the heap
 CMiniHeap(int size)
 {
-	mHeap = (char *)Z_Malloc(size, TAG_GHOUL2, qtrue);
+	mHeap = (char *)malloc(size);
 	mSize = size;
 #if _DEBUG
 	mMaxAlloc=0;
@@ -65,7 +75,7 @@ CMiniHeap(int size)
 {
 	if (mHeap)
 	{
-		// the quake heap will be long gone, no need to free it Z_Free(mHeap);
+		free(mHeap);
 	}
 }
 
@@ -83,7 +93,7 @@ char *MiniHeapAlloc(int size)
 
 };
 
-extern CMiniHeap *G2VertSpaceServer;
+extern IHeapAllocator *G2VertSpaceServer;
 
 
 #endif	//MINIHEAP_H_INC

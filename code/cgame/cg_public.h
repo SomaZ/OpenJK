@@ -68,6 +68,56 @@ struct snapshot_s
 
 typedef snapshot_s snapshot_t;
 
+//ragdoll callback structs -rww
+#define RAG_CALLBACK_NONE				0
+#define RAG_CALLBACK_DEBUGBOX			1
+typedef struct ragCallbackDebugBox_s {
+	vec3_t			mins;
+	vec3_t			maxs;
+	int				duration;
+} ragCallbackDebugBox_t;
+
+#define RAG_CALLBACK_DEBUGLINE			2
+typedef struct ragCallbackDebugLine_s {
+	vec3_t			start;
+	vec3_t			end;
+	int				time;
+	int				color;
+	int				radius;
+} ragCallbackDebugLine_t;
+
+#define RAG_CALLBACK_BONESNAP			3
+typedef struct ragCallbackBoneSnap_s {
+	char			boneName[128]; //name of the bone in question
+	int				entNum; //index of entity who owns the bone in question
+} ragCallbackBoneSnap_t;
+
+#define RAG_CALLBACK_BONEIMPACT			4
+typedef struct ragCallbackBoneImpact_s {
+	char			boneName[128]; //name of the bone in question
+	int				entNum; //index of entity who owns the bone in question
+} ragCallbackBoneImpact_t;
+
+#define RAG_CALLBACK_BONEINSOLID		5
+typedef struct ragCallbackBoneInSolid_s {
+	vec3_t			bonePos; //world coordinate position of the bone
+	int				entNum; //index of entity who owns the bone in question
+	int				solidCount; //higher the count, the longer we've been in solid (the worse off we are)
+} ragCallbackBoneInSolid_t;
+
+#define RAG_CALLBACK_TRACELINE			6
+typedef struct ragCallbackTraceLine_s {
+	trace_t			tr;
+	vec3_t			start;
+	vec3_t			end;
+	vec3_t			mins;
+	vec3_t			maxs;
+	int				ignore;
+	int				mask;
+} ragCallbackTraceLine_t;
+
+#define	MAX_CG_SHARED_BUFFER_SIZE		2048
+
 
 /*
 ==================================================================

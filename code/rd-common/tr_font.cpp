@@ -728,7 +728,7 @@ static int Thai_InitFields(int &iGlyphTPs, const char *&psLang)
 //
 // Note that I have to have this 3-param form instead of advancing a passed-in "const char **psText" because of VM-crap where you can only change ptr-contents, not ptrs themselves. Bleurgh. Ditto the qtrue:qfalse crap instead of just returning stuff straight through.
 //
-unsigned int AnyLanguage_ReadCharFromString( char *psText, int *piAdvanceCount, qboolean *pbIsTrailingPunctuation /* = NULL */)
+unsigned int AnyLanguage_ReadCharFromString( const char *psText, int *piAdvanceCount, qboolean *pbIsTrailingPunctuation /* = NULL */)
 {
 #ifdef JK2_MODE
 	// JK2 does this func a little differently --eez

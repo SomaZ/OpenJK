@@ -438,7 +438,7 @@ static int SV_G2API_AddSurface( CGhoul2Info *ghlInfo, int surfaceNumber, int pol
 
 static void SV_G2API_AnimateG2Models( CGhoul2Info_v &ghoul2, int AcurrentTime, CRagDollUpdateParams *params )
 {
-	re.G2API_AnimateG2Models( ghoul2, AcurrentTime, params );
+	re.G2API_AnimateG2ModelsRag( ghoul2, AcurrentTime, params );
 }
 
 static qboolean SV_G2API_AttachEnt( int *boltInfo, CGhoul2Info *ghlInfoTo, int toBoltIndex, int entNum, int toModelNum )
@@ -531,7 +531,7 @@ static int SV_G2API_GetBoneIndex( CGhoul2Info *ghlInfo, const char *boneName, qb
 
 static qboolean SV_G2API_GetBoltMatrix(
 	CGhoul2Info_v &ghoul2, const int modelIndex, const int boltIndex, mdxaBone_t *matrix, const vec3_t angles,
-	const vec3_t position, const int AframeNum, qhandle_t *modelList, const vec3_t scale )
+	const vec3_t position, const int AframeNum, qhandle_t *modelList, vec3_t scale )
 {
 	return re.G2API_GetBoltMatrix(ghoul2, modelIndex, boltIndex, matrix, angles,
 		position, AframeNum, modelList, scale );

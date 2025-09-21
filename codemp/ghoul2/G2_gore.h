@@ -98,6 +98,8 @@ public:
 	int	me; //index!
 	int settleFrame;
 
+	int groundEnt;
+
 	//at some point I'll want to make VM callbacks in here. For now I am just doing nothing.
 	virtual void EffectorCollision(const SRagDollEffectorCollision &data)
 	{
@@ -148,6 +150,8 @@ public:
 	float fShotStrength; //should be applicable for setting velocity of corpse on shot (probably only on RP_CORPSE_SHOT)
 	//CServerEntity *me;
 	int me;
+
+	int groundEnt;
 
 	//rww - we have convenient animation/frame access in the game, so just send this info over from there.
 	int startFrame;

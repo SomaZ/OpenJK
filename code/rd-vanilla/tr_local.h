@@ -1570,7 +1570,7 @@ void RE_AddPolyToScene( qhandle_t hShader , int numVerts, const polyVert_t *vert
 void RE_AddLightToScene( const vec3_t org, float intensity, float r, float g, float b );
 void RE_RenderScene( const refdef_t *fd );
 
-qboolean RE_GetLighting( const vec3_t origin, vec3_t ambientLight, vec3_t directedLight, vec3_t lightDir );
+int RE_GetLighting( vec3_t origin, vec3_t ambientLight, vec3_t directedLight, vec3_t lightDir );
 
 // Only returns a four sided face and normal of the best face to break ( this is for glass right now )
 void RE_GetBModelVerts( int bmodelIndex, vec3_t *verts, vec3_t normal );

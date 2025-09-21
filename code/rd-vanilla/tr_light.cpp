@@ -472,7 +472,7 @@ void R_SetupEntityLighting( const trRefdef_t *refdef, trRefEntity_t *ent ) {
 }
 
 //pass in origin
-qboolean RE_GetLighting( const vec3_t origin, vec3_t ambientLight, vec3_t directedLight, vec3_t lightDir) {
+int RE_GetLighting( vec3_t origin, vec3_t ambientLight, vec3_t directedLight, vec3_t lightDir) {
 	trRefEntity_t tr_ent;
 
 	if ( !tr.world || !tr.world->lightGridData) {
@@ -493,28 +493,5 @@ qboolean RE_GetLighting( const vec3_t origin, vec3_t ambientLight, vec3_t direct
 	VectorCopy ( tr_ent.ambientLight,	ambientLight);
 	VectorCopy ( tr_ent.directedLight,	directedLight);
 	VectorCopy ( tr_ent.lightDir,		lightDir);
-	return qtrue;
-}
-
-/*
-=================
-R_LightForPoint
-=================
-*/
-int R_LightForPoint( vec3_t point, vec3_t ambientLight, vec3_t directedLight, vec3_t lightDir )
-{
-	trRefEntity_t ent;
-
-	// bk010103 - this segfaults with -nolight maps
-	if ( tr.world->lightGridData == NULL )
-	  return qfalse;
-
-	memset(&ent, 0, sizeof(ent));
-	VectorCopy( point, ent.e.origin );
-	R_SetupEntityLightingGrid( &ent );
-	VectorCopy(ent.ambientLight, ambientLight);
-	VectorCopy(ent.directedLight, directedLight);
-	VectorCopy(ent.lightDir, lightDir);
-
 	return qtrue;
 }

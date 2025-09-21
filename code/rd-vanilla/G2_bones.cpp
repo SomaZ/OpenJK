@@ -3272,7 +3272,7 @@ static inline void G2_RagGetWorldAnimMatrix(CGhoul2Info &ghoul2, boneInfo_t &bon
 
 //get the current pelvis Z direction and the base anim matrix Z direction
 //so they can be compared and used to offset -rww
-static inline void G2_RagGetPelvisLumbarOffsets(CGhoul2Info &ghoul2, CRagDollUpdateParams *params, vec3_t &pos, vec3_t &dir, vec3_t &animPos, vec3_t &animDir)
+static inline void G2_RagGetPelvisLumbarOffsets(CGhoul2Info &ghoul2, CRagDollUpdateParams *params, vec3_t pos, vec3_t dir, vec3_t animPos, vec3_t animDir)
 {
 	static mdxaBone_t final;
 	static mdxaBone_t x;

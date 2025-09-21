@@ -313,10 +313,12 @@ float tr_distortionAlpha = 1.0f; //opaque
 float tr_distortionStretch = 0.0f; //no stretch override
 qboolean tr_distortionPrePost = qfalse; //capture before postrender phase?
 qboolean tr_distortionNegate = qfalse; //negative blend mode
-float* stub_get_tr_distortionAlpha(void) { return &tr_distortionAlpha; }
-float* stub_get_tr_distortionStretch(void) { return &tr_distortionStretch; }
-qboolean* stub_get_tr_distortionPrePost(void) { return &tr_distortionPrePost; }
-qboolean* stub_get_tr_distortionNegate(void) { return &tr_distortionNegate; }
+static void SetRefractionProperties( float distortionAlpha, float distortionStretch, qboolean distortionPrePost, qboolean distortionNegate ) {
+	tr_distortionAlpha = distortionAlpha;
+	tr_distortionStretch = distortionStretch;
+	tr_distortionPrePost = distortionPrePost;
+	tr_distortionNegate = distortionNegate;
+}
 
 extern void	RB_SetGL2D (void);
 static void R_Splash()
@@ -2414,7 +2416,7 @@ Q_EXPORT refexport_t* QDECL GetRefAPI ( int apiVersion, refimport_t *rimp ) {
 	//re.LightForPoint = R_LightForPoint;
 	re.RenderScene = RE_RenderScene;
 	//re.AddAdditiveLightToScene = RE_AddAdditiveLightToScene;
-	re.GetLighting = RE_GetLighting;
+	re.LightForPoint = RE_GetLighting;
 
 	re.SetColor = RE_SetColor;
 	re.DrawStretchPic = RE_StretchPic;
@@ -2447,7 +2449,7 @@ Q_EXPORT refexport_t* QDECL GetRefAPI ( int apiVersion, refimport_t *rimp ) {
 	re.SetLightStyle = RE_SetLightStyle;
 	re.GetBModelVerts = RE_GetBModelVerts;
 	re.WorldEffectCommand = RE_WorldEffectCommand;
-	re.GetModelBounds = RE_GetModelBounds;
+	re.ModelBoundsRef = RE_GetModelBounds;
 
 	re.SVModelInit = R_SVModelInit;
 
@@ -2467,10 +2469,7 @@ Q_EXPORT refexport_t* QDECL GetRefAPI ( int apiVersion, refimport_t *rimp ) {
 	re.R_ClearStuffToStopGhoul2CrashingThings = R_ClearStuffToStopGhoul2CrashingThings;
 	re.inPVS = R_inPVS;
 
-	re.tr_distortionAlpha = stub_get_tr_distortionAlpha;
-	re.tr_distortionStretch = stub_get_tr_distortionStretch;
-	re.tr_distortionPrePost = stub_get_tr_distortionPrePost;
-	re.tr_distortionNegate = stub_get_tr_distortionNegate;
+	re.SetRefractionProperties = SetRefractionProperties;
 
 	//re.InitializeWireframeAutomap = stub_InitializeWireframeAutomap; // MP
 	re.GetWindVector = R_GetWindVector;
@@ -2492,7 +2491,7 @@ Q_EXPORT refexport_t* QDECL GetRefAPI ( int apiVersion, refimport_t *rimp ) {
 	re.G2API_AddBolt = G2API_AddBolt;
 	re.G2API_AddBoltSurfNum = G2API_AddBoltSurfNum;
 	re.G2API_AddSurface = G2API_AddSurface;
-	re.G2API_AnimateG2Models = G2API_AnimateG2ModelsRag;
+	re.G2API_AnimateG2ModelsRag = G2API_AnimateG2ModelsRag;
 	re.G2API_AttachEnt = G2API_AttachEnt;
 	re.G2API_AttachG2Model = G2API_AttachG2Model;
 	re.G2API_CollisionDetect = G2API_CollisionDetect;

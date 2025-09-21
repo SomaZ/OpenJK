@@ -1724,7 +1724,7 @@ void G2API_DetachEnt(int *boltInfo)
 bool G2_NeedsRecalc(CGhoul2Info *ghlInfo,int frameNum);
 
 qboolean G2API_GetBoltMatrix(CGhoul2Info_v &ghoul2, const int modelIndex, const int boltIndex, mdxaBone_t *matrix, const vec3_t angles,
-							 const vec3_t position, const int AframeNum, qhandle_t *modelList, const vec3_t scale )
+							 const vec3_t position, const int AframeNum, qhandle_t *modelList, vec3_t scale )
 {
 	G2ERROR(ghoul2.IsValid(),"Invalid ghlInfo");
 	G2ERROR(matrix,"NULL matrix");
@@ -1897,7 +1897,7 @@ static int QDECL QsortDistance( const void *a, const void *b ) {
 
 
 void G2API_CollisionDetect(CCollisionRecord *collRecMap, CGhoul2Info_v &ghoul2, const vec3_t angles, const vec3_t position,
-							int AframeNumber, int entNum, vec3_t rayStart, vec3_t rayEnd, vec3_t scale, CMiniHeap *,
+							int AframeNumber, int entNum, vec3_t rayStart, vec3_t rayEnd, vec3_t scale, IHeapAllocator *,
 							EG2_Collision eG2TraceType, int useLod, float fRadius)
 {
 	G2ERROR(ghoul2.IsValid(),"Invalid ghlInfo");
@@ -1920,7 +1920,7 @@ void G2API_CollisionDetect(CCollisionRecord *collRecMap, CGhoul2Info_v &ghoul2, 
 #ifdef _G2_GORE
 		G2_TransformModel(ghoul2, frameNumber, scale, ri.GetG2VertSpaceServer(), useLod, false);
 #else
-		G2_TransformModel(ghoul2, frameNumber, scale,ri.GetG2VertSpaceServer(), useLod);
+		G2_TransformModel(ghoul2, frameNumber, scale, ri.GetG2VertSpaceServer(), useLod);
 #endif
 
 		// model is built. Lets check to see if any triangles are actually hit.
@@ -1964,7 +1964,7 @@ int G2API_GetGhoul2ModelFlags(CGhoul2Info *ghlInfo)
 }
 
 // given a boltmatrix, return in vec a normalised vector for the axis requested in flags
-void G2API_GiveMeVectorFromMatrix(mdxaBone_t &boltMatrix, Eorientations flags, vec3_t &vec)
+void G2API_GiveMeVectorFromMatrix(mdxaBone_t &boltMatrix, Eorientations flags, vec3_t vec)
 {
 	switch (flags)
 	{
@@ -2008,7 +2008,7 @@ void G2API_GiveMeVectorFromMatrix(mdxaBone_t &boltMatrix, Eorientations flags, v
 
 // copy a model from one ghoul2 instance to another, and reset the root surface on the new model if need be
 // NOTE if modelIndex = -1 then copy all the models
-void G2API_CopyGhoul2Instance(CGhoul2Info_v &ghoul2From, CGhoul2Info_v &ghoul2To, int modelIndex)
+int G2API_CopyGhoul2Instance(CGhoul2Info_v &ghoul2From, CGhoul2Info_v &ghoul2To, int modelIndex)
 {
 	//Ensiform: I'm commenting this out because modelIndex appears unused and legitimately set in gamecode
 	//assert(modelIndex==-1); // copy individual bolted parts is not used in jk2 and I didn't want to deal with it
@@ -2042,6 +2042,7 @@ void G2API_CopyGhoul2Instance(CGhoul2Info_v &ghoul2From, CGhoul2Info_v &ghoul2To
 		G2ANIM(ghoul2From,"G2API_CopyGhoul2Instance (source)");
 		G2ANIM(ghoul2To,"G2API_CopyGhoul2Instance (dest)");
 	}
+	return -1;
 }
 
 char *G2API_GetSurfaceName(CGhoul2Info *ghlInfo, int surfNumber)

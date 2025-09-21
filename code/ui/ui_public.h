@@ -78,7 +78,7 @@ typedef struct {
 	int			(*R_Font_StrLenChars)(const char *text);
 	qboolean	(*Language_IsAsian) (void);
 	qboolean	(*Language_UsesSpaces) (void);
-	unsigned int (*AnyLanguage_ReadCharFromString)( char *psText, int *piAdvanceCount, qboolean *pbIsTrailingPunctuation /* = NULL */);
+	unsigned int (*AnyLanguage_ReadCharFromString)( const char *psText, int *piAdvanceCount, qboolean *pbIsTrailingPunctuation /* = NULL */);
 
 	// a scene is built up by calls to R_ClearScene and the various R_Add functions.
 	// Nothing is drawn until R_RenderScene is called.

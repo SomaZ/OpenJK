@@ -42,11 +42,6 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #include <string>
 
 #ifdef REND2_SP
-typedef enum {
-	h_high,
-	h_low,
-	h_dontcare
-} ha_pref;
 void* Hunk_Alloc(int size, ha_pref preference);
 void* Hunk_AllocateTempMemory(int size);
 void Hunk_FreeTempMemory(void* buf);
@@ -3293,9 +3288,7 @@ int R_LightForPoint( vec3_t point, vec3_t ambientLight, vec3_t directedLight, ve
 int R_LightDirForPoint( vec3_t point, vec3_t lightDir, vec3_t normal, world_t *world );
 int R_DLightsForPoint(const vec3_t point, const float radius);
 int R_CubemapForPoint( const vec3_t point );
-#ifdef REND2_SP
-qboolean RE_GetLighting(const vec3_t origin, vec3_t ambientLight, vec3_t directedLight, vec3_t lightDir);
-#endif
+int RE_GetLighting(vec3_t origin, vec3_t ambientLight, vec3_t directedLight, vec3_t lightDir);
 
 /*
 ============================================================

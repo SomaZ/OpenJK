@@ -33,7 +33,7 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 void CM_CleanLeafCache(void);
 extern void SV_FreeClient(client_t*);
 
-CMiniHeap *G2VertSpaceServer = NULL;
+IHeapAllocator *G2VertSpaceServer = NULL;
 /*
 Ghoul2 Insert End
 */

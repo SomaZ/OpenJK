@@ -1064,8 +1064,8 @@ extern qboolean S_FileExists( const char *psFilename );
 extern bool CM_CullWorldBox (const cplane_t *frustum, const vec3pair_t bounds);
 extern qboolean SND_RegisterAudio_LevelLoadEnd(qboolean bDeleteEverythingNotUsedThisLevel /* 99% qfalse */);
 extern cvar_t *Cvar_Set2( const char *var_name, const char *value, qboolean force);
-extern CMiniHeap *G2VertSpaceServer;
-static CMiniHeap *GetG2VertSpaceServer( void ) {
+extern IHeapAllocator *G2VertSpaceServer;
+static IHeapAllocator *GetG2VertSpaceServer( void ) {
 	return G2VertSpaceServer;
 }
 
@@ -1172,7 +1172,7 @@ void CL_InitRef( void ) {
 	rit.Printf = CL_RefPrintf;
 	rit.SE_GetString = String_GetStringValue;
 
-	rit.SV_Trace = SV_Trace;
+	//rit.SV_Trace = SV_Trace; // duplicate?
 
 	rit.gpvCachedMapDiskImage = get_gpvCachedMapDiskImage;
 	rit.gsCachedMapDiskImage = get_gsCachedMapDiskImage;
