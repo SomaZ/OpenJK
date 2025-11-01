@@ -493,7 +493,7 @@ qboolean G2_Set_Bone_Angles_Index( boneInfo_v &blist, const int index,
 // Given a model handle, and a bone name, we want to set angles specifically for overriding
 qboolean G2_Set_Bone_Angles(CGhoul2Info *ghlInfo, boneInfo_v &blist, const char *boneName, const float *angles,
 							const int flags, const Eorientations up, const Eorientations left, const Eorientations forward,
-							qhandle_t *modelList, const int modelIndex, const int blendTime, const int currentTime)
+							const int blendTime, const int currentTime)
 {
 	model_t		*mod_a;
 
@@ -678,7 +678,7 @@ qboolean G2_Set_Bone_Anim_Index(
 		float	currentFrame, animSpeed;
 		int 	startFrame, endFrame, flags;
 		// figure out where we are now
-		if (G2_Get_Bone_Anim_Index(blist, index, currentTime, &currentFrame, &startFrame, &endFrame, &flags, &animSpeed, NULL, numFrames))
+		if (G2_Get_Bone_Anim_Index(blist, index, currentTime, &currentFrame, &startFrame, &endFrame, &flags, &animSpeed, numFrames))
 		{
 			if (blist[index].blendStart == currentTime)	//we're replacing a blend in progress which hasn't started
 			{
@@ -885,7 +885,7 @@ qboolean G2_Get_Bone_Anim_Range(CGhoul2Info *ghlInfo, boneInfo_v &blist, const c
 void G2_TimingModel(boneInfo_t &bone,int currentTime,int numFramesInFile,int &currentFrame,int &newFrame,float &lerp);
 
 qboolean G2_Get_Bone_Anim_Index( boneInfo_v &blist, const int index, const int currentTime,
-						  float *currentFrame, int *startFrame, int *endFrame, int *flags, float *retAnimSpeed, qhandle_t *modelList, int numFrames)
+						  float *currentFrame, int *startFrame, int *endFrame, int *flags, float *retAnimSpeed, int numFrames)
 {
 
 	// did we find it?
@@ -918,7 +918,7 @@ qboolean G2_Get_Bone_Anim_Index( boneInfo_v &blist, const int index, const int c
 // given a model, bonelist and bonename, return the current frame, startframe and endframe of the current animation
 // NOTE if we aren't running an animation, then qfalse is returned
 qboolean G2_Get_Bone_Anim(CGhoul2Info *ghlInfo, boneInfo_v &blist, const char *boneName, const int currentTime,
-						  float *currentFrame, int *startFrame, int *endFrame, int *flags, float *retAnimSpeed, qhandle_t *modelList, int modelIndex)
+						  float *currentFrame, int *startFrame, int *endFrame, int *flags, float *retAnimSpeed)
 {
 	model_t		*mod_a = (model_t *)ghlInfo->animModel;
 
@@ -936,7 +936,7 @@ qboolean G2_Get_Bone_Anim(CGhoul2Info *ghlInfo, boneInfo_v &blist, const char *b
 
 	assert(ghlInfo->aHeader);
 
-	if (G2_Get_Bone_Anim_Index(blist, index, currentTime, currentFrame, startFrame, endFrame, flags, retAnimSpeed, modelList, ghlInfo->aHeader->numFrames))
+	if (G2_Get_Bone_Anim_Index(blist, index, currentTime, currentFrame, startFrame, endFrame, flags, retAnimSpeed, ghlInfo->aHeader->numFrames))
 	{
 		assert(*startFrame>=0&&*startFrame<ghlInfo->aHeader->numFrames);
 		assert(*endFrame>0&&*endFrame<=ghlInfo->aHeader->numFrames);
@@ -964,7 +964,7 @@ qboolean G2_Pause_Bone_Anim(CGhoul2Info *ghlInfo, boneInfo_v &blist, const char 
 			float	currentFrame = 0.0f, animSpeed = 1.0f;
 
 			// figure out what frame we are on now
-			G2_Get_Bone_Anim(ghlInfo, blist, boneName, blist[index].pauseTime, &currentFrame, &startFrame, &endFrame, &flags, &animSpeed, NULL, 0);
+			G2_Get_Bone_Anim(ghlInfo, blist, boneName, blist[index].pauseTime, &currentFrame, &startFrame, &endFrame, &flags, &animSpeed);
 			// reset start time so we are actually on this frame right now
 			G2_Set_Bone_Anim(ghlInfo, blist, boneName, startFrame, endFrame, flags, animSpeed, currentTime, currentFrame, 0);
 			// no pausing anymore

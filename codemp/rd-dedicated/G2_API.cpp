@@ -1125,7 +1125,7 @@ qboolean G2API_GetBoneAnim(CGhoul2Info_v& ghoul2, int modelIndex, const char *bo
 	{
 		int aCurrentTime=G2API_GetTime(currentTime);
  		qboolean ret=G2_Get_Bone_Anim(ghlInfo, ghlInfo->mBlist, boneName, aCurrentTime, currentFrame,
-			startFrame, endFrame, flags, animSpeed, modelList, ghlInfo->mModelindex);
+			startFrame, endFrame, flags, animSpeed);
 #ifdef _DEBUG
 		/*
 		assert(*endFrame>0);
@@ -1307,7 +1307,7 @@ qboolean G2API_SetBoneAngles(CGhoul2Info_v &ghoul2, const int modelIndex, const 
 		{
 				// ensure we flush the cache
 			ghlInfo->mSkelFrameNum = 0;
-			return G2_Set_Bone_Angles(ghlInfo, ghlInfo->mBlist, boneName, angles, flags, up, left, forward, modelList, ghlInfo->mModelindex, blendTime, currentTime);
+			return G2_Set_Bone_Angles(ghlInfo, ghlInfo->mBlist, boneName, angles, flags, up, left, forward, blendTime, currentTime);
 		}
 	}
 	return qfalse;
