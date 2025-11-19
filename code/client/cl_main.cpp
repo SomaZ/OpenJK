@@ -1055,6 +1055,21 @@ int get_com_frameTime( void )
 	return com_frameTime;
 }
 
+qboolean CGVMLoaded( void )
+{
+	return qfalse;
+}
+
+vmSlots_t GetCurrentVMSlot( void )
+{
+	return MAX_VM;
+}
+
+void CM_BoxTrace_SP( trace_t *results, const vec3_t start, const vec3_t end, const vec3_t mins, const vec3_t maxs, clipHandle_t model, int brushmask, int capsule )
+{
+	CM_BoxTrace(results, start, end, mins, maxs, model, brushmask);
+};
+
 /*
 ============
 CL_InitRef
@@ -1172,8 +1187,6 @@ void CL_InitRef( void ) {
 	rit.Printf = CL_RefPrintf;
 	rit.SE_GetString = String_GetStringValue;
 
-	//rit.SV_Trace = SV_Trace; // duplicate?
-
 	rit.gpvCachedMapDiskImage = get_gpvCachedMapDiskImage;
 	rit.gsCachedMapDiskImage = get_gsCachedMapDiskImage;
 	rit.gbUsingCachedMapDataRightNow = get_gbUsingCachedMapDataRightNow;
@@ -1183,6 +1196,10 @@ void CL_InitRef( void ) {
 	rit.SV_PointContents = SV_PointContents;
 
 	rit.saved_game = &ojk::SavedGame::get_instance();
+
+	rit.CGVMLoaded = CGVMLoaded;
+	rit.GetCurrentVMSlot = GetCurrentVMSlot;
+	rit.CM_BoxTrace = CM_BoxTrace_SP;
 
 	ret = GetRefAPI( REF_API_VERSION, &rit );
 
