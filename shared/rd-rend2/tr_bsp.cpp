@@ -4142,7 +4142,6 @@ static void R_GenerateSurfaceSprites( const world_t *world, int worldIndex )
 					if (j > 0 && (stage->stateBits & GLS_DEPTHFUNC_EQUAL))
 					{
 						ri.Printf(PRINT_WARNING, "depthFunc equal is not supported on surface sprites in rend2. Skipping stage\n");
-						surf->numSurfaceSprites -= 1;
 						continue;
 					}
 
@@ -4172,6 +4171,8 @@ static void R_GenerateSurfaceSprites( const world_t *world, int worldIndex )
 
 					++surfaceSpriteNum;
 				}
+				surf->numSurfaceSprites = surfaceSpriteNum;
+
 				break;
 			}
 
