@@ -26,10 +26,6 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 	#include "../qcommon/q_shared.h"
 #endif
 
-#if !defined(TR_LOCAL_H)
-	#include "tr_local.h"
-#endif
-
 #if !defined(G2_H_INC)
 	#include "../ghoul2/G2.h"
 #endif

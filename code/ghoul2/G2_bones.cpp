@@ -26,9 +26,6 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 	#include "../qcommon/q_shared.h"
 #endif
 
-#if !defined(TR_LOCAL_H)
-	#include "tr_local.h"
-#endif
 #if !defined(_QCOMMON_H_)
 	#include "../qcommon/qcommon.h"
 #endif
@@ -88,7 +85,7 @@ int G2_Find_Bone(CGhoul2Info *ghlInfo, boneInfo_v &blist, const char *boneName)
 #define DEBUG_G2_BONES (0)
 
 // we need to add a bone to the list - find a free one and see if we can find a corresponding bone in the gla file
-int G2_Add_Bone (const model_t *mod, boneInfo_v &blist, const char *boneName)
+int G2_Add_Bone (const model_s *mod, boneInfo_v &blist, const char *boneName)
 {
 	mdxaSkel_t			*skel;
 	mdxaSkelOffsets_t	*offsets;
@@ -98,13 +95,15 @@ int G2_Add_Bone (const model_t *mod, boneInfo_v &blist, const char *boneName)
 	memset(&tempBone, 0, sizeof(tempBone));
 	//rww - RAGDOLL_END
 
-   	offsets = (mdxaSkelOffsets_t *)((byte *)mod->mdxa + sizeof(mdxaHeader_t));
+	mdxaHeader_t *mdxa = re.G2_GetG2AHeaderByModel(mod);
+
+   	offsets = (mdxaSkelOffsets_t *)((byte *)mdxa + sizeof(mdxaHeader_t));
 
  	// walk the entire list of bones in the gla file for this model and see if any match the name of the bone we want to find
 	int x;
- 	for (x=0; x< mod->mdxa->numBones; x++)
+ 	for (x=0; x< mdxa->numBones; x++)
  	{
- 		skel = (mdxaSkel_t *)((byte *)mod->mdxa + sizeof(mdxaHeader_t) + offsets->offsets[x]);
+ 		skel = (mdxaSkel_t *)((byte *)mdxa + sizeof(mdxaHeader_t) + offsets->offsets[x]);
  		// if name is the same, we found it
  		if (!Q_stricmp(skel->name, boneName))
 		{
@@ -113,7 +112,7 @@ int G2_Add_Bone (const model_t *mod, boneInfo_v &blist, const char *boneName)
 	}
 
 	// check to see we did actually make a match with a bone in the model
-	if (x == mod->mdxa->numBones)
+	if (x == mdxa->numBones)
 	{
 #if _DEBUG
 		G2_Bone_Not_Found(boneName,mod->name);
@@ -127,7 +126,7 @@ int G2_Add_Bone (const model_t *mod, boneInfo_v &blist, const char *boneName)
 		// if this bone entry has info in it, bounce over it
 		if (blist[i].boneNumber != -1)
 		{
-			skel = (mdxaSkel_t *)((byte *)mod->mdxa + sizeof(mdxaHeader_t) + offsets->offsets[blist[i].boneNumber]);
+			skel = (mdxaSkel_t *)((byte *)mdxa + sizeof(mdxaHeader_t) + offsets->offsets[blist[i].boneNumber]);
 			// if name is the same, we found it
 			if (!Q_stricmp(skel->name, boneName))
 			{
@@ -228,7 +227,7 @@ qboolean G2_Stop_Bone_Index( boneInfo_v &blist, int index, int flags)
 }
 
 // generate a matrix for a given bone given some new angles for it.
-void G2_Generate_Matrix(const model_t *mod, boneInfo_v &blist, int index, const float *angles, int flags,
+void G2_Generate_Matrix(const model_s *mod, boneInfo_v &blist, int index, const float *angles, int flags,
 						const Eorientations up, const Eorientations left, const Eorientations forward)
 {
 	mdxaSkel_t		*skel;
@@ -321,8 +320,9 @@ void G2_Generate_Matrix(const model_t *mod, boneInfo_v &blist, int index, const 
 		Create_Matrix(newAngles, boneOverride);
 
 		// figure out where the bone hirearchy info is
-		offsets = (mdxaSkelOffsets_t *)((byte *)mod->mdxa + sizeof(mdxaHeader_t));
-		skel = (mdxaSkel_t *)((byte *)mod->mdxa + sizeof(mdxaHeader_t) + offsets->offsets[blist[index].boneNumber]);
+		mdxaHeader_t *mdxa = re.G2_GetG2AHeaderByModel(mod);
+		offsets = (mdxaSkelOffsets_t *)((byte *)mdxa + sizeof(mdxaHeader_t));
+		skel = (mdxaSkel_t *)((byte *)mdxa + sizeof(mdxaHeader_t) + offsets->offsets[blist[index].boneNumber]);
 
 		Multiply_3x4Matrix(&temp1,  boneOverride,&skel->BasePoseMatInv);
 		Multiply_3x4Matrix(boneOverride,&skel->BasePoseMat, &temp1);
@@ -3250,7 +3250,132 @@ static inline int G2_RagIndexForBoneNum(int boneNum)
 
 extern mdxaBone_t		worldMatrix;
 void G2_RagGetBoneBasePoseMatrixLow(CGhoul2Info &ghoul2, int boneNum, mdxaBone_t &boneMatrix, mdxaBone_t &retMatrix, vec3_t scale);
-void G2_RagGetAnimMatrix(CGhoul2Info &ghoul2, const int boneNum, mdxaBone_t &matrix, const int frame);
+//basically construct a seperate skeleton with full hierarchy to store a matrix
+//off which will give us the desired settling position given the frame in the skeleton
+//that should be used -rww
+void G2_RagGetAnimMatrix(CGhoul2Info &ghoul2, const int boneNum, mdxaBone_t &matrix, const int frame)
+{
+	mdxaBone_t animMatrix;
+	mdxaSkel_t *skel;
+	mdxaSkel_t *pskel;
+	mdxaSkelOffsets_t *offsets;
+	int parent;
+	int bListIndex;
+	int parentBlistIndex;
+#ifdef _RAG_PRINT_TEST
+	bool actuallySet = false;
+#endif
+
+	assert(ghoul2.mBoneCache);
+	assert(ghoul2.animModel);
+
+	mdxaHeader_t *header = re.G2_GetG2AHeaderByBoneCacheOfG2I(ghoul2);
+	offsets = (mdxaSkelOffsets_t *)((byte *)header + sizeof(mdxaHeader_t));
+	skel = (mdxaSkel_t *)((byte *)header + sizeof(mdxaHeader_t) + offsets->offsets[boneNum]);
+
+	//find/add the bone in the list
+	if (!skel->name[0])
+	{
+		bListIndex = -1;
+	}
+	else
+	{
+		bListIndex = G2_Find_Bone(&ghoul2, ghoul2.mBlist, skel->name);
+		if (bListIndex == -1)
+		{
+#ifdef _RAG_PRINT_TEST
+			Com_Printf("Attempting to add %s\n", skel->name);
+#endif
+			bListIndex = G2_Add_Bone(ghoul2.animModel, ghoul2.mBlist, skel->name);
+		}
+	}
+
+	assert(bListIndex != -1);
+
+	boneInfo_t &bone = ghoul2.mBlist[bListIndex];
+
+	if (bone.hasAnimFrameMatrix == frame)
+	{ //already calculated so just grab it
+		matrix = bone.animFrameMatrix;
+		return;
+	}
+
+	//get the base matrix for the specified frame
+	UnCompressBone(animMatrix.matrix, boneNum, header, frame);
+
+	parent = skel->parent;
+	if (boneNum > 0 && parent > -1)
+	{
+		//recursively call to assure all parent matrices are set up
+		G2_RagGetAnimMatrix(ghoul2, parent, matrix, frame);
+
+		//assign the new skel ptr for our parent
+		pskel = (mdxaSkel_t *)((byte *)header + sizeof(mdxaHeader_t) + offsets->offsets[parent]);
+
+		//taking bone matrix for the skeleton frame and parent's animFrameMatrix into account, determine our final animFrameMatrix
+		if (!pskel->name[0])
+		{
+			parentBlistIndex = -1;
+		}
+		else
+		{
+			parentBlistIndex = G2_Find_Bone(&ghoul2, ghoul2.mBlist, pskel->name);
+			if (parentBlistIndex == -1)
+			{
+				parentBlistIndex = G2_Add_Bone(ghoul2.animModel, ghoul2.mBlist, pskel->name);
+			}
+		}
+
+		assert(parentBlistIndex != -1);
+
+		boneInfo_t &pbone = ghoul2.mBlist[parentBlistIndex];
+
+		assert(pbone.hasAnimFrameMatrix == frame); //this should have been calc'd in the recursive call
+
+		Multiply_3x4Matrix(&bone.animFrameMatrix, &pbone.animFrameMatrix, &animMatrix);
+
+#ifdef _RAG_PRINT_TEST
+		if (parentBlistIndex != -1 && bListIndex != -1)
+		{
+			actuallySet = true;
+		}
+		else
+		{
+			Com_Printf("BAD LIST INDEX: %s, %s [%i]\n", skel->name, pskel->name, parent);
+		}
+#endif
+	}
+	else
+	{ //root
+		Multiply_3x4Matrix(&bone.animFrameMatrix, &ghoul2.mBoneCache->rootMatrix, &animMatrix);
+#ifdef _RAG_PRINT_TEST
+		if (bListIndex != -1)
+		{
+			actuallySet = true;
+		}
+		else
+		{
+			Com_Printf("BAD LIST INDEX: %s\n", skel->name);
+		}
+#endif
+		//bone.animFrameMatrix = ghoul2.mBoneCache->mFinalBones[boneNum].boneMatrix;
+		//Maybe use this for the root, so that the orientation is in sync with the current
+		//root matrix? However this would require constant recalculation of this base
+		//skeleton which I currently do not want.
+	}
+
+	//never need to figure it out again
+	bone.hasAnimFrameMatrix = frame;
+
+#ifdef _RAG_PRINT_TEST
+	if (!actuallySet)
+	{
+		Com_Printf("SET FAILURE\n");
+	}
+#endif
+
+	matrix = bone.animFrameMatrix;
+}
 
 static inline void G2_RagGetWorldAnimMatrix(CGhoul2Info &ghoul2, boneInfo_t &bone, CRagDollUpdateParams *params, mdxaBone_t &retMatrix)
 {
@@ -4544,14 +4669,14 @@ void G2_InitIK(CGhoul2Info_v &ghoul2V, sharedRagDollUpdateParams_t *parms, int t
 
 qboolean G2_SetBoneIKState(CGhoul2Info_v &ghoul2, int time, const char *boneName, int ikState, sharedSetBoneIKStateParams_t *params)
 {
-	model_t		*mod_a;
+	model_s		*mod_a;
 	int g2index = 0;
 	int curTime = time;
 	CGhoul2Info &g2 = ghoul2[g2index];
 	const mdxaHeader_t *rmod_a = G2_GetModA(g2);
 
 	boneInfo_v &blist = g2.mBlist;
-	mod_a = (model_t *)g2.animModel;
+	mod_a = (model_s *)g2.animModel;
 
 	if (!boneName)
 	{ //null bonename param means it's time to init the ik stuff on this instance

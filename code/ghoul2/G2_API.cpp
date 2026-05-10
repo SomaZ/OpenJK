@@ -26,8 +26,8 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 #include <string>
 
 #include "../qcommon/q_shared.h"
-#include "tr_local.h"
-#include "tr_common.h"
+//#include "tr_local.h"
+#include "../rd-common/tr_common.h"
 #include "../ghoul2/G2.h"
 #include "../qcommon/MiniHeap.h"
 
@@ -764,7 +764,7 @@ void G2API_CleanGhoul2Models(CGhoul2Info_v &ghoul2)
 
 qhandle_t G2API_PrecacheGhoul2Model(const char *fileName)
 {
-	return RE_RegisterModel((char *)fileName);
+	return re.RegisterModel((char *)fileName);
 }
 
 // initialise all that needs to be on a new Ghoul II model
@@ -1835,11 +1835,11 @@ void G2API_SetGhoul2ModelIndexes(CGhoul2Info_v &ghoul2, qhandle_t *modelList, qh
 
 char *G2API_GetAnimFileNameIndex(qhandle_t modelIndex)
 {
-	model_t		*mod_m = R_GetModelByHandle(modelIndex);
-	G2ERROR(mod_m&&mod_m->mdxm,"Bad Model");
-	if (mod_m&&mod_m->mdxm)
+	mdxmHeader_t *mdxm = re.G2_GetG2MHeaderByModelHandle(modelIndex);
+	G2ERROR(mdxm,"Bad Model");
+	if (mdxm)
 	{
-		return mod_m->mdxm->animName;
+		return mdxm->animName;
 	}
 	return "";
 }
@@ -1849,11 +1849,11 @@ char *G2API_GetAnimFileNameIndex(qhandle_t modelIndex)
 //
 char *G2API_GetAnimFileInternalNameIndex(qhandle_t modelIndex)
 {
-	model_t		*mod_a = R_GetModelByHandle(modelIndex);
-	G2ERROR(mod_a&&mod_a->mdxa,"Bad Model");
-	if (mod_a&&mod_a->mdxa)
+	mdxaHeader_t *mdxa = re.G2_GetG2AHeaderByModelHandle(modelIndex);
+	G2ERROR(mdxa,"Bad Model");
+	if (mdxa)
 	{
-		return mod_a->mdxa->name;
+		return mdxa->name;
 	}
 	return "";
 }
@@ -2057,7 +2057,7 @@ char *G2API_GetSurfaceName(CGhoul2Info *ghlInfo, int surfNumber)
 		if (surf)
 		{
 			assert(G2_MODEL_OK(ghlInfo));
-			mdxmHierarchyOffsets_t	*surfIndexes = (mdxmHierarchyOffsets_t *)((byte *)ghlInfo->currentModel->mdxm + sizeof(mdxmHeader_t));
+			mdxmHierarchyOffsets_t	*surfIndexes = (mdxmHierarchyOffsets_t *)((byte *)re.G2_GetG2MHeaderByModel(ghlInfo->currentModel) + sizeof(mdxmHeader_t));
 			surfInfo = (mdxmSurfHierarchy_t *)((byte *)surfIndexes + surfIndexes->offsets[surf->thisSurfaceIndex]);
 			return surfInfo->name;
 		}
@@ -2218,7 +2218,7 @@ bool G2_TestModelPointers(CGhoul2Info *ghlInfo) // returns true if the model is 
 	ghlInfo->mValid=false;
 	if (ghlInfo->mModelindex != -1)
 	{
-		ghlInfo->mModel = RE_RegisterModel(ghlInfo->mFileName);
+		ghlInfo->mModel = re.RegisterModel(ghlInfo->mFileName);
 		ghlInfo->currentModel = R_GetModelByHandle(ghlInfo->mModel);
 		if (ghlInfo->currentModel)
 		{
@@ -2277,7 +2277,7 @@ bool G2_SetupModelPointers(CGhoul2Info *ghlInfo) // returns true if the model is
 	if (ghlInfo->mModelindex != -1)
 	{
 		G2ERROR(ghlInfo->mFileName[0],"empty ghlInfo->mFileName");
-		ghlInfo->mModel = RE_RegisterModel(ghlInfo->mFileName);
+		ghlInfo->mModel = re.RegisterModel(ghlInfo->mFileName);
 		ghlInfo->currentModel = R_GetModelByHandle(ghlInfo->mModel);
 		G2ERROR(ghlInfo->currentModel,va("NULL Model (glm) %s",ghlInfo->mFileName));
 		if (ghlInfo->currentModel)
