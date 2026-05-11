@@ -286,7 +286,7 @@ void SV_SpawnServer( const char *server, ForceReload_e eForceReload, qboolean bA
 	}
 
 	sv.time = 1000;
-	re.G2API_SetTime(sv.time,G2T_SV_TIME);
+	G2API_SetTime(sv.time,G2T_SV_TIME);
 
 	CM_LoadMap( va("maps/%s.bsp", server), qfalse, &checksum, qfalse );
 
@@ -314,7 +314,7 @@ void SV_SpawnServer( const char *server, ForceReload_e eForceReload, qboolean bA
 	for ( i = 0 ;i < 4 ; i++ ) {
 		ge->RunFrame( sv.time );
 		sv.time += 100;
-		re.G2API_SetTime(sv.time,G2T_SV_TIME);
+		G2API_SetTime(sv.time,G2T_SV_TIME);
 	}
 #ifndef JK2_MODE
 	ge->ConnectNavs(sv_mapname->string, sv_mapChecksum->integer);
@@ -349,7 +349,7 @@ void SV_SpawnServer( const char *server, ForceReload_e eForceReload, qboolean bA
 	// run another frame to allow things to look at all connected clients
 	ge->RunFrame( sv.time );
 	sv.time += 100;
-	re.G2API_SetTime(sv.time,G2T_SV_TIME);
+	G2API_SetTime(sv.time,G2T_SV_TIME);
 
 
 	// save systeminfo and serverinfo strings

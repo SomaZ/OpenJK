@@ -49,6 +49,7 @@ extern mdxaBone_t		worldMatrix;
 extern mdxaBone_t		worldMatrixInv;
 
 extern	cvar_t	*r_Ghoul2TimeBase;
+extern CMiniHeap* G2VertSpaceServer;
 
 extern refexport_t	re;
 
@@ -719,7 +720,7 @@ void RestoreGhoul2InfoArray()
 		TheGhoul2InfoArray();
 
 		size_t size;
-		const void *data = ri.PD_Load (PERSISTENT_G2DATA, &size);
+		const void *data = PD_Load (PERSISTENT_G2DATA, &size);
 		if ( data == NULL )
 		{
 			return;
@@ -747,7 +748,7 @@ void SaveGhoul2InfoArray()
 #ifdef _DEBUG
 	assert (written == size);
 #endif // _DEBUG
-	if ( !ri.PD_Store (PERSISTENT_G2DATA, data, size) )
+	if ( !PD_Store (PERSISTENT_G2DATA, data, size) )
 	{
 		Com_Printf (S_COLOR_RED "ERROR: Failed to store persistent renderer data.\n");
 	}
@@ -1914,13 +1915,13 @@ void G2API_CollisionDetect(CCollisionRecord *collRecMap, CGhoul2Info_v &ghoul2, 
 		// pre generate the world matrix - used to transform the incoming ray
 		G2_GenerateWorldMatrix(angles, position);
 
-		ri.GetG2VertSpaceServer()->ResetHeap();
+		G2VertSpaceServer->ResetHeap();
 
 		// now having done that, time to build the model
 #ifdef _G2_GORE
-		G2_TransformModel(ghoul2, frameNumber, scale, ri.GetG2VertSpaceServer(), useLod, false);
+		G2_TransformModel(ghoul2, frameNumber, scale, G2VertSpaceServer, useLod, false);
 #else
-		G2_TransformModel(ghoul2, frameNumber, scale,ri.GetG2VertSpaceServer(), useLod);
+		G2_TransformModel(ghoul2, frameNumber, scale, G2VertSpaceServer, useLod);
 #endif
 
 		// model is built. Lets check to see if any triangles are actually hit.
@@ -1935,7 +1936,7 @@ void G2API_CollisionDetect(CCollisionRecord *collRecMap, CGhoul2Info_v &ghoul2, 
 		G2_TraceModels(ghoul2, transRayStart, transRayEnd, collRecMap, entNum, eG2TraceType, useLod, fRadius);
 #endif
 
-		ri.GetG2VertSpaceServer()->ResetHeap();
+		G2VertSpaceServer->ResetHeap();
 		// now sort the resulting array of collision records so they are distance ordered
 		qsort( collRecMap, MAX_G2_COLLISIONS,
 			sizeof( CCollisionRecord ), QsortDistance );
@@ -2157,6 +2158,7 @@ void G2API_ClearSkinGore ( CGhoul2Info_v &ghoul2 )
 }
 
 extern int		G2_DecideTraceLod(CGhoul2Info &ghoul2, int useLod);
+extern	cvar_t* r_lodbias;
 void G2API_AddSkinGore(CGhoul2Info_v &ghoul2,SSkinGoreData &gore)
 {
 	if (VectorLength(gore.rayDirection)<.1f)
@@ -2186,13 +2188,13 @@ void G2API_AddSkinGore(CGhoul2Info_v &ghoul2,SSkinGoreData &gore)
 	int lod;
 	ResetGoreTag();
 	const int lodbias=Com_Clamp ( 0, 2,G2_DecideTraceLod(ghoul2[0],r_lodbias->integer));
-	const int maxLod =Com_Clamp (0,ghoul2[0].currentModel->numLods,3);	//limit to the number of lods the main model has
+	const int maxLod =Com_Clamp (0,re.G2_GetG2numLods(ghoul2[0].currentModel),3);	//limit to the number of lods the main model has
 	for(lod=lodbias;lod<maxLod;lod++)
 	{
 		// now having done that, time to build the model
-		ri.GetG2VertSpaceServer()->ResetHeap();
+		G2VertSpaceServer->ResetHeap();
 
-		G2_TransformModel(ghoul2, gore.currentTime, gore.scale,ri.GetG2VertSpaceServer(),lod,true,&gore);
+		G2_TransformModel(ghoul2, gore.currentTime, gore.scale, G2VertSpaceServer,lod,true,&gore);
 
 		// now walk each model and compute new texture coordinates
 		G2_TraceModels(ghoul2, transHitLocation, transRayDirection, 0, gore.entNum, G2_NOCOLLIDE,lod,1.0f,gore.SSize,gore.TSize,gore.theta,gore.shader,&gore,qtrue);
@@ -2208,127 +2210,127 @@ void G2API_AddSkinGore(CGhoul2Info_v &ghoul2,SSkinGoreData &gore)
 }
 #endif
 
-bool G2_TestModelPointers(CGhoul2Info *ghlInfo) // returns true if the model is properly set up
-{
-	G2ERROR(ghlInfo,"NULL ghlInfo");
-	if (!ghlInfo)
-	{
-		return false;
-	}
-	ghlInfo->mValid=false;
-	if (ghlInfo->mModelindex != -1)
-	{
-		ghlInfo->mModel = re.RegisterModel(ghlInfo->mFileName);
-		ghlInfo->currentModel = R_GetModelByHandle(ghlInfo->mModel);
-		if (ghlInfo->currentModel)
-		{
-			if (ghlInfo->currentModel->mdxm)
-			{
-				if (ghlInfo->currentModelSize)
-				{
-					if (ghlInfo->currentModelSize!=ghlInfo->currentModel->mdxm->ofsEnd)
-					{
-						Com_Error(ERR_DROP, "Ghoul2 model was reloaded and has changed, map must be restarted.\n");
-					}
-				}
-				ghlInfo->currentModelSize=ghlInfo->currentModel->mdxm->ofsEnd;
-				ghlInfo->animModel =  R_GetModelByHandle(ghlInfo->currentModel->mdxm->animIndex + ghlInfo->animModelIndexOffset);
-				if (ghlInfo->animModel)
-				{
-					ghlInfo->aHeader =ghlInfo->animModel->mdxa;
-					G2ERROR(ghlInfo->aHeader,va("Model has no mdxa (gla) %s",ghlInfo->mFileName));
-					if (!ghlInfo->aHeader)
-					{
-						Com_Error(ERR_DROP, "Ghoul2 Model has no mdxa (gla) %s",ghlInfo->mFileName);
-					}
-					if (ghlInfo->currentAnimModelSize)
-					{
-						if (ghlInfo->currentAnimModelSize!=ghlInfo->aHeader->ofsEnd)
-						{
-							Com_Error(ERR_DROP, "Ghoul2 model was reloaded and has changed, map must be restarted.\n");
-						}
-					}
-					ghlInfo->currentAnimModelSize=ghlInfo->aHeader->ofsEnd;
-					ghlInfo->mValid=true;
-				}
-			}
-		}
-	}
-	if (!ghlInfo->mValid)
-	{
-		ghlInfo->currentModel=0;
-		ghlInfo->currentModelSize=0;
-		ghlInfo->animModel=0;
-		ghlInfo->currentAnimModelSize=0;
-		ghlInfo->aHeader=0;
-	}
-	return ghlInfo->mValid;
-}
+//bool G2_TestModelPointers(CGhoul2Info *ghlInfo) // returns true if the model is properly set up
+//{
+//	G2ERROR(ghlInfo,"NULL ghlInfo");
+//	if (!ghlInfo)
+//	{
+//		return false;
+//	}
+//	ghlInfo->mValid=false;
+//	if (ghlInfo->mModelindex != -1)
+//	{
+//		ghlInfo->mModel = re.RegisterModel(ghlInfo->mFileName);
+//		ghlInfo->currentModel = R_GetModelByHandle(ghlInfo->mModel);
+//		if (ghlInfo->currentModel)
+//		{
+//			if (ghlInfo->currentModel->mdxm)
+//			{
+//				if (ghlInfo->currentModelSize)
+//				{
+//					if (ghlInfo->currentModelSize!=ghlInfo->currentModel->mdxm->ofsEnd)
+//					{
+//						Com_Error(ERR_DROP, "Ghoul2 model was reloaded and has changed, map must be restarted.\n");
+//					}
+//				}
+//				ghlInfo->currentModelSize=ghlInfo->currentModel->mdxm->ofsEnd;
+//				ghlInfo->animModel =  R_GetModelByHandle(ghlInfo->currentModel->mdxm->animIndex + ghlInfo->animModelIndexOffset);
+//				if (ghlInfo->animModel)
+//				{
+//					ghlInfo->aHeader =ghlInfo->animModel->mdxa;
+//					G2ERROR(ghlInfo->aHeader,va("Model has no mdxa (gla) %s",ghlInfo->mFileName));
+//					if (!ghlInfo->aHeader)
+//					{
+//						Com_Error(ERR_DROP, "Ghoul2 Model has no mdxa (gla) %s",ghlInfo->mFileName);
+//					}
+//					if (ghlInfo->currentAnimModelSize)
+//					{
+//						if (ghlInfo->currentAnimModelSize!=ghlInfo->aHeader->ofsEnd)
+//						{
+//							Com_Error(ERR_DROP, "Ghoul2 model was reloaded and has changed, map must be restarted.\n");
+//						}
+//					}
+//					ghlInfo->currentAnimModelSize=ghlInfo->aHeader->ofsEnd;
+//					ghlInfo->mValid=true;
+//				}
+//			}
+//		}
+//	}
+//	if (!ghlInfo->mValid)
+//	{
+//		ghlInfo->currentModel=0;
+//		ghlInfo->currentModelSize=0;
+//		ghlInfo->animModel=0;
+//		ghlInfo->currentAnimModelSize=0;
+//		ghlInfo->aHeader=0;
+//	}
+//	return ghlInfo->mValid;
+//}
 
-bool G2_SetupModelPointers(CGhoul2Info *ghlInfo) // returns true if the model is properly set up
-{
-	G2ERROR(ghlInfo,"NULL ghlInfo");
-	if (!ghlInfo)
-	{
-		return false;
-	}
-	ghlInfo->mValid=false;
-//	G2WARNING(ghlInfo->mModelindex != -1,"Setup request on non-used info slot?");
-	if (ghlInfo->mModelindex != -1)
-	{
-		G2ERROR(ghlInfo->mFileName[0],"empty ghlInfo->mFileName");
-		ghlInfo->mModel = re.RegisterModel(ghlInfo->mFileName);
-		ghlInfo->currentModel = R_GetModelByHandle(ghlInfo->mModel);
-		G2ERROR(ghlInfo->currentModel,va("NULL Model (glm) %s",ghlInfo->mFileName));
-		if (ghlInfo->currentModel)
-		{
-			G2ERROR(ghlInfo->currentModel->mdxm,va("Model has no mdxm (glm) %s",ghlInfo->mFileName));
-			if (ghlInfo->currentModel->mdxm)
-			{
-				if (ghlInfo->currentModelSize)
-				{
-					if (ghlInfo->currentModelSize!=ghlInfo->currentModel->mdxm->ofsEnd)
-					{
-						Com_Error(ERR_DROP, "Ghoul2 model was reloaded and has changed, map must be restarted.\n");
-					}
-				}
-				ghlInfo->currentModelSize=ghlInfo->currentModel->mdxm->ofsEnd;
-				G2ERROR(ghlInfo->currentModelSize,va("Zero sized Model? (glm) %s",ghlInfo->mFileName));
-
-				ghlInfo->animModel =  R_GetModelByHandle(ghlInfo->currentModel->mdxm->animIndex + ghlInfo->animModelIndexOffset);
-				G2ERROR(ghlInfo->animModel,va("NULL Model (gla) %s",ghlInfo->mFileName));
-				if (ghlInfo->animModel)
-				{
-					ghlInfo->aHeader =ghlInfo->animModel->mdxa;
-					G2ERROR(ghlInfo->aHeader,va("Model has no mdxa (gla) %s",ghlInfo->mFileName));
-					if (!ghlInfo->aHeader)
-					{
-						Com_Error(ERR_DROP, "Ghoul2 Model has no mdxa (gla) %s",ghlInfo->mFileName);
-					}
-					if (ghlInfo->currentAnimModelSize)
-					{
-						if (ghlInfo->currentAnimModelSize!=ghlInfo->aHeader->ofsEnd)
-						{
-							Com_Error(ERR_DROP, "Ghoul2 model was reloaded and has changed, map must be restarted.\n");
-						}
-					}
-					ghlInfo->currentAnimModelSize=ghlInfo->aHeader->ofsEnd;
-					G2ERROR(ghlInfo->currentAnimModelSize,va("Zero sized Model? (gla) %s",ghlInfo->mFileName));
-					ghlInfo->mValid=true;
-				}
-			}
-		}
-	}
-	if (!ghlInfo->mValid)
-	{
-		ghlInfo->currentModel=0;
-		ghlInfo->currentModelSize=0;
-		ghlInfo->animModel=0;
-		ghlInfo->currentAnimModelSize=0;
-		ghlInfo->aHeader=0;
-	}
-	return ghlInfo->mValid;
-}
+//bool G2_SetupModelPointers(CGhoul2Info *ghlInfo) // returns true if the model is properly set up
+//{
+//	G2ERROR(ghlInfo,"NULL ghlInfo");
+//	if (!ghlInfo)
+//	{
+//		return false;
+//	}
+//	ghlInfo->mValid=false;
+////	G2WARNING(ghlInfo->mModelindex != -1,"Setup request on non-used info slot?");
+//	if (ghlInfo->mModelindex != -1)
+//	{
+//		G2ERROR(ghlInfo->mFileName[0],"empty ghlInfo->mFileName");
+//		ghlInfo->mModel = re.RegisterModel(ghlInfo->mFileName);
+//		ghlInfo->currentModel = R_GetModelByHandle(ghlInfo->mModel);
+//		G2ERROR(ghlInfo->currentModel,va("NULL Model (glm) %s",ghlInfo->mFileName));
+//		if (ghlInfo->currentModel)
+//		{
+//			G2ERROR(ghlInfo->currentModel->mdxm,va("Model has no mdxm (glm) %s",ghlInfo->mFileName));
+//			if (ghlInfo->currentModel->mdxm)
+//			{
+//				if (ghlInfo->currentModelSize)
+//				{
+//					if (ghlInfo->currentModelSize!=ghlInfo->currentModel->mdxm->ofsEnd)
+//					{
+//						Com_Error(ERR_DROP, "Ghoul2 model was reloaded and has changed, map must be restarted.\n");
+//					}
+//				}
+//				ghlInfo->currentModelSize=ghlInfo->currentModel->mdxm->ofsEnd;
+//				G2ERROR(ghlInfo->currentModelSize,va("Zero sized Model? (glm) %s",ghlInfo->mFileName));
+//
+//				ghlInfo->animModel =  R_GetModelByHandle(ghlInfo->currentModel->mdxm->animIndex + ghlInfo->animModelIndexOffset);
+//				G2ERROR(ghlInfo->animModel,va("NULL Model (gla) %s",ghlInfo->mFileName));
+//				if (ghlInfo->animModel)
+//				{
+//					ghlInfo->aHeader =ghlInfo->animModel->mdxa;
+//					G2ERROR(ghlInfo->aHeader,va("Model has no mdxa (gla) %s",ghlInfo->mFileName));
+//					if (!ghlInfo->aHeader)
+//					{
+//						Com_Error(ERR_DROP, "Ghoul2 Model has no mdxa (gla) %s",ghlInfo->mFileName);
+//					}
+//					if (ghlInfo->currentAnimModelSize)
+//					{
+//						if (ghlInfo->currentAnimModelSize!=ghlInfo->aHeader->ofsEnd)
+//						{
+//							Com_Error(ERR_DROP, "Ghoul2 model was reloaded and has changed, map must be restarted.\n");
+//						}
+//					}
+//					ghlInfo->currentAnimModelSize=ghlInfo->aHeader->ofsEnd;
+//					G2ERROR(ghlInfo->currentAnimModelSize,va("Zero sized Model? (gla) %s",ghlInfo->mFileName));
+//					ghlInfo->mValid=true;
+//				}
+//			}
+//		}
+//	}
+//	if (!ghlInfo->mValid)
+//	{
+//		ghlInfo->currentModel=0;
+//		ghlInfo->currentModelSize=0;
+//		ghlInfo->animModel=0;
+//		ghlInfo->currentAnimModelSize=0;
+//		ghlInfo->aHeader=0;
+//	}
+//	return ghlInfo->mValid;
+//}
 
 bool G2_SetupModelPointers(CGhoul2Info_v &ghoul2) // returns true if any model is properly set up
 {
@@ -2336,7 +2338,7 @@ bool G2_SetupModelPointers(CGhoul2Info_v &ghoul2) // returns true if any model i
 	int i;
 	for (i=0; i<ghoul2.size(); i++)
 	{
-		bool r=G2_SetupModelPointers(&ghoul2[i]);
+		bool r= re.G2_SetupModelPointers(&ghoul2[i]);
 		ret=ret||r;
 	}
 	return ret;

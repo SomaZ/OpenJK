@@ -277,8 +277,11 @@ typedef struct {
 	mdxmHeader_t* (*G2_GetG2MHeaderByModelHandle)(qhandle_t modelIndex);
 	mdxaHeader_t* (*G2_GetG2AHeaderByModel)(const model_s *model);
 	mdxmHeader_t* (*G2_GetG2MHeaderByModel)(const model_s *model);
-	int			(*G2_GetG2numLods)(const model_s *model);
-	mdxaHeader_t* (*G2_GetG2AHeaderByBoneCacheOfG2I)(CGhoul2Info &ghoul2);
+	int			  (*G2_GetG2numLods)(const model_s *model);
+	mdxaHeader_t* (*G2_GetG2BoneCacheAHeaderByG2I)(CGhoul2Info &ghoul2);
+	mdxaBone_t*   (*G2_GetG2BoneCacheRootMatrixByG2I)(CGhoul2Info& ghoul2);
+	bool          (*G2_TestModelPointers)(CGhoul2Info* ghlInfo);
+	bool          (*G2_SetupModelPointers)(CGhoul2Info* ghlInfo);
 
 } refexport_t;
 

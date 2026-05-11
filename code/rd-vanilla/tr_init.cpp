@@ -1954,21 +1954,6 @@ extern void R_LoadImage( const char *shortname, byte **pic, int *width, int *hei
 extern void R_WorldEffectCommand(const char *command);
 extern qboolean R_inPVS( vec3_t p1, vec3_t p2 );
 extern void RE_GetModelBounds(refEntity_t *refEnt, vec3_t bounds1, vec3_t bounds2);
-extern void G2API_AnimateG2Models(CGhoul2Info_v &ghoul2, int AcurrentTime,CRagDollUpdateParams *params);
-extern qboolean G2API_GetRagBonePos(CGhoul2Info_v &ghoul2, const char *boneName, vec3_t pos, vec3_t entAngles, vec3_t entPos, vec3_t entScale);
-extern qboolean G2API_RagEffectorKick(CGhoul2Info_v &ghoul2, const char *boneName, vec3_t velocity);
-extern qboolean G2API_RagForceSolve(CGhoul2Info_v &ghoul2, qboolean force);
-extern qboolean G2API_SetBoneIKState(CGhoul2Info_v &ghoul2, int time, const char *boneName, int ikState, sharedSetBoneIKStateParams_t *params);
-extern qboolean G2API_IKMove(CGhoul2Info_v &ghoul2, int time, sharedIKMoveParams_t *params);
-extern qboolean G2API_RagEffectorGoal(CGhoul2Info_v &ghoul2, const char *boneName, vec3_t pos);
-extern qboolean G2API_RagPCJGradientSpeed(CGhoul2Info_v &ghoul2, const char *boneName, const float speed);
-extern qboolean G2API_RagPCJConstraint(CGhoul2Info_v &ghoul2, const char *boneName, vec3_t min, vec3_t max);
-extern void G2API_SetRagDoll(CGhoul2Info_v &ghoul2,CRagDollParams *parms);
-#ifdef G2_PERFORMANCE_ANALYSIS
-extern void G2Time_ResetTimers(void);
-extern void G2Time_ReportTimers(void);
-#endif
-extern IGhoul2InfoArray &TheGhoul2InfoArray();
 
 #ifdef JK2_MODE
 unsigned int AnyLanguage_ReadCharFromString_JK2 ( char **text, qboolean *pbIsTrailingPunctuation ) {

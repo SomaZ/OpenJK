@@ -2674,11 +2674,11 @@ int ragTraceCount = 0;
 void Rag_Trace( trace_t *results, const vec3_t start, const vec3_t mins, const vec3_t maxs, const vec3_t end, const int passEntityNum, const int contentmask, const EG2_Collision eG2TraceType, const int useLod )
 {
 #ifdef _DEBUG
-	int ragPreTrace = ri.Milliseconds();
+	int ragPreTrace = Milliseconds();
 #endif
-	ri.SV_Trace(results, start, mins, maxs, end, passEntityNum, contentmask, eG2TraceType, useLod);
+	SV_Trace(results, start, mins, maxs, end, passEntityNum, contentmask, eG2TraceType, useLod);
 #ifdef _DEBUG
-	int ragPostTrace = ri.Milliseconds();
+	int ragPostTrace = Milliseconds();
 
 	ragTraceTime += (ragPostTrace - ragPreTrace);
 	if (results->startsolid)
@@ -3269,7 +3269,7 @@ void G2_RagGetAnimMatrix(CGhoul2Info &ghoul2, const int boneNum, mdxaBone_t &mat
 	assert(ghoul2.mBoneCache);
 	assert(ghoul2.animModel);
 
-	mdxaHeader_t *header = re.G2_GetG2AHeaderByBoneCacheOfG2I(ghoul2);
+	mdxaHeader_t *header = re.G2_GetG2BoneCacheAHeaderByG2I(ghoul2);
 	offsets = (mdxaSkelOffsets_t *)((byte *)header + sizeof(mdxaHeader_t));
 	skel = (mdxaSkel_t *)((byte *)header + sizeof(mdxaHeader_t) + offsets->offsets[boneNum]);
 
@@ -3347,7 +3347,8 @@ void G2_RagGetAnimMatrix(CGhoul2Info &ghoul2, const int boneNum, mdxaBone_t &mat
 	}
 	else
 	{ //root
-		Multiply_3x4Matrix(&bone.animFrameMatrix, &ghoul2.mBoneCache->rootMatrix, &animMatrix);
+		mdxaBone_t* rootMatrix = re.G2_GetG2BoneCacheRootMatrixByG2I(ghoul2);
+		Multiply_3x4Matrix(&bone.animFrameMatrix, rootMatrix, &animMatrix);
 #ifdef _RAG_PRINT_TEST
 		if (bListIndex != -1)
 		{

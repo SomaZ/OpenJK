@@ -89,15 +89,6 @@ mdxaBone_t		worldMatrixInv;
 qhandle_t		goreShader=-1;
 #endif
 
-const static mdxaBone_t		identityMatrix =
-{
-	{
-		{ 0.0f, -1.0f, 0.0f, 0.0f },
-		{ 1.0f, 0.0f, 0.0f, 0.0f },
-		{ 0.0f, 0.0f, 1.0f, 0.0f }
-	}
-};
-
 class CTransformBone
 {
 public:
@@ -904,45 +895,6 @@ static int G2_ComputeLOD( trRefEntity_t *ent, const model_t *currentModel, int l
 
 	return lod;
 }
-
-
-void Multiply_3x4Matrix(mdxaBone_t *out,const  mdxaBone_t *in2,const mdxaBone_t *in)
-{
-	// first row of out
-	out->matrix[0][0] = (in2->matrix[0][0] * in->matrix[0][0]) + (in2->matrix[0][1] * in->matrix[1][0]) + (in2->matrix[0][2] * in->matrix[2][0]);
-	out->matrix[0][1] = (in2->matrix[0][0] * in->matrix[0][1]) + (in2->matrix[0][1] * in->matrix[1][1]) + (in2->matrix[0][2] * in->matrix[2][1]);
-	out->matrix[0][2] = (in2->matrix[0][0] * in->matrix[0][2]) + (in2->matrix[0][1] * in->matrix[1][2]) + (in2->matrix[0][2] * in->matrix[2][2]);
-	out->matrix[0][3] = (in2->matrix[0][0] * in->matrix[0][3]) + (in2->matrix[0][1] * in->matrix[1][3]) + (in2->matrix[0][2] * in->matrix[2][3]) + in2->matrix[0][3];
-	// second row of outf out
-	out->matrix[1][0] = (in2->matrix[1][0] * in->matrix[0][0]) + (in2->matrix[1][1] * in->matrix[1][0]) + (in2->matrix[1][2] * in->matrix[2][0]);
-	out->matrix[1][1] = (in2->matrix[1][0] * in->matrix[0][1]) + (in2->matrix[1][1] * in->matrix[1][1]) + (in2->matrix[1][2] * in->matrix[2][1]);
-	out->matrix[1][2] = (in2->matrix[1][0] * in->matrix[0][2]) + (in2->matrix[1][1] * in->matrix[1][2]) + (in2->matrix[1][2] * in->matrix[2][2]);
-	out->matrix[1][3] = (in2->matrix[1][0] * in->matrix[0][3]) + (in2->matrix[1][1] * in->matrix[1][3]) + (in2->matrix[1][2] * in->matrix[2][3]) + in2->matrix[1][3];
-	// third row of out  out
-	out->matrix[2][0] = (in2->matrix[2][0] * in->matrix[0][0]) + (in2->matrix[2][1] * in->matrix[1][0]) + (in2->matrix[2][2] * in->matrix[2][0]);
-	out->matrix[2][1] = (in2->matrix[2][0] * in->matrix[0][1]) + (in2->matrix[2][1] * in->matrix[1][1]) + (in2->matrix[2][2] * in->matrix[2][1]);
-	out->matrix[2][2] = (in2->matrix[2][0] * in->matrix[0][2]) + (in2->matrix[2][1] * in->matrix[1][2]) + (in2->matrix[2][2] * in->matrix[2][2]);
-	out->matrix[2][3] = (in2->matrix[2][0] * in->matrix[0][3]) + (in2->matrix[2][1] * in->matrix[1][3]) + (in2->matrix[2][2] * in->matrix[2][3]) + in2->matrix[2][3];
-}
-
-static int G2_GetBonePoolIndex(const mdxaHeader_t *pMDXAHeader, int iFrame, int iBone)
-{
-	assert(iFrame>=0&&iFrame<pMDXAHeader->numFrames);
-	assert(iBone>=0&&iBone<pMDXAHeader->numBones);
-
-	const int iOffsetToIndex	= (iFrame * pMDXAHeader->numBones * 3) + (iBone * 3);
-	mdxaIndex_t *pIndex			= (mdxaIndex_t *)((byte*)pMDXAHeader + pMDXAHeader->ofsFrames + iOffsetToIndex);
-
-	return (pIndex->iIndex[2] << 16) + (pIndex->iIndex[1] << 8) + (pIndex->iIndex[0]);
-}
-
-
-/*static inline*/ void UnCompressBone(float mat[3][4], int iBoneIndex, const mdxaHeader_t *pMDXAHeader, int iFrame)
-{
-	mdxaCompQuatBone_t *pCompBonePool = (mdxaCompQuatBone_t *) ((byte *)pMDXAHeader + pMDXAHeader->ofsCompBonePool);
-	MC_UnCompressQuat(mat, pCompBonePool[ G2_GetBonePoolIndex( pMDXAHeader, iFrame, iBoneIndex ) ].Comp);
-}
-
 
 
 #define DEBUG_G2_TIMING (0)
@@ -2379,40 +2331,7 @@ static void G2_Sort_Models(CGhoul2Info_v &ghoul2, int * const modelList, int * c
 
 
 
-static void RootMatrix(CGhoul2Info_v &ghoul2,int time,const vec3_t scale,mdxaBone_t &retMatrix)
-{
-	int i;
-	for (i=0; i<ghoul2.size(); i++)
-	{
-		if (ghoul2[i].mModelindex != -1&&ghoul2[i].mValid)
-		{
-			if (ghoul2[i].mFlags & GHOUL2_NEWORIGIN)
-			{
-				mdxaBone_t bolt;
-				mdxaBone_t		tempMatrix;
 
-				G2_ConstructGhoulSkeleton(ghoul2,time,false,scale);
-				G2_GetBoltMatrixLow(ghoul2[i],ghoul2[i].mNewOrigin,scale,bolt);
-				tempMatrix.matrix[0][0]=1.0f;
-				tempMatrix.matrix[0][1]=0.0f;
-				tempMatrix.matrix[0][2]=0.0f;
-				tempMatrix.matrix[0][3]=-bolt.matrix[0][3];
-				tempMatrix.matrix[1][0]=0.0f;
-				tempMatrix.matrix[1][1]=1.0f;
-				tempMatrix.matrix[1][2]=0.0f;
-				tempMatrix.matrix[1][3]=-bolt.matrix[1][3];
-				tempMatrix.matrix[2][0]=0.0f;
-				tempMatrix.matrix[2][1]=0.0f;
-				tempMatrix.matrix[2][2]=1.0f;
-				tempMatrix.matrix[2][3]=-bolt.matrix[2][3];
-//				Inverse_Matrix(&bolt, &tempMatrix);
-				Multiply_3x4Matrix(&retMatrix, &tempMatrix, (mdxaBone_t*)&identityMatrix);
-				return;
-			}
-		}
-	}
-	retMatrix=identityMatrix;
-}
 
 extern cvar_t	*r_shadowRange;
 static inline bool bInShadowRange(vec3_t location)

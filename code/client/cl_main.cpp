@@ -90,7 +90,7 @@ static void *rendererLib = NULL;
 
 //RAZFIXME: BAD BAD, maybe? had to move it out of ghoul2_shared.h -> CGhoul2Info_v at the least..
 IGhoul2InfoArray &_TheGhoul2InfoArray( void ) {
-	return re.TheGhoul2InfoArray();
+	return TheGhoul2InfoArray();
 }
 
 static void CL_ShutdownRef( qboolean restarting );
@@ -1069,10 +1069,8 @@ extern qboolean S_FileExists( const char *psFilename );
 extern bool CM_CullWorldBox (const cplane_t *frustum, const vec3pair_t bounds);
 extern qboolean SND_RegisterAudio_LevelLoadEnd(qboolean bDeleteEverythingNotUsedThisLevel /* 99% qfalse */);
 extern cvar_t *Cvar_Set2( const char *var_name, const char *value, qboolean force);
-extern CMiniHeap *G2VertSpaceServer;
-static CMiniHeap *GetG2VertSpaceServer( void ) {
-	return G2VertSpaceServer;
-}
+
+
 
 // NOTENOTE: If you change the output name of rd-vanilla, change this define too!
 #ifdef JK2_MODE
@@ -1171,7 +1169,6 @@ void CL_InitRef( void ) {
 
 	rit.Error = Com_Error;
 	rit.FS_FileExists = S_FileExists;
-	rit.GetG2VertSpaceServer = GetG2VertSpaceServer;
 	rit.LowPhysicalMemory = Sys_LowPhysicalMemory;
 	rit.Milliseconds = Sys_Milliseconds2;
 	rit.Printf = CL_RefPrintf;

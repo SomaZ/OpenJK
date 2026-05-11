@@ -44,6 +44,7 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 
 #include <float.h>
 
+#include "qcommon/ojk_saved_game.h"
 #include "qcommon/ojk_saved_game_helper.h"
 
 #ifdef _G2_GORE
@@ -209,8 +210,8 @@ public:
 	CCollisionRecord	*collRecMap;
 	const int			entNum;
 	const int			modelIndex;
-	const skin_t		*skin;
-	const shader_t		*cust_shader;
+	//const skin_t		*skin;
+	//const shader_t		*cust_shader;
 	intptr_t			*TransformedVertsArray;
 	const EG2_Collision	eG2TraceType;
 	bool				hitOne;
@@ -238,8 +239,8 @@ public:
 		CCollisionRecord	*initcollRecMap,
 		int					initentNum,
 		int					initmodelIndex,
-		const skin_t		*initskin,
-		const shader_t		*initcust_shader,
+		//const skin_t		*initskin,
+		//const shader_t		*initcust_shader,
 		intptr_t			*initTransformedVertsArray,
 		const EG2_Collision	einitG2TraceType,
 #ifdef _G2_GORE
@@ -262,8 +263,8 @@ public:
 		collRecMap(initcollRecMap),
 		entNum(initentNum),
 		modelIndex(initmodelIndex),
-		skin(initskin),
-		cust_shader(initcust_shader),
+		//skin(initskin),
+		//cust_shader(initcust_shader),
 		TransformedVertsArray(initTransformedVertsArray),
 		eG2TraceType(einitG2TraceType),
 		hitOne(false),
@@ -583,7 +584,7 @@ void G2_TransformModel(CGhoul2Info_v &ghoul2, const int frameNum, vec3_t scale, 
 #ifndef JK2_MODE
 	if ( cg_g2MarksAllModels == NULL )
 	{
-		cg_g2MarksAllModels = ri.Cvar_Get( "cg_g2MarksAllModels", "0", 0 );
+		cg_g2MarksAllModels = Cvar_Get( "cg_g2MarksAllModels", "0", 0 );
 	}
 
 	if (cg_g2MarksAllModels == NULL
@@ -1565,8 +1566,8 @@ void G2_TraceModels(CGhoul2Info_v &ghoul2, vec3_t rayStart, vec3_t rayEnd, CColl
 #endif
 {
 	int				i, lod;
-	skin_t			*skin;
-	shader_t		*cust_shader;
+	//skin_t			*skin;
+	//shader_t		*cust_shader;
 #if !defined(JK2_MODE) || defined(_G2_GORE)
 	qboolean		firstModelOnly = qfalse;
 #endif // !JK2_MODE || _G2_GORE
@@ -1575,7 +1576,7 @@ void G2_TraceModels(CGhoul2Info_v &ghoul2, vec3_t rayStart, vec3_t rayEnd, CColl
 #ifndef JK2_MODE
 	if ( cg_g2MarksAllModels == NULL )
 	{
-		cg_g2MarksAllModels = ri.Cvar_Get( "cg_g2MarksAllModels", "0", 0 );
+		cg_g2MarksAllModels = Cvar_Get( "cg_g2MarksAllModels", "0", 0 );
 	}
 
 	if (cg_g2MarksAllModels == NULL
@@ -1618,24 +1619,24 @@ void G2_TraceModels(CGhoul2Info_v &ghoul2, vec3_t rayStart, vec3_t rayEnd, CColl
 			continue;
 		}
 
-		if (g.mCustomShader)
-		{
-			cust_shader = R_GetShaderByHandle(g.mCustomShader );
-		}
-		else
-		{
-			cust_shader = NULL;
-		}
+		//if (g.mCustomShader)
+		//{
+		//	cust_shader = R_GetShaderByHandle(g.mCustomShader );
+		//}
+		//else
+		//{
+		//	cust_shader = NULL;
+		//}
 
-		// figure out the custom skin thing
-		if ( g.mSkin > 0 && g.mSkin < tr.numSkins )
-		{
-			skin = R_GetSkinByHandle( g.mSkin );
-		}
-		else
-		{
-			skin = NULL;
-		}
+		//// figure out the custom skin thing
+		//if ( g.mSkin > 0 && g.mSkin < tr.numSkins )
+		//{
+		//	skin = R_GetSkinByHandle( g.mSkin );
+		//}
+		//else
+		//{
+		//	skin = NULL;
+		//}
 
 		lod = G2_DecideTraceLod(g,useLod);
 
@@ -1653,9 +1654,9 @@ void G2_TraceModels(CGhoul2Info_v &ghoul2, vec3_t rayStart, vec3_t rayEnd, CColl
 		G2_FindOverrideSurface(-1, g.mSlist);
 
 #ifdef _G2_GORE
-		CTraceSurface TS(g.mSurfaceRoot, g.mSlist,  g.currentModel, lod, rayStart, rayEnd, collRecMap, entNum, i, skin, cust_shader, g.mTransformedVertsArray, eG2TraceType, fRadius, ssize, tsize, theta, shader, &g, gore);
+		CTraceSurface TS(g.mSurfaceRoot, g.mSlist,  g.currentModel, lod, rayStart, rayEnd, collRecMap, entNum, i, g.mTransformedVertsArray, eG2TraceType, fRadius, ssize, tsize, theta, shader, &g, gore);
 #else
-		CTraceSurface TS(g.mSurfaceRoot, g.mSlist,  g.currentModel, lod, rayStart, rayEnd, collRecMap, entNum, i, skin, cust_shader, g.mTransformedVertsArray, eG2TraceType, fRadius);
+		CTraceSurface TS(g.mSurfaceRoot, g.mSlist,  g.currentModel, lod, rayStart, rayEnd, collRecMap, entNum, i, g.mTransformedVertsArray, eG2TraceType, fRadius);
 #endif
 		// start the surface recursion loop
 		G2_TraceSurfaces(TS);
@@ -1690,6 +1691,42 @@ void TransformAndTranslatePoint (const vec3_t in, vec3_t out, mdxaBone_t *mat) {
 	}
 }
 
+static int G2_GetBonePoolIndex(const mdxaHeader_t* pMDXAHeader, int iFrame, int iBone)
+{
+	assert(iFrame >= 0 && iFrame < pMDXAHeader->numFrames);
+	assert(iBone >= 0 && iBone < pMDXAHeader->numBones);
+
+	const int iOffsetToIndex = (iFrame * pMDXAHeader->numBones * 3) + (iBone * 3);
+	mdxaIndex_t* pIndex = (mdxaIndex_t*)((byte*)pMDXAHeader + pMDXAHeader->ofsFrames + iOffsetToIndex);
+
+	return (pIndex->iIndex[2] << 16) + (pIndex->iIndex[1] << 8) + (pIndex->iIndex[0]);
+}
+
+/*static inline*/ void UnCompressBone(float mat[3][4], int iBoneIndex, const mdxaHeader_t* pMDXAHeader, int iFrame)
+{
+	mdxaCompQuatBone_t* pCompBonePool = (mdxaCompQuatBone_t*)((byte*)pMDXAHeader + pMDXAHeader->ofsCompBonePool);
+	MC_UnCompressQuat(mat, pCompBonePool[G2_GetBonePoolIndex(pMDXAHeader, iFrame, iBoneIndex)].Comp);
+}
+
+void Multiply_3x4Matrix(mdxaBone_t* out, const  mdxaBone_t* in2, const mdxaBone_t* in)
+{
+	// first row of out
+	out->matrix[0][0] = (in2->matrix[0][0] * in->matrix[0][0]) + (in2->matrix[0][1] * in->matrix[1][0]) + (in2->matrix[0][2] * in->matrix[2][0]);
+	out->matrix[0][1] = (in2->matrix[0][0] * in->matrix[0][1]) + (in2->matrix[0][1] * in->matrix[1][1]) + (in2->matrix[0][2] * in->matrix[2][1]);
+	out->matrix[0][2] = (in2->matrix[0][0] * in->matrix[0][2]) + (in2->matrix[0][1] * in->matrix[1][2]) + (in2->matrix[0][2] * in->matrix[2][2]);
+	out->matrix[0][3] = (in2->matrix[0][0] * in->matrix[0][3]) + (in2->matrix[0][1] * in->matrix[1][3]) + (in2->matrix[0][2] * in->matrix[2][3]) + in2->matrix[0][3];
+	// second row of outf out
+	out->matrix[1][0] = (in2->matrix[1][0] * in->matrix[0][0]) + (in2->matrix[1][1] * in->matrix[1][0]) + (in2->matrix[1][2] * in->matrix[2][0]);
+	out->matrix[1][1] = (in2->matrix[1][0] * in->matrix[0][1]) + (in2->matrix[1][1] * in->matrix[1][1]) + (in2->matrix[1][2] * in->matrix[2][1]);
+	out->matrix[1][2] = (in2->matrix[1][0] * in->matrix[0][2]) + (in2->matrix[1][1] * in->matrix[1][2]) + (in2->matrix[1][2] * in->matrix[2][2]);
+	out->matrix[1][3] = (in2->matrix[1][0] * in->matrix[0][3]) + (in2->matrix[1][1] * in->matrix[1][3]) + (in2->matrix[1][2] * in->matrix[2][3]) + in2->matrix[1][3];
+	// third row of out  out
+	out->matrix[2][0] = (in2->matrix[2][0] * in->matrix[0][0]) + (in2->matrix[2][1] * in->matrix[1][0]) + (in2->matrix[2][2] * in->matrix[2][0]);
+	out->matrix[2][1] = (in2->matrix[2][0] * in->matrix[0][1]) + (in2->matrix[2][1] * in->matrix[1][1]) + (in2->matrix[2][2] * in->matrix[2][1]);
+	out->matrix[2][2] = (in2->matrix[2][0] * in->matrix[0][2]) + (in2->matrix[2][1] * in->matrix[1][2]) + (in2->matrix[2][2] * in->matrix[2][2]);
+	out->matrix[2][3] = (in2->matrix[2][0] * in->matrix[0][3]) + (in2->matrix[2][1] * in->matrix[1][3]) + (in2->matrix[2][2] * in->matrix[2][3]) + in2->matrix[2][3];
+}
+
 
 // create a matrix using a set of angles
 void Create_Matrix(const float *angle, mdxaBone_t *matrix)
@@ -1715,6 +1752,41 @@ void Create_Matrix(const float *angle, mdxaBone_t *matrix)
 	matrix->matrix[2][3] = 0;
 
 
+}
+
+void RootMatrix(CGhoul2Info_v& ghoul2, int time, const vec3_t scale, mdxaBone_t& retMatrix)
+{
+	int i;
+	for (i = 0; i < ghoul2.size(); i++)
+	{
+		if (ghoul2[i].mModelindex != -1 && ghoul2[i].mValid)
+		{
+			if (ghoul2[i].mFlags & GHOUL2_NEWORIGIN)
+			{
+				mdxaBone_t bolt;
+				mdxaBone_t		tempMatrix;
+
+				G2_ConstructGhoulSkeleton(ghoul2, time, false, scale);
+				G2_GetBoltMatrixLow(ghoul2[i], ghoul2[i].mNewOrigin, scale, bolt);
+				tempMatrix.matrix[0][0] = 1.0f;
+				tempMatrix.matrix[0][1] = 0.0f;
+				tempMatrix.matrix[0][2] = 0.0f;
+				tempMatrix.matrix[0][3] = -bolt.matrix[0][3];
+				tempMatrix.matrix[1][0] = 0.0f;
+				tempMatrix.matrix[1][1] = 1.0f;
+				tempMatrix.matrix[1][2] = 0.0f;
+				tempMatrix.matrix[1][3] = -bolt.matrix[1][3];
+				tempMatrix.matrix[2][0] = 0.0f;
+				tempMatrix.matrix[2][1] = 0.0f;
+				tempMatrix.matrix[2][2] = 1.0f;
+				tempMatrix.matrix[2][3] = -bolt.matrix[2][3];
+				//				Inverse_Matrix(&bolt, &tempMatrix);
+				Multiply_3x4Matrix(&retMatrix, &tempMatrix, (mdxaBone_t*)&identityMatrix);
+				return;
+			}
+		}
+	}
+	retMatrix = identityMatrix;
 }
 
 // given a matrix, generate the inverse of that matrix
@@ -1790,7 +1862,7 @@ void G2_SaveGhoul2Models(
 	CGhoul2Info_v& ghoul2)
 {
 	ojk::SavedGameHelper saved_game(
-		::ri.saved_game);
+		&ojk::SavedGame::get_instance());
 
 	saved_game.reset_buffer();
 
@@ -1886,7 +1958,7 @@ void G2_LoadGhoul2Model(
 	static_cast<void>(buffer);
 
 	ojk::SavedGameHelper saved_game(
-		::ri.saved_game);
+		&ojk::SavedGame::get_instance());
 
 	// first thing, lets see how many ghoul2 models we have, and resize our buffers accordingly
 	int model_count = 0;

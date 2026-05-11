@@ -40,10 +40,21 @@ class CMiniHeap;
 #define		ENTITY_SHIFT (MODEL_SHIFT + MODEL_WIDTH)
 
 //rww - RAGDOLL_BEGIN
+class CRagDollParams;
 class CRagDollUpdateParams;
 //rww - RAGDOLL_END
 
+const static mdxaBone_t		identityMatrix =
+{
+	{
+		{ 0.0f, -1.0f, 0.0f, 0.0f },
+		{ 1.0f, 0.0f, 0.0f, 0.0f },
+		{ 0.0f, 0.0f, 1.0f, 0.0f }
+	}
+};
+
 struct model_s;
+IGhoul2InfoArray& TheGhoul2InfoArray();
 // internal surface calls  G2_surfaces.cpp
 qboolean	G2_SetSurfaceOnOff (CGhoul2Info *ghlInfo, const char *surfaceName, const int offFlags);
 qboolean	G2_SetRootSurface( CGhoul2Info_v &ghoul2, const int modelIndex,const char *surfaceName);
@@ -112,7 +123,11 @@ void		G2_TransformModel(CGhoul2Info_v &ghoul2, const int frameNum, vec3_t scale,
 #endif
 void		G2_GenerateWorldMatrix(const vec3_t angles, const vec3_t origin);
 void		TransformPoint (const vec3_t in, vec3_t out, mdxaBone_t *mat);
+void		Create_Matrix(const float* angle, mdxaBone_t* matrix);
+void		RootMatrix(CGhoul2Info_v& ghoul2, int time, const vec3_t scale, mdxaBone_t& retMatrix);
 void		Inverse_Matrix(mdxaBone_t *src, mdxaBone_t *dest);
+void		Multiply_3x4Matrix(mdxaBone_t* out, const  mdxaBone_t* in2, const mdxaBone_t* in);
+void		UnCompressBone(float mat[3][4], int iBoneIndex, const mdxaHeader_t* pMDXAHeader, int iFrame);
 void		*G2_FindSurface(const model_s *, int index, int lod);
 void		G2_SaveGhoul2Models(CGhoul2Info_v &ghoul2);
 void		G2_LoadGhoul2Model(CGhoul2Info_v &ghoul2, char *buffer);
@@ -162,6 +177,7 @@ qboolean	G2API_RemoveBone(CGhoul2Info *ghlInfo, const char *boneName);
 qboolean	G2API_RemoveBolt(CGhoul2Info *ghlInfo, const int index);
 int			G2API_AddBolt(CGhoul2Info *ghlInfo, const char *boneName);
 int			G2API_AddBoltSurfNum(CGhoul2Info *ghlInfo, const int surfIndex);
+void		G2API_AnimateG2Models(CGhoul2Info_v& ghoul2, int AcurrentTime, CRagDollUpdateParams* params);
 qboolean	G2API_AttachG2Model(CGhoul2Info *ghlInfo, CGhoul2Info *ghlInfoTo, int toBoltIndex, int toModel);
 qboolean	G2API_DetachG2Model(CGhoul2Info *ghlInfo);
 qboolean	G2API_AttachEnt(int *boltInfo, CGhoul2Info *ghlInfoTo, int toBoltIndex, int entNum, int toModelNum);
@@ -208,6 +224,15 @@ void		G2API_LoadSaveCodeDestructGhoul2Info(CGhoul2Info_v &ghoul2);
 char		*G2API_GetAnimFileNameIndex(qhandle_t modelIndex);
 char		*G2API_GetAnimFileInternalNameIndex(qhandle_t modelIndex);
 int			G2API_GetSurfaceRenderStatus(CGhoul2Info *ghlInfo, const char *surfaceName);
+qboolean	G2API_GetRagBonePos(CGhoul2Info_v& ghoul2, const char* boneName, vec3_t pos, vec3_t entAngles, vec3_t entPos, vec3_t entScale);
+qboolean	G2API_RagEffectorKick(CGhoul2Info_v& ghoul2, const char* boneName, vec3_t velocity);
+qboolean	G2API_RagForceSolve(CGhoul2Info_v& ghoul2, qboolean force);
+qboolean	G2API_SetBoneIKState(CGhoul2Info_v& ghoul2, int time, const char* boneName, int ikState, sharedSetBoneIKStateParams_t* params);
+qboolean	G2API_IKMove(CGhoul2Info_v& ghoul2, int time, sharedIKMoveParams_t* params);
+qboolean	G2API_RagEffectorGoal(CGhoul2Info_v& ghoul2, const char* boneName, vec3_t pos);
+qboolean	G2API_RagPCJGradientSpeed(CGhoul2Info_v& ghoul2, const char* boneName, const float speed);
+qboolean	G2API_RagPCJConstraint(CGhoul2Info_v& ghoul2, const char* boneName, vec3_t min, vec3_t max);
+void		G2API_SetRagDoll(CGhoul2Info_v& ghoul2, CRagDollParams* parms);
 
 // From tr_ghoul2.cpp
 void		G2_ConstructGhoulSkeleton( CGhoul2Info_v &ghoul2,const int frameNum,bool checkForNewOrigin,const vec3_t scale);
