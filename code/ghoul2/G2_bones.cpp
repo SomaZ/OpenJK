@@ -1390,7 +1390,6 @@ static int G2_Set_Bone_Angles_Rag(
 }
 
 class CRagDollParams;
-const mdxaHeader_t *G2_GetModA(CGhoul2Info &ghoul2);
 
 
 static void G2_RagDollMatchPosition()
@@ -1573,7 +1572,7 @@ void G2_SetRagDoll(CGhoul2Info_v &ghoul2V,CRagDollParams *parms)
 		return;
 	}
 	CGhoul2Info &ghoul2=ghoul2V[model];
-	const mdxaHeader_t *mod_a=G2_GetModA(ghoul2);
+	const mdxaHeader_t *mod_a=re.G2_GetG2BoneCacheAHeaderByG2I(ghoul2);
 	if (!mod_a)
 	{
 		return;
@@ -2062,7 +2061,7 @@ void G2_SetRagDollBullet(CGhoul2Info &ghoul2,const vec3_t rayStart,const vec3_t 
 						firstOne=true;
 #if 0
 						int curTime=G2API_GetTime(0);
-						const mdxaHeader_t *mod_a=G2_GetModA(ghoul2);
+						const mdxaHeader_t *mod_a= re.G2_GetG2BoneCacheAHeaderByG2I(ghoul2);
 						int startFrame = 0, endFrame = 0;
 #if 1
 						TheGhoul2Wraith()->GetAnimFrames(ghoul2.mID, "unconsciousdeadflop01", startFrame, endFrame);
@@ -4674,7 +4673,7 @@ qboolean G2_SetBoneIKState(CGhoul2Info_v &ghoul2, int time, const char *boneName
 	int g2index = 0;
 	int curTime = time;
 	CGhoul2Info &g2 = ghoul2[g2index];
-	const mdxaHeader_t *rmod_a = G2_GetModA(g2);
+	const mdxaHeader_t *rmod_a = re.G2_GetG2BoneCacheAHeaderByG2I(g2);
 
 	boneInfo_v &blist = g2.mBlist;
 	mod_a = (model_s *)g2.animModel;

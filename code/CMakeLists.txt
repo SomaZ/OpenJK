@@ -164,6 +164,8 @@ if(BuildSPEngine OR BuildJK2SPEngine)
 
 		"${SPDir}/qcommon/files.cpp"
 
+		"${SPDir}/qcommon/matcomp.h"
+		"${SPDir}/qcommon/matcomp.cpp"
 		"${SPDir}/qcommon/md4.cpp"
 		"${SPDir}/qcommon/msg.cpp"
 		"${SPDir}/qcommon/net_chan.cpp"

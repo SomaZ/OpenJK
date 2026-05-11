@@ -1061,10 +1061,10 @@ static void G2_GorePolys( const mdxmSurface_t *surface, CTraceSurface &TS, const
 			sizeof(float)*2*newNumVerts+ // texture coordinates
 			sizeof(int)*newNumTris*3;  // new indecies
 
-		int *data=(int *)R_Malloc ( sizeof(int)*size, TAG_GHOUL2, qtrue );
+		int *data=(int *)Z_Malloc( sizeof(int)*size, TAG_GHOUL2, qtrue );
 
 		if ( gore->tex[TS.lod] )
-			R_Free(gore->tex[TS.lod]);
+			Z_Free(gore->tex[TS.lod]);
 
 		gore->tex[TS.lod]=(float *)data;
 		*data++=newNumVerts;
@@ -2002,7 +2002,7 @@ void G2_LoadGhoul2Model(
 		{
 			ghoul2[i].mModelindex = i;
 
-			::G2_SetupModelPointers(
+			::re.G2_SetupModelPointers(
 				&ghoul2[i]);
 		}
 
@@ -2055,4 +2055,119 @@ void G2_LoadGhoul2Model(
 	}
 
 	saved_game.ensure_all_data_read();
+}
+
+// sort all the ghoul models in this list so if they go in reference order. This will ensure the bolt on's are attached to the right place
+// on the previous model, since it ensures the model being attached to is built and rendered first.
+
+// NOTE!! This assumes at least one model will NOT have a parent. If it does - we are screwed
+static void G2_Sort_Models(CGhoul2Info_v& ghoul2, int* const modelList, int* const modelCount)
+{
+	int		startPoint, endPoint;
+	int		i, boltTo, j;
+
+	*modelCount = 0;
+
+	// first walk all the possible ghoul2 models, and stuff the out array with those with no parents
+	for (i = 0; i < ghoul2.size(); i++)
+	{
+		// have a ghoul model here?
+		if (ghoul2[i].mModelindex == -1 || !ghoul2[i].mValid)
+		{
+			continue;
+		}
+		// are we attached to anything?
+		if (ghoul2[i].mModelBoltLink == -1)
+		{
+			// no, insert us first
+			modelList[(*modelCount)++] = i;
+		}
+	}
+
+	startPoint = 0;
+	endPoint = *modelCount;
+
+	// now, using that list of parentless models, walk the descendant tree for each of them, inserting the descendents in the list
+	while (startPoint != endPoint)
+	{
+		for (i = 0; i < ghoul2.size(); i++)
+		{
+			// have a ghoul model here?
+			if (ghoul2[i].mModelindex == -1 || !ghoul2[i].mValid)
+			{
+				continue;
+			}
+
+			// what does this model think it's attached to?
+			if (ghoul2[i].mModelBoltLink != -1)
+			{
+				boltTo = (ghoul2[i].mModelBoltLink >> MODEL_SHIFT) & MODEL_AND;
+				// is it any of the models we just added to the list?
+				for (j = startPoint; j < endPoint; j++)
+				{
+					// is this my parent model?
+					if (boltTo == modelList[j])
+					{
+						// yes, insert into list and exit now
+						modelList[(*modelCount)++] = i;
+						break;
+					}
+				}
+			}
+		}
+		// update start and end points
+		startPoint = endPoint;
+		endPoint = *modelCount;
+	}
+}
+
+/*
+==============
+G2_ConstructGhoulSkeleton - builds a complete skeleton for all ghoul models in a CGhoul2Info_v class	- using LOD 0
+==============
+*/
+void G2_ConstructGhoulSkeleton(CGhoul2Info_v& ghoul2, const int frameNum, bool checkForNewOrigin, const vec3_t scale)
+{
+	int				i, j;
+	int				modelCount;
+	mdxaBone_t		rootMatrix;
+
+	int modelList[32];
+	assert(ghoul2.size() <= 31);
+	modelList[31] = 548;
+
+	if (checkForNewOrigin)
+	{
+		RootMatrix(ghoul2, frameNum, scale, rootMatrix);
+	}
+	else
+	{
+		rootMatrix = identityMatrix;
+	}
+
+	G2_Sort_Models(ghoul2, modelList, &modelCount);
+	assert(modelList[31] == 548);
+
+	for (j = 0; j < modelCount; j++)
+	{
+		// get the sorted model to play with
+		i = modelList[j];
+
+		if (ghoul2[i].mValid)
+		{
+			if (j && ghoul2[i].mModelBoltLink != -1)
+			{
+				int	boltMod = (ghoul2[i].mModelBoltLink >> MODEL_SHIFT) & MODEL_AND;
+				int	boltNum = (ghoul2[i].mModelBoltLink >> BOLT_SHIFT) & BOLT_AND;
+
+				mdxaBone_t bolt;
+				G2_GetBoltMatrixLow(ghoul2[boltMod], boltNum, scale, bolt);
+				//G2_TransformGhoulBones(ghoul2[i].mBlist, bolt, ghoul2[i], frameNum, checkForNewOrigin);
+			}
+			else
+			{
+				//G2_TransformGhoulBones(ghoul2[i].mBlist, rootMatrix, ghoul2[i], frameNum, checkForNewOrigin);
+			}
+		}
+	}
 }

@@ -241,7 +241,8 @@ void		G2_TimingModel(boneInfo_t &bone,int time,int numFramesInFile,int &currentF
 
 
 bool G2_SetupModelPointers(CGhoul2Info_v &ghoul2); // returns true if any model is properly set up
-bool G2_SetupModelPointers(CGhoul2Info *ghlInfo); // returns true if the model is properly set up
+//bool G2_SetupModelPointers(CGhoul2Info *ghlInfo); // returns true if the model is properly set up
+
 
 //#ifdef _G2_GORE	// These exist regardless, non-gore versions are empty
 void		G2API_AddSkinGore(CGhoul2Info_v &ghoul2,SSkinGoreData &gore);
