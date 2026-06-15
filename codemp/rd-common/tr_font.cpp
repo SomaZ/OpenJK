@@ -1418,6 +1418,15 @@ CFontInfo *GetFont(int index)
 	return pFont;
 }
 
+
+static float fontRatioFix = 1.0f;
+void RE_FontRatioFix(float ratio) {
+	if (ratio <= 0.0f)
+		fontRatioFix = 1.0f;
+	else
+		fontRatioFix = ratio;
+}
+
 float RE_Font_StrLenPixelsNew( const char *psText, const int iFontHandle, const float fScaleIn ) {
 	float fScale = fScaleIn;
 	CFontInfo *curfont = GetFont(iFontHandle);
@@ -1453,7 +1462,7 @@ float RE_Font_StrLenPixelsNew( const char *psText, const int iFontHandle, const 
 		else {
 			float iPixelAdvance = (float)curfont->GetLetterHorizAdvance( uiLetter );
 
-			float fValue = iPixelAdvance * ((uiLetter > (unsigned)g_iNonScaledCharRange) ? fScaleAsian : fScale);
+			float fValue = iPixelAdvance * ((uiLetter > (unsigned)g_iNonScaledCharRange) ? fScaleAsian : fScale) * fontRatioFix;
 
 			if ( r_aspectCorrectFonts->integer == 1 ) {
 				fValue *= ((float)(SCREEN_WIDTH * glConfig.vidHeight) / (float)(SCREEN_HEIGHT * glConfig.vidWidth));
@@ -1537,7 +1546,7 @@ int RE_Font_HeightPixels(const int iFontHandle, const float fScaleIn)
 
 // iMaxPixelWidth is -1 for "all of string", else pixel display count...
 //
-void RE_Font_DrawString(int ox, int oy, const char *psText, const float *rgba, const int iFontHandleIn, int iMaxPixelWidth, const float fScaleIn)
+void RE_Font_DrawString(float ox, float oy, const char *psText, const float *rgba, const int iFontHandleIn, int iMaxPixelWidth, const float fScaleIn)
 {
 	static qboolean gbInShadow = qfalse;	// MUST default to this
 	float				fox, foy, fx, fy;
@@ -1626,7 +1635,7 @@ void RE_Font_DrawString(int ox, int oy, const char *psText, const float *rgba, c
 		const vec4_t v4DKGREY2 = {0.15f, 0.15f, 0.15f, rgba?rgba[3]:1.0f};
 
 		gbInShadow = qtrue;
-		RE_Font_DrawString(ox + offset, oy + offset, psText, v4DKGREY2, iFontHandle & SET_MASK, iMaxPixelWidth, fScale);
+		RE_Font_DrawString(ox + offset * fontRatioFix, oy + offset, psText, v4DKGREY2, iFontHandle & SET_MASK, iMaxPixelWidth, fScale);
 		gbInShadow = qfalse;
 	}
 
@@ -1661,7 +1670,7 @@ void RE_Font_DrawString(int ox, int oy, const char *psText, const float *rgba, c
 			break;
 		case 32:						// Space
 			pLetter = curfont->GetLetter(' ');
-			fx += curfont->mbRoundCalcs ? Round(pLetter->horizAdvance * fScale) : pLetter->horizAdvance * fScale;
+			fx += curfont->mbRoundCalcs ? Round(pLetter->horizAdvance * fScale * fontRatioFix) : pLetter->horizAdvance * fScale * fontRatioFix;
 			bNextTextWouldOverflow = ( iMaxPixelWidth != -1 && ((fx-fox) > (float)iMaxPixelWidth) ) ? qtrue : qfalse; // yeuch
 			break;
 		case '_':	// has a special word-break usage if in Thai (and followed by a thai char), and should not be displayed, else treat as normal
@@ -1671,21 +1680,19 @@ void RE_Font_DrawString(int ox, int oy, const char *psText, const float *rgba, c
 			}
 			// else drop through and display as normal...
 		case '^':
-			if (uiLetter != '_')	// necessary because of fallthrough above
-			{
-				if (*psText >= '0' &&
-					*psText <= '9')
-				{
-					colour = ColorIndex(*psText++);
-					if (!gbInShadow)
-					{
-						vec4_t color;
-						Com_Memcpy( color, g_color_table[colour], sizeof( color ) );
-						color[3] = rgba ? rgba[3] : 1.0f;
+			if (uiLetter != '_') {	// necessary because of fallthrough above
+				vec4_t color;
+				psText--; //that is necessary because Q_parseColorString works with strings that start with ^
+				int colorLen = Q_parseColorString( psText, color, tr.cTable);
+				if ( colorLen ) {
+					psText += colorLen;
+					if ( !gbInShadow ) {
+						color[3] = rgba[3];
 						RE_SetColor( color );
 					}
 					break;
 				}
+				psText++;
 			}
 			//purposely falls thrugh
 		default:
@@ -1704,7 +1711,7 @@ void RE_Font_DrawString(int ox, int oy, const char *psText, const float *rgba, c
 				fx -= curfont->mbRoundCalcs ? Round(7.0f * fThisScale) : 7.0f * fThisScale;
 			}
 
-			float fAdvancePixels = curfont->mbRoundCalcs ? Round(pLetter->horizAdvance * fThisScale) : pLetter->horizAdvance * fThisScale;
+			float fAdvancePixels = curfont->mbRoundCalcs ? Round(pLetter->horizAdvance * fThisScale * fontRatioFix) : pLetter->horizAdvance * fThisScale * fontRatioFix;
 			bNextTextWouldOverflow = ( iMaxPixelWidth != -1 && (((fx+fAdvancePixels)-fox) > (float)iMaxPixelWidth) ) ? qtrue : qfalse; // yeuch
 			if (!bNextTextWouldOverflow)
 			{
@@ -1718,7 +1725,7 @@ void RE_Font_DrawString(int ox, int oy, const char *psText, const float *rgba, c
 
 				RE_StretchPic(curfont->mbRoundCalcs ? fx + Round(pLetter->horizOffset * fThisScale) : fx + pLetter->horizOffset * fThisScale, // float x
 								(uiLetter > (unsigned)g_iNonScaledCharRange) ? fy - fAsianYAdjust : fy,	// float y
-								curfont->mbRoundCalcs ? Round(pLetter->width * fThisScale) : pLetter->width * fThisScale,	// float w
+								curfont->mbRoundCalcs ? Round(pLetter->width * fThisScale * fontRatioFix) : pLetter->width * fThisScale * fontRatioFix,	// float w
 								curfont->mbRoundCalcs ? Round(pLetter->height * fThisScale) : pLetter->height * fThisScale, // float h
 								pLetter->s,						// float s1
 								pLetter->t,						// float t1

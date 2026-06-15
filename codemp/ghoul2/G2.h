@@ -25,6 +25,7 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 #define BONE_ANGLES_PREMULT			0x0001
 #define BONE_ANGLES_POSTMULT		0x0002
 #define BONE_ANGLES_REPLACE			0x0004
+#define BONE_ANGLES_MME_DELTA		0x0100
 
 //added for a trace optimization. set in routines where a bone is
 //set to be transformed in any way. -rww

@@ -1,25 +1,3 @@
-/*
-===========================================================================
-Copyright (C) 2000 - 2013, Raven Software, Inc.
-Copyright (C) 2001 - 2013, Activision, Inc.
-Copyright (C) 2013 - 2015, OpenJK contributors
-
-This file is part of the OpenJK source code.
-
-OpenJK is free software; you can redistribute it and/or modify it
-under the terms of the GNU General Public License version 2 as
-published by the Free Software Foundation.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU General Public License for more details.
-
-You should have received a copy of the GNU General Public License
-along with this program; if not, see <http://www.gnu.org/licenses/>.
-===========================================================================
-*/
-
 #pragma once
 
 //This file is shared by the exe nav code.
@@ -41,10 +19,11 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 #define	MAX_RADIUS_CHECK	1024
 #define	YAW_ITERATIONS	16
 
-
-// Engine has its own copy of these (navigator.h)
-
-#ifdef _GAME
+// This is probably wrong - VVFIXME
+// Some kind of wacky code sharing going on here, but we need these things
+// in g_navnew.c -- which is now C++ code in the GAME on Xbox, so the
+// original test fails.
+#if !defined(__cplusplus) || (defined(__linux__) && defined(QAGAME))
 	//rww - Rest of defines here are also shared in exe, do not modify.
 	#define	__NEWCOLLECT	1
 

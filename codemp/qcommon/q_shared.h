@@ -27,16 +27,19 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 // q_shared.h -- included first by ALL program modules.
 // A user mod should never modify this file
 
-#define PRODUCT_NAME			"openjk"
+#define PRODUCT_NAME			"jampconfig"
 
-#define CLIENT_WINDOW_TITLE "OpenJK (MP)"
-#define CLIENT_CONSOLE_TITLE "OpenJK Console (MP)"
-#define HOMEPATH_NAME_UNIX "openjk"
-#define HOMEPATH_NAME_WIN "OpenJK"
+#ifndef MACOS_X
+#define CLIENT_WINDOW_TITLE "Jedi Knight®: Jedi Academy (MP)" // for q3e minimizer
+#else
+#define CLIENT_WINDOW_TITLE "Jedi Knight: Jedi Academy (MP)" // for q3e minimizer
+#endif
+#define CLIENT_CONSOLE_TITLE "Jedi Knight Academy MP Console"
+#define HOMEPATH_NAME_UNIX ".jamme"	//sad stuff, but let's leave that :s
+#define HOMEPATH_NAME_WIN "jaMME"		//and this one as well :C
 #define HOMEPATH_NAME_MACOSX HOMEPATH_NAME_WIN
 
 #define	BASEGAME "base"
-#define OPENJKGAME "OpenJK"
 
 //NOTENOTE: Only change this to re-point ICARUS to a new script directory
 #define Q3_SCRIPT_DIR	"scripts"
@@ -354,6 +357,14 @@ typedef enum
 	SABER_GREEN,
 	SABER_BLUE,
 	SABER_PURPLE,
+	//[RGBSaber]
+	SABER_RGB,
+	SABER_FLAME1,
+	SABER_ELEC1,
+	SABER_FLAME2,
+	SABER_ELEC2,
+	SABER_BLACK,
+	//[/RGBSaber]
 	NUM_SABER_COLORS
 } saber_colors_t;
 
@@ -682,7 +693,7 @@ qboolean Info_Validate( const char *s );
 qboolean Info_NextPair( const char **s, char *key, char *value );
 
 // this is only here so the functions in q_shared.c and bg_*.c can link
-#if defined( _GAME ) || defined( _CGAME ) || defined( UI_BUILD )
+#if false// defined( _GAME ) || defined( _CGAME ) || defined( UI_BUILD )
 	extern NORETURN_PTR void (*Com_Error)( int level, const char *error, ... );
 	extern void (*Com_Printf)( const char *msg, ... );
 #else
@@ -846,6 +857,7 @@ typedef struct orientation_s {
 #define	KEYCATCH_UI					0x0002
 #define	KEYCATCH_MESSAGE		0x0004
 #define	KEYCATCH_CGAME			0x0008
+#define	KEYCATCH_CGAMEEXEC		0x2000
 
 
 // sound channels
@@ -1870,6 +1882,8 @@ typedef struct stringID_table_s
 	int		id;
 } stringID_table_t;
 
+extern stringID_table_t ClassTable[];
+
 int GetIDForString ( stringID_table_t *table, const char *string );
 const char *GetStringForID( stringID_table_t *table, int id );
 
@@ -1904,3 +1918,25 @@ typedef int( *cmpFunc_t )(const void *a, const void *b);
 
 void *Q_LinearSearch( const void *key, const void *ptr, size_t count,
 	size_t size, cmpFunc_t cmp );
+
+
+typedef struct {
+	fileHandle_t fileHandle;
+	int line;
+	int fileSize, filePos;
+	int depth;
+} BG_XMLParse_t;
+
+typedef struct BG_XMLParseBlock_s {
+	char *tagName;
+	qboolean (*openHandler)(BG_XMLParse_t *,const struct BG_XMLParseBlock_s *, void *);
+	qboolean (*textHandler)(BG_XMLParse_t *,const char *, void *);
+} BG_XMLParseBlock_t;
+
+extern int demo_protocols[];
+
+#define NOTIFICATION_NONE		0
+#define NOTIFICATION_FLASH		(1 << 0)
+#define NOTIFICATION_TEXT		(1 << 1)
+#define NOTIFICATION_CONSOLE	(1 << 2)
+#define NOTIFICATION_FULL		(NOTIFICATION_FLASH | NOTIFICATION_TEXT | NOTIFICATION_CONSOLE)

@@ -259,7 +259,9 @@ void		RestoreGhoul2InfoArray();
 void		SaveGhoul2InfoArray();
 
 void		G2API_SetTime(int currentTime, int clock);
+void		G2API_SetTimeFraction(float timeFraction);
 int			G2API_GetTime(int argTime);
+float		G2API_GetTimeFraction();
 
 qhandle_t	G2API_PrecacheGhoul2Model(const char *fileName);
 

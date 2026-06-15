@@ -306,7 +306,12 @@ and some other output data.  Used for local prediction on the client game and tr
 movement on the server game.
 ===================================================================================
 */
-
+#ifndef UI_EXPORTS
+#ifndef QAGAME
+extern qboolean rpmodDetected;
+extern qboolean galaxyrpDetected;
+#endif
+#endif
 
 #pragma pack(push, 1)
 typedef struct animation_s {
@@ -321,7 +326,7 @@ typedef struct animation_s {
 extern qboolean			BGPAFtextLoaded;
 extern animation_t		bgHumanoidAnimations[MAX_TOTALANIMATIONS];
 
-#define MAX_ANIM_FILES	16
+#define MAX_ANIM_FILES	64//<-RPMod //16
 #define MAX_ANIM_EVENTS 300
 
 typedef enum
@@ -462,6 +467,33 @@ extern int forceMasteryPoints[NUM_FORCE_MASTERY_LEVELS];
 
 extern int bgForcePowerCost[NUM_FORCE_POWERS][NUM_FORCE_POWER_LEVELS];
 
+#define _SPPHYSICS 1
+#define _COOP 1
+typedef enum //movementstyle enum
+{
+    MV_SIEGE,
+    MV_JKA,
+    MV_QW,
+    MV_CPM,
+    MV_Q3,
+    MV_PJK,
+    MV_WSW,
+    MV_RJQ3,
+    MV_RJCPM,
+    MV_SWOOP,
+    MV_JETPACK,
+    MV_SPEED,
+#if _SPPHYSICS
+    MV_SP,
+#endif
+    MV_SLICK,
+    MV_BOTCPM,
+#if _COOP
+    MV_COOP_JKA,
+#endif
+    MV_NUMSTYLES,
+} movementStyle_e;
+
 // pmove->pm_flags
 #define	PMF_DUCKED			1
 #define	PMF_JUMP_HELD		2
@@ -594,7 +626,14 @@ typedef enum {
 	STAT_ARMOR,
 	STAT_DEAD_YAW,					// look this direction when dead (FIXME: get rid of?)
 	STAT_CLIENTS_READY,				// bit mask of clients wishing to exit the intermission (FIXME: configstring?)
-	STAT_MAX_HEALTH					// health / armor limit, changable by handicap
+	STAT_MAX_HEALTH,				// health / armor limit, changable by handicap
+	STAT_DASHTIME,
+	STAT_LASTJUMPSPEED,
+	STAT_RACEMODE,
+	STAT_RESTRICTIONS,
+	STAT_MOVEMENTSTYLE,
+	STAT_JUMPTIME,
+	STAT_WJTIME
 } statIndex_t;
 
 
@@ -1686,7 +1725,7 @@ typedef struct saberInfo_s {
 
 bgEntity_t *PM_BGEntForNum( int num );
 qboolean BG_KnockDownable(playerState_t *ps);
-qboolean BG_LegalizedForcePowers(char *powerOut, size_t powerOutSize, int maxRank, qboolean freeSaber, int teamForce, int gametype, int fpDisabled);
+qboolean BG_LegalizedForcePowers(char *powerOut, int maxRank, qboolean freeSaber, int teamForce, int gametype, int fpDisabled);
 
 
 // given a boltmatrix, return in vec a normalised vector for the axis requested in flags
@@ -1696,9 +1735,9 @@ void BG_IK_MoveArm(void *ghoul2, int lHandBolt, int time, entityState_t *ent, in
 					 vec3_t origin, vec3_t angles, vec3_t scale, int blendTime, qboolean forceHalt);
 
 void BG_G2PlayerAngles(void *ghoul2, int motionBolt, entityState_t *cent, int time, vec3_t cent_lerpOrigin,
-					   vec3_t cent_lerpAngles, matrix3_t legs, vec3_t legsAngles, qboolean *tYawing,
+					   vec3_t cent_lerpAngles, vec3_t legs[3], vec3_t legsAngles, qboolean *tYawing,
 					   qboolean *tPitching, qboolean *lYawing, float *tYawAngle, float *tPitchAngle,
-					   float *lYawAngle, int frametime, vec3_t turAngles, vec3_t modelScale, int ciLegs,
+					   float *lYawAngle, float frametime, vec3_t turAngles, vec3_t modelScale, int ciLegs,
 					   int ciTorso, int *corrTime, vec3_t lookAngles, vec3_t lastHeadAngles, int lookTime,
 					   entityState_t *emplaced, int *crazySmoothFactor);
 void BG_G2ATSTAngles(void *ghoul2, int time, vec3_t cent_lerpAngles );
@@ -1732,9 +1771,6 @@ qboolean BG_InRoll( playerState_t *ps, int anim );
 qboolean BG_InDeathAnim( int anim );
 qboolean BG_InSaberLockOld( int anim );
 qboolean BG_InSaberLock( int anim );
-
-void BG_FixSaberMoveData( void );
-void BG_FixWeaponAttackAnim( void );
 
 void BG_SaberStartTransAnim( int clientNum, int saberAnimLevel, int weapon, int anim, float *animSpeed, int broken );
 
@@ -1784,12 +1820,12 @@ void BG_SI_BladeActivate( saberInfo_t *saber, int iBlade, qboolean bActive );
 qboolean BG_SI_Active(saberInfo_t *saber);
 void BG_SI_SetLength( saberInfo_t *saber, float length );
 void BG_SI_SetDesiredLength(saberInfo_t *saber, float len, int bladeNum);
-void BG_SI_SetLengthGradual( saberInfo_t *saber, int time );
+void BG_SI_SetLengthGradual( saberInfo_t *saber, int time, float timeFraction );
 float BG_SI_Length(saberInfo_t *saber);
 float BG_SI_LengthMax(saberInfo_t *saber);
 void BG_SI_ActivateTrail ( saberInfo_t *saber, float duration );
 void BG_SI_DeactivateTrail ( saberInfo_t *saber, float duration );
-extern void BG_AttachToRancor( void *ghoul2,float rancYaw,vec3_t rancOrigin,int time,qhandle_t *modelList,vec3_t modelScale,qboolean inMouth,vec3_t out_origin,vec3_t out_angles,matrix3_t out_axis );
+extern void BG_AttachToRancor( void *ghoul2,float rancYaw,vec3_t rancOrigin,int time,qhandle_t *modelList,vec3_t modelScale,qboolean inMouth,vec3_t out_origin,vec3_t out_angles,vec3_t out_axis[3] );
 void BG_ClearRocketLock( playerState_t *ps );
 
 extern int WeaponReadyAnim[WP_NUM_WEAPONS];
@@ -1813,3 +1849,9 @@ extern int forcePowerDarkLight[NUM_FORCE_POWERS];
 extern const char *gametypeStringShort[GT_MAX_GAME_TYPE];
 const char *BG_GetGametypeString( int gametype );
 int BG_GetGametypeForString( const char *gametype );
+
+
+//[AnimationSys]
+float BG_GetTorsoAnimPoint( playerState_t *ps, int AnimIndex );
+float BG_GetLegsAnimPoint( playerState_t *ps, int AnimIndex );
+//[/AnimationSys]

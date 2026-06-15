@@ -1,30 +1,8 @@
-/*
-===========================================================================
-Copyright (C) 2000 - 2013, Raven Software, Inc.
-Copyright (C) 2001 - 2013, Activision, Inc.
-Copyright (C) 2013 - 2015, OpenJK contributors
-
-This file is part of the OpenJK source code.
-
-OpenJK is free software; you can redistribute it and/or modify it
-under the terms of the GNU General Public License version 2 as
-published by the Free Software Foundation.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU General Public License for more details.
-
-You should have received a copy of the GNU General Public License
-along with this program; if not, see <http://www.gnu.org/licenses/>.
-===========================================================================
-*/
-
 //NPC_utils.cpp
 
 #include "b_local.h"
-#include "icarus/Q3_Interface.h"
-#include "ghoul2/G2.h"
+#include "../icarus/Q3_Interface.h"
+#include "../ghoul2/G2.h"
 
 int	teamNumbers[TEAM_NUM_TEAMS];
 int	teamStrength[TEAM_NUM_TEAMS];
@@ -34,12 +12,12 @@ int	teamCounter[TEAM_NUM_TEAMS];
 extern void G_DebugPrint( int level, const char *format, ... );
 
 /*
-void CalcEntitySpot ( gentity_t *ent, spot_t spot, vec3_t point )
+void CalcEntitySpot ( gentity_t *ent, spot_t spot, vec3_t point ) 
 
 Added: Uses shootAngles if a NPC has them
 
 */
-void CalcEntitySpot ( const gentity_t *ent, const spot_t spot, vec3_t point )
+void CalcEntitySpot ( const gentity_t *ent, const spot_t spot, vec3_t point ) 
 {
 	vec3_t	forward, up, right;
 	vec3_t	start, end;
@@ -49,7 +27,7 @@ void CalcEntitySpot ( const gentity_t *ent, const spot_t spot, vec3_t point )
 	{
 		return;
 	}
-	switch ( spot )
+	switch ( spot ) 
 	{
 	case SPOT_ORIGIN:
 		if(VectorCompare(ent->r.currentOrigin, vec3_origin))
@@ -88,7 +66,7 @@ void CalcEntitySpot ( const gentity_t *ent, const spot_t spot, vec3_t point )
 		else
 		{
 			VectorCopy ( ent->r.currentOrigin, point );
-			if ( ent->client )
+			if ( ent->client ) 
 			{
 				point[2] += ent->client->ps.viewheight;
 			}
@@ -127,7 +105,7 @@ void CalcEntitySpot ( const gentity_t *ent, const spot_t spot, vec3_t point )
 		else
 		{
 			VectorCopy ( ent->r.currentOrigin, point );
-			if ( ent->client )
+			if ( ent->client ) 
 			{
 				point[2] += ent->client->ps.viewheight;
 			}
@@ -160,7 +138,7 @@ void CalcEntitySpot ( const gentity_t *ent, const spot_t spot, vec3_t point )
 
 	case SPOT_GROUND:
 		// if entity is on the ground, just use it's absmin
-		if ( ent->s.groundEntityNum != ENTITYNUM_NONE )
+		if ( ent->s.groundEntityNum != -1 ) 
 		{
 			VectorCopy( ent->r.currentOrigin, point );
 			point[2] = ent->r.absmin[2];
@@ -172,8 +150,8 @@ void CalcEntitySpot ( const gentity_t *ent, const spot_t spot, vec3_t point )
 		start[2] = ent->r.absmin[2];
 		VectorCopy( start, end );
 		end[2] -= 64;
-		trap->Trace( &tr, start, ent->r.mins, ent->r.maxs, end, ent->s.number, MASK_PLAYERSOLID, qfalse, 0, 0 );
-		if ( tr.fraction < 1.0 )
+		trap_Trace( &tr, start, ent->r.mins, ent->r.maxs, end, ent->s.number, MASK_PLAYERSOLID );
+		if ( tr.fraction < 1.0 ) 
 		{
 			VectorCopy( tr.endpos, point);
 			break;
@@ -193,7 +171,7 @@ void CalcEntitySpot ( const gentity_t *ent, const spot_t spot, vec3_t point )
 //===================================================================================
 
 /*
-qboolean NPC_UpdateAngles ( qboolean doPitch, qboolean doYaw )
+qboolean NPC_UpdateAngles ( qboolean doPitch, qboolean doYaw ) 
 
 Added: option to do just pitch or just yaw
 
@@ -201,7 +179,7 @@ Does not include "aim" in it's calculations
 
 FIXME: stop compressing angles into shorts!!!!
 */
-qboolean NPC_UpdateAngles ( qboolean doPitch, qboolean doYaw )
+qboolean NPC_UpdateAngles ( qboolean doPitch, qboolean doYaw ) 
 {
 #if 1
 
@@ -214,7 +192,7 @@ qboolean NPC_UpdateAngles ( qboolean doPitch, qboolean doYaw )
 
 	// if angle changes are locked; just keep the current angles
 	// aimTime isn't even set anymore... so this code was never reached, but I need a way to lock NPC's yaw, so instead of making a new SCF_ flag, just use the existing render flag... - dmv
-	if ( !NPCS.NPC->enemy && ( (level.time < NPCS.NPCInfo->aimTime) /*|| NPC->client->renderInfo.renderFlags & RF_LOCKEDANGLE*/) )
+	if ( !NPCS.NPC->enemy && ( (level.time < NPCS.NPCInfo->aimTime) /*|| NPC->client->renderInfo.renderFlags & RF_LOCKEDANGLE*/) ) 
 	{
 		if(doPitch)
 			targetPitch = NPCS.NPCInfo->lockedDesiredPitch;
@@ -222,7 +200,7 @@ qboolean NPC_UpdateAngles ( qboolean doPitch, qboolean doYaw )
 		if(doYaw)
 			targetYaw = NPCS.NPCInfo->lockedDesiredYaw;
 	}
-	else
+	else 
 	{
 		// we're changing the lockedDesired Pitch/Yaw below so it's lost it's original meaning, get rid of the lock flag
 	//	NPC->client->renderInfo.renderFlags &= ~RF_LOCKEDANGLE;
@@ -237,7 +215,7 @@ qboolean NPC_UpdateAngles ( qboolean doPitch, qboolean doYaw )
 		{
 			targetYaw = NPCS.NPCInfo->desiredYaw;
 			NPCS.NPCInfo->lockedDesiredYaw = NPCS.NPCInfo->desiredYaw;
-		}
+		}			
 	}
 
 	if ( NPCS.NPC->s.weapon == WP_EMPLACED_GUN )
@@ -255,45 +233,45 @@ qboolean NPC_UpdateAngles ( qboolean doPitch, qboolean doYaw )
 		char buf[128];
 		float tFVal = 0;
 
-		trap->Cvar_VariableStringBuffer("timescale", buf, sizeof(buf));
+		trap_Cvar_VariableStringBuffer("timescale", buf, sizeof(buf));
 
 		tFVal = atof(buf);
 
 		yawSpeed *= 1.0f/tFVal;
 	}
-
+	
 	if( doYaw )
 	{
 		// decay yaw error
 		error = AngleDelta ( NPCS.NPC->client->ps.viewangles[YAW], targetYaw );
 		if( fabs(error) > MIN_ANGLE_ERROR )
 		{
-			if ( error )
+			if ( error ) 
 			{
 				exact = qfalse;
 
 				decay = 60.0 + yawSpeed * 3;
 				decay *= 50.0f / 1000.0f;//msec
 
-				if ( error < 0.0 )
+				if ( error < 0.0 ) 
 				{
 					error += decay;
-					if ( error > 0.0 )
+					if ( error > 0.0 ) 
 					{
 						error = 0.0;
 					}
 				}
-				else
+				else 
 				{
 					error -= decay;
-					if ( error < 0.0 )
+					if ( error < 0.0 ) 
 					{
 						error = 0.0;
 					}
 				}
 			}
 		}
-
+		
 		NPCS.ucmd.angles[YAW] = ANGLE2SHORT( targetYaw + error ) - NPCS.client->ps.delta_angles[YAW];
 	}
 
@@ -304,25 +282,25 @@ qboolean NPC_UpdateAngles ( qboolean doPitch, qboolean doYaw )
 		error = AngleDelta ( NPCS.NPC->client->ps.viewangles[PITCH], targetPitch );
 		if ( fabs(error) > MIN_ANGLE_ERROR )
 		{
-			if ( error )
+			if ( error ) 
 			{
 				exact = qfalse;
 
 				decay = 60.0 + yawSpeed * 3;
 				decay *= 50.0f / 1000.0f;//msec
 
-				if ( error < 0.0 )
+				if ( error < 0.0 ) 
 				{
 					error += decay;
-					if ( error > 0.0 )
+					if ( error > 0.0 ) 
 					{
 						error = 0.0;
 					}
 				}
-				else
+				else 
 				{
 					error -= decay;
-					if ( error < 0.0 )
+					if ( error < 0.0 ) 
 					{
 						error = 0.0;
 					}
@@ -335,9 +313,9 @@ qboolean NPC_UpdateAngles ( qboolean doPitch, qboolean doYaw )
 
 	NPCS.ucmd.angles[ROLL] = ANGLE2SHORT ( NPCS.NPC->client->ps.viewangles[ROLL] ) - NPCS.client->ps.delta_angles[ROLL];
 
-	if ( exact && trap->ICARUS_TaskIDPending( (sharedEntity_t *)NPCS.NPC, TID_ANGLE_FACE ) )
+	if ( exact && trap_ICARUS_TaskIDPending( NPCS.NPC, TID_ANGLE_FACE ) )
 	{
-		trap->ICARUS_TaskIDComplete( (sharedEntity_t *)NPCS.NPC, TID_ANGLE_FACE );
+		trap_ICARUS_TaskIDComplete( NPCS.NPC, TID_ANGLE_FACE );
 	}
 	return exact;
 
@@ -353,14 +331,14 @@ qboolean NPC_UpdateAngles ( qboolean doPitch, qboolean doYaw )
 	qboolean	doSound = qfalse;
 
 	// if angle changes are locked; just keep the current angles
-	if ( level.time < NPCInfo->aimTime )
+	if ( level.time < NPCInfo->aimTime ) 
 	{
 		if(doPitch)
 			targetPitch = NPCInfo->lockedDesiredPitch;
 		if(doYaw)
 			targetYaw = NPCInfo->lockedDesiredYaw;
 	}
-	else
+	else 
 	{
 		if(doPitch)
 			targetPitch = NPCInfo->desiredPitch;
@@ -386,7 +364,7 @@ qboolean NPC_UpdateAngles ( qboolean doPitch, qboolean doYaw )
 			if(NPC->client->playerTeam == TEAM_BORG&&
 				NPCInfo->behaviorState != BS_FACE&&NPCInfo->tempBehavior!= BS_FACE)
 			{//HACK - borg turn more jittery
-				if ( error )
+				if ( error ) 
 				{
 					exact = qfalse;
 
@@ -395,24 +373,24 @@ qboolean NPC_UpdateAngles ( qboolean doPitch, qboolean doYaw )
 					//Snap to
 					if(fabs(error) > 10)
 					{
-						if(Q_flrand(0.0f, 1.0f) > 0.6)
+						if(random() > 0.6)
 						{
 							doSound = qtrue;
 						}
 					}
 
-					if ( error < 0.0)//-10.0 )
+					if ( error < 0.0)//-10.0 ) 
 					{
 						error += decay;
-						if ( error > 0.0 )
+						if ( error > 0.0 ) 
 						{
 							error = 0.0;
 						}
 					}
-					else if ( error > 0.0)//10.0 )
+					else if ( error > 0.0)//10.0 ) 
 					{
 						error -= decay;
-						if ( error < 0.0 )
+						if ( error < 0.0 ) 
 						{
 							error = 0.0;
 						}
@@ -420,26 +398,26 @@ qboolean NPC_UpdateAngles ( qboolean doPitch, qboolean doYaw )
 				}
 			}
 			else*/
-
-			if ( error )
+			
+			if ( error ) 
 			{
 				exact = qfalse;
 
 				decay = 60.0 + yawSpeed * 3;
 				decay *= 50.0 / 1000.0;//msec
 
-				if ( error < 0.0 )
+				if ( error < 0.0 ) 
 				{
 					error += decay;
-					if ( error > 0.0 )
+					if ( error > 0.0 ) 
 					{
 						error = 0.0;
 					}
 				}
-				else
+				else 
 				{
 					error -= decay;
-					if ( error < 0.0 )
+					if ( error < 0.0 ) 
 					{
 						error = 0.0;
 					}
@@ -460,7 +438,7 @@ qboolean NPC_UpdateAngles ( qboolean doPitch, qboolean doYaw )
 			if(NPC->client->playerTeam == TEAM_BORG&&
 				NPCInfo->behaviorState != BS_FACE&&NPCInfo->tempBehavior!= BS_FACE)
 			{//HACK - borg turn more jittery
-				if ( error )
+				if ( error ) 
 				{
 					exact = qfalse;
 
@@ -469,24 +447,24 @@ qboolean NPC_UpdateAngles ( qboolean doPitch, qboolean doYaw )
 					//Snap to
 					if(fabs(error) > 10)
 					{
-						if(Q_flrand(0.0f, 1.0f) > 0.6)
+						if(random() > 0.6)
 						{
 							doSound = qtrue;
 						}
 					}
 
-					if ( error < 0.0)//-10.0 )
+					if ( error < 0.0)//-10.0 ) 
 					{
 						error += decay;
-						if ( error > 0.0 )
+						if ( error > 0.0 ) 
 						{
 							error = 0.0;
 						}
 					}
-					else if ( error > 0.0)//10.0 )
+					else if ( error > 0.0)//10.0 ) 
 					{
 						error -= decay;
-						if ( error < 0.0 )
+						if ( error < 0.0 ) 
 						{
 							error = 0.0;
 						}
@@ -494,26 +472,26 @@ qboolean NPC_UpdateAngles ( qboolean doPitch, qboolean doYaw )
 				}
 			}
 			else*/
-
-			if ( error )
+			
+			if ( error ) 
 			{
 				exact = qfalse;
 
 				decay = 60.0 + yawSpeed * 3;
 				decay *= 50.0 / 1000.0;//msec
 
-				if ( error < 0.0 )
+				if ( error < 0.0 ) 
 				{
 					error += decay;
-					if ( error > 0.0 )
+					if ( error > 0.0 ) 
 					{
 						error = 0.0;
 					}
 				}
-				else
+				else 
 				{
 					error -= decay;
-					if ( error < 0.0 )
+					if ( error < 0.0 ) 
 					{
 						error = 0.0;
 					}
@@ -555,11 +533,11 @@ void NPC_AimWiggle( vec3_t enemy_org )
 }
 
 /*
-qboolean NPC_UpdateFiringAngles ( qboolean doPitch, qboolean doYaw )
+qboolean NPC_UpdateFiringAngles ( qboolean doPitch, qboolean doYaw ) 
 
   Includes aim when determining angles - so they don't always hit...
   */
-qboolean NPC_UpdateFiringAngles ( qboolean doPitch, qboolean doYaw )
+qboolean NPC_UpdateFiringAngles ( qboolean doPitch, qboolean doYaw ) 
 {
 #if 0
 
@@ -569,7 +547,7 @@ qboolean NPC_UpdateFiringAngles ( qboolean doPitch, qboolean doYaw )
 	float		targetYaw = 0;
 	qboolean	exact = qtrue;
 
-	if ( level.time < NPCInfo->aimTime )
+	if ( level.time < NPCInfo->aimTime ) 
 	{
 		if( doPitch )
 			targetPitch = NPCInfo->lockedDesiredPitch;
@@ -577,7 +555,7 @@ qboolean NPC_UpdateFiringAngles ( qboolean doPitch, qboolean doYaw )
 		if( doYaw )
 			targetYaw = NPCInfo->lockedDesiredYaw;
 	}
-	else
+	else 
 	{
 		if( doPitch )
 		{
@@ -589,7 +567,7 @@ qboolean NPC_UpdateFiringAngles ( qboolean doPitch, qboolean doYaw )
 		{
 			targetYaw = NPCInfo->desiredYaw;
 			NPCInfo->lockedDesiredYaw = NPCInfo->desiredYaw;
-		}
+		}			
 	}
 
 	if( doYaw )
@@ -604,7 +582,7 @@ qboolean NPC_UpdateFiringAngles ( qboolean doPitch, qboolean doYaw )
 
 		if ( diff )
 			exact = qfalse;
-
+		
 		ucmd.angles[YAW] = ANGLE2SHORT( targetYaw + diff + error ) - client->ps.delta_angles[YAW];
 	}
 
@@ -617,14 +595,14 @@ qboolean NPC_UpdateFiringAngles ( qboolean doPitch, qboolean doYaw )
 
 		if ( diff )
 			exact = qfalse;
-
+		
 		ucmd.angles[PITCH] = ANGLE2SHORT( targetPitch + diff + error ) - client->ps.delta_angles[PITCH];
 	}
 
 	ucmd.angles[ROLL] = ANGLE2SHORT ( NPC->client->ps.viewangles[ROLL] ) - client->ps.delta_angles[ROLL];
 
 	return exact;
-
+	
 #else
 
 	float		error, diff;
@@ -634,14 +612,14 @@ qboolean NPC_UpdateFiringAngles ( qboolean doPitch, qboolean doYaw )
 	qboolean	exact = qtrue;
 
 	// if angle changes are locked; just keep the current angles
-	if ( level.time < NPCS.NPCInfo->aimTime )
+	if ( level.time < NPCS.NPCInfo->aimTime ) 
 	{
 		if(doPitch)
 			targetPitch = NPCS.NPCInfo->lockedDesiredPitch;
 		if(doYaw)
 			targetYaw = NPCS.NPCInfo->lockedDesiredYaw;
 	}
-	else
+	else 
 	{
 		if(doPitch)
 			targetPitch = NPCS.NPCInfo->desiredPitch;
@@ -672,31 +650,31 @@ qboolean NPC_UpdateFiringAngles ( qboolean doPitch, qboolean doYaw )
 	{
 		// decay yaw diff
 		diff = AngleDelta ( NPCS.NPC->client->ps.viewangles[YAW], targetYaw );
-
-		if ( diff)
+		
+		if ( diff) 
 		{
 			exact = qfalse;
 
 			decay = 60.0 + 80.0;
 			decay *= 50.0f / 1000.0f;//msec
-			if ( diff < 0.0 )
+			if ( diff < 0.0 ) 
 			{
 				diff += decay;
-				if ( diff > 0.0 )
+				if ( diff > 0.0 ) 
 				{
 					diff = 0.0;
 				}
 			}
-			else
+			else 
 			{
 				diff -= decay;
-				if ( diff < 0.0 )
+				if ( diff < 0.0 ) 
 				{
 					diff = 0.0;
 				}
 			}
 		}
-
+				
 		// add yaw error based on NPCInfo->aim value
 		error = NPCS.NPCInfo->lastAimErrorYaw;
 
@@ -714,30 +692,30 @@ qboolean NPC_UpdateFiringAngles ( qboolean doPitch, qboolean doYaw )
 	{
 		// decay pitch diff
 		diff = AngleDelta ( NPCS.NPC->client->ps.viewangles[PITCH], targetPitch );
-		if ( diff)
+		if ( diff) 
 		{
 			exact = qfalse;
 
 			decay = 60.0 + 80.0;
 			decay *= 50.0f / 1000.0f;//msec
-			if ( diff < 0.0 )
+			if ( diff < 0.0 ) 
 			{
 				diff += decay;
-				if ( diff > 0.0 )
+				if ( diff > 0.0 ) 
 				{
 					diff = 0.0;
 				}
 			}
-			else
+			else 
 			{
 				diff -= decay;
-				if ( diff < 0.0 )
+				if ( diff < 0.0 ) 
 				{
 					diff = 0.0;
 				}
 			}
 		}
-
+		
 		error = NPCS.NPCInfo->lastAimErrorPitch;
 
 		NPCS.ucmd.angles[PITCH] = ANGLE2SHORT( targetPitch + diff + error ) - NPCS.client->ps.delta_angles[PITCH];
@@ -753,12 +731,12 @@ qboolean NPC_UpdateFiringAngles ( qboolean doPitch, qboolean doYaw )
 //===================================================================================
 
 /*
-static void NPC_UpdateShootAngles (vec3_t angles, qboolean doPitch, qboolean doYaw )
+static void NPC_UpdateShootAngles (vec3_t angles, qboolean doPitch, qboolean doYaw ) 
 
 Does update angles on shootAngles
 */
 
-void NPC_UpdateShootAngles (vec3_t angles, qboolean doPitch, qboolean doYaw )
+void NPC_UpdateShootAngles (vec3_t angles, qboolean doPitch, qboolean doYaw ) 
 {//FIXME: shoot angles either not set right or not used!
 	float		error;
 	float		decay;
@@ -775,22 +753,22 @@ void NPC_UpdateShootAngles (vec3_t angles, qboolean doPitch, qboolean doYaw )
 	{
 		// decay yaw error
 		error = AngleDelta ( NPCS.NPCInfo->shootAngles[YAW], targetYaw );
-		if ( error )
+		if ( error ) 
 		{
 			decay = 60.0 + 80.0 * NPCS.NPCInfo->stats.aim;
 			decay *= 100.0f / 1000.0f;//msec
-			if ( error < 0.0 )
+			if ( error < 0.0 ) 
 			{
 				error += decay;
-				if ( error > 0.0 )
+				if ( error > 0.0 ) 
 				{
 					error = 0.0;
 				}
 			}
-			else
+			else 
 			{
 				error -= decay;
-				if ( error < 0.0 )
+				if ( error < 0.0 ) 
 				{
 					error = 0.0;
 				}
@@ -803,22 +781,22 @@ void NPC_UpdateShootAngles (vec3_t angles, qboolean doPitch, qboolean doYaw )
 	{
 		// decay pitch error
 		error = AngleDelta ( NPCS.NPCInfo->shootAngles[PITCH], targetPitch );
-		if ( error )
+		if ( error ) 
 		{
 			decay = 60.0 + 80.0 * NPCS.NPCInfo->stats.aim;
 			decay *= 100.0f / 1000.0f;//msec
-			if ( error < 0.0 )
+			if ( error < 0.0 ) 
 			{
 				error += decay;
-				if ( error > 0.0 )
+				if ( error > 0.0 ) 
 				{
 					error = 0.0;
 				}
 			}
-			else
+			else 
 			{
 				error -= decay;
-				if ( error < 0.0 )
+				if ( error < 0.0 ) 
 				{
 					error = 0.0;
 				}
@@ -881,7 +859,7 @@ qboolean G_ActivateBehavior (gentity_t *self, int bset )
 	}
 
 	bs_name = self->behaviorSet[bset];
-
+	
 	if( !(VALIDSTRING( bs_name )) )
 	{
 		return qfalse;
@@ -892,7 +870,7 @@ qboolean G_ActivateBehavior (gentity_t *self, int bset )
 		bSID = (bState_t)(GetIDForString( BSTable, bs_name ));
 	}
 
-	if(bSID != (bState_t)-1)
+	if(bSID > -1)
 	{
 		self->NPC->tempBehavior = BS_DEFAULT;
 		self->NPC->behaviorState = bSID;
@@ -900,17 +878,17 @@ qboolean G_ActivateBehavior (gentity_t *self, int bset )
 	else
 	{
 		/*
-		char			newname[MAX_FILENAME_LENGTH];
+		char			newname[MAX_FILENAME_LENGTH];		
 		sprintf((char *) &newname, "%s/%s", Q3_SCRIPT_DIR, bs_name );
 		*/
-
+		
 		//FIXME: between here and actually getting into the ICARUS_RunScript function, the stack gets blown!
 		//if ( ( ICARUS_entFilter == -1 ) || ( ICARUS_entFilter == self->s.number ) )
 		if (0)
 		{
 			G_DebugPrint( WL_VERBOSE, "%s attempting to run bSet %s (%s)\n", self->targetname, GetStringForID( BSETTable, bset ), bs_name );
 		}
-		trap->ICARUS_RunScript( (sharedEntity_t *)self, va( "%s/%s", Q3_SCRIPT_DIR, bs_name ) );
+		trap_ICARUS_RunScript( self, va( "%s/%s", Q3_SCRIPT_DIR, bs_name ) );
 	}
 	return qtrue;
 }
@@ -1008,7 +986,7 @@ void NPC_SetBoneAngles(gentity_t *ent, char *bone, vec3_t angles)
 	//first 3 bits is forward, second 3 bits is right, third 3 bits is up
 	ent->s.boneOrient = ((forward)|(right<<3)|(up<<6));
 
-	trap->G2API_SetBoneAngles(ent->ghoul2, 0, bone, angles, flags, up, right, forward, NULL, 100, level.time);
+	trap_G2API_SetBoneAngles(ent->ghoul2, 0, bone, angles, flags, up, right, forward, NULL, 100, level.time);
 }
 
 //rww - and another method of automatically managing surface status for the client and server at once
@@ -1052,7 +1030,7 @@ void NPC_SetSurfaceOnOff(gentity_t *ent, const char *surfaceName, int surfaceFla
 		return;
 	}
 
-	trap->G2API_SetSurfaceOnOff(ent->ghoul2, surfaceName, surfaceFlags);
+	trap_G2API_SetSurfaceOnOff(ent->ghoul2, surfaceName, surfaceFlags);
 }
 
 //rww - cheap check to see if an armed client is looking in our general direction
@@ -1068,7 +1046,7 @@ qboolean NPC_SomeoneLookingAtMe(gentity_t *ent)
 		if (pEnt && pEnt->inuse && pEnt->client && pEnt->client->sess.sessionTeam != TEAM_SPECTATOR &&
 			pEnt->client->tempSpectate < level.time && !(pEnt->client->ps.pm_flags & PMF_FOLLOW) && pEnt->s.weapon != WP_NONE)
 		{
-			if (trap->InPVS(ent->r.currentOrigin, pEnt->r.currentOrigin))
+			if (trap_InPVS(ent->r.currentOrigin, pEnt->r.currentOrigin))
 			{
 				if (InFOV( ent, pEnt, 30, 30 ))
 				{ //I'm in a 30 fov or so cone from this player.. that's enough I guess.
@@ -1091,7 +1069,7 @@ qboolean NPC_ClearLOS5( const vec3_t end )
 {
 	return G_ClearLOS5( NPCS.NPC, end );
 }
-qboolean NPC_ClearLOS4( gentity_t *ent )
+qboolean NPC_ClearLOS4( gentity_t *ent ) 
 {
 	return G_ClearLOS4( NPCS.NPC, ent );
 }
@@ -1285,7 +1263,7 @@ int NPC_FindNearestEnemy( gentity_t *ent )
 	}
 
 	//Get a number of entities in a given space
-	numEnts = trap->EntitiesInBox( mins, maxs, iradiusEnts, MAX_RADIUS_ENTS );
+	numEnts = trap_EntitiesInBox( mins, maxs, iradiusEnts, MAX_RADIUS_ENTS );
 
 	for ( i = 0; i < numEnts; i++ )
 	{
@@ -1324,6 +1302,17 @@ NPC_PickEnemyExt
 
 gentity_t *NPC_PickEnemyExt( qboolean checkAlerts )
 {
+
+	//Check for Hazard Team status and remove this check
+	/*
+	if ( NPC->client->playerTeam != TEAM_STARFLEET )
+	{
+		//If we've found the player, return it
+		if ( NPC_FindPlayer() )
+			return &g_entities[0];
+	}
+	*/
+
 	//If we've asked for the closest enemy
 	int entID = NPC_FindNearestEnemy( NPCS.NPC );
 
@@ -1451,7 +1440,7 @@ qboolean NPC_FindEnemy( qboolean checkAlerts )
 	//Otherwise, turn off the flag
 //	NPC->svFlags &= ~SVF_LOCKEDENEMY;
 	//See if the player is closer than our current enemy
-	if ( NPCS.NPC->client->NPC_class != CLASS_RANCOR
+	if ( NPCS.NPC->client->NPC_class != CLASS_RANCOR 
 		&& NPCS.NPC->client->NPC_class != CLASS_WAMPA
 		//&& NPC->client->NPC_class != CLASS_SAND_CREATURE
 		&& NPC_CheckPlayerDistance() )
@@ -1542,7 +1531,7 @@ qboolean NPC_FacePosition( vec3_t position, qboolean doPitch )
 
 	//Find the delta between our goal and our current facing
 	yawDelta = AngleNormalize360( NPCS.NPCInfo->desiredYaw - ( SHORT2ANGLE( NPCS.ucmd.angles[YAW] + NPCS.client->ps.delta_angles[YAW] ) ) );
-
+	
 	//See if we are facing properly
 	if ( fabs( yawDelta ) > VALID_ATTACK_CONE )
 		facing = qfalse;
@@ -1552,7 +1541,7 @@ qboolean NPC_FacePosition( vec3_t position, qboolean doPitch )
 		//Find the delta between our goal and our current facing
 		float currentAngles = ( SHORT2ANGLE( NPCS.ucmd.angles[PITCH] + NPCS.client->ps.delta_angles[PITCH] ) );
 		float pitchDelta = NPCS.NPCInfo->desiredPitch - currentAngles;
-
+		
 		//See if we are facing properly
 		if ( fabs( pitchDelta ) > VALID_ATTACK_CONE )
 			facing = qfalse;
@@ -1724,7 +1713,7 @@ void G_GetBoltPosition( gentity_t *self, int boltIndex, vec3_t pos, int modelInd
 {
 	mdxaBone_t	boltMatrix;
 	vec3_t		result, angles;
-
+	
 	if (!self || !self->inuse)
 	{
 		return;
@@ -1744,7 +1733,7 @@ void G_GetBoltPosition( gentity_t *self, int boltIndex, vec3_t pos, int modelInd
 		return;
 	}
 
-	trap->G2API_GetBoltMatrix( self->ghoul2, modelIndex,
+	trap_G2API_GetBoltMatrix( self->ghoul2, modelIndex, 
 				boltIndex,
 				&boltMatrix, angles, self->r.currentOrigin, level.time,
 				NULL, self->modelScale );
@@ -1794,5 +1783,5 @@ int NPC_GetEntsNearBolt( int *radiusEnts, float radius, int boltIndex, vec3_t bo
 	}
 
 	//Get the number of entities in a given space
-	return (trap->EntitiesInBox( mins, maxs, radiusEnts, 128 ));
+	return (trap_EntitiesInBox( mins, maxs, radiusEnts, 128 ));
 }

@@ -39,6 +39,9 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 	#undef QCALL
 	#define QCALL __stdcall
 
+	#undef QRESTRICT
+	#define QRESTRICT __restrict
+
 	#if defined(_MSC_VER)
 		#define OS_STRING "win_msvc"
 	#elif defined(__MINGW64__)
@@ -67,6 +70,9 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 	#undef QCALL
 	#define QCALL __stdcall
 
+	#undef QRESTRICT
+	#define QRESTRICT __restrict
+
 	#if defined(_MSC_VER)
 		#define OS_STRING "win_msvc"
 	#elif defined(__MINGW32__)
@@ -93,6 +99,9 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 	#ifndef MACOS_X
 		#define MACOS_X
 	#endif
+
+	#undef QRESTRICT
+	#define QRESTRICT __restrict__
 
 	#define OS_STRING "macosx"
 	#define QINLINE inline
@@ -127,6 +136,9 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 	#endif
 
 	#define QINLINE inline
+	
+	#undef QRESTRICT
+	#define QRESTRICT __restrict__
 
 	#define PATH_SEP '/'
 
@@ -166,6 +178,9 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 
 	#define QINLINE inline
 	#define PATH_SEP '/'
+	
+	#undef QRESTRICT
+	#define QRESTRICT __restrict__
 
 	#if !defined(ARCH_STRING)
 		#error ARCH_STRING should be defined by the build system

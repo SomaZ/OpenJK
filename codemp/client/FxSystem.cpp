@@ -32,6 +32,10 @@ cvar_t	*fx_freeze;
 cvar_t	*fx_countScale;
 cvar_t	*fx_nearCull;
 
+cvar_t	*fx_forcePhysics;
+cvar_t	*fx_projectileLife;
+cvar_t	*fx_filterMask;
+
 #define DEFAULT_EXPLOSION_RADIUS	512
 
 // Stuff for the FxHelper
@@ -68,10 +72,10 @@ void SFxHelper::Print( const char *msg, ... )
 }
 
 //------------------------------------------------------
-void SFxHelper::AdjustTime( int frametime )
+void SFxHelper::AdjustTime( int time, float frametime, float timeFraction )
 {
 #ifdef _DEBUG
-	if ( fx_freeze->integer || ( frametime <= 0 ))
+	if ( fx_freeze->integer || ( time <= 0 ))
 #else
 	if ( frametime <= 0 )
 #endif
@@ -83,9 +87,10 @@ void SFxHelper::AdjustTime( int frametime )
 	else
 	{
 		mOldTime = mTime;
-		mTime = frametime;
-		mFrameTime = mTime - mOldTime;
-
+		mTime = time;
+		mFrameTime = frametime;
+		
+		mTimeFraction = timeFraction;
 		mRealTime = mFrameTime * 0.001f;
 
 
@@ -120,7 +125,12 @@ qboolean SFxHelper::GetOriginAxisFromBolt(CGhoul2Info_v *pGhoul2, int mEntNum, i
 	CGVM_GetLerpData();//this func will zero out pitch and roll for players, and ridable vehicles
 
 	//Fixme: optimize these VM calls away by storing
-
+#ifdef __ANDROID__
+	//WTF IS THIS, Crashes otherwise, FIX ME!
+	LOGI("GetOriginAxisFromBolt %x",pGhoul2);
+	if (!pGhoul2)
+		return qfalse;
+#endif
 	// go away and get me the bolt position for this frame please
 	doesBoltExist = re->G2API_GetBoltMatrix(*pGhoul2, modelNum, boltNum,
 		&boltMatrix, data->mAngles, data->mOrigin, theFxHelper.mOldTime, 0, data->mScale);
@@ -144,4 +154,8 @@ qboolean SFxHelper::GetOriginAxisFromBolt(CGhoul2Info_v *pGhoul2, int mEntNum, i
 		axis[2][2] = boltMatrix.matrix[2][2];
 	}
 	return doesBoltExist;
+}
+
+void SFxHelper::DemoRandomSeed( int time, float timeFraction ) {
+	srand(time + timeFraction);
 }

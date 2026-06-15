@@ -223,7 +223,12 @@ typedef enum uiExportLegacy_e {
 	UI_CONSOLE_COMMAND,
 	UI_DRAW_CONNECT_SCREEN,
 	UI_HASUNIQUECDKEY,
-	UI_MENU_RESET
+	UI_MENU_RESET,
+
+	//New mme calls
+	UI_MME_FONTRATIOFIX = 400,
+	UI_MME_EDITINGFIELD,
+	UI_MME_REQUESTFEATURES,
 } uiExportLegacy_t;
 
 typedef struct uiImport_s {

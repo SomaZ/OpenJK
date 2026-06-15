@@ -33,6 +33,14 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 extern IHeapAllocator *G2VertSpaceClient;
 extern botlib_export_t *botlib_export;
 
+extern qboolean demoGetDefaultState(int index, entityState_t *state);
+extern void demoGetSnapshotNumber( int *snapNumber, int *serverTime );
+extern qboolean demoGetSnapshot( int snapNumber, snapshot_t *snap );
+extern qboolean demoGetServerCommand( int cmdNumber );
+extern int demoSeek( int seekTime );
+extern int demoLength(void);
+extern float demoProgress(void);
+
 // cgame interface
 static cgameExport_t *cge; // cgame export table
 static vm_t *cgvm; // cgame vm, valid for legacy and new api
@@ -97,14 +105,13 @@ int CGVM_LastAttacker( void ) {
 	return cge->LastAttacker();
 }
 
-void CGVM_KeyEvent( int key, qboolean down ) {
+int CGVM_KeyEvent( int key, qboolean down ) {
 	if ( cgvm->isLegacy ) {
-		VM_Call( cgvm, CG_KEY_EVENT, key, down );
-		return;
+		return VM_Call( cgvm, CG_KEY_EVENT, key, down );
 	}
 	VMSwap v( cgvm );
 
-	cge->KeyEvent( key, down );
+	return cge->KeyEvent( key, down );
 }
 
 void CGVM_MouseEvent( int x, int y ) {
@@ -352,10 +359,6 @@ static int CL_S_GetVoiceVolume( int entID ) {
 	return s_entityWavVol[entID];
 }
 
-static void CL_S_Shutup( qboolean shutup ) {
-	s_shutUp = shutup;
-}
-
 static int CL_GetCurrentCmdNumber( void ) {
 	return cl.cmdNumber;
 }
@@ -451,6 +454,10 @@ static qboolean CGFX_PlayBoltedEffectID( int id, vec3_t org, void *ghoul2, const
 		return qtrue;
 	}
 	return qfalse;
+}
+
+static void CL_FX_AdjustTime( int time ) {
+	FX_AdjustTime(time, cl.serverTime-cl.serverTimeLast, 0.0f);
 }
 
 static qboolean CL_SE_GetStringTextString( const char *text, char *buffer, int bufferLength ) {
@@ -829,6 +836,10 @@ static void CGVM_Cmd_RemoveCommand( const char *cmd_name ) {
 	Cmd_VM_RemoveCommand( cmd_name, VM_CGAME );
 }
 
+static void CL_R_Font_DrawString( int ox, int oy, const char *text, const float *rgba, const int setIndex, int iCharLimit, const float scale ) {
+	re->Font_DrawString(ox, oy, text, rgba, setIndex, iCharLimit, scale);
+}
+
 // legacy syscall
 
 intptr_t CL_CgameSystemCalls( intptr_t *args ) {
@@ -944,7 +955,7 @@ intptr_t CL_CgameSystemCalls( intptr_t *args ) {
 		return FS_FOpenFileByMode( (const char *)VMA(1), (int *)VMA(2), (fsMode_t)args[3] );
 
 	case CG_FS_READ:
-		FS_Read( VMA(1), args[2], args[3] );
+		FS_Read2( VMA(1), args[2], args[3] );
 		return 0;
 
 	case CG_FS_WRITE:
@@ -1028,11 +1039,19 @@ intptr_t CL_CgameSystemCalls( intptr_t *args ) {
 		return CL_S_GetVoiceVolume( args[1] );
 
 	case CG_S_MUTESOUND:
-		S_MuteSound( args[1], args[2] );
+#ifdef __ANDROID__
+		S_StopSound(args[1], args[2], args[3] );
+#else
+		if (cls.mmeStateCGame >= MME_STATE_DEFAULT) {
+			S_StopSound(args[1], args[2], args[3] );
+		} else {
+			S_StopSound(args[1], args[2], -1 );
+		}
+#endif
 		return 0;
 
 	case CG_S_STARTSOUND:
-		S_StartSound( (float *)VMA(1), args[2], args[3], args[4] );
+		S_StartSound( (float *)VMA(1), args[2], args[3], -1, args[4] );
 		return 0;
 
 	case CG_S_STARTLOCALSOUND:
@@ -1044,15 +1063,14 @@ intptr_t CL_CgameSystemCalls( intptr_t *args ) {
 		return 0;
 
 	case CG_S_ADDLOOPINGSOUND:
-		S_AddLoopingSound( args[1], (const float *)VMA(2), (const float *)VMA(3), args[4] );
+		S_AddLoopingSound( ((char *)cl.entityBaselines) + args[1], (const float *)VMA(2), (const float *)VMA(3), args[4], 127 );
 		return 0;
 
 	case CG_S_ADDREALLOOPINGSOUND:
-		/*S_AddRealLoopingSound*/S_AddLoopingSound( args[1], (const float *)VMA(2), (const float *)VMA(3), args[4] );
+		S_AddLoopingSound( ((char *)cl.entityBaselines) + args[1], (const float *)VMA(2), (const float *)VMA(3), args[4], 90 );
 		return 0;
 
 	case CG_S_STOPLOOPINGSOUND:
-		S_StopLoopingSound( args[1] );
 		return 0;
 
 	case CG_S_UPDATEENTITYPOSITION:
@@ -1064,7 +1082,6 @@ intptr_t CL_CgameSystemCalls( intptr_t *args ) {
 		return 0;
 
 	case CG_S_SHUTUP:
-		CL_S_Shutup( (qboolean)args[1] );
 		return 0;
 
 	case CG_S_REGISTERSOUND:
@@ -1121,7 +1138,17 @@ intptr_t CL_CgameSystemCalls( intptr_t *args ) {
 		return re->Font_HeightPixels( args[1], VMF(2) );
 
 	case CG_R_FONT_DRAWSTRING:
-		re->Font_DrawString( args[1], args[2], (const char *)VMA(3), (const float *) VMA(4), args[5], args[6], VMF(7) );
+#ifdef __ANDROID__
+		re->Font_DrawString( VMF(1), VMF(2), (const char *)VMA(3), (const float *) VMA(4), args[5], args[6], VMF(7) );
+#else
+		{float ox, oy;
+		if (cls.mmeStateCGame >= MME_STATE_DEFAULT) {
+			ox = VMF(1); oy = VMF(2);
+		} else {
+			ox = args[1]; oy = args[2];
+		}
+		re->Font_DrawString( ox, oy, (const char *)VMA(3), (const float *) VMA(4), args[5], args[6], VMF(7) );}
+#endif
 		return 0;
 
 	case CG_LANGUAGE_ISASIAN:
@@ -1212,17 +1239,29 @@ intptr_t CL_CgameSystemCalls( intptr_t *args ) {
 		return 0;
 
 	case CG_GETCURRENTSNAPSHOTNUMBER:
-		CL_GetCurrentSnapshotNumber( (int *)VMA(1), (int *)VMA(2) );
+		if (clc.newDemoPlayer) 
+			demoGetSnapshotNumber( (int *)VMA(1), (int *)VMA(2) );
+		else
+			CL_GetCurrentSnapshotNumber( (int *)VMA(1), (int *)VMA(2) );
 		return 0;
 
 	case CG_GETSNAPSHOT:
-		return CL_GetSnapshot( args[1], (snapshot_t *)VMA(2) );
+		if (clc.newDemoPlayer) 
+			return demoGetSnapshot( args[1], (snapshot_t *)VMA(2) );
+		else
+			return CL_GetSnapshot( args[1], (snapshot_t *)VMA(2) );
 
 	case CG_GETDEFAULTSTATE:
-		return CL_GetDefaultState(args[1], (entityState_t *)VMA(2));
+		if (clc.newDemoPlayer)
+			return demoGetDefaultState(args[1], (entityState_t *)VMA(2));
+		else
+			return CL_GetDefaultState(args[1], (entityState_t *)VMA(2));
 
 	case CG_GETSERVERCOMMAND:
-		return CL_GetServerCommand( args[1] );
+		if (clc.newDemoPlayer)
+			return demoGetServerCommand( args[1] );
+		else
+			return CL_GetServerCommand( args[1] );
 
 	case CG_GETCURRENTCMDNUMBER:
 		return CL_GetCurrentCmdNumber();
@@ -1255,7 +1294,8 @@ intptr_t CL_CgameSystemCalls( intptr_t *args ) {
 		return Key_GetCatcher();
 
 	case CG_KEY_SETCATCHER:
-		CL_Key_SetCatcher( args[1] );
+		// Don't allow the cgame module to close the console
+		CL_Key_SetCatcher( args[1] | (Key_GetCatcher() & KEYCATCH_CONSOLE) );
 		return 0;
 
 	case CG_KEY_GETKEY:
@@ -1407,7 +1447,15 @@ intptr_t CL_CgameSystemCalls( intptr_t *args ) {
 		return FX_FreeSystem();
 
 	case CG_FX_ADJUST_TIME:
-		FX_AdjustTime(args[1]);
+#ifdef __ANDROID__
+		FX_AdjustTime(args[1], VMF(2), VMF(3));
+#else
+		if (cls.mmeStateCGame >= MME_STATE_DEFAULT) {
+			FX_AdjustTime(args[1], VMF(2), VMF(3));
+		} else {
+			FX_AdjustTime(args[1], cl.serverTime-cl.serverTimeLast, 0.0f);
+		}
+#endif
 		return 0;
 
 	case CG_FX_RESET:
@@ -1597,6 +1645,11 @@ intptr_t CL_CgameSystemCalls( intptr_t *args ) {
 		CL_G2API_SetTime(args[1], args[2]);
 		return 0;
 
+	case CG_G2_SETTIMEFRACTION:
+//entTODO: add timefraction thing to another new G2API
+		re->G2API_SetTimeFraction(VMF(1));
+		return 0;
+
 	case CG_G2_ABSURDSMOOTHING:
 		CL_G2API_AbsurdSmoothing( VMA(1), (qboolean)args[2]);
 		return 0;
@@ -1685,6 +1738,63 @@ intptr_t CL_CgameSystemCalls( intptr_t *args ) {
 		re->AddWeatherZone( (float *)VMA(1), (float *)VMA(2) );
 		return 0;
 
+	case CG_MME_SEEKTIME:
+		return demoSeek( args[1] );
+	case CG_KEY_GETOVERSTRIKEMODE:
+		return Key_GetOverstrikeMode();
+	case CG_KEY_SETOVERSTRIKEMODE:
+		Key_SetOverstrikeMode( (qboolean)args[1] );
+		return 0;
+	case CG_MME_CAPTURE:
+		re->Capture( (char *)VMA(1), VMF(2), VMF(3), VMF(4) );
+		S_MMERecord( (char *)VMA(1), 1.0f / VMF(2) );
+		return 0;
+	case CG_MME_BLURINFO:
+		re->BlurInfo( (int *)VMA(1), (int *)VMA(2) );
+		return 0;
+	case CG_MME_MUSIC:
+		S_MMEMusic( (const char *)VMA(1), VMF(2), VMF(3) );
+        return 0; 	
+	case CG_MME_TIMEFRACTION:
+		re->TimeFraction(VMF(1));
+		return 0;
+	case CG_MME_EXTENDEDCOLORS:
+		cls.cTable = (colorTable_t)args[1];
+		re->ExtendedColors(cls.cTable);
+        return 0; 	
+	case CG_MME_FONTRATIOFIX:
+		re->FontRatioFix(VMF(1));
+        return 0; 	
+	case CG_R_RANDOMSEED:
+		re->DemoRandomSeed( args[1], VMF(2) );
+        return 0; 
+	case CG_FX_RANDOMSEED:
+		FX_DemoRandomSeed( args[1], VMF(2) );
+        return 0;
+	case CG_S_UPDATE_SCALE:
+		S_UpdateScale(VMF(1));
+		return 0;
+	case CG_CIN_ADJUST_TIME:
+		CIN_AdjustTime(args[1]);
+		return 0;
+	case CG_R_ROTATEPIC2_RATIOFIX:
+		re->RotatePic2RatioFix(VMF(1));
+		return 0;
+	case CG_MME_VIBRATEFEEDBACK:
+#ifdef __ANDROID__
+		PortableVibrateFeedback(args[1]);
+#endif
+		return 0;
+	case CG_MME_PROGRESSTIME:
+		return FloatAsInt(demoProgress());
+	case CG_MME_DEMOLENGTH:
+		return demoLength();
+	case CG_MME_REQUESTFEATURES:
+		cls.mmeStateCGame = MME_STATE_DEFAULT;
+		return 0;
+	case CG_MME_NOTIFICATION:
+		Com_ShowNotification( (const char *)VMA(1), args[2] );
+		return 0;
 	default:
 		assert(0); // bk010102
 		Com_Error( ERR_DROP, "Bad cgame system trap: %ld", (long int) args[0] );
@@ -1750,7 +1860,7 @@ void CL_BindCGame( void ) {
 		cgi.S_MuteSound							= S_MuteSound;
 		cgi.S_RegisterSound						= S_RegisterSound;
 		cgi.S_Respatialize						= S_Respatialize;
-		cgi.S_Shutup							= CL_S_Shutup;
+		cgi.S_Shutup							= S_Shutup;
 		cgi.S_StartBackgroundTrack				= S_StartBackgroundTrack;
 		cgi.S_StartLocalSound					= S_StartLocalSound;
 		cgi.S_StartSound						= S_StartSound;
@@ -1773,7 +1883,7 @@ void CL_BindCGame( void ) {
 		cgi.R_DrawStretchPic					= re->DrawStretchPic;
 		cgi.R_DrawRotatePic						= re->DrawRotatePic;
 		cgi.R_DrawRotatePic2					= re->DrawRotatePic2;
-		cgi.R_Font_DrawString					= re->Font_DrawString;
+		cgi.R_Font_DrawString					= CL_R_Font_DrawString;
 		cgi.R_Font_HeightPixels					= re->Font_HeightPixels;
 		cgi.R_Font_StrLenChars					= re->Font_StrLenChars;
 		cgi.R_Font_StrLenPixels					= re->Font_StrLenPixels;
@@ -1842,7 +1952,7 @@ void CL_BindCGame( void ) {
 		cgi.FX_InitSystem						= FX_InitSystem;
 		cgi.FX_SetRefDef						= FX_SetRefDef;
 		cgi.FX_FreeSystem						= FX_FreeSystem;
-		cgi.FX_AdjustTime						= FX_AdjustTime;
+		cgi.FX_AdjustTime						= CL_FX_AdjustTime;
 		cgi.FX_Draw2DEffects					= FX_Draw2DEffects;
 		cgi.FX_AddPoly							= CGFX_AddPoly;
 		cgi.FX_AddBezier						= CGFX_AddBezier;

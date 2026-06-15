@@ -1,25 +1,3 @@
-/*
-===========================================================================
-Copyright (C) 2000 - 2013, Raven Software, Inc.
-Copyright (C) 2001 - 2013, Activision, Inc.
-Copyright (C) 2013 - 2015, OpenJK contributors
-
-This file is part of the OpenJK source code.
-
-OpenJK is free software; you can redistribute it and/or modify it
-under the terms of the GNU General Public License version 2 as
-published by the Free Software Foundation.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU General Public License for more details.
-
-You should have received a copy of the GNU General Public License
-along with this program; if not, see <http://www.gnu.org/licenses/>.
-===========================================================================
-*/
-
 // Heavy Repeater Weapon
 
 #include "cg_local.h"
@@ -39,7 +17,7 @@ void FX_RepeaterProjectileThink( centity_t *cent, const struct weaponInfo_s *wea
 		forward[2] = 1.0f;
 	}
 
-	trap->FX_PlayEffectID( cgs.effects.repeaterProjectileEffect, cent->lerpOrigin, forward, -1, -1, qfalse );
+	trap_FX_PlayEffectID( cgs.effects.repeaterProjectileEffect, cent->lerpOrigin, forward, -1, -1 );
 }
 
 /*
@@ -50,7 +28,7 @@ FX_RepeaterHitWall
 
 void FX_RepeaterHitWall( vec3_t origin, vec3_t normal )
 {
-	trap->FX_PlayEffectID( cgs.effects.repeaterWallImpactEffect, origin, normal, -1, -1, qfalse );
+	trap_FX_PlayEffectID( cgs.effects.repeaterWallImpactEffect, origin, normal, -1, -1 );
 }
 
 /*
@@ -61,7 +39,7 @@ FX_RepeaterHitPlayer
 
 void FX_RepeaterHitPlayer( vec3_t origin, vec3_t normal, qboolean humanoid )
 {
-	trap->FX_PlayEffectID( cgs.effects.repeaterFleshImpactEffect, origin, normal, -1, -1, qfalse );
+	trap_FX_PlayEffectID( cgs.effects.repeaterFleshImpactEffect, origin, normal, -1, -1 );
 }
 
 static void CG_DistortionOrb( centity_t *cent )
@@ -116,7 +94,7 @@ static void CG_DistortionOrb( centity_t *cent )
 	VectorScale(ent.axis[2], -scale, ent.axis[2]);
 
 	ent.hModel = cgs.media.halfShieldModel;
-	ent.customShader = 0;//cgs.media.halfShieldShader;
+	ent.customShader = 0;//cgs.media.halfShieldShader;	
 
 #if 1
 	ent.renderfx = (RF_DISTORTION|RF_RGB_TINT);
@@ -129,8 +107,73 @@ static void CG_DistortionOrb( centity_t *cent )
 	ent.renderfx = RF_DISTORTION;
 #endif
 
-	trap->R_AddRefEntityToScene( &ent );
+	trap_R_AddRefEntityToScene( &ent );
 }
+
+
+//q3pro/QtZ code
+void FX_Mortar_Missile( centity_t *cent, const struct weaponInfo_s *weapon )
+{
+	refEntity_t ent;
+	vec3_t ang;
+	float vLen;
+	float scale = 1.0f;
+	refdef_t *refdef = CG_GetRefdef();
+
+	memset( &ent, 0, sizeof( ent ) );
+
+	VectorCopy( cent->lerpOrigin, ent.origin );
+
+	VectorSubtract( ent.origin, refdef->vieworg, ent.axis[0] );
+	vLen = VectorLength( ent.axis[0] );
+	if ( VectorNormalize( ent.axis[0] ) <= 0.1f )
+		return;
+
+//	VectorCopy(refdef->viewaxis[2], ent.axis[2]);
+//	CrossProduct(ent.axis[0], ent.axis[2], ent.axis[1]);
+	vectoangles( ent.axis[0], ang );
+	ang[0] = cent->trickAlpha;
+	cent->trickAlpha += 12; //spin the half-sphere to give a "screwdriver" effect
+	AnglesToAxis( ang, ent.axis );
+
+	//radius must be a power of 2, and is the actual captured texture size
+//	if (vLen < 128)			ent.radius = 256;
+//	else if (vLen < 256)	ent.radius = 128;
+//	else if (vLen < 512)	ent.radius = 64;
+//	else					ent.radius = 32;
+	scale = 0.37f;
+	VectorScale( ent.axis[0],  scale, ent.axis[0] );
+	VectorScale( ent.axis[1],  scale, ent.axis[1] );
+	VectorScale( ent.axis[2], -scale, ent.axis[2] );
+
+
+	ent.hModel = cgs.media.halfShieldModel;
+
+	ent.shaderRGBA[0] = 128;	ent.shaderRGBA[1] = 43;		ent.shaderRGBA[2] = 255;	ent.shaderRGBA[3] = 48;
+	ent.customShader = trap_R_RegisterShaderNoMip( "gfx/effects/shock_ripple" );
+	ent.renderfx = (RF_RGB_TINT|RF_FORCE_ENT_ALPHA);
+//	SE_R_AddRefEntityToScene( &ent, cent->currentState.number );
+	trap_R_AddRefEntityToScene( &ent );
+
+	ent.shaderRGBA[0] = 255;	ent.shaderRGBA[1] = 255;	ent.shaderRGBA[2] = 255;	ent.shaderRGBA[3] = 255;
+	ent.customShader	= trap_R_RegisterShaderNoMip( "gfx/effects/caustic1" );
+	ent.renderfx		= (RF_RGB_TINT|RF_MINLIGHT);
+//	SE_R_AddRefEntityToScene( &ent, cent->currentState.number );
+	trap_R_AddRefEntityToScene( &ent );
+
+	scale = (1.15 + Q_fabs((float)sin(cg.time / 80.0 + cg.timeFraction / 80.0))*0.65f);
+	VectorScale( ent.axis[0], scale, ent.axis[0] );
+	VectorScale( ent.axis[1], scale, ent.axis[1] );
+	VectorScale( ent.axis[2], scale, ent.axis[2] );
+	ent.shaderRGBA[0] = 51;		ent.shaderRGBA[1] = 119;	ent.shaderRGBA[2] = 255;	ent.shaderRGBA[3] = 255;
+	ent.customShader = trap_R_RegisterShaderNoMip( "gfx/effects/eplosion_wave" );
+	ent.renderfx = (RF_RGB_TINT|RF_ALPHA_DEPTH);
+//	SE_R_AddRefEntityToScene( &ent, cent->currentState.number );
+	trap_R_AddRefEntityToScene( &ent );
+
+	trap_R_AddLightToScene( cent->lerpOrigin, 400, 0.13f, 0.43f, 0.87f );
+}
+
 
 /*
 ------------------------------
@@ -147,11 +190,17 @@ void FX_RepeaterAltProjectileThink( centity_t *cent, const struct weaponInfo_s *
 		forward[2] = 1.0f;
 	}
 
+	if ( (cg_newFX.integer & NEWFX_REPEATER_ALT) )
+	{
+		FX_Mortar_Missile( cent, weapon );
+		return;
+	}
+
 	if (cg_repeaterOrb.integer)
 	{
 		CG_DistortionOrb(cent);
 	}
-	trap->FX_PlayEffectID( cgs.effects.repeaterAltProjectileEffect, cent->lerpOrigin, forward, -1, -1, qfalse );
+	trap_FX_PlayEffectID( cgs.effects.repeaterAltProjectileEffect, cent->lerpOrigin, forward, -1, -1 );
 }
 
 /*
@@ -162,7 +211,7 @@ FX_RepeaterAltHitWall
 
 void FX_RepeaterAltHitWall( vec3_t origin, vec3_t normal )
 {
-	trap->FX_PlayEffectID( cgs.effects.repeaterAltWallImpactEffect, origin, normal, -1, -1, qfalse );
+	trap_FX_PlayEffectID( cgs.effects.repeaterAltWallImpactEffect, origin, normal, -1, -1 );
 }
 
 /*
@@ -173,5 +222,5 @@ FX_RepeaterAltHitPlayer
 
 void FX_RepeaterAltHitPlayer( vec3_t origin, vec3_t normal, qboolean humanoid )
 {
-	trap->FX_PlayEffectID( cgs.effects.repeaterAltWallImpactEffect, origin, normal, -1, -1, qfalse );
+	trap_FX_PlayEffectID( cgs.effects.repeaterAltWallImpactEffect, origin, normal, -1, -1 );
 }

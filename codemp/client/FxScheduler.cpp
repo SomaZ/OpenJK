@@ -370,6 +370,17 @@ int CFxScheduler::RegisterEffect( const char *file, bool bHasCorrectPath /*= fal
 }
 
 
+// hack for known projectile filenames, we will force their life to 1
+static char projectileFilenames[][32] = {
+	"atst/shot", "atst/shot_red", "atst/side_alt_shot", "atst/side_main_shot", "blaster/npcshot", "blaster/shot",
+	"bowcaster/shot", "bryar/crackleShot", "bryar/npcshot", "bryar/shot", "concussion/shot", "demp2/projectile",
+	"emplaced/shot", "emplaced/shotnpc", "eweb/shot", "eweb/shotnpc", "flechette/alt_shot", "flechette/shot",
+	"noghri_stick/shot", "repeater/alt_projectile", "repeater/projectile", "rocket/shot", "turret/hoth_shot",
+	"turret/shot", "turret/turb_shot", "tusken/shot", "mp/itemcone.efx"
+};
+static int compareFilenames(const void *a, const void *b) {
+	return Q_stricmp((const char *)a, (const char *)b);
+}
 //------------------------------------------------------
 // ParseEffect
 //	Starts at ground zero, using each group header to
@@ -418,6 +429,14 @@ int CFxScheduler::ParseEffect( const char *file, CGPGroup *base )
 		// failure
 		return 0;
 	}
+
+	// hack for projectiles
+	void *isProjectile = NULL;
+	if (fx_projectileLife && fx_projectileLife->value > 0.0f && VALIDSTRING(file))
+	{
+		isProjectile = bsearch(file, projectileFilenames, ARRAY_LEN(projectileFilenames), sizeof(*projectileFilenames), compareFilenames);
+	}
+
 	if ((pair = base->GetPairs())!=0)
 	{
 		grpName = pair->GetName();
@@ -452,6 +471,8 @@ int CFxScheduler::ParseEffect( const char *file, CGPGroup *base )
 			prim->mType = type;
 			prim->ParsePrimitive( primitiveGroup );
 
+			if (isProjectile)
+				prim->ParseLife(fx_projectileLife->string);
 			// Add our primitive template to the effect list
 			AddPrimitiveToEffect( effect, prim );
 		}
@@ -762,7 +783,7 @@ void GetRGB_Colors( CPrimitiveTemplate *fx, vec3_t outStartRGB, vec3_t outEndRGB
 
 	if ( fx->mSpawnFlags & FX_RGB_COMPONENT_INTERP )
 	{
-		percent = flrand(0.0f, 1.0f);
+		percent = random();
 
 		VectorSet( outStartRGB, fx->mRedStart.GetVal(percent), fx->mGreenStart.GetVal(percent), fx->mBlueStart.GetVal(percent) );
 		VectorSet( outEndRGB, fx->mRedEnd.GetVal(percent), fx->mGreenEnd.GetVal(percent), fx->mBlueEnd.GetVal(percent) );
@@ -1241,7 +1262,7 @@ void CFxScheduler::CreateEffect( CPrimitiveTemplate *fx, const vec3_t origin, ma
 
 	if( fx->mSpawnFlags & FX_RAND_ROT_AROUND_FWD )
 	{
-		RotatePointAroundVector( ax[1], ax[0], axis[1], flrand(0.0f, 360.0f) );
+		RotatePointAroundVector( ax[1], ax[0], axis[1], random() * 360.0f );
 		CrossProduct( ax[0], ax[1], ax[2] );
 	}
 
@@ -1270,8 +1291,8 @@ void CFxScheduler::CreateEffect( CPrimitiveTemplate *fx, const vec3_t origin, ma
 		float x, y;
 		float width, height;
 
-		x = DEG2RAD( flrand(0.0f, 360.0f) );
-		y = DEG2RAD( flrand(0.0f, 180.0f) );
+		x = DEG2RAD( random() * 360.0f );
+		y = DEG2RAD( random() * 180.0f );
 
 		width = fx->mRadius.GetVal();
 		height = fx->mHeight.GetVal();
@@ -1293,8 +1314,8 @@ void CFxScheduler::CreateEffect( CPrimitiveTemplate *fx, const vec3_t origin, ma
 
 		// set up our point, then rotate around the current direction to.  Make unrotated cylinder centered around 0,0,0
 		VectorScale( ax[1], fx->mRadius.GetVal(), pt );
-		VectorMA( pt, flrand(-1.0f, 1.0f) * 0.5f * fx->mHeight.GetVal(), ax[0], pt );
-		RotatePointAroundVector( temp, ax[0], pt, flrand(0.0f, 360.0f) );
+		VectorMA( pt, crandom() * 0.5f * fx->mHeight.GetVal(), ax[0], pt );
+		RotatePointAroundVector( temp, ax[0], pt, random() * 360.0f );
 
 		VectorAdd( org, temp, org );
 

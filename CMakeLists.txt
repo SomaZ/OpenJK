@@ -1,9 +1,9 @@
 #============================================================================
 # Copyright (C) 2013 - 2018, OpenJK contributors
 #
-# This file is part of the OpenJK source code.
+# This file is part of the jaMME source code.
 #
-# OpenJK is free software; you can redistribute it and/or modify it
+# jaMME is free software; you can redistribute it and/or modify it
 # under the terms of the GNU General Public License version 2 as
 # published by the Free Software Foundation.
 #
@@ -21,9 +21,9 @@
 cmake_minimum_required(VERSION 3.1...3.31)
 set(CMAKE_OSX_DEPLOYMENT_TARGET "10.9" CACHE STRING "Minimum OS X deployment version")
 
-set(InOpenJK ON)
+set(InjaMME ON)
 
-set(ProjectName "OpenJK" CACHE STRING "Project Name")
+set(ProjectName "jaMME" CACHE STRING "Project Name")
 project(${ProjectName})
 
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
@@ -33,25 +33,18 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
 # Customizable options
 #
 #=============================================================================
-option(BuildPortableVersion "Build portable version (does not read or write files from your user/home directory" OFF)
+option(BuildPortableVersion "Build portable version (does not read or write files from your user/home directory" ON)
 
-option(BuildMPEngine "Whether to create projects for the MP client (openjk.exe)" ON)
-option(BuildMPRdVanilla "Whether to create projects for the MP default renderer (rd-vanilla_x86.dll)" ON)
-option(BuildMPDed "Whether to create projects for the MP dedicated server (openjkded.exe)" ON)
+option(BuildMPEngine "Whether to create projects for the MP client (jamme.x86.exe)" ON)
+option(BuildMPRdVanilla "Whether to create projects for the MP default renderer (rd-jamme_x86.dll)" ON)
 option(BuildMPGame "Whether to create projects for the MP server-side gamecode (jampgamex86.dll)" ON)
 option(BuildMPCGame "Whether to create projects for the MP clientside gamecode (cgamex86.dll)" ON)
 option(BuildMPUI "Whether to create projects for the MP UI code (uix86.dll)" ON)
-option(BuildMPRend2 "Whether to create projects for the EXPERIMENTAL MP rend2 renderer (rd-rend2_x86.dll)" ON)
+option(BuildMPRend2 "Whether to create projects for the EXPERIMENTAL MP rend2 renderer (rd-jamme2_x86.dll)" ON)
 
-option(BuildSPEngine "Whether to create projects for the SP engine (openjk_sp.exe)" ON)
-option(BuildSPGame "Whether to create projects for the SP gamecode (jagamex86.dll)" ON)
-option(BuildSPRdVanilla "Whether to create projects for the SP default renderer (rdsp-vanilla_x86.dll)" ON)
-option(BuildSPRend2 "Whether to create projects for the EXPERIMENTAL SP rend2 renderer (rdsp-rend2_x86.dll)" ON)
-
-option(BuildJK2SPEngine "Whether to create projects for the jk2 SP engine (openjo_sp.exe)" OFF)
-option(BuildJK2SPGame "Whether to create projects for the jk2 sp gamecode mod (jk2gamex86.dll)" OFF)
-option(BuildJK2SPRdVanilla "Whether to create projects for the jk2 sp renderer (rdjosp-vanilla_x86.dll)" OFF)
-option(BuildJK2SPRdRend2 "Whether to create projects for the EXPERIMENTAL jk2 SP rend2 renderer (rdjosp-rend2_x86.dll)" OFF)
+if((UNIX) AND (NOT (APPLE)))
+	option(BuildAIO "Generate AIO" OFF)
+endif()
 
 option(BuildTests "Whether to build automatic unit tests (requires Boost)" OFF)
 option(UseAddressSanitizer "Whether to enable runtime address sanitizer" OFF)
@@ -66,14 +59,12 @@ cmake_dependent_option(BuildSymbolServer "Build WIP Windows Symbol Server (exper
 # Note that we always use the bundled copy of minizip, since it is modified to
 # use Z_Malloc.
 
-set(UseInternalOpenALDefault OFF)
 set(UseInternalZlibDefault   OFF)
 set(UseInternalPNGDefault    OFF)
 set(UseInternalJPEGDefault   OFF)
 set(UseInternalSDL2Default   OFF)
 
 if(UseInternalLibs OR WIN32)
-  set(UseInternalOpenALDefault ON)
   set(UseInternalZlibDefault   ON)
   set(UseInternalPNGDefault    ON)
   set(UseInternalJPEGDefault   ON)
@@ -85,11 +76,11 @@ if(APPLE)
   set(UseInternalPNGDefault  ON)
 endif()
 
-option(UseInternalOpenAL "If set, use bundled OpenAL."  ${UseInternalOpenALDefault})
-option(UseInternalZlib   "If set, use bundled zlib."    ${UseInternalZlibDefault})
-option(UseInternalPNG    "If set, use bundled libpng."  ${UseInternalPNGDefault})
-option(UseInternalJPEG   "If set, use bundled libjpeg." ${UseInternalJPEGDefault})
-option(UseInternalSDL2   "If set, use bundled SDL2."    ${UseInternalSDL2Default})
+option(UseInternalZlib	"If set, use bundled zlib."	${UseInternalZlibDefault})
+option(UseInternalPNG		"If set, use bundled libpng."	${UseInternalPNGDefault})
+option(UseInternalJPEG	"If set, use bundled libjpeg."	${UseInternalJPEGDefault})
+option(UseInternalSDL2	"If set, use bundled SDL2."	${UseInternalSDL2Default})
+option(UseCurl			"Use cURL"					ON)
 
 # This option won't appear on non-Apple platforms.
 if(APPLE)
@@ -154,6 +145,11 @@ else()
 	endif()
 endif()
 
+if(WIN64)
+	set(UseCurl OFF)
+endif()
+
+
 message(STATUS "Architecture is ${Architecture}")
 
 if(WIN32 AND CMAKE_VERSION VERSION_LESS "3.4")
@@ -165,22 +161,13 @@ endif()
 # Binary names
 #
 #=============================================================================
-set(SPEngine "openjk_sp.${Architecture}")
-set(SPGame "jagame${Architecture}")
-set(SPRDVanillaRenderer "rdsp-vanilla_${Architecture}")
-set(SPRend2 "rdsp-rend2_${Architecture}")
-set(MPEngine "openjk.${Architecture}")
-set(MPVanillaRenderer "rd-vanilla_${Architecture}")
-set(MPDed "openjkded.${Architecture}")
+set(MPEngine "jamme.${Architecture}")
+set(MPVanillaRenderer "rd-jamme_${Architecture}")
 set(MPGame "jampgame${Architecture}")
 set(MPCGame "cgame${Architecture}")
 set(MPUI "ui${Architecture}")
-set(MPRend2 "rd-rend2_${Architecture}")
-set(JK2SPEngine "openjo_sp.${Architecture}")
-set(JK2SPGame "jospgame${Architecture}")
-set(JK2SPVanillaRenderer "rdjosp-vanilla_${Architecture}")
-set(JK2SPRend2Renderer "rdjosp-rend2_${Architecture}")
-set(AssetsPk3 "openjk-${Architecture}.pk3")
+set(MPRend2 "rd-jamme2_${Architecture}")
+set(AssetsPk3 "jamme-${Architecture}.pk3")
 # Library names
 set(MPBotLib "botlib")
 set(SharedLib "shared")
@@ -190,12 +177,10 @@ set(SharedLib "shared")
 # Paths
 #
 #=============================================================================
-set(SPDir "${CMAKE_SOURCE_DIR}/code")
 set(MPDir "${CMAKE_SOURCE_DIR}/codemp")
-set(JK2SPDir "${CMAKE_SOURCE_DIR}/codeJK2")
 set(SharedDir ${CMAKE_SOURCE_DIR}/shared)
-set(OpenJKLibDir "${CMAKE_SOURCE_DIR}/lib")
-set(GSLIncludeDirectory "${OpenJKLibDir}/gsl-lite/include")
+set(LibDir "${CMAKE_SOURCE_DIR}/lib")
+set(GSLIncludeDirectory "${LibDir}/gsl-lite/include")
 
 include(InstallConfig)
 
@@ -236,7 +221,7 @@ if(MSVC)
 	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /MP")
 
 	# We don't try to control symbol visibility under MSVC.
-	set(OPENJK_VISIBILITY_FLAGS "")
+	set(VISIBILITY_FLAGS "")
 elseif (("${CMAKE_C_COMPILER_ID}" STREQUAL "GNU") OR ("${CMAKE_C_COMPILER_ID}" MATCHES "Clang"))
 	# I hope this doesn't come back to bite me in the butt later on.
 	# Realistically though, can the C and CXX compilers be different?
@@ -246,7 +231,7 @@ elseif (("${CMAKE_C_COMPILER_ID}" STREQUAL "GNU") OR ("${CMAKE_C_COMPILER_ID}" M
 	# ZLib explicitly declares symbols hidden, rather than defaulting to hidden.
 	#
 	# Note that -fvisibility=hidden is stronger than -fvisibility-inlines-hidden.
-	set(OPENJK_VISIBILITY_FLAGS "-fvisibility=hidden")
+	set(VISIBILITY_FLAGS "-fvisibility=hidden")
 
 	# removes the -rdynamic flag at linking (which causes crashes for some reason)
 	set(CMAKE_SHARED_LIBRARY_LINK_C_FLAGS "")
@@ -324,6 +309,12 @@ else()
 	message(ERROR "Unsupported compiler")
 endif()
 
+set(SharedDefines ${SharedDefines} "_JK2MP" "_JK2")
+
+if (BuildAIO)
+	set(SharedDefines ${SharedDefines} "USE_AIO")
+endif()
+
 set(SharedDefines ${SharedDefines} "$<$<CONFIG:Debug>:_DEBUG>")
 set(SharedDefines ${SharedDefines} "$<$<NOT:$<CONFIG:Debug>>:FINAL_BUILD>")
 
@@ -377,7 +368,7 @@ set(SharedCommonFiles
 	"${SharedDir}/qcommon/q_math.h"
 	"${SharedDir}/qcommon/q_math.c"
 	"${SharedDir}/qcommon/q_string.h"
-	"${SharedDir}/qcommon/q_string.c"
+#	"${SharedDir}/qcommon/q_string.c"
 	"${SharedDir}/qcommon/q_platform.h"
 	"${CMAKE_BINARY_DIR}/shared/qcommon/q_version.h"
 	)
@@ -416,11 +407,6 @@ endif()
 add_subdirectory(lib/minizip)
 
 # Add projects
-add_subdirectory(${SPDir})
-if(BuildJK2SPGame)
-	add_subdirectory("${JK2SPDir}/game")
-endif()
-
 add_subdirectory(${MPDir})
 
 if(BuildSymbolServer)

@@ -1,25 +1,3 @@
-/*
-===========================================================================
-Copyright (C) 2000 - 2013, Raven Software, Inc.
-Copyright (C) 2001 - 2013, Activision, Inc.
-Copyright (C) 2013 - 2015, OpenJK contributors
-
-This file is part of the OpenJK source code.
-
-OpenJK is free software; you can redistribute it and/or modify it
-under the terms of the GNU General Public License version 2 as
-published by the Free Software Foundation.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU General Public License for more details.
-
-You should have received a copy of the GNU General Public License
-along with this program; if not, see <http://www.gnu.org/licenses/>.
-===========================================================================
-*/
-
 #pragma once
 
 #include "ai.h"
@@ -38,7 +16,7 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 #define NPCAI_LOST				0x00002000	//Can't nav to his goal
 #define NPCAI_SHIELDS			0x00004000	//Has shields, borg can adapt
 #define NPCAI_GREET_ALLIES		0x00008000	//Say hi to nearby allies
-#define NPCAI_FORM_TELE_NAV		0x00010000	//Tells formation people to use nav info to get to
+#define NPCAI_FORM_TELE_NAV		0x00010000	//Tells formation people to use nav info to get to 
 #define NPCAI_ENROUTE_TO_HOMEWP 0x00020000	//Lets us know to run our lostenemyscript when we get to homeWp
 #define NPCAI_MATCHPLAYERWEAPON 0x00040000	//Match the player's weapon except when it changes during cinematics
 #define NPCAI_DIE_ON_IMPACT		0x00100000	//Next time you crashland, die!
@@ -83,6 +61,8 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 #define AID_LOSTPATH	0x00000008	//Cannot make a valid movement due to lack of connections
 
 //#endif //__DEBUG
+
+//extern qboolean showWaypoints;
 
 typedef enum {VIS_UNKNOWN, VIS_NOT, VIS_PVS, VIS_360, VIS_FOV, VIS_SHOOT} visibility_t;
 typedef enum {SPOT_ORIGIN, SPOT_CHEST, SPOT_HEAD, SPOT_HEAD_LEAN, SPOT_WEAPON, SPOT_LEGS, SPOT_GROUND} spot_t;
@@ -132,7 +112,7 @@ typedef struct gNPCstats_e
 #define	MAX_ENEMY_POS_LAG	2400
 #define	ENEMY_POS_LAG_INTERVAL	100
 #define	ENEMY_POS_LAG_STEPS	(MAX_ENEMY_POS_LAG/ENEMY_POS_LAG_INTERVAL)
-typedef struct
+typedef struct 
 {
 	//FIXME: Put in playerInfo or something
 	int			timeOfDeath;			//FIXME do we really need both of these
@@ -186,7 +166,7 @@ typedef struct
 	int			investigateSoundDebounceTime;
 	int			greetingDebounceTime;//when we can greet someone next
 	gentity_t	*eventOwner;
-
+	
 	//bState-specific fields
 	gentity_t	*coverTarg;
 	jumpState_t	jumpState;
@@ -253,7 +233,7 @@ typedef struct
 	int			goalRadius;
 
 	//FIXME: These may be redundant
-
+	
 	/*
 	int			weaponTime;		//Time until refire is valid
 	int			jumpTime;
@@ -278,7 +258,7 @@ typedef struct
 	gentity_t	*watchTarget;	//for BS_CINEMATIC, keeps facing this ent
 
 	int			ffireCount;		//sigh... you'd think I'd be able to find a way to do this without having to use 3 int fields, but...
-	int			ffireDebounce;
+	int			ffireDebounce;	
 	int			ffireFadeDebounce;
 } gNPC_t;
 
@@ -289,3 +269,85 @@ void Svcmd_NPC_f( void );
 void NAV_DebugShowWaypoints (void);
 void NAV_DebugShowBoxes (void);
 void NAV_DebugShowSquadPaths (void);
+/*
+void Bot_InitGame( void );
+void Bot_InitPreSpawn( void );
+void Bot_InitPostSpawn( void );
+void Bot_Shutdown( void );
+void Bot_Think( gentity_t *ent, int msec );
+void Bot_Connect( gentity_t *bot, char *botName );
+void Bot_Begin( gentity_t *bot );
+void Bot_Disconnect( gentity_t *bot );
+void Svcmd_Bot_f( void );
+void Nav_ItemSpawn( gentity_t *ent, int remaining );
+*/
+
+//
+// This section should be moved to QFILES.H
+//
+/*
+#define NAVFILE_ID			(('I')+('N'<<8)+('A'<<16)+('V'<<24))
+#define NAVFILE_VERSION		6
+
+typedef struct {
+	unsigned	id;
+	unsigned	version;
+	unsigned	checksum;
+	unsigned	surfaceCount;
+	unsigned	edgeCount;
+} navheader_t;
+
+
+#define MAX_SURFACES	4096
+
+#define NSF_PUSH			0x00000001
+#define NSF_WATERLEVEL1		0x00000002
+#define NSF_WATERLEVEL2		0x00000004
+#define NSF_WATER_NOAIR		0x00000008
+#define NSF_DUCK			0x00000010
+#define NSF_PAIN			0x00000020
+#define NSF_TELEPORTER		0x00000040
+#define NSF_PLATHIGH		0x00000080
+#define NSF_PLATLOW			0x00000100
+#define NSF_DOOR_FLOOR		0x00000200
+#define NSF_DOOR_SHOOT		0x00000400
+#define NSF_DOOR_BUTTON		0x00000800
+#define NSF_BUTTON			0x00001000
+
+typedef struct {
+	vec3_t		origin;
+	vec2_t		absmin;
+	vec2_t		absmax;
+	int			parm;
+	unsigned	flags;
+	unsigned	edgeCount;
+	unsigned	edgeIndex;
+} nsurface_t;
+
+
+#define NEF_DUCK			0x00000001
+#define NEF_JUMP			0x00000002
+#define NEF_HOLD			0x00000004
+#define NEF_WALK			0x00000008
+#define NEF_RUN				0x00000010
+#define NEF_NOAIRMOVE		0x00000020
+#define NEF_LEFTGROUND		0x00000040
+#define NEF_PLAT			0x00000080
+#define NEF_FALL1			0x00000100
+#define NEF_FALL2			0x00000200
+#define NEF_DOOR_SHOOT		0x00000400
+#define NEF_DOOR_BUTTON		0x00000800
+#define NEF_BUTTON			0x00001000
+
+typedef struct {
+	vec3_t		origin;
+	vec2_t		absmin;		// region within this surface that is the portal to the other surface
+	vec2_t		absmax;
+	int			surfaceNum;
+	unsigned	flags;		// jump, prerequisite button, will take falling damage, etc...
+	float		cost;
+	int			dirIndex;
+	vec3_t		endSpot;
+	int			parm;
+} nedge_t;
+*/

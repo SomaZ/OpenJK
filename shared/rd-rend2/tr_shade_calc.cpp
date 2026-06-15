@@ -26,6 +26,48 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 #define	WAVEVALUE( table, base, amplitude, phase, freq )  ((base) + table[ Q_ftol( ( ( (phase) + tess.shaderTime * (freq) ) * FUNCTABLE_SIZE ) ) & FUNCTABLE_MASK ] * (amplitude))
 
+float WAVEVALUENEW(genFunc_t func, float base, float amplitude, float phase, float freq) {
+	double index = (double)phase + tess.shaderTime * (double)freq;
+	index = fmod(index, 1.0);
+
+	switch (func) {
+	case GF_SIN:
+		return base + sin(DEG2RAD(index * 360.0)) * amplitude;
+	case GF_TRIANGLE:
+		if (index < 0.25) {
+			index = index / 0.25;
+		} else if (index < 0.5) {
+			index = 1.0 - ((index - 0.25) / 0.25);
+		} else if (index < 0.75) {
+			index = -((index - 0.5) / 0.25);
+		} else if (index <= 1.0) {
+			index = -(1.0 - ((index - 0.75) / 0.25));
+		}
+		return base + index * amplitude;
+	case GF_SQUARE:
+		return WAVEVALUE(tr.squareTable, base, amplitude, phase, freq);
+	case GF_SAWTOOTH:
+		return base + index * amplitude;
+	case GF_INVERSE_SAWTOOTH:
+		return base + (1.0 - index) * amplitude;
+	case GF_NONE:
+	default:
+		break;
+	}
+	Com_Printf("WAVEVALUENEW called with invalid function '%d' in shader '%s'\n", func, tess.shader->name);
+	return 0.0f;
+}
+
+// not even a table
+float NewSinTable (double jediAcademy) {
+	jediAcademy = fmod(jediAcademy, 1.0);
+	return sin(DEG2RAD(jediAcademy * 360.0));
+}
+float NewCosTable (double jediAcademy) {
+	jediAcademy = fmod(jediAcademy, 1.0);
+	return cos(DEG2RAD(jediAcademy * 360.0));
+}
+
 static float *TableForFunc( genFunc_t func )
 {
 	switch ( func )
@@ -70,7 +112,8 @@ static float EvalWaveForm( const waveForm_t *wf )
 
 	table = TableForFunc( wf->func );
 
-	return WAVEVALUE( table, wf->base, wf->amplitude, wf->phase, wf->frequency );
+//	return WAVEVALUE( table, wf->base, wf->amplitude, wf->phase, wf->frequency );
+	return WAVEVALUENEW( wf->func, wf->base, wf->amplitude, wf->phase, wf->frequency );
 }
 
 static float EvalWaveFormClamped( const waveForm_t *wf )
@@ -147,7 +190,12 @@ void RB_CalcDeformVertexes( deformStage_t *ds )
 		{
 			float off = ( xyz[0] + xyz[1] + xyz[2] ) * ds->deformationSpread;
 
-			scale = WAVEVALUE( table, ds->deformationWave.base,
+/*			scale = WAVEVALUE( table, ds->deformationWave.base, 
+				ds->deformationWave.amplitude,
+				ds->deformationWave.phase + off,
+				ds->deformationWave.frequency );*/
+			scale = WAVEVALUENEW( ds->deformationWave.func,
+				ds->deformationWave.base,
 				ds->deformationWave.amplitude,
 				ds->deformationWave.phase + off,
 				ds->deformationWave.frequency );
@@ -213,7 +261,7 @@ void RB_CalcBulgeVertexes( deformStage_t *ds ) {
 	uint32_t		*normal = ( uint32_t * ) tess.normal;
 	float		now;
 
-	now = backEnd.refdef.time * ds->bulgeSpeed * 0.001f;
+	now = backEnd.refdef.time * ds->bulgeSpeed * 0.001 + backEnd.refdef.timeFraction * ds->bulgeSpeed * 0.001;
 
 	for ( i = 0; i < tess.numVertexes; i++, xyz += 4, st += NUM_TESS_TEXCOORDS*2, normal++ ) {
 		int		off;
@@ -222,9 +270,10 @@ void RB_CalcBulgeVertexes( deformStage_t *ds ) {
 
 		R_VboUnpackNormal(fNormal, *normal);
 
-		off = (float)( FUNCTABLE_SIZE / (M_PI*2) ) * ( st[0] * ds->bulgeWidth + now );
-
-		scale = tr.sinTable[ off & FUNCTABLE_MASK ] * ds->bulgeHeight;
+//		off = (float)( FUNCTABLE_SIZE / (M_PI*2) ) * ( st[0] * ds->bulgeWidth + now );
+//		scale = tr.sinTable[ off & FUNCTABLE_MASK ] * ds->bulgeHeight;
+		off = (st[0] * ds->bulgeWidth + now) / (M_PI*2);
+		scale = NewSinTable(off) * ds->bulgeHeight;
 
 		xyz[0] += fNormal[0] * scale;
 		xyz[1] += fNormal[1] * scale;
@@ -249,7 +298,12 @@ void RB_CalcMoveVertexes( deformStage_t *ds ) {
 
 	table = TableForFunc( ds->deformationWave.func );
 
-	scale = WAVEVALUE( table, ds->deformationWave.base,
+/*	scale = WAVEVALUE( table, ds->deformationWave.base, 
+		ds->deformationWave.amplitude,
+		ds->deformationWave.phase,
+		ds->deformationWave.frequency );*/
+	scale = WAVEVALUENEW( ds->deformationWave.func,
+		ds->deformationWave.base,
 		ds->deformationWave.amplitude,
 		ds->deformationWave.phase,
 		ds->deformationWave.frequency );
@@ -800,16 +854,19 @@ void RB_CalcTransformTexMatrix( const texModInfo_t *tmi, float *matrix  )
 */
 void RB_CalcRotateTexMatrix( float degsPerSecond, float *matrix )
 {
-	float timeScale = tess.shaderTime;
-	float degs;
-	int index;
+	double timeScale = tess.shaderTime;
+	double degs;
+	double index;
 	float sinValue, cosValue;
 
 	degs = -degsPerSecond * timeScale;
-	index = degs * ( FUNCTABLE_SIZE / 360.0f );
+	//index = degs * ( FUNCTABLE_SIZE / 360.0f );
+	index = degs / 360.0;
 
-	sinValue = tr.sinTable[ index & FUNCTABLE_MASK ];
-	cosValue = tr.sinTable[ ( index + FUNCTABLE_SIZE / 4 ) & FUNCTABLE_MASK ];
+//	sinValue = tr.sinTable[ index & FUNCTABLE_MASK ];
+//	cosValue = tr.sinTable[ ( index + FUNCTABLE_SIZE / 4 ) & FUNCTABLE_MASK ];
+	sinValue = NewSinTable(index);
+	cosValue = NewCosTable(index);
 
 	matrix[0] = cosValue; matrix[2] = -sinValue; matrix[4] = 0.5 - 0.5 * cosValue + 0.5 * sinValue;
 	matrix[1] = sinValue; matrix[3] = cosValue;  matrix[5] = 0.5 - 0.5 * sinValue - 0.5 * cosValue;

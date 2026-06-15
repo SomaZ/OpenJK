@@ -1,28 +1,7 @@
-/*
-===========================================================================
-Copyright (C) 1999 - 2005, Id Software, Inc.
-Copyright (C) 2000 - 2013, Raven Software, Inc.
-Copyright (C) 2001 - 2013, Activision, Inc.
-Copyright (C) 2013 - 2015, OpenJK contributors
-
-This file is part of the OpenJK source code.
-
-OpenJK is free software; you can redistribute it and/or modify it
-under the terms of the GNU General Public License version 2 as
-published by the Free Software Foundation.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU General Public License for more details.
-
-You should have received a copy of the GNU General Public License
-along with this program; if not, see <http://www.gnu.org/licenses/>.
-===========================================================================
-*/
-
 #pragma once
 
+// Copyright (C) 1999-2000 Id Software, Inc.
+//
 // This file must be identical in the quake and utils directories
 
 // contents flags are seperate bits
@@ -112,7 +91,7 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 #define MATERIAL_DIRT			7			// hard mud
 #define MATERIAL_SAND			8			// sandy beach
 #define MATERIAL_GRAVEL			9			// lots of small stones
-#define MATERIAL_GLASS			10			//
+#define MATERIAL_GLASS			10			// 
 #define MATERIAL_CONCRETE		11			// hardened concrete pavement
 #define MATERIAL_MARBLE			12			// marble floors
 #define MATERIAL_WATER			13			// light covering of water on a surface
@@ -127,7 +106,7 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 #define MATERIAL_CANVAS			22			// tent material
 #define MATERIAL_ROCK			23			//
 #define MATERIAL_RUBBER			24			// hard tire like rubber
-#define MATERIAL_PLASTIC		25			//
+#define MATERIAL_PLASTIC		25			// 
 #define MATERIAL_TILES			26			// tiled floor
 #define MATERIAL_CARPET			27			// lush carpet
 #define MATERIAL_PLASTER		28			// drywall style plaster

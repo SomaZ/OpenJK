@@ -1,6 +1,7 @@
 #pragma once
 
 #include "q_platform.h"
+#include "q_color.h"
 
 #if defined(__cplusplus)
 extern "C" {
@@ -30,12 +31,48 @@ void Q_strcat( char *dest, int size, const char *src );
 const char *Q_stristr( const char *s, const char *find);
 
 // strlen that discounts Quake color sequences
-int Q_PrintStrlen( const char *string );
-int Q_PrintStrLenTo(const char *str, int chars, char *color);
+int Q_PrintStrlen( const char *string
+#if defined (UI_EXPORTS) || (QAGAME)
+#elif defined (CGAME)
+	, colorTable_t ctable
+#else
+	, colorTable_t ctable = CT_DEFAULT
+#endif
+);
 
 // removes color sequences from string
-char *Q_CleanStr( char *string );
-void Q_StripColor(char *text);
+char *Q_CleanStr( char *string
+#if defined (UI_EXPORTS) || (QAGAME)
+#elif defined (CGAME)
+	, colorTable_t ctable
+#else
+	, colorTable_t ctable = CT_DEFAULT
+#endif
+);
+void Q_StripColor(char *text
+#if defined (UI_EXPORTS) || (QAGAME)
+#elif defined (CGAME)
+	, colorTable_t ctable
+#else
+	, colorTable_t ctable = CT_DEFAULT
+#endif
+);
+void Q_StripColorNew(char *text
+#if defined (UI_EXPORTS) || (QAGAME)
+#elif defined (CGAME)
+	, colorTable_t ctable
+#else
+	, colorTable_t ctable = CT_DEFAULT
+#endif
+);
+int Q_PrintStrLenTo(const char *str, int chars, vec4_t color
+#if defined (UI_EXPORTS) || (QAGAME)
+#elif defined (CGAME)
+	, colorTable_t ctable
+#else
+	, colorTable_t ctable = CT_DEFAULT
+#endif
+);
 const char *Q_strchrs( const char *string, const char *search );
 
 void Q_strstrip( char *string, const char *strip, const char *repl );

@@ -39,6 +39,7 @@ enum rserr_t
 static SDL_Window *screen = NULL;
 static SDL_GLContext opengl_context;
 static float displayAspect;
+static window_t window;
 
 cvar_t *r_sdlDriver;
 cvar_t *r_allowSoftwareGL;
@@ -782,7 +783,7 @@ window_t WIN_Init( const windowDesc_t *windowDesc, glconfig_t *glConfig )
 	IN_Init( screen );
 
 	// window_t is only really useful for Windows if the renderer wants to create a D3D context.
-	window_t window = {};
+	window = {};
 
 	window.api = windowDesc->api;
 
@@ -795,6 +796,7 @@ window_t WIN_Init( const windowDesc_t *windowDesc, glconfig_t *glConfig )
 		switch(info.subsystem) {
 			case SDL_SYSWM_WINDOWS:
 				window.handle = info.info.win.window;
+				window.instance = info.info.win.hinstance;
 				break;
 
 			default:
@@ -901,4 +903,9 @@ void *WIN_GL_GetProcAddress( const char *proc )
 qboolean WIN_GL_ExtensionSupported( const char *extension )
 {
 	return SDL_GL_ExtensionSupported( extension ) == SDL_TRUE ? qtrue : qfalse;
+}
+
+window_t *WIN_GetCurrent( void )
+{
+	return screen == NULL ? NULL : &window;
 }

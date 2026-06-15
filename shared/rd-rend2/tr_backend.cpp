@@ -539,8 +539,90 @@ static void RB_Hyperspace( void ) {
 	qglClearBufferfv( GL_COLOR, 0, v );
 }
 
+static void SetFinalProjection( void ) {
+	float	xmin, xmax, ymin, ymax;
+	float	width, height, depth;
+	float	zNear, zFar, zProj, stereoSep;
+	float	dx, dy;
+	float	fovX, fovY;
+	vec2_t	pixelJitter, eyeJitter;
+	
+	//
+	// set up projection matrix
+	//
+	zNear	= r_znear->value;
+	zFar	= backEnd.viewParms.zFar;
+
+	zProj	= r_zproj->value;
+	stereoSep = r_stereoSeparation->value / 100.0f;
+
+	if ( R_MME_CubemapActive( (qboolean)( stereoSep > 0.0f ) ) ) {
+		fovY = 90.0f * M_PI / 360.0f;
+		fovX = atan2( backEnd.viewParms.viewportWidth, backEnd.viewParms.viewportHeight / tan( 90.0f / 360.0f * M_PI ) );
+	} else {
+		fovY = backEnd.viewParms.fovY * M_PI / 360.0f;
+		fovX = backEnd.viewParms.fovX * M_PI / 360.0f;
+	}
+
+	ymax = zNear * tan( fovY );
+	ymin = -ymax;
+
+	xmax = zNear * tan( fovX );
+	xmin = -xmax;
+
+	width = xmax - xmin;
+	height = ymax - ymin;
+	depth = zFar - zNear;
+
+	pixelJitter[0] = pixelJitter[1] = 0;
+	eyeJitter[0] = eyeJitter[1] = 0;
+	/* Jitter the view */
+	R_MME_JitterView( pixelJitter, eyeJitter, (qboolean)( stereoSep > 0.0f ) );
+	if ( R_MME_CubemapActive( (qboolean)( stereoSep > 0.0f ) ) )
+		stereoSep = 0.0f;
+
+	dx = ( pixelJitter[0]*width ) / backEnd.viewParms.viewportWidth;
+	dy = ( pixelJitter[1]*height ) / backEnd.viewParms.viewportHeight;
+	dx += eyeJitter[0];
+	dy += eyeJitter[1];
+
+	xmin += dx; xmax += dx;
+	ymin += dy; ymax += dy;
+
+/*	qglMatrixMode(GL_PROJECTION);
+	qglPushMatrix();
+	qglLoadIdentity();
+	qglFrustum( xmin, xmax, ymin, ymax, zNear, zFar );
+	qglGetFloatv(GL_PROJECTION_MATRIX, backEnd.viewParms.projectionMatrix );
+	qglPopMatrix();*/
+
+	backEnd.viewParms.projectionMatrix[0] = 2 * zNear / width;
+	backEnd.viewParms.projectionMatrix[4] = 0;
+	backEnd.viewParms.projectionMatrix[8] = ( xmax + xmin + 2 * stereoSep ) / width;	// normally 0
+	backEnd.viewParms.projectionMatrix[12] = 2 * zProj * stereoSep / width;
+
+	backEnd.viewParms.projectionMatrix[1] = 0;
+	backEnd.viewParms.projectionMatrix[5] = 2 * zNear / height;
+	backEnd.viewParms.projectionMatrix[9] = ( ymax + ymin ) / height;	// normally 0
+	backEnd.viewParms.projectionMatrix[13] = 0;
+
+	backEnd.viewParms.projectionMatrix[2] = 0;
+	backEnd.viewParms.projectionMatrix[6] = 0;
+	backEnd.viewParms.projectionMatrix[10] = -( zFar + zNear ) / depth;
+	backEnd.viewParms.projectionMatrix[14] = -2 * zFar * zNear / depth;
+
+	backEnd.viewParms.projectionMatrix[3] = 0;
+	backEnd.viewParms.projectionMatrix[7] = 0;
+	backEnd.viewParms.projectionMatrix[11] = -1;
+	backEnd.viewParms.projectionMatrix[15] = 0;
+}
 
 static void SetViewportAndScissor( void ) {
+
+//entTODO: do something
+//	R_SetupFrustum();
+//	R_SetupProjection();
+//	SetFinalProjection();
 	GL_SetProjectionMatrix( backEnd.viewParms.projectionMatrix );
 
 	// set the window clipping
@@ -589,7 +671,7 @@ void RB_BeginDrawingView (void) {
 		clearBits |= GL_COLOR_BUFFER_BIT;
 	}
 
-	if ( r_measureOverdraw->integer || r_shadows->integer == 2 )
+	if ( r_measureOverdraw->integer || r_shadows->integer == 2 /*|| mme_saveStencil->integer*/ )
 	{
 		clearBits |= GL_STENCIL_BUFFER_BIT;
 	}
@@ -1030,7 +1112,7 @@ struct Pass
 	int maxDrawItems;
 	int numDrawItems;
 	DrawItem *drawItems;
-	uint32_t *sortKeys;
+	uint64_t *sortKeys;
 };
 
 static void RB_BindTextures( size_t numBindings, const SamplerBinding *bindings )
@@ -1103,7 +1185,7 @@ static void RB_BindTransformFeedbackBuffer(const bufferBinding_t& binding)
 static void RB_DrawItems(
 	int numDrawItems,
 	const DrawItem *drawItems,
-	uint32_t *drawOrder)
+	uint64_t *drawOrder)
 {
 	for ( int i = 0; i < numDrawItems; ++i )
 	{
@@ -1172,7 +1254,7 @@ static void RB_DrawItems(
 	}
 }
 
-void RB_AddDrawItem( Pass *pass, uint32_t sortKey, const DrawItem& drawItem )
+void RB_AddDrawItem( Pass *pass, uint64_t sortKey, const DrawItem& drawItem )
 {
 	// There will be no pass if we are drawing a 2D object.
 	if ( pass )
@@ -1188,7 +1270,7 @@ void RB_AddDrawItem( Pass *pass, uint32_t sortKey, const DrawItem& drawItem )
 	}
 	else
 	{
-		uint32_t drawOrder[] = {0};
+		uint64_t drawOrder[] = {0};
 		RB_DrawItems(1, &drawItem, drawOrder);
 	}
 }
@@ -1199,7 +1281,7 @@ static Pass *RB_CreatePass( Allocator& allocator, int capacity )
 	*pass = {};
 	pass->maxDrawItems = capacity;
 	pass->drawItems = ojkAllocArray<DrawItem>(allocator, pass->maxDrawItems);
-	pass->sortKeys = ojkAllocArray<uint32_t>(allocator, pass->maxDrawItems);
+	pass->sortKeys = ojkAllocArray<uint64_t>(allocator, pass->maxDrawItems);
 	return pass;
 }
 
@@ -1236,9 +1318,9 @@ static void RB_SubmitDrawSurfsForDepthFill(
 	for ( int i = 0; i < numDrawSurfs; i++, drawSurf++ )
 	{
 		shader_t *shader;
-		int cubemapIndex;
-		int postRender;
-		int entityNum;
+		int64_t cubemapIndex;
+		int64_t postRender;
+		int64_t entityNum;
 
 		R_DecomposeSort(drawSurf->sort, &entityNum, &shader, &cubemapIndex, &postRender);
 		assert(shader != nullptr);
@@ -1313,23 +1395,23 @@ static void RB_SubmitDrawSurfs(
 	float originalTime )
 {
 	shader_t *oldShader = nullptr;
-	int oldEntityNum = -1;
-	int oldSort = -1;
-	int oldFogNum = -1;
-	int oldDlighted = 0;
-	int oldPostRender = 0;
-	int oldCubemapIndex = -1;
+	int64_t oldEntityNum = -1;
+	int64_t oldSort = -1;
+	int64_t oldFogNum = -1;
+	int64_t oldDlighted = 0;
+	int64_t oldPostRender = 0;
+	int64_t oldCubemapIndex = -1;
 	CBoneCache *oldBoneCache = nullptr;
 
 	drawSurf_t *drawSurf = drawSurfs;
 	for ( int i = 0; i < numDrawSurfs; i++, drawSurf++ )
 	{
 		shader_t *shader;
-		int cubemapIndex;
-		int postRender;
-		int entityNum;
-		int fogNum;
-		int dlighted;
+		int64_t cubemapIndex;
+		int64_t postRender;
+		int64_t entityNum;
+		int64_t fogNum;
+		int64_t dlighted;
 
 		R_DecomposeSort(drawSurf->sort, &entityNum, &shader, &cubemapIndex, &postRender);
 		assert(shader != nullptr);
@@ -1419,15 +1501,15 @@ static void RB_SubmitRenderPass(
 	Pass& renderPass,
 	Allocator& allocator )
 {
-	uint32_t *drawOrder = ojkAllocArray<uint32_t>(
+	uint64_t *drawOrder = ojkAllocArray<uint64_t>(
 		allocator, renderPass.numDrawItems);
 
-	uint32_t numDrawItems = renderPass.numDrawItems;
-	for ( uint32_t i = 0; i < numDrawItems; ++i )
+	uint64_t numDrawItems = renderPass.numDrawItems;
+	for ( uint64_t i = 0; i < numDrawItems; ++i )
 		drawOrder[i] = i;
 
-	uint32_t *sortKeys = renderPass.sortKeys;
-	std::sort(drawOrder, drawOrder + numDrawItems, [sortKeys]( uint32_t a, uint32_t b )
+	uint64_t *sortKeys = renderPass.sortKeys;
+	std::sort(drawOrder, drawOrder + numDrawItems, [sortKeys]( uint64_t a, uint64_t b )
 	{
 		return sortKeys[a] < sortKeys[b];
 	});
@@ -1605,8 +1687,8 @@ void	RB_SetGL2D (void) {
 	GL_Cull(CT_TWO_SIDED);
 
 	// set time for 2D shaders
-	backEnd.refdef.time = ri.Milliseconds();
-	backEnd.refdef.floatTime = backEnd.refdef.time * 0.001f;
+	backEnd.refdef.time = ri.Milliseconds()*ri.Cvar_VariableValue( "timescale" );
+	backEnd.refdef.floatTime = backEnd.refdef.time * 0.001;
 
 	// reset color scaling
 	backEnd.refdef.colorScale = 1.0f;
@@ -1912,6 +1994,22 @@ static const void *RB_RotatePic ( const void *data )
 
 /*
 =============
+RB_RotatePic2RatioFix
+=============
+*/
+static float ratioFix = 1.0f;
+const void *RB_RotatePic2RatioFix( const void *data ) {
+	const rotatePicRatioFixCommand_t *cmd;
+	cmd = (const rotatePicRatioFixCommand_t *)data;
+	if (cmd->ratio <= 0.0f)
+		ratioFix = 1.0f;
+	else
+		ratioFix = cmd->ratio;
+	return (const void *)(cmd + 1);
+}
+
+/*
+=============
 RB_DrawRotatePic2
 =============
 */
@@ -1947,7 +2045,7 @@ static const void *RB_RotatePic2 ( const void *data )
 	RB_CHECKOVERFLOW( 4, 6 );
 	int numVerts = tess.numVertexes;
 	int numIndexes = tess.numIndexes;
-
+//entTODO: apply ratio fix scale
 	float angle = DEG2RAD( cmd->a );
 	float s = sinf( angle );
 	float c = cosf( angle );
@@ -2923,7 +3021,7 @@ RB_ColorMask
 */
 static const void *RB_ColorMask(const void *data)
 {
-	const colorMaskCommand_t *cmd = (colorMaskCommand_t *)data;
+	const colorMaskCommand_t *cmd = (const colorMaskCommand_t *)data;
 
 	// finish any 2D drawing if needed
 	RB_EndSurface();
@@ -2947,7 +3045,7 @@ RB_ClearDepth
 */
 static const void *RB_ClearDepth(const void *data)
 {
-	const clearDepthCommand_t *cmd = (clearDepthCommand_t *)data;
+	const clearDepthCommand_t *cmd = (const clearDepthCommand_t *)data;
 
 	// finish any 2D drawing if needed
 	if(tess.numIndexes)
@@ -3003,6 +3101,25 @@ static const void	*RB_SwapBuffers( const void *data ) {
 
 	cmd = (const swapBuffersCommand_t *)data;
 
+	tr.capturingMultiPass = qfalse;
+	tr.firstMultiPassFrame = qfalse;
+	tr.latestMultiPassFrame = qfalse;
+
+	/* Take and merge multi pass frames */
+	if ( r_stereoSeparation->value <= 0.0f && !tr.finishStereo) {
+		if ( R_MME_CubemapNext( qfalse ) ) {
+			return (const void *)NULL;
+		} else if ( R_MME_MultiPassNext( qfalse ) ) {
+			return (const void *)NULL;
+		}
+	} else if ( r_stereoSeparation->value > 0.0f) {
+		if ( R_MME_CubemapNext( qtrue ) ) {
+			return (const void *)NULL;
+		} else if ( R_MME_MultiPassNext( qtrue ) ) {
+			return (const void *)NULL;
+		}
+	}
+	tr.capturingMultiPass = qfalse;
 	// we measure overdraw by reading back the stencil buffer and
 	// counting up the number of increments that have happened
 	if ( r_measureOverdraw->integer ) {
@@ -3047,6 +3164,28 @@ static const void	*RB_SwapBuffers( const void *data ) {
 	}
 
 	R_NewFrameSync();
+	/* Allow MME to take a screenshot */
+	if ( r_stereoSeparation->value < 0.0f && tr.finishStereo) {
+		tr.capturingMultiPass = qtrue;
+		tr.latestMultiPassFrame = qtrue;
+		ri.Cvar_SetValue("r_stereoSeparation", -r_stereoSeparation->value);
+		return (const void *)NULL;
+	} else if ( r_stereoSeparation->value <= 0.0f) {
+		if ( R_MME_TakeShot( qfalse ) && r_stereoSeparation->value != 0.0f) {
+			tr.capturingMultiPass = qtrue;
+			tr.latestMultiPassFrame = qfalse;
+			ri.Cvar_SetValue("r_stereoSeparation", -r_stereoSeparation->value);
+			tr.finishStereo = qtrue;
+			return (const void *)NULL;
+		}
+	} else if ( r_stereoSeparation->value > 0.0f) {
+		if ( tr.finishStereo) {
+			R_MME_TakeShot( qtrue );
+			R_MME_DoNotTake( );
+			ri.Cvar_SetValue("r_stereoSeparation", -r_stereoSeparation->value);
+			tr.finishStereo = qfalse;
+		}
+	}
 
 	GLimp_LogComment( "***************** RB_SwapBuffers *****************\n\n\n" );
 
@@ -3383,6 +3522,28 @@ static const void *RB_EndTimedBlock( const void *data )
 }
 
 
+extern void R_MirrorPoint(vec3_t in, orientation_t *surface, orientation_t *camera, vec3_t out);
+extern void R_MirrorVector(vec3_t in, orientation_t *surface, orientation_t *camera, vec3_t out);
+static void RB_MirrorView( orientationr_t* oldOri, orientationr_t* ori ) {
+	orientation_t	surface, camera;
+	
+	VectorCopy( backEnd.viewParms.portalPlane.normal, surface.axis[0] );
+	PerpendicularVector( surface.axis[1], surface.axis[0]);
+	CrossProduct( surface.axis[0], surface.axis[1], surface.axis[2] );
+
+	VectorScale( backEnd.viewParms.portalPlane.normal, backEnd.viewParms.portalPlane.dist, surface.origin );
+	VectorCopy( surface.origin, camera.origin );
+	VectorSubtract( vec3_origin, surface.axis[0], camera.axis[0] );
+	VectorCopy( surface.axis[1], camera.axis[1] );
+	VectorCopy( surface.axis[2], camera.axis[2] );
+
+	R_MirrorPoint( oldOri->origin, &surface, &camera, ori->origin );
+
+	R_MirrorVector( oldOri->axis[0], &surface, &camera, ori->axis[0] );
+	R_MirrorVector( oldOri->axis[1], &surface, &camera, ori->axis[1] );
+	R_MirrorVector( oldOri->axis[2], &surface, &camera, ori->axis[2] );
+}
+
 /*
 =============
 RB_DrawSurfs
@@ -3401,7 +3562,87 @@ static const void *RB_DrawSurfs(const void *data) {
 
 	backEnd.refdef = cmd->refdef;
 	backEnd.viewParms = cmd->viewParms;
+	//Jitter the camera origin
+	if ( !(backEnd.refdef.rdflags & RDF_NOWORLDMODEL) ) {
+		float x, y;
+		int index;
+		if ( R_MME_CubemapIndex( &index, (qboolean)(r_stereoSeparation->value > 0) ) ) {
+			vec3_t oldAxis[3];
+			float stereoSep = r_stereoSeparation->value;
+			orientationr_t* ori = &backEnd.viewParms.ori;
+			orientationr_t* world = &backEnd.viewParms.world;
 
+			if ( backEnd.viewParms.isMirror ) {
+				ori = &backEnd.viewParms.oldOri;
+			}
+
+			/* Fixed camera for free observing */
+			if ( mme_saveCubemap->integer < 0 ) {
+				VectorSet( ori->axis[0], 1.0f, 0.0f, 0.0f );
+				VectorSet( ori->axis[1], 0.0f, 1.0f, 0.0f );
+				VectorSet( ori->axis[2], 0.0f, 0.0f, 1.0f );
+			}
+
+			if ( stereoSep ) {
+				vec3_t projOrigin;
+				VectorMA( ori->origin, r_zproj->value, ori->axis[0], projOrigin );
+				VectorMA( ori->origin, stereoSep, ori->axis[1], ori->origin );
+				VectorSubtract( projOrigin, ori->origin, ori->axis[0] );
+				VectorNormalize( ori->axis[0] );
+				CrossProduct( ori->axis[2], ori->axis[0], ori->axis[1] );
+			}
+
+			if ( backEnd.viewParms.isMirror ) {
+				orientationr_t* oldOri = ori;
+				ori = &backEnd.viewParms.ori;
+				RB_MirrorView( oldOri, ori );
+			}
+
+			AxisCopy( ori->axis, oldAxis );
+			/* Backward indexing so the last one is the front face */
+			switch ( index ) {
+				case 5: //front
+					break;
+				case 4: //right
+					VectorSubtract( vec3_origin, oldAxis[1], ori->axis[0] );
+					VectorCopy( oldAxis[0], ori->axis[1] );
+					break;
+				case 3: //back
+					VectorSubtract( vec3_origin, oldAxis[0], ori->axis[0] );
+					VectorSubtract( vec3_origin, oldAxis[1], ori->axis[1] );
+					break;
+				case 2: //left
+					VectorCopy( oldAxis[1], ori->axis[0] );
+					VectorSubtract( vec3_origin, oldAxis[0], ori->axis[1] );
+					break;
+				case 1: //top
+					VectorCopy( oldAxis[2], ori->axis[0] );
+					VectorSubtract( vec3_origin, oldAxis[0], ori->axis[2] );
+					break;
+				case 0: //bottom
+					VectorSubtract( vec3_origin, oldAxis[2], ori->axis[0] );
+					VectorCopy( oldAxis[0], ori->axis[2] );
+					break;
+			}
+
+			R_RotateForWorld( ori, world );
+		} else if ( R_MME_JitterOrigin( &x, &y, (qboolean)(r_stereoSeparation->value > 0) ) ) {
+			orientationr_t* ori = &backEnd.viewParms.ori;
+			orientationr_t* world = &backEnd.viewParms.world;
+
+			if ( backEnd.viewParms.isMirror ) {
+				ori = &backEnd.viewParms.oldOri;
+			}
+			VectorMA( ori->origin, x, ori->axis[1], ori->origin );
+			VectorMA( ori->origin, y, ori->axis[2], ori->origin );
+			if ( backEnd.viewParms.isMirror ) {
+				orientationr_t* oldOri = ori;
+				ori = &backEnd.viewParms.ori;
+				RB_MirrorView( oldOri, ori );
+			}
+			R_RotateForWorld( ori, world );
+		}
+	}
 	// clear the z buffer, set the modelview, etc
 	RB_BeginDrawingView();
 
@@ -3421,11 +3662,14 @@ static const void *RB_DrawSurfs(const void *data) {
 RB_ExecuteRenderCommands
 ====================
 */
-void RB_ExecuteRenderCommands( const void *data ) {
+void RB_ExecuteRenderCommands( const void *oldData ) {
 	int		t1, t2;
+	const void* data;
 
-	t1 = ri.Milliseconds ();
-
+	t1 = ri.Milliseconds ()*ri.Cvar_VariableValue( "timescale" );
+again:
+	data = oldData;
+	R_MME_PrepareMultiCapture( data );
 	while ( 1 ) {
 		data = PADP(data, sizeof(void *));
 
@@ -3442,6 +3686,9 @@ void RB_ExecuteRenderCommands( const void *data ) {
 		case RC_ROTATE_PIC2:
 			data = RB_RotatePic2( data );
 			break;
+		case RC_ROTATE_PIC2_RATIOFIX:
+			data = RB_RotatePic2RatioFix( data );
+			break;
 #ifdef REND2_SP
 		case RC_SCISSOR:
 			data = RB_Scissor(data);
@@ -3455,12 +3702,17 @@ void RB_ExecuteRenderCommands( const void *data ) {
 			break;
 		case RC_SWAP_BUFFERS:
 			data = RB_SwapBuffers( data );
+			if (data == NULL)
+				goto again;
 			break;
-		case RC_SCREENSHOT:
+/*		case RC_SCREENSHOT:
 			data = RB_TakeScreenshotCmd( data );
+			break;*/
+		case RC_SCREENSHOT:
+			data = RB_ScreenShotCmd( data );
 			break;
-		case RC_VIDEOFRAME:
-			data = RB_TakeVideoFrameCmd( data );
+		case RC_CAPTURE:
+			data = R_MME_CaptureShotCmd( data );
 			break;
 		case RC_COLORMASK:
 			data = RB_ColorMask(data);

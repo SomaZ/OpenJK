@@ -34,14 +34,32 @@ extern cvar_t	*fx_freeze;
 extern cvar_t	*fx_countScale;
 extern cvar_t	*fx_nearCull;
 
+extern cvar_t	*fx_forcePhysics;
+extern cvar_t	*fx_projectileLife;
+extern cvar_t	*fx_filterMask;
+
+#define FX_MASK_TRAIL				0x0001
+#define FX_MASK_LIGHT				0x0002
+#define FX_MASK_PARTICLE			0x0004
+#define FX_MASK_FLASH				0x0008
+#define FX_MASK_LINE				0x0010
+#define FX_MASK_BEZIER				0x0020
+#define FX_MASK_ELECTRICITY			0x0040
+#define FX_MASK_ORIENTED_PARTICLE	0x0080
+#define FX_MASK_TAIL				0x0100
+#define FX_MASK_CYLINDER			0x0200
+#define FX_MASK_EMITTER				0x0400
+#define FX_MASK_POLY				0x0800
+
 class SFxHelper
 {
 public:
 	int		mTime;
 	int		mOldTime;
-	int		mFrameTime;
+	float	mFrameTime;
 	bool	mTimeFrozen;
 	float	mRealTime;
+	float	mTimeFraction;
 	refdef_t*	refdef;
 #ifdef _DEBUG
 	int		mMainRefs;
@@ -51,11 +69,12 @@ public:
 public:
 	SFxHelper();
 
-	inline	int	GetTime(void) { return mTime; }
-	inline	int	GetFrameTime(void) { return mFrameTime; }
+	inline	int		GetTime(void) { return mTime; }
+	inline	float	GetFrameTime(void) { return mFrameTime; }
 
 	void	ReInit(refdef_t* pRefdef);
-	void	AdjustTime( int time );
+	void	AdjustTime( int time, float frametime, float timeFraction );
+	void	DemoRandomSeed( int time, float timeFraction );
 
 	// These functions are wrapped and used by the fx system in case it makes things a bit more portable
 	void	Print( const char *msg, ... );
@@ -67,7 +86,7 @@ public:
 	}
 	inline	int		ReadFile( void *data, int len, fileHandle_t fh )
 	{
-		FS_Read( data, len, fh );
+		FS_Read2( data, len, fh );
 		return 1;
 	}
 	inline	void	CloseFile( fileHandle_t fh )
@@ -79,7 +98,7 @@ public:
 	inline	void	PlaySound( vec3_t origin, int entityNum, int entchannel, sfxHandle_t sfxHandle, int volume, int radius )
 	{
 		//S_StartSound( origin, ENTITYNUM_NONE, CHAN_AUTO, sfxHandle, volume, radius );
-		S_StartSound( origin, ENTITYNUM_NONE, CHAN_AUTO, sfxHandle );
+		S_StartSound( origin, ENTITYNUM_NONE, CHAN_AUTO, -1, sfxHandle );
 	}
 	inline	void	PlayLocalSound(sfxHandle_t sfxHandle, int entchannel)
 	{

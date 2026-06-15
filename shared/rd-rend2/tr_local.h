@@ -306,6 +306,37 @@ extern cvar_t	*broadsword_effcorr;
 extern cvar_t	*broadsword_ragtobase;
 extern cvar_t	*broadsword_dircap;
 
+//extern	cvar_t	*mme_aviFormat;
+//extern	cvar_t	*mme_screenshotName;
+
+extern cvar_t	*mme_screenShotFormat;
+extern cvar_t	*mme_screenShotGamma;
+extern cvar_t	*mme_screenShotAlpha;
+extern cvar_t	*mme_jpegQuality;
+extern cvar_t	*mme_jpegDownsampleChroma;
+extern cvar_t	*mme_jpegOptimizeHuffman;
+extern cvar_t	*mme_tgaCompression;
+extern cvar_t	*mme_pngCompression;
+extern cvar_t	*mme_skykey;
+extern cvar_t	*mme_worldShader;
+extern cvar_t	*mme_pip;
+extern cvar_t	*mme_renderWidth;
+extern cvar_t	*mme_renderHeight;
+extern cvar_t	*mme_blurFrames;
+extern cvar_t	*mme_blurType;
+extern cvar_t	*mme_blurOverlap;
+extern cvar_t	*mme_blurGamma;
+extern cvar_t	*mme_cpuSSE2;
+extern cvar_t	*mme_pbo;
+extern cvar_t	*mme_workMegs;
+extern cvar_t	*mme_depthRange;
+extern cvar_t	*mme_depthFocus;
+extern cvar_t	*mme_saveOverwrite;
+extern cvar_t	*mme_saveStencil;
+extern cvar_t	*mme_saveShot;
+extern cvar_t	*mme_saveDepth;
+extern cvar_t	*mme_saveCubemap;
+
 /*
 Ghoul2 Insert End
 */
@@ -1014,7 +1045,7 @@ typedef struct shader_s {
 	byte		styles[MAXLIGHTMAPS];
 
 	int			index;					// this shader == tr.shaders[index]
-	int			sortedIndex;			// this shader == tr.sortedShaders[sortedIndex]
+	int64_t		sortedIndex;			// this shader == tr.sortedShaders[sortedIndex]
 
 	float		sort;					// lower numbered shaders draw before higher numbered
 
@@ -1063,8 +1094,8 @@ typedef struct shader_s {
 	depthPrepass_t	depthPrepass;
 	qboolean	useDistortion;
 
-	float clampTime;                                  // time this shader is clamped to
-	float timeOffset;                                 // current time offset for this shader
+	double clampTime;                                  // time this shader is clamped to
+	double timeOffset;                                 // current time offset for this shader
 
 	struct shader_s *remappedShader;                  // current shader this one is remapped too
 
@@ -1567,12 +1598,13 @@ typedef struct {
 
 	int			time;				// time in milliseconds for shader effects and other time dependent rendering issues
 	int			rdflags;			// RDF_NOWORLDMODEL, etc
+	float		timeFraction;
 
 	// 1 bits will prevent the associated area from rendering at all
 	byte		areamask[MAX_MAP_AREA_BYTES];
 	qboolean	areamaskModified;	// qtrue if areamask changed since last scene
 
-	float		floatTime;			// tr.refdef.time / 1000.0
+	double		floatTime;			// tr.refdef.time / 1000.0
 	float		frameTime;			// delta last frame to frame now
 	float		lastTime;			// last frame time
 
@@ -1581,7 +1613,7 @@ typedef struct {
 	// text messages for deform text shaders
 	char		text[MAX_RENDER_STRINGS][MAX_RENDER_STRING_LENGTH];
 
-	int			num_entities;
+	int64_t		num_entities;
 	trRefEntity_t	*entities;
 
 	int			num_dlights;
@@ -1663,7 +1695,7 @@ enum viewParmType_t {
 };
 
 typedef struct {
-	orientationr_t	ori;
+	orientationr_t	ori, oldOri;
 	orientationr_t	world;
 	vec3_t			pvsOrigin;			// may be different than or.origin for portals
 	qboolean		isPortal;			// true if this view is through a portal
@@ -1741,15 +1773,15 @@ compared quickly during the qsorting process
 #define QSORT_POSTRENDER_BITS	1
 #define QSORT_POSTRENDER_MASK	((1 << QSORT_POSTRENDER_BITS) - 1)
 
-#if QSORT_POSTRENDER_SHIFT >= 32
+#if QSORT_POSTRENDER_SHIFT >= 64
 	#error "Sort field needs to be expanded"
 #endif
 
 typedef struct drawSurf_s {
-	uint32_t sort; // bit combination for fast compares
-	uint32_t dlightBits;
+	uint64_t sort; // bit combination for fast compares
+	uint64_t dlightBits;
 	surfaceType_t *surface; // any of surface*_t
-	int fogIndex;
+	int64_t fogIndex;
 } drawSurf_t;
 
 #define	MAX_FACE_POINTS		64
@@ -1763,7 +1795,7 @@ typedef struct srfPoly_s {
 	surfaceType_t	surfaceType;
 	struct srfPoly_s *next;
 	qhandle_t		hShader;
-	int				fogIndex;
+	int64_t			fogIndex;
 	int				numVerts;
 	polyVert_t		*verts;
 } srfPoly_t;
@@ -2023,8 +2055,8 @@ typedef struct cullinfo_s {
 
 typedef struct msurface_s {
 	struct shader_s		*shader;
-	int					fogIndex;
-	int                 cubemapIndex;
+	int64_t				fogIndex;
+	int64_t				cubemapIndex;
 	cullinfo_t          cullinfo;
 
 	int					numSurfaceSprites;
@@ -2325,6 +2357,10 @@ typedef struct {
 #define FUNCTABLE_SIZE2		10
 #define FUNCTABLE_MASK		(FUNCTABLE_SIZE-1)
 
+float NewSinTable (double jediAcademy);
+float NewCosTable (double jediAcademy);
+
+
 struct vertexAttribute_t
 {
 	VBO_t *vbo;
@@ -2499,6 +2535,9 @@ typedef struct {
 	qboolean    framePostProcessed;
 	qboolean    depthFill;
 	qboolean    refractionFill;
+	//mme
+	float			sceneZfar;
+	qboolean		doneBloom, doneSurfaces;
 } backEndState_t;
 
 /*
@@ -2757,6 +2796,9 @@ typedef struct trGlobals_s {
 	shader_t				*shaders[MAX_SHADERS];
 	shader_t				*sortedShaders[MAX_SHADERS];
 
+	//mme
+	shader_t				*mmeWorldShader;
+
 	int						numSkins;
 	skin_t					*skins[MAX_SKINS];
 
@@ -2777,6 +2819,12 @@ typedef struct trGlobals_s {
 	// Specific to Jedi Academy
 	int						numBSPModels;
 	int						currentLevel;
+
+	qboolean				finishStereo;
+	qboolean				capturingMultiPass;
+	qboolean				latestMultiPassFrame, firstMultiPassFrame;
+
+	colorTable_t			cTable;
 } trGlobals_t;
 
 struct glconfigExt_t
@@ -2808,7 +2856,7 @@ extern cvar_t	*r_verbose;				// used for verbose debug spew
 
 extern cvar_t	*r_znear;				// near Z clip plane
 extern cvar_t	*r_zproj;				// z distance of projection plane
-extern cvar_t	*r_stereoSeparation;			// separation of cameras for stereo rendering
+extern cvar_t	*r_stereoSeparation;	// separation of cameras for stereo capture
 
 extern cvar_t	*r_measureOverdraw;		// enables stencil buffer overdraw measurement
 
@@ -2963,6 +3011,39 @@ extern cvar_t	*r_dynamicGlowBloom;
 extern cvar_t	*r_debugContext;
 extern cvar_t	*r_debugWeather;
 
+extern	cvar_t	*r_drawAllAreas;
+
+//extern	cvar_t	*mme_aviFormat;
+//extern	cvar_t	*mme_screenshotName;
+
+extern cvar_t	*mme_screenShotFormat;
+extern cvar_t	*mme_screenShotGamma;
+extern cvar_t	*mme_screenShotAlpha;
+extern cvar_t	*mme_jpegQuality;
+extern cvar_t	*mme_jpegDownsampleChroma;
+extern cvar_t	*mme_jpegOptimizeHuffman;
+extern cvar_t	*mme_tgaCompression;
+extern cvar_t	*mme_pngCompression;
+extern cvar_t	*mme_skykey;
+extern cvar_t	*mme_worldShader;
+extern cvar_t	*mme_pip;
+extern cvar_t	*mme_renderWidth;
+extern cvar_t	*mme_renderHeight;
+extern cvar_t	*mme_blurFrames;
+extern cvar_t	*mme_blurType;
+extern cvar_t	*mme_blurOverlap;
+extern cvar_t	*mme_blurGamma;
+extern cvar_t	*mme_cpuSSE2;
+extern cvar_t	*mme_pbo;
+extern cvar_t	*mme_workMegs;
+extern cvar_t	*mme_depthRange;
+extern cvar_t	*mme_depthFocus;
+extern cvar_t	*mme_saveOverwrite;
+extern cvar_t	*mme_saveStencil;
+extern cvar_t	*mme_saveShot;
+extern cvar_t	*mme_saveDepth;
+extern cvar_t	*mme_saveCubemap;
+
 //====================================================================
 
 struct packedVertex_t
@@ -3001,10 +3082,10 @@ void R_GatherFrameViews(trRefdef_t *refdef);
 void R_AddMD3Surfaces( trRefEntity_t *e, int entityNum );
 void R_AddPolygonSurfaces( const trRefdef_t *refdef );
 
-void R_DecomposeSort( uint32_t sort, int *entityNum, shader_t **shader, int *cubemap, int *postRender );
-uint32_t R_CreateSortKey(int entityNum, int sortedShaderIndex, int cubemapIndex, int postRender);
-void R_AddDrawSurf( surfaceType_t *surface, int entityNum, shader_t *shader,
-				   int fogIndex, int dlightMap, int postRender, int cubemap );
+void R_DecomposeSort( const uint64_t sort, int64_t *entityNum, shader_t **shader, int64_t *cubemap, int64_t *postRender );
+uint64_t R_CreateSortKey(int64_t entityNum, int64_t sortedShaderIndex, int64_t cubemapIndex, int64_t postRender);
+void R_AddDrawSurf( surfaceType_t *surface, int64_t entityNum, shader_t *shader,
+				   int64_t fogIndex, int64_t dlightMap, int64_t postRender, int64_t cubemap );
 bool R_IsPostRenderEntity ( const trRefEntity_t *refEntity );
 
 void R_CalcMikkTSpaceBSPSurface(int numSurfaces, packedVertex_t *vertices, glIndex_t *indices);
@@ -3029,6 +3110,7 @@ int R_CullLocalPointAndRadius( const vec3_t origin, float radius );
 
 void R_SetupProjection(viewParms_t *dest, float zProj, float zFar, qboolean computeFrustum);
 void R_RotateForEntity( const trRefEntity_t *ent, const viewParms_t *viewParms, orientationr_t *ori );
+void R_RotateForWorld ( const orientationr_t* input, orientationr_t* world );
 void R_BindAnimatedImageToTMU( textureBundle_t *bundle, int tmu );
 
 /*
@@ -3098,10 +3180,11 @@ void		R_GammaCorrect( byte *buffer, int bufSize );
 void	R_ImageList_f( void );
 void	R_SkinList_f( void );
 void	R_FontList_f( void );
+const void *RB_ScreenShotCmd( const void *data );
 // https://zerowing.idsoftware.com/bugzilla/show_bug.cgi?id=516
-const void *RB_TakeScreenshotCmd( const void *data );
+//const void *RB_TakeScreenshotCmd( const void *data );
 
-void R_SaveScreenshot(struct screenshotReadback_t *screenshotReadback);
+//void R_SaveScreenshot(struct screenshotReadback_t *screenshotReadback);
 
 void	R_ScreenShotTGA_f( void );
 void	R_ScreenShotPNG_f( void );
@@ -3119,7 +3202,6 @@ skin_t	*R_GetSkinByHandle( qhandle_t hSkin );
 
 int R_ComputeLOD( trRefEntity_t *ent );
 
-const void *RB_TakeVideoFrameCmd( const void *data );
 void RE_HunkClearCrap(void);
 
 //
@@ -3134,6 +3216,9 @@ extern const byte stylesDefault[MAXLIGHTMAPS];
 shader_t	*R_FindShader( const char *name, const int *lightmapIndexes, const byte *styles, qboolean mipRawImage );
 shader_t	*R_GetShaderByHandle( qhandle_t hShader );
 shader_t *R_FindShaderByName( const char *name );
+//mme
+char	*R_FindShaderText( const char *shadername );
+
 void		R_InitShaders( qboolean server );
 void		R_ShaderList_f( void );
 void    R_RemapShader(const char *oldShader, const char *newShader, const char *timeOffset);
@@ -3190,14 +3275,14 @@ struct shaderCommands_s
 	//color4ub_t	constantColor255[SHADER_MAX_VERTEXES] QALIGN(16);
 
 	shader_t	*shader;
-	float		shaderTime;
-	int			fogNum;
-	int         cubemapIndex;
+	double		shaderTime;
+	int64_t		fogNum;
+	int64_t		cubemapIndex;
 #ifdef REND2_SP_GORE
 	bool		scale;		// uses texCoords[input->firstIndex] for storage
 	bool		fade;		// uses svars.colors[input->firstIndex] for storage
 #endif
-	int			dlightBits;	// or together of all vertexDlightBits
+	int64_t		dlightBits;	// or together of all vertexDlightBits
 	int         pshadowBits;
 
 	int			firstIndex;
@@ -3232,7 +3317,7 @@ struct drawState_t
 extern	shaderCommands_t	tess;
 extern	color4ub_t	styleColors[MAX_LIGHT_STYLES];
 
-void RB_BeginSurface(shader_t *shader, int fogNum, int cubemapIndex );
+void RB_BeginSurface(shader_t *shader, int64_t fogNum, int64_t cubemapIndex );
 void RB_EndSurface(void);
 void RB_CheckOverflow( int verts, int indexes );
 #define RB_CHECKOVERFLOW(v,i) if (tess.numVertexes + (v) >= SHADER_MAX_VERTEXES || tess.numIndexes + (i) >= SHADER_MAX_INDEXES ) {RB_CheckOverflow(v,i);}
@@ -3508,7 +3593,7 @@ public:
 
 	// tell the renderer to render shadows for this surface
 	qboolean genShadows;
-	int dlightBits;
+	int64_t dlightBits;
 	int pshadowBits;
 
 	// pointer to surface data loaded into file - only used by client renderer
@@ -3680,6 +3765,11 @@ typedef struct rotatePicCommand_s {
 	float	a;
 } rotatePicCommand_t;
 
+typedef struct {
+	int		commandId;
+	float	ratio;
+} rotatePicRatioFixCommand_t;
+
 typedef struct scissorCommand_s {
 	int	commandId;
 	float x, y;
@@ -3694,30 +3784,19 @@ typedef struct drawSurfsCommand_s {
 	int		numDrawSurfs;
 } drawSurfsCommand_t;
 
-typedef enum {
-	SSF_JPEG,
-	SSF_TGA,
-	SSF_PNG
-} screenshotFormat_t;
+typedef struct {
+	int		commandId;
+	char	name[MAX_OSPATH];
+	mmeShotFormat_t format;
+} screenShotCommand_t;
 
-typedef struct screenShotCommand_s {
-	int commandId;
-	int x;
-	int y;
-	int width;
-	int height;
-	char *fileName;
-	screenshotFormat_t format;
-} screenshotCommand_t;
-
-typedef struct videoFrameCommand_s {
-	int						commandId;
-	int						width;
-	int						height;
-	byte					*captureBuffer;
-	byte					*encodeBuffer;
-	qboolean			motionJpeg;
-} videoFrameCommand_t;
+typedef struct {
+	int		commandId;
+	char	name[MAX_OSPATH];
+	float	fps;
+	float	focus;
+	float	radius;
+} captureCommand_t;
 
 typedef struct colorMaskCommand_s {
 	int commandId;
@@ -3762,7 +3841,8 @@ typedef enum {
 	RC_DRAW_BUFFER,
 	RC_SWAP_BUFFERS,
 	RC_SCREENSHOT,
-	RC_VIDEOFRAME,
+	RC_CAPTURE,
+	RC_ROTATE_PIC2_RATIOFIX,
 	RC_SCISSOR,
 	RC_COLORMASK,
 	RC_CLEARDEPTH,
@@ -3785,7 +3865,7 @@ struct gpuTimedBlock_t
 	GLuint endTimer;
 };
 
-struct screenshotReadback_t
+/*struct screenshotReadback_t
 {
 	GLuint pbo;
 	int strideInBytes;
@@ -3794,7 +3874,7 @@ struct screenshotReadback_t
 	int height;
 	screenshotFormat_t format;
 	char filename[MAX_QPATH];
-};
+};*/
 
 struct ghoul2UboCache_t
 {
@@ -3826,7 +3906,7 @@ struct gpuFrame_t
 	size_t uboMapBase[MAX_SCENES];
 	void *uboMemory[MAX_SCENES];
 
-	screenshotReadback_t screenshotReadback;
+//	screenshotReadback_t screenshotReadback;
 
 	VBO_t *dynamicVbo;
 	void *dynamicVboMemory;
@@ -3910,6 +3990,7 @@ void RE_SetColor( const float *rgba );
 void RE_StretchPic ( float x, float y, float w, float h, float s1, float t1, float s2, float t2, qhandle_t hShader );
 void RE_RotatePic ( float x, float y, float w, float h, float s1, float t1, float s2, float t2, float a, qhandle_t hShader );
 void RE_RotatePic2 ( float x, float y, float w, float h, float s1, float t1, float s2, float t2,float a, qhandle_t hShader );
+void RE_RotatePic2RatioFix ( float ratio );
 #ifdef REND2_SP
 void RE_LAGoggles(void);
 void RE_Scissor(float x, float y, float w, float h);
@@ -3917,8 +3998,8 @@ void RE_Scissor(float x, float y, float w, float h);
 void RE_BeginFrame( stereoFrame_t stereoFrame );
 void R_NewFrameSync();
 void RE_EndFrame( int *frontEndMsec, int *backEndMsec );
-void RE_TakeVideoFrame( int width, int height,
-		byte *captureBuffer, byte *encodeBuffer, qboolean motionJpeg );
+
+int RE_SavePNG(const char *filename, byte *buf, size_t width, size_t height, int byteDepth );
 
 // tr_ghoul2.cpp
 #ifdef REND2_SP
@@ -4139,9 +4220,35 @@ void RB_FillDrawCommand(
 	const shaderCommands_t *input
 );
 
-uint32_t RB_CreateSkySortKey(const DrawItem& item, int stage, int skyNumber, int layer);
-uint32_t RB_CreateSortKey( const DrawItem& item, int stage, int layer );
-void RB_AddDrawItem( Pass *pass, uint32_t sortKey, const DrawItem& drawItem );
+uint64_t RB_CreateSkySortKey(const DrawItem& item, int stage, int skyNumber, int layer);
+uint64_t RB_CreateSortKey( const DrawItem& item, int stage, int layer );
+void RB_AddDrawItem( Pass *pass, uint64_t sortKey, const DrawItem& drawItem );
 DepthRange RB_GetDepthRange( const trRefEntity_t *re, const shader_t *shader );
+
+
+//mme
+//int SaveJPG( int quality, int image_width, int image_height, mmeShotType_t image_type, byte *image_buffer, byte *out_buffer, int out_size );
+int SaveTGA( int image_compressed, int image_width, int image_height, mmeShotType_t image_type, byte *image_buffer, byte *out_buffer, int out_size );
+int SavePNG( int compresslevel, int image_width, int image_height, mmeShotType_t image_type, byte *image_buffer, byte *out_buffer, int out_size );
+
+//void R_Screenshot_PNG(int x, int y, int width, int height, char *fileName);
+void R_MME_Init(void);
+void R_MME_Shutdown(void);
+qboolean R_MME_TakeShot( qboolean stereo );
+const void *R_MME_CaptureShotCmd( const void *data );
+void R_MME_Capture( const char *shotName, float fps, float focus, float radius );
+void R_MME_BlurInfo( int* total, int* index );
+void R_MME_PrepareMultiCapture( const void *data );
+void R_MME_JitterView( float *pixels, float* eyes, qboolean stereo );
+qboolean R_MME_JitterOrigin( float *x, float *y, qboolean stereo );
+qboolean R_MME_CubemapIndex( int *index, qboolean stereo );
+
+int R_MME_MultiPassNext( qboolean stereo );
+int R_MME_CubemapNext( qboolean stereo );
+
+void R_MME_DoNotTake( );
+qboolean R_MME_CubemapActive( qboolean stereo );
+
+void R_MME_TimeFraction(float timeFraction);
 
 #endif //TR_LOCAL_H

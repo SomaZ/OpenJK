@@ -21,6 +21,7 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 
 #include "qcommon/game_version.h"
 #include "sys_local.h"
+#include "win32/resource.h"
 #include <direct.h>
 #include <io.h>
 #include <shlobj.h>
@@ -28,10 +29,56 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 
 #define MEM_THRESHOLD (128*1024*1024)
 
+UINT MSH_BROADCASTARGS;
+UINT MSG_SHOWNOTIFICATION;
+
 // Used to determine where to store user-specific files
 static char homePath[ MAX_OSPATH ] = { 0 };
 
 static UINT timerResolution = 0;
+
+/*
+==================
+Sys_ShowNotification
+==================
+*/
+//#include <CommCtrl.h>
+void Sys_ShowNotification( const char *message, const int flags ) {
+	window_t *window = WIN_GetCurrent();
+	if (!window) {
+		return;
+	}
+	HWND hWnd = (HWND)window->handle;
+	HINSTANCE hInstance = (HINSTANCE)window->instance;
+
+	if (flags & NOTIFICATION_FLASH) {
+		static FLASHWINFO fi = {};
+		if (!fi.cbSize) {
+			fi.cbSize = sizeof(fi);
+			fi.hwnd = hWnd;
+			fi.dwFlags = FLASHW_ALL | FLASHW_TIMERNOFG;
+		}
+		FlashWindowEx(&fi);
+	}
+    
+	if (flags & NOTIFICATION_TEXT) {
+		static NOTIFYICONDATA nid = {};
+		if (!nid.cbSize) {
+			nid.cbSize = sizeof(nid);
+			nid.hWnd = hWnd;
+			nid.uFlags = NIF_ICON | NIF_INFO | NIF_MESSAGE;
+			nid.uCallbackMessage = MSG_SHOWNOTIFICATION = RegisterWindowMessage("MSG_SHOWNOTIFICATION");
+			nid.hIcon = LoadIcon(hInstance, MAKEINTRESOURCE(IDI_ICON1));
+			Q_strncpyz(nid.szInfo, message, ARRAYSIZE(nid.szInfo));
+			Shell_NotifyIcon(NIM_ADD, &nid);
+			nid.uVersion = NOTIFYICON_VERSION_4;
+			Shell_NotifyIcon(NIM_SETVERSION, &nid);
+		} else {
+			Q_strncpyz(nid.szInfo, message, ARRAYSIZE(nid.szInfo));
+			Shell_NotifyIcon(NIM_MODIFY, &nid);
+		}
+	}
+}
 
 /*
 ==============
@@ -535,6 +582,190 @@ bool Sys_DLLNeedsUnpacking()
 #endif
 }
 
+#define PROGRAM_MUTEX "jaMME"
+#define SHAREDDATA_SIZE 512
+#define MAPNAME PROGRAM_MUTEX"_Map"
+bool Sys_CopySharedData(void *data, size_t size) {
+	HANDLE hMapFile;
+	LPCTSTR pBuf;
+
+	hMapFile = CreateFileMapping(
+					INVALID_HANDLE_VALUE,    // use paging file
+					NULL,                    // default security
+					PAGE_READWRITE,          // read/write access
+					0,                       // maximum object size (high-order DWORD)
+					SHAREDDATA_SIZE,         // maximum object size (low-order DWORD)
+					MAPNAME); 
+	if (hMapFile == NULL) {
+		hMapFile = OpenFileMapping(
+					FILE_MAP_ALL_ACCESS,   // read/write access
+					FALSE,                 // do not inherit the name
+					MAPNAME);  
+		if (hMapFile == NULL) {
+			return false;
+		}
+	}
+
+	pBuf = (LPTSTR)MapViewOfFile(hMapFile,   // handle to map object
+						FILE_MAP_ALL_ACCESS, // read/write permission
+						0,
+						0,
+						SHAREDDATA_SIZE);
+	if (pBuf == NULL) {
+		return false;
+	}
+
+	CopyMemory((PVOID)pBuf, data, size);
+	UnmapViewOfFile(pBuf);
+//	CloseHandle(hMapFile);
+	return true;
+}
+
+void *Sys_GetSharedData(void) {
+	static char ret[SHAREDDATA_SIZE];
+	HANDLE hMapFile;
+	LPCTSTR pBuf;
+
+	hMapFile = OpenFileMapping(
+					FILE_MAP_ALL_ACCESS,   // read/write access
+					FALSE,                 // do not inherit the name
+					MAPNAME);              // name of mapping object
+	if (hMapFile == NULL) {
+		return NULL;
+	}
+
+	pBuf = (LPTSTR)MapViewOfFile(hMapFile, // handle to map object
+				FILE_MAP_ALL_ACCESS,  // read/write permission
+				0,
+				0,
+				SHAREDDATA_SIZE);
+	if (pBuf == NULL) {
+		CloseHandle(hMapFile);
+		return NULL;
+	}
+
+	Com_sprintf(ret, sizeof(ret), pBuf);
+	UnmapViewOfFile(pBuf);
+	CloseHandle(hMapFile);
+	return ret;
+}
+
+#include <string>
+using namespace std;
+
+typedef struct {
+	string extension;
+	string desc;
+} extensionsTable_t;
+
+static extensionsTable_t et[] = {
+	//should we reg it? q3mme and other mme mods use it too
+//	{".mme", "MovieMaker's Edition Demo"},
+	{".dm_26", "Jedi Academy Demo (v1.01)"},
+	{".dm_25", "Jedi Academy Demo (v1.00)"},
+};
+
+char *GetStringRegKey(HKEY hkey, const char *valueName) {
+	if (!hkey) {
+		return NULL;
+	}
+    static CHAR szBuffer[512];
+    DWORD dwBufferSize = sizeof(szBuffer);
+    LSTATUS nError = RegQueryValueEx(hkey, valueName, 0, NULL, (LPBYTE)szBuffer, &dwBufferSize);
+    if (ERROR_SUCCESS == nError) {
+        return szBuffer;
+    }
+    return NULL;
+}
+
+bool AddRegistry(const HKEY key, const char *subkey, const char *value, const char *valueName = NULL) {
+	Com_DPrintf(S_COLOR_YELLOW"AddRegistry(%u,%s,%s,%s)\n", key, subkey, value, valueName ? valueName : "NULL");
+	HKEY hkey;
+	LSTATUS nError = RegOpenKeyEx(key, subkey, 0, KEY_READ, &hkey);
+	if (nError != ERROR_SUCCESS && nError != ERROR_FILE_NOT_FOUND) {
+		Com_DPrintf(S_COLOR_RED"RegOpenKeyEx(%u,%s,%s) error: %d\n", key, subkey, value, nError);
+		return false;
+	}
+	const char *setValue = GetStringRegKey(hkey, valueName);
+	RegCloseKey(hkey);
+	//ignore the same value
+	if (!setValue || Q_stricmp(setValue, value)) {
+		nError = RegCreateKeyEx(key, subkey, 0, 0, 0, KEY_ALL_ACCESS, 0, &hkey, 0);
+		if (nError == ERROR_SUCCESS) {
+			RegSetValueEx(hkey, valueName, 0, REG_SZ, (BYTE*)value, strlen(value)+1);
+			RegCloseKey(hkey);
+			return true;
+		} else {
+			Com_DPrintf(S_COLOR_RED"RegCreateKeyEx(%u,%s,%s) error: %d\n", key, subkey, value, nError);
+		}
+	}
+	return false;
+}
+
+void RegisterProtocol(char *program) {
+	string action="open";
+	string app = program + string(" %1");
+	string protocol = "Software\\Classes\\ja";
+	string icon = protocol + string("\\DefaultIcon");
+
+	string path=protocol+
+				"\\shell\\"+
+				action+
+				"\\command\\";
+	
+	bool refresh = false;
+	//using | to be able to call all 3 functions even if true got returned
+	//register the protocol
+	refresh |= AddRegistry(HKEY_CURRENT_USER, protocol.c_str(), "")
+	//register application association
+	| AddRegistry(HKEY_CURRENT_USER, protocol.c_str(), "", "URL Protocol")
+	//register application association
+	| AddRegistry(HKEY_CURRENT_USER, path.c_str(), app.c_str())
+	//register icon for the protocol
+	| AddRegistry(HKEY_CURRENT_USER, icon.c_str(), program);
+	if (refresh) {
+		SHChangeNotify(SHCNE_ASSOCCHANGED, SHCNF_IDLIST, NULL, NULL);
+	}
+}
+
+void RegisterFileTypes(char *program) {
+	string action="jaMME";
+	bool refresh = false; //once true - forever true
+	for (int i = 0; i < ARRAY_LEN(et); i++) {
+		string app = program + string(" +set fs_game \"mme\" +set fs_extraGames \"japlus japp\" +demo \"%1\" del");
+		string extension = "Software\\Classes\\" + et[i].extension;
+		string desc = et[i].desc;
+		string icon = extension + string("\\DefaultIcon");
+
+		string path=extension+
+					"\\shell\\"+
+					action+
+					"\\command\\";
+	
+		//using | to be able to call all 3 functions even if true got returned
+		//register the filetype extension
+		refresh |= AddRegistry(HKEY_CURRENT_USER, extension.c_str(), desc.c_str())
+		//register application association
+		| AddRegistry(HKEY_CURRENT_USER, path.c_str(), app.c_str())
+		//register icon for the filetype
+		| AddRegistry(HKEY_CURRENT_USER, icon.c_str(), program);
+	}
+	if (refresh) {
+		SHChangeNotify(SHCNE_ASSOCCHANGED, SHCNF_IDLIST, NULL, NULL);
+	}
+}
+
+static HANDLE mutex;
+bool isOtherInstanceRunning(void) {
+	mutex = CreateMutex(NULL, TRUE, PROGRAM_MUTEX);
+	//prevent multiple instances if we are opening a demo
+	if (ERROR_ALREADY_EXISTS == GetLastError()) {
+		return true;
+	}
+	//in the other case just open another sintance
+	return false;
+}
+
 /*
 ================
 Sys_PlatformInit
@@ -577,6 +808,77 @@ void Sys_PlatformInit( int argc, char *argv[] ) {
 
 	if (maxfds == -1) {
 		Com_Printf("Warning: Failed to increase open file limit. %s\n", strerror(errno));
+	}
+
+	TCHAR *text = GetCommandLine();
+	char *cmdline = _strdup(text);
+	if ( cmdline == NULL ) {
+		MessageBox(NULL, "Out of memory - aborting", "Fatal Error", MB_ICONEXCLAMATION | MB_OK);
+		Sys_Quit();
+		return;
+	}
+	MSH_BROADCASTARGS = RegisterWindowMessage("MSH_BROADCASTARGS");
+	if (isOtherInstanceRunning()) {
+		char *bcArgs = strstr(cmdline, "+demo");
+		if (!bcArgs)
+			bcArgs = strstr(cmdline, "ja:");
+		if (bcArgs) {
+			Sys_CopySharedData(bcArgs, strlen(bcArgs)+1);
+			PostMessage(HWND_BROADCAST, MSH_BROADCASTARGS, 0, 0);
+			Sleep(1337);
+			free(cmdline);
+			ReleaseMutex(mutex);
+			CloseHandle(mutex);
+			Sys_Quit();
+			return;
+		}
+	}
+	//it's a unique instance so reset current directory to the program path
+	//if it was called to open external demo
+	TCHAR path[512] = { 0 }, *sep = NULL, *lastSep = NULL;
+	DWORD gotPath = GetModuleFileName(NULL, path, sizeof(path));
+	if (gotPath) {
+		sep = strchr(path, '\\');
+		do {
+			lastSep = sep;
+			sep = strchr(sep+1, '\\');
+		} while (sep);
+		//cut off the executable name
+		if (lastSep && lastSep[0] && (lastSep+1) && lastSep[1]) {
+			*(lastSep+1) = '\0';
+		}
+		SetCurrentDirectory(path);
+	}
+	CHAR program[512];
+	if (GetModuleFileName(NULL, program, sizeof(program))) {
+		RegisterFileTypes(program);
+		RegisterProtocol(program);
+	}
+
+	free(cmdline);
+}
+
+void Sys_WMMessage(
+	HWND    hWnd,
+	UINT    uMsg,
+	WPARAM  wParam,
+	LPARAM  lParam) {
+	if (uMsg == MSH_BROADCASTARGS) {
+		char *args = (char *)Sys_GetSharedData();
+		if (args) {
+			if (strstr(args, "+demo")) {
+extern void switchMod(void);
+				switchMod();
+			}
+			Com_ParseCommandLine(args);
+			Com_AddStartupCommands();
+//			Cbuf_ExecuteText(EXEC_APPEND, args);
+		}
+		SetForegroundWindow(hWnd);
+	} else if (uMsg == MSG_SHOWNOTIFICATION) {
+		if (lParam == NIN_BALLOONUSERCLICK) {
+			SetForegroundWindow(hWnd);
+		}
 	}
 }
 

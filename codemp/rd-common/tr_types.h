@@ -27,7 +27,7 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 #include "../qcommon/q_shared.h"
 
 #define	MAX_DLIGHTS		32			// can't be increased, because bit flags are used on surfaces
-#define	REFENTITYNUM_BITS	11		// can't be increased without changing drawsurf bit packing
+#define	REFENTITYNUM_BITS	16		// can't be increased without changing drawsurf bit packing
 #define	REFENTITYNUM_MASK	((1<<REFENTITYNUM_BITS) - 1)
 // the last N-bit number (2^REFENTITYNUM_BITS - 1) is reserved for the special world refentity,
 //  and this is reflected by the value of MAX_REFENTITIES (which therefore is not a power-of-2)
@@ -92,6 +92,7 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 #define RDF_AUTOMAP			32		//means this scene is to draw the automap -rww
 #define	RDF_NOFOG			64		//no global fog in this scene (but still brush fog) -rww
 #define RDF_ForceSightOn	128		//using force sight
+#define	RDF_NOGLOW			256		//no global fog in this scene (but still brush fog) -rww
 
 // SP refdef flags, only use in SP!
 #define RDF_doLAGoggles		256		// SP only Light Amp goggles
@@ -372,3 +373,18 @@ typedef struct glconfig_s {
 	qboolean				isFullscreen;
 	qboolean				stereoEnabled;
 } glconfig_t;
+
+typedef enum {
+	mmeShotFormatTGA,
+	mmeShotFormatJPG,
+	mmeShotFormatPNG,
+    mmeShotFormatAVI,
+    mmeShotFormatPIPE,
+} mmeShotFormat_t;
+
+typedef enum {
+	mmeShotTypeRGB,
+	mmeShotTypeRGBA,
+	mmeShotTypeGray,
+	mmeShotTypeBGR,
+} mmeShotType_t;

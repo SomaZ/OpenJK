@@ -1,25 +1,3 @@
-/*
-===========================================================================
-Copyright (C) 2000 - 2013, Raven Software, Inc.
-Copyright (C) 2001 - 2013, Activision, Inc.
-Copyright (C) 2013 - 2015, OpenJK contributors
-
-This file is part of the OpenJK source code.
-
-OpenJK is free software; you can redistribute it and/or modify it
-under the terms of the GNU General Public License version 2 as
-published by the Free Software Foundation.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU General Public License for more details.
-
-You should have received a copy of the GNU General Public License
-along with this program; if not, see <http://www.gnu.org/licenses/>.
-===========================================================================
-*/
-
 #include "b_local.h"
 #include "g_nav.h"
 
@@ -105,7 +83,7 @@ void NPC_Mark1_Part_Explode( gentity_t *self, int bolt )
 		mdxaBone_t	boltMatrix;
 		vec3_t		org, dir;
 
-		trap->G2API_GetBoltMatrix( self->ghoul2, 0,
+		trap_G2API_GetBoltMatrix( self->ghoul2, 0, 
 					bolt,
 					&boltMatrix, self->r.currentAngles, self->r.currentOrigin, level.time,
 					NULL, self->modelScale );
@@ -145,9 +123,9 @@ void Mark1Dead_FireRocket (void)
 	vec3_t	muzzle1,muzzle_dir;
 	gentity_t *missile;
 	int	damage	= 50;
-	int bolt = trap->G2API_AddBolt(NPCS.NPC->ghoul2, 0, "*flash5");
+	int bolt = trap_G2API_AddBolt(NPCS.NPC->ghoul2, 0, "*flash5");
 
-	trap->G2API_GetBoltMatrix( NPCS.NPC->ghoul2, 0,
+	trap_G2API_GetBoltMatrix( NPCS.NPC->ghoul2, 0, 
 				bolt,
 				&boltMatrix, NPCS.NPC->r.currentAngles, NPCS.NPC->r.currentOrigin, level.time,
 				NULL, NPCS.NPC->modelScale );
@@ -193,9 +171,9 @@ void Mark1Dead_FireBlaster (void)
 	mdxaBone_t	boltMatrix;
 	int			bolt;
 
-	bolt = trap->G2API_AddBolt(NPCS.NPC->ghoul2, 0, "*flash1");
+	bolt = trap_G2API_AddBolt(NPCS.NPC->ghoul2, 0, "*flash1"); 
 
-	trap->G2API_GetBoltMatrix( NPCS.NPC->ghoul2, 0,
+	trap_G2API_GetBoltMatrix( NPCS.NPC->ghoul2, 0, 
 				bolt,
 				&boltMatrix, NPCS.NPC->r.currentAngles, NPCS.NPC->r.currentOrigin, level.time,
 				NULL, NPCS.NPC->modelScale );
@@ -231,7 +209,7 @@ void Mark1_die( gentity_t *self, gentity_t *inflictor, gentity_t *attacker, int 
 
 	// Is he dead already?
 	anim = self->client->ps.legsAnim;
-	if (((anim==BOTH_DEATH1) || (anim==BOTH_DEATH2)) && (self->client->ps.torsoTimer<=0))
+	if (((anim==BOTH_DEATH1) || (anim==BOTH_DEATH2)) && (self->client->ps.torsoTimer<=0)) 
 	{	// This is because self->health keeps getting zeroed out. HL_NONE acts as health in this case.
 		self->locationDamage[HL_NONE] += damage;
 		if (self->locationDamage[HL_NONE] > 50)
@@ -279,13 +257,13 @@ void Mark1_dying( gentity_t *self )
 			if (num == 1)
 			{
 				num = Q_irand( 8, 10);
-				newBolt = trap->G2API_AddBolt( self->ghoul2, 0, va("*flash%d",num) );
+				newBolt = trap_G2API_AddBolt( self->ghoul2, 0, va("*flash%d",num) );
 				NPC_Mark1_Part_Explode(self,newBolt);
 			}
 			else
 			{
 				num = Q_irand( 1, 6);
-				newBolt = trap->G2API_AddBolt( self->ghoul2, 0, va("*torso_tube%d",num) );
+				newBolt = trap_G2API_AddBolt( self->ghoul2, 0, va("*torso_tube%d",num) );
 				NPC_Mark1_Part_Explode(self,newBolt);
 				NPC_SetSurfaceOnOff( self, va("torso_tube%d",num), TURN_OFF );
 			}
@@ -303,7 +281,7 @@ void Mark1_dying( gentity_t *self )
 
 		// See which weapons are there
 		// Randomly fire blaster
-		if (!trap->G2API_GetSurfaceRenderStatus( self->ghoul2, 0, "l_arm" ))	// Is the blaster still on the model?
+		if (!trap_G2API_GetSurfaceRenderStatus( self->ghoul2, 0, "l_arm" ))	// Is the blaster still on the model?
 		{
 			if (Q_irand( 1, 5) == 1)
 			{
@@ -315,7 +293,7 @@ void Mark1_dying( gentity_t *self )
 		}
 
 		// Randomly fire rocket
-		if (!trap->G2API_GetSurfaceRenderStatus( self->ghoul2, 0, "r_arm" ))	// Is the rocket still on the model?
+		if (!trap_G2API_GetSurfaceRenderStatus( self->ghoul2, 0, "r_arm" ))	// Is the rocket still on the model?
 		{
 			if (Q_irand( 1, 10) == 1)
 			{
@@ -339,7 +317,7 @@ void NPC_Mark1_Pain(gentity_t *self, gentity_t *attacker, int damage)
 {
 	int newBolt,i,chance;
 	int hitLoc = gPainHitLoc;
-
+	
 	NPC_Pain( self, attacker, damage );
 
 	G_Sound( self, CHAN_AUTO, G_SoundIndex("sound/chars/mark1/misc/mark1_pain"));
@@ -348,7 +326,7 @@ void NPC_Mark1_Pain(gentity_t *self, gentity_t *attacker, int damage)
 	if (hitLoc==HL_CHEST)
 	{
 		chance = Q_irand( 1, 4);
-
+	
 		if ((chance == 1) && (damage > 5))
 		{
 			NPC_SetAnim( self, SETANIM_BOTH, BOTH_PAIN1, SETANIM_FLAG_OVERRIDE|SETANIM_FLAG_HOLD );
@@ -359,7 +337,7 @@ void NPC_Mark1_Pain(gentity_t *self, gentity_t *attacker, int damage)
 	{
 		if (self->locationDamage[hitLoc] >= LEFT_ARM_HEALTH)	// Blow it up?
 		{
-			newBolt = trap->G2API_AddBolt( self->ghoul2, 0, "*flash3" );
+			newBolt = trap_G2API_AddBolt( self->ghoul2, 0, "*flash3" );
 			if ( newBolt != -1 )
 			{
 				NPC_Mark1_Part_Explode(self,newBolt);
@@ -372,8 +350,8 @@ void NPC_Mark1_Pain(gentity_t *self, gentity_t *attacker, int damage)
 	else if ((hitLoc==HL_ARM_RT) && (self->locationDamage[HL_ARM_RT] > RIGHT_ARM_HEALTH))	// Blow it up?
 	{
 		if (self->locationDamage[hitLoc] >= RIGHT_ARM_HEALTH)
-		{
-			newBolt = trap->G2API_AddBolt( self->ghoul2, 0, "*flash4" );
+		{			
+			newBolt = trap_G2API_AddBolt( self->ghoul2, 0, "*flash4" );
 			if ( newBolt != -1 )
 			{
 //				G_PlayEffect( "small_chunks", self->playerModel, self->genericBolt2, self->s.number);
@@ -391,8 +369,8 @@ void NPC_Mark1_Pain(gentity_t *self, gentity_t *attacker, int damage)
 			if ((hitLoc==HL_GENERIC1+i) && (self->locationDamage[HL_GENERIC1+i] > AMMO_POD_HEALTH))	// Blow it up?
 			{
 				if (self->locationDamage[hitLoc] >= AMMO_POD_HEALTH)
-				{
-					newBolt = trap->G2API_AddBolt( self->ghoul2, 0, va("*torso_tube%d",(i+1)) );
+				{			
+					newBolt = trap_G2API_AddBolt( self->ghoul2, 0, va("*torso_tube%d",(i+1)) );
 					if ( newBolt != -1 )
 					{
 						NPC_Mark1_Part_Explode(self,newBolt);
@@ -406,8 +384,8 @@ void NPC_Mark1_Pain(gentity_t *self, gentity_t *attacker, int damage)
 	}
 
 	// Are both guns shot off?
-	if ((trap->G2API_GetSurfaceRenderStatus( self->ghoul2, 0, "l_arm" )>0) &&
-		(trap->G2API_GetSurfaceRenderStatus( self->ghoul2, 0, "r_arm" )>0))
+	if ((trap_G2API_GetSurfaceRenderStatus( self->ghoul2, 0, "l_arm" )>0) &&
+		(trap_G2API_GetSurfaceRenderStatus( self->ghoul2, 0, "r_arm" )>0))
 	{
 		G_Damage(self,NULL,NULL,NULL,NULL,self->health,0,MOD_UNKNOWN);
 	}
@@ -449,28 +427,28 @@ void Mark1_FireBlaster(void)
 	int			bolt;
 
 	// Which muzzle to fire from?
-	if ((NPCS.NPCInfo->localState <= LSTATE_FIRED0) || (NPCS.NPCInfo->localState == LSTATE_FIRED4))
+	if ((NPCS.NPCInfo->localState <= LSTATE_FIRED0) || (NPCS.NPCInfo->localState == LSTATE_FIRED4)) 
 	{
 		NPCS.NPCInfo->localState = LSTATE_FIRED1;
-		bolt = trap->G2API_AddBolt(NPCS.NPC->ghoul2, 0, "*flash1");
+		bolt = trap_G2API_AddBolt(NPCS.NPC->ghoul2, 0, "*flash1"); 
 	}
 	else if (NPCS.NPCInfo->localState == LSTATE_FIRED1)
 	{
 		NPCS.NPCInfo->localState = LSTATE_FIRED2;
-		bolt = trap->G2API_AddBolt(NPCS.NPC->ghoul2, 0, "*flash2");
+		bolt = trap_G2API_AddBolt(NPCS.NPC->ghoul2, 0, "*flash2"); 
 	}
 	else if (NPCS.NPCInfo->localState == LSTATE_FIRED2)
 	{
 		NPCS.NPCInfo->localState = LSTATE_FIRED3;
-		bolt = trap->G2API_AddBolt(NPCS.NPC->ghoul2, 0, "*flash3");
+		bolt = trap_G2API_AddBolt(NPCS.NPC->ghoul2, 0, "*flash3"); 
 	}
 	else
 	{
 		NPCS.NPCInfo->localState = LSTATE_FIRED4;
-		bolt = trap->G2API_AddBolt(NPCS.NPC->ghoul2, 0, "*flash4");
+		bolt = trap_G2API_AddBolt(NPCS.NPC->ghoul2, 0, "*flash4"); 
 	}
 
-	trap->G2API_GetBoltMatrix( NPCS.NPC->ghoul2, 0,
+	trap_G2API_GetBoltMatrix( NPCS.NPC->ghoul2, 0, 
 				bolt,
 				&boltMatrix, NPCS.NPC->r.currentAngles, NPCS.NPC->r.currentOrigin, level.time,
 				NULL, NPCS.NPC->modelScale );
@@ -517,7 +495,7 @@ void Mark1_BlasterAttack(qboolean advance )
 	if ( TIMER_Done( NPCS.NPC, "attackDelay" ) )	// Attack?
 	{
 		chance = Q_irand( 1, 5);
-
+	
 		NPCS.NPCInfo->burstCount++;
 
 		if (NPCS.NPCInfo->burstCount<3)	// Too few shots this burst?
@@ -575,12 +553,12 @@ void Mark1_FireRocket(void)
 	mdxaBone_t	boltMatrix;
 	vec3_t	muzzle1,enemy_org1,delta1,angleToEnemy1;
 	static	vec3_t	forward, vright, up;
-	int bolt = trap->G2API_AddBolt(NPCS.NPC->ghoul2, 0, "*flash5");
+	int bolt = trap_G2API_AddBolt(NPCS.NPC->ghoul2, 0, "*flash5");
 	gentity_t *missile;
 
 	int	damage	= 50;
 
-	trap->G2API_GetBoltMatrix( NPCS.NPC->ghoul2, 0,
+	trap_G2API_GetBoltMatrix( NPCS.NPC->ghoul2, 0, 
 				bolt,
 				&boltMatrix, NPCS.NPC->r.currentAngles, NPCS.NPC->r.currentOrigin, level.time,
 				NULL, NPCS.NPC->modelScale );
@@ -666,7 +644,7 @@ void Mark1_AttackDecision( void )
 	}
 
 	// Rate our distance to the target and visibility
-	distance	= (int) DistanceHorizontalSquared( NPCS.NPC->r.currentOrigin, NPCS.NPC->enemy->r.currentOrigin );
+	distance	= (int) DistanceHorizontalSquared( NPCS.NPC->r.currentOrigin, NPCS.NPC->enemy->r.currentOrigin );	
 	distRate	= ( distance > MIN_MELEE_RANGE_SQR ) ? DIST_LONG : DIST_MELEE;
 	visible		= NPC_ClearLOS4( NPCS.NPC->enemy );
 	advance		= (qboolean)(distance > MIN_DISTANCE_SQR);
@@ -679,8 +657,8 @@ void Mark1_AttackDecision( void )
 	}
 
 	// See if the side weapons are there
-	blasterTest = trap->G2API_GetSurfaceRenderStatus( NPCS.NPC->ghoul2, 0, "l_arm" );
-	rocketTest = trap->G2API_GetSurfaceRenderStatus( NPCS.NPC->ghoul2, 0, "r_arm" );
+	blasterTest = trap_G2API_GetSurfaceRenderStatus( NPCS.NPC->ghoul2, 0, "l_arm" );
+	rocketTest = trap_G2API_GetSurfaceRenderStatus( NPCS.NPC->ghoul2, 0, "r_arm" );
 
 	// It has both side weapons
 	if (!blasterTest  && !rocketTest)
@@ -698,7 +676,7 @@ void Mark1_AttackDecision( void )
 		distRate = DIST_MELEE;
 	}
 	else	// It should never get here, but just in case
-	{
+	{ 
 		NPCS.NPC->health = 0;
 		NPCS.NPC->client->ps.stats[STAT_HEALTH] = 0;
 		//GEntity_DieFunc(NPC, NPC, NPC, 100, MOD_UNKNOWN);

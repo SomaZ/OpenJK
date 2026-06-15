@@ -238,11 +238,12 @@ static cvar_t		*fs_homepath;
 static cvar_t          *fs_apppath;
 #endif
 
-static cvar_t		*fs_basepath;
+cvar_t		*fs_basepath;
 static cvar_t		*fs_basegame;
 static cvar_t		*fs_cdpath;
 static cvar_t		*fs_copyfiles;
 static cvar_t		*fs_gamedirvar;
+static cvar_t		*fs_extragamedirs;
 static cvar_t		*fs_dirbeforepak; //rww - when building search path, keep directories at top and insert pk3's under them
 static cvar_t		*fs_forcegame;
 static searchpath_t	*fs_searchpaths;
@@ -597,28 +598,88 @@ static void FS_CheckFilenameIsMutable( const char *filename, const char *functio
 
 /*
 =================
-FS_CopyFile
+FS_CopyFileAbsolute
 
-Copy a fully specified file from one place to another
+Copy a fully specified file from one place to another by using absolute paths
 =================
 */
-void FS_CopyFile( char *fromOSPath, char *toOSPath ) {
+qboolean FS_CopyFileAbsolute( char *fromOSPath, char *toOSPath ) {
 	FILE	*f;
 	int		len;
 	byte	*buf;
 
 	FS_CheckFilenameIsMutable( fromOSPath, __func__ );
 
-	Com_Printf( "copy %s to %s\n", fromOSPath, toOSPath );
+	Com_DPrintf( "copy %s to %s\n", fromOSPath, toOSPath );
 
 	if (strstr(fromOSPath, "journal.dat") || strstr(fromOSPath, "journaldata.dat")) {
 		Com_Printf( "Ignoring journal files\n");
-		return;
+		return qfalse;
 	}
 
 	f = fopen( fromOSPath, "rb" );
 	if ( !f ) {
-		return;
+		return qfalse;
+	}
+	fseek (f, 0, SEEK_END);
+	len = ftell (f);
+	fseek (f, 0, SEEK_SET);
+
+	// we are using direct malloc instead of Z_Malloc here, so it
+	// probably won't work on a mac... Its only for developers anyway...
+	buf = (unsigned char *)malloc( len );
+	if (fread( buf, 1, len, f ) != len) {
+		fclose( f );
+		free ( buf );
+		Com_Error( ERR_FATAL, "Short read in FS_Copyfiles()\n" );
+	}
+	fclose( f );
+
+	if( FS_CreatePath( toOSPath ) ) {
+		return qfalse;
+	}
+
+	f = fopen(FS_BuildOSPath( fs_homepath->string, fs_gamedir, toOSPath ), "wb");
+	if ( !f ) {
+		free ( buf );
+		return qfalse;
+	}
+	if (fwrite( buf, 1, len, f ) != len) {
+		fclose( f );
+		free ( buf );
+		Com_Error( ERR_FATAL, "Short write in FS_Copyfiles()\n" );
+	}
+	fclose( f );
+	free( buf );
+	return qtrue;
+}
+/*
+=================
+FS_CopyFile
+
+Copy a fully specified file from one place to another
+=================
+*/
+qboolean FS_CopyFile( char *fromOSPath, char *toOSPath, char *newOSPath, const int newSize ) {
+	FILE	*f;
+	int		len;
+	byte	*buf;
+	int		fileCount = 1;
+	char	*lExt, nExt[MAX_QPATH];
+	char	stripped[MAX_QPATH];
+
+	FS_CheckFilenameIsMutable( fromOSPath, __func__ );
+
+	Com_DPrintf( "copy %s to %s\n", fromOSPath, toOSPath );
+
+	if (strstr(fromOSPath, "journal.dat") || strstr(fromOSPath, "journaldata.dat")) {
+		Com_Printf( "Ignoring journal files\n");
+		return qfalse;
+	}
+
+	f = fopen( fromOSPath, "rb" );
+	if ( !f ) {
+		return qfalse;
 	}
 	fseek (f, 0, SEEK_END);
 	len = ftell (f);
@@ -643,13 +704,39 @@ void FS_CopyFile( char *fromOSPath, char *toOSPath ) {
 
 	if( FS_CreatePath( toOSPath ) ) {
 		free ( buf );
-		return;
+		return qfalse;
 	}
 
-	f = fopen( toOSPath, "wb" );
+	// if the file exists then create a new one with (N)
+	if ((f = fopen(toOSPath, "rb")) && newOSPath && newSize > 0) {
+		fclose(f);
+		lExt = strchr(toOSPath, '.');
+		if (!lExt) {
+			lExt = "";
+		}
+		while (strchr(lExt+1, '.')) {
+			lExt = strchr(lExt+1, '.');
+		}
+		Q_strncpyz(nExt, lExt, sizeof(nExt));
+		COM_StripExtension(toOSPath, stripped, sizeof(stripped));
+		fileCount++;
+		while (f = fopen(va("%s (%i)%s", stripped, fileCount, nExt), "rb")) {
+			fileCount++;
+			fclose(f);
+		}
+	}
+	if (fileCount > 1 && newOSPath && newSize > 0) {
+		Q_strncpyz(newOSPath, va("%s (%i)%s", stripped, fileCount, nExt), newSize);
+		f = fopen(newOSPath, "wb");
+	} else {
+		if (newOSPath && newSize > 0) {
+			Q_strncpyz(newOSPath, "", newSize);
+		}
+		f = fopen(toOSPath, "wb");
+	}
 	if ( !f ) {
 		free ( buf );
-		return;
+		return qfalse;
 	}
 	if (fwrite( buf, 1, len, f ) != (unsigned)len)
 	{
@@ -659,6 +746,7 @@ void FS_CopyFile( char *fromOSPath, char *toOSPath ) {
 	}
 	fclose( f );
 	free( buf );
+	return qtrue;
 }
 
 /*
@@ -684,6 +772,25 @@ void FS_HomeRemove( const char *homePath ) {
 
 	remove( FS_BuildOSPath( fs_homepath->string,
 			fs_gamedir, homePath ) );
+}
+
+FILE * FS_DirectOpen( const char *name, const char *mode ) {
+	char *testpath;
+
+	testpath = FS_BuildOSPath( fs_homepath->string, fs_gamedir, name );
+
+	return fopen( testpath, mode );
+}
+
+
+qboolean FS_FileExistsInPaks( const char *qpath ) {
+	fileHandle_t f;
+	FS_FOpenFileRead(qpath, &f, qfalse);
+	if (f) {
+		FS_FCloseFile(f);
+		return qtrue;
+	}
+	return qfalse;
 }
 
 /*
@@ -773,6 +880,19 @@ qboolean FS_FileExists( const char *file )
 	return FS_FileInPathExists(FS_BuildOSPath(fs_homepath->string, fs_gamedir, file));
 }
 
+qboolean FS_FileErase( const char *file )
+{
+	char *testpath;
+
+	testpath = FS_BuildOSPath( fs_homepath->string, fs_gamedir, file );
+
+#ifndef _WIN32
+	return (qboolean)(unlink( testpath ) == 0);
+#else
+	return (qboolean)(_unlink( testpath ) == 0);
+#endif
+}
+
 /*
 ================
 FS_SV_FileExists
@@ -824,6 +944,9 @@ fileHandle_t FS_SV_FOpenFileWrite( const char *filename ) {
 	Q_strncpyz( fsh[f].name, filename, sizeof( fsh[f].name ) );
 
 	fsh[f].handleSync = qfalse;
+#ifdef USE_AIO
+	fsh[f].handleAsync = qfalse;
+#endif
 	if (!fsh[f].handleFiles.file.o) {
 		f = 0;
 	}
@@ -902,6 +1025,9 @@ int FS_SV_FOpenFileRead( const char *filename, fileHandle_t *fp ) {
 
 	fsh[f].handleFiles.file.o = fopen( ospath, "rb" );
 	fsh[f].handleSync = qfalse;
+#ifdef USE_AIO
+	fsh[f].handleAsync = qfalse;
+#endif
 	if (!fsh[f].handleFiles.file.o)
 	{
 		// NOTE TTimo on non *nix systems, fs_homepath == fs_basepath, might want to avoid
@@ -918,6 +1044,9 @@ int FS_SV_FOpenFileRead( const char *filename, fileHandle_t *fp ) {
 
 			fsh[f].handleFiles.file.o = fopen( ospath, "rb" );
 			fsh[f].handleSync = qfalse;
+#ifdef USE_AIO
+			fsh[f].handleAsync = qfalse;
+#endif
 		}
 
 		if ( !fsh[f].handleFiles.file.o )
@@ -939,6 +1068,9 @@ int FS_SV_FOpenFileRead( const char *filename, fileHandle_t *fp ) {
 
 		fsh[f].handleFiles.file.o = fopen( ospath, "rb" );
 		fsh[f].handleSync = qfalse;
+#ifdef USE_AIO
+		fsh[f].handleAsync = qfalse;
+#endif
 
 		if ( !fsh[f].handleFiles.file.o )
 		{
@@ -982,7 +1114,7 @@ void FS_SV_Rename( const char *from, const char *to, qboolean safe ) {
 
 	if (rename( from_ospath, to_ospath )) {
 		// Failed, try copying it and deleting the original
-		FS_CopyFile ( from_ospath, to_ospath );
+		FS_CopyFile ( from_ospath, to_ospath, NULL, 0 );
 		FS_Remove ( from_ospath );
 	}
 }
@@ -1012,10 +1144,57 @@ void FS_Rename( const char *from, const char *to ) {
 
 	if (rename( from_ospath, to_ospath )) {
 		// Failed, try copying it and deleting the original
-		FS_CopyFile ( from_ospath, to_ospath );
+		FS_CopyFile ( from_ospath, to_ospath, NULL, 0 );
 		FS_Remove ( from_ospath );
 	}
 }
+
+#ifdef USE_AIO
+/*
+Callback for final write which will free all memory and close the file
+(at this point no blocking should be needed).
+*/
+extern void Com_PushEvent( sysEvent_t *event );
+static void aio_completion_handler( sigval_t sigval ) {
+	fileHandle_t f = sigval.sival_int;
+	sysEvent_t event;
+	Com_Memset( &event, 0, sizeof( event ) );
+	event.evType = SE_AIO_FCLOSE;
+	event.evValue = f;
+	Com_PushEvent( &event );
+}
+
+void FS_FCloseAio( int handle ) {
+	fileHandle_t f = (fileHandle_t) handle;
+	if ( f < 1 || f >= MAX_FILE_HANDLES ) {
+		Com_Error( ERR_FATAL, "FCloseAio called with invalid handle %d\n", f );
+	}
+	fileBufferNode_t *node = fsh[f].pending;
+	int numPendingWrites = 0;
+	if ( !fsh[f].closing ) {
+		Com_Printf( "Warning: closing file not set to closing: %d\n", f );
+	} else {
+		Com_Printf( "Closing file %d (%s)\n", f, fsh[f].name );
+	}
+	while ( node != NULL ) {
+		fileBufferNode_t *nextNode = node->next;
+		// busy-wait for completion of the write
+		if ( aio_error( &node->cb ) == EINPROGRESS ) {
+			numPendingWrites++;
+		}
+		while ( aio_error( &node->cb ) == EINPROGRESS );
+		Z_Free( node->buffer );
+		Z_Free( node );
+		node = nextNode;
+	}
+	if ( numPendingWrites > 0 ) {
+		Com_Printf( "Waited for %d pending writes to complete before closing\n", numPendingWrites );
+	}
+	fclose (fsh[f].handleFiles.file.o);
+	Z_Free( fsh[f].pendingBuffer.buffer );
+	Com_Memset( &fsh[f], 0, sizeof( fsh[f] ) );
+}
+#endif
 
 /*
 ===========
@@ -1036,6 +1215,9 @@ There are three cases handled:
 
 ===========
 */
+#ifdef USE_AIO
+static void FS_WriteAio( const void *buffer, int len, fileHandle_t h, void (*notify_function) (sigval_t) );
+#endif
 void FS_FCloseFile( fileHandle_t f ) {
 	FS_AssertInitialised();
 
@@ -1050,11 +1232,87 @@ void FS_FCloseFile( fileHandle_t f ) {
 
 	// we didn't find it as a pak, so close it as a unique file
 	if (fsh[f].handleFiles.file.o) {
-		fclose (fsh[f].handleFiles.file.o);
+#ifdef USE_AIO
+		if ( fsh[f].handleAsync ) {
+			if ( fsh[f].closing ) {
+				// file is already closing
+				Com_Printf( "Ignoring duplicate FCloseFile call for handle %d\n", f );
+				return;
+			}
+			fileBufferNode_t *node = fsh[f].pending;
+			int numPendingWrites = 0;
+			while ( node != NULL ) {
+				if ( aio_error( &node->cb ) == EINPROGRESS ) {
+					numPendingWrites++;
+				}
+				node = node->next;
+			}
+			numPendingWrites++;
+			{
+				pendingBuffer_t *pb = &fsh[f].pendingBuffer;
+				Com_Printf( "Waiting for %d pending writes to complete before closing\n", numPendingWrites );
+				fsh[f].closing = qtrue;
+				FS_WriteAio( pb->buffer, pb->bufferOffset, f, aio_completion_handler );
+				// need to keep around the data
+				return;
+			}
+		} else
+#endif
+		{
+			fclose (fsh[f].handleFiles.file.o);
+		}
 	}
 	Com_Memset( &fsh[f], 0, sizeof( fsh[f] ) );
 }
 
+#ifdef USE_AIO
+static size_t BUFFER_SIZE = 64 * 1024;
+fileHandle_t FS_FOpenFileWriteAsync( const char *filename ) {
+	fileHandle_t f;
+	FILE *fp;
+	f = FS_FOpenFileWrite( filename );
+	if ( f ) {
+		fsh[f].handleAsync = qtrue;
+		fsh[f].pending = NULL;
+		fsh[f].closing = qfalse;
+		fsh[f].pendingBuffer.buffer = ( byte * ) Z_Malloc( BUFFER_SIZE, TAG_FILESYS, qtrue );
+		fsh[f].pendingBuffer.bufferLen = BUFFER_SIZE;
+		fsh[f].pendingBuffer.bufferOffset = 0;
+		fp = FS_FileForHandle( f );
+		// need to set O_APPEND in order to not have every aio_write overwrite the others
+		fcntl( fileno( fp ), F_SETFL, O_APPEND );
+	}
+	return f;
+}
+#endif
+/*
+===========
+FS_FOpenFileWrite
+
+===========
+*/
+fileHandle_t FS_FOpenFileWriteAbsolute( const char *qpath ) {
+	fileHandle_t	f;
+
+	f = FS_HandleForFile();
+	fsh[f].zipFile = qfalse;
+
+	// enabling the following line causes a recursive function call loop
+	// when running with +set logfile 1 +set developer 1
+	//Com_DPrintf( "writing to: %s\n", ospath );
+	fsh[f].handleFiles.file.o = fopen( qpath, "wb" );
+
+	Q_strncpyz( fsh[f].name, qpath, sizeof( fsh[f].name ) );
+
+	fsh[f].handleSync = qfalse;
+#ifdef USE_AIO
+	fsh[f].handleAsync = qfalse;
+#endif
+	if (!fsh[f].handleFiles.file.o) {
+		f = 0;
+	}
+	return f;
+}
 /*
 ===========
 FS_FOpenFileWrite
@@ -1092,6 +1350,85 @@ fileHandle_t FS_FOpenFileWrite( const char *filename, qboolean safe ) {
 	Q_strncpyz( fsh[f].name, filename, sizeof( fsh[f].name ) );
 
 	fsh[f].handleSync = qfalse;
+#ifdef USE_AIO
+	fsh[f].handleAsync = qfalse;
+#endif
+	if (!fsh[f].handleFiles.file.o) {
+		f = 0;
+	}
+	return f;
+}
+
+fileHandle_t FS_FDirectOpenFileWrite( const char *filename, const char *mode ) {
+	char			*ospath;
+	fileHandle_t	f;
+
+	FS_AssertInitialised();
+
+	f = FS_HandleForFile();
+	fsh[f].zipFile = qfalse;
+
+	ospath = FS_BuildOSPath( fs_homepath->string, fs_gamedir, filename );
+
+	if ( fs_debug->integer ) {
+		Com_Printf( "FS_FDirectOpenFileWrite: %s\n", ospath );
+	}
+
+	if( FS_CreatePath( ospath ) ) {
+		return 0;
+	}
+
+	// enabling the following line causes a recursive function call loop
+	// when running with +set logfile 1 +set developer 1
+	//Com_DPrintf( "writing to: %s\n", ospath );
+	fsh[f].handleFiles.file.o = fopen( ospath, mode );
+
+	Q_strncpyz( fsh[f].name, filename, sizeof( fsh[f].name ) );
+
+	fsh[f].handleSync = qfalse;
+	if (!fsh[f].handleFiles.file.o) {
+		f = 0;
+	}
+	return f;
+}
+
+
+/*
+===========
+FS_FOpenFileWrite
+
+===========
+*/
+fileHandle_t FS_FOpenFileReadWrite( const char *filename ) {
+	char			*ospath;
+	fileHandle_t	f;
+
+	FS_AssertInitialised();
+
+	f = FS_HandleForFile();
+	fsh[f].zipFile = qfalse;
+
+	ospath = FS_BuildOSPath( fs_homepath->string, fs_gamedir, filename );
+
+	if ( fs_debug->integer ) {
+		Com_Printf( "FS_FOpenFileReadWrite: %s\n", ospath );
+	}
+
+	if( FS_CreatePath( ospath ) ) {
+		return 0;
+	}
+
+	// enabling the following line causes a recursive function call loop
+	// when running with +set logfile 1 +set developer 1
+	//Com_DPrintf( "writing to: %s\n", ospath );
+	fsh[f].handleFiles.file.o = fopen( ospath, "r+b" );
+
+	Q_strncpyz( fsh[f].name, filename, sizeof( fsh[f].name ) );
+
+	fsh[f].handleSync = qfalse;
+#ifdef USE_AIO
+	fsh[f].handleAsync = qfalse;
+#endif
 	if (!fsh[f].handleFiles.file.o) {
 		f = 0;
 	}
@@ -1514,12 +1851,16 @@ long FS_FOpenFileRead( const char *filename, fileHandle_t *file, qboolean unique
 		  // I had the problem on https://zerowing.idsoftware.com/bugzilla/show_bug.cgi?id=8
 		  // turned out I used FS_FileExists instead
 				if ( fs_numServerPaks ) {
-					if ( !FS_IsExt( filename, ".cfg", l ) &&		// for config files
+					if ( !FS_IsExt( filename, ".cfg", l ) &&	// for config files
 					    !FS_IsExt( filename, ".fcf", l ) &&		// force configuration files
-					    !FS_IsExt( filename, ".menu", l ) &&		// menu files
-					    !FS_IsExt( filename, ".game", l ) &&		// menu files
+					    !FS_IsExt( filename, ".menu", l ) &&	// menu files
+					    !FS_IsExt( filename, ".game", l ) &&	// menu files
+					    !FS_IsExt( filename, ".wav", l ) &&		// wav audio files
+					    !FS_IsExt( filename, ".mp3", l ) &&		// mp3 audio files
+					    !FS_IsExt( filename, ".ogg", l ) &&		// ogg audio files
+					    !FS_IsExt( filename, ".flac", l ) &&	// flac audio files
 					    !FS_IsExt( filename, ".dat", l ) &&		// for journal files
-					    !FS_IsDemoExt( filename, l ) ) {			// demos
+					    !FS_IsDemoExt( filename, l ) ) {		// demos
 						continue;
 					}
 				}
@@ -1532,12 +1873,16 @@ long FS_FOpenFileRead( const char *filename, fileHandle_t *file, qboolean unique
 					continue;
 				}
 
-				if ( !FS_IsExt( filename, ".cfg", l ) &&		// for config files
+				if ( !FS_IsExt( filename, ".cfg", l ) &&	// for config files
 					!FS_IsExt( filename, ".fcf", l ) &&		// force configuration files
-					!FS_IsExt( filename, ".menu", l ) &&		// menu files
-					!FS_IsExt( filename, ".game", l ) &&		// menu files
+					!FS_IsExt( filename, ".menu", l ) &&	// menu files
+					!FS_IsExt( filename, ".game", l ) &&	// menu files
+					!FS_IsExt( filename, ".wav", l ) &&		// wav audio files
+					!FS_IsExt( filename, ".mp3", l ) &&		// mp3 audio files
+					!FS_IsExt( filename, ".ogg", l ) &&		// ogg audio files
+					!FS_IsExt( filename, ".flac", l ) &&	// flac audio files
 					!FS_IsExt( filename, ".dat", l ) &&		// for journal files
-					!FS_IsDemoExt( filename, l ) ) {			// demos
+					!FS_IsDemoExt( filename, l ) ) {		// demos
 					fs_fakeChkSum = Q_flrand(0.0f, 1.0f);
 				}
 #ifdef _WIN32
@@ -1575,7 +1920,7 @@ long FS_FOpenFileRead( const char *filename, fileHandle_t *file, qboolean unique
 						default:
 						case 1:
 						{
-							FS_CopyFile( netpath, copypath );
+							FS_CopyFile( netpath, copypath, NULL, 0 );
 						}
 						break;
 
@@ -1672,6 +2017,25 @@ FS_Read
 Properly handles partial reads
 =================
 */
+int FS_Read2( void *buffer, int len, fileHandle_t f ) {
+	if ( !fs_searchpaths ) {
+		Com_Error( ERR_FATAL, "Filesystem call made without initialization\n" );
+	}
+
+	if ( !f ) {
+		return 0;
+	}
+/*	if (fsh[f].streamed) {
+		int r;
+		fsh[f].streamed = qfalse;
+		r = Sys_StreamedRead( buffer, len, 1, f);
+		fsh[f].streamed = qtrue;
+		return r;
+	} else */{
+		return FS_Read( buffer, len, f);
+	}
+}
+
 int FS_Read( void *buffer, int len, fileHandle_t f ) {
 	int		block, remaining;
 	int		read;
@@ -1715,6 +2079,53 @@ int FS_Read( void *buffer, int len, fileHandle_t f ) {
 		return unzReadCurrentFile(fsh[f].handleFiles.file.z, buffer, len);
 	}
 }
+
+#ifdef USE_AIO
+static void FS_WriteAio( const void *buffer, int len, fileHandle_t h, void (*notify_function) (sigval_t) ) {
+	FILE *f = FS_FileForHandle(h);
+	fileBufferNode_t *node = ( fileBufferNode_t * ) Z_Malloc( sizeof( fileBufferNode_t ), TAG_FILESYS, qtrue );
+	node->buffer = Z_Malloc( len, TAG_FILESYS, qfalse );
+	memcpy( node->buffer, buffer, len );
+	node->next = NULL;
+	node->cb.aio_fildes = fileno( f );
+	node->cb.aio_buf = node->buffer;
+	node->cb.aio_nbytes = len;
+	if ( notify_function == NULL ) {
+		node->cb.aio_sigevent.sigev_notify = SIGEV_NONE;
+	} else {
+		node->cb.aio_sigevent.sigev_notify = SIGEV_THREAD;
+		node->cb.aio_sigevent.sigev_notify_function = notify_function;
+		node->cb.aio_sigevent.sigev_notify_attributes = NULL;
+		node->cb.aio_sigevent.sigev_value.sival_int = (int) h;
+	}
+	if ( aio_write( &node->cb ) ) {
+		Com_Error( ERR_FATAL, "Failed to write to file: error %d\n", aio_error( &node->cb ) );
+	}
+	fileBufferNode_t *lastNode = fsh[h].pending;
+	fileBufferNode_t *prevNode = NULL;
+	while ( lastNode != NULL ) {
+		fileBufferNode_t *nextNode = lastNode->next;
+		if ( aio_error( &lastNode->cb ) != EINPROGRESS ) {
+			// this write completed, so remove it from the list
+			if ( prevNode == NULL ) {
+				fsh[h].pending = lastNode->next;
+			} else {
+				prevNode->next = lastNode->next;
+			}
+			Z_Free( lastNode->buffer );
+			Z_Free( lastNode );
+		} else {
+			prevNode = lastNode;
+		}
+		lastNode = nextNode;
+	}
+	if ( prevNode == NULL ) {
+		fsh[h].pending = node;
+	} else {
+		prevNode->next = node;
+	}
+}
+#endif
 
 /*
 =================
@@ -3563,6 +3974,7 @@ void FS_LoadReflists( void ) {
 
 void FS_Startup( const char *gameName ) {
 	const char *homePath;
+	char fs_gamedirLast[MAX_OSPATH];
 
 	Com_Printf( "----- FS_Startup -----\n" );
 
@@ -3579,6 +3991,7 @@ void FS_Startup( const char *gameName ) {
 	}
 	fs_homepath = Cvar_Get ("fs_homepath", homePath, CVAR_INIT|CVAR_PROTECTED, "(Read/Write) Location for user generated files" );
 	fs_gamedirvar = Cvar_Get ("fs_game", "", CVAR_INIT|CVAR_SYSTEMINFO, "Mod directory" );
+	fs_extragamedirs = Cvar_Get( "fs_extragames", "", CVAR_INIT );
 
 	fs_dirbeforepak = Cvar_Get("fs_dirbeforepak", "0", CVAR_INIT|CVAR_PROTECTED, "Prioritize directories before paks if not pure" );
 
@@ -3599,11 +4012,18 @@ void FS_Startup( const char *gameName ) {
 		FS_AddGameDirectory( fs_apppath->string, gameName );
 	}
 #endif
-
+#ifdef __ANDROID__
+	if (fs_homepath->string)
+		LOGI("fs_homepath->string == %s",fs_homepath->string);
+	if (fs_basepath->string)
+		LOGI("fs_basepath->string == %s",fs_basepath->string);
+#endif
 	// fs_homepath is somewhat particular to *nix systems, only add if relevant
 	// NOTE: same filtering below for mods and basegame
 	if (fs_homepath->string[0] && !Sys_PathCmp(fs_homepath->string, fs_basepath->string)) {
+#if defined(__ANDROID__) || !defined(BUILD_PORTABLE)
 		FS_CreatePath ( fs_homepath->string );
+#endif
 		FS_AddGameDirectory ( fs_homepath->string, gameName );
 	}
 
@@ -3620,8 +4040,30 @@ void FS_Startup( const char *gameName ) {
 		}
 	}
 
+	//if we don't have the mod folder (fs_game), but have the extra mods folders (fs_extraGames),
+	//then the last one from the extra mods folders will be treated as the mod folder,
+	//so we have to store the last game directory and read it later
+	Q_strncpyz(fs_gamedirLast, fs_gamedir, sizeof(fs_gamedirLast));
+	/* Read the fs_extragames after the base */
+	if ( fs_extragamedirs->string[0] ) {
+		int i;
+		Cmd_TokenizeString( fs_extragamedirs->string );
+		for( i=0; i<Cmd_Argc();i++) {
+			const char *newPath = Cmd_Argv( i );
+			if (fs_cdpath->string[0]) {
+				FS_AddGameDirectory(fs_cdpath->string, newPath );
+			}
+			if (fs_basepath->string[0]) {
+				FS_AddGameDirectory(fs_basepath->string, newPath );
+			}
+			if (fs_homepath->string[0] && Q_stricmp(fs_homepath->string,fs_basepath->string)) {
+				FS_AddGameDirectory(fs_homepath->string, newPath );
+			}
+		}
+	}
+
 	// check for additional game folder for mods
-	if ( fs_gamedirvar->string[0] && Q_stricmp( fs_gamedirvar->string, gameName ) ) {
+	if ( fs_gamedirvar->string[0] && !Q_stricmp( gameName, BASEGAME ) && Q_stricmp( fs_gamedirvar->string, gameName ) ) {
 		if (fs_cdpath->string[0]) {
 			FS_AddGameDirectory(fs_cdpath->string, fs_gamedirvar->string);
 		}
@@ -3631,6 +4073,9 @@ void FS_Startup( const char *gameName ) {
 		if (fs_homepath->string[0] && !Sys_PathCmp(fs_homepath->string, fs_basepath->string)) {
 			FS_AddGameDirectory(fs_homepath->string, fs_gamedirvar->string);
 		}
+	//read the last game directory
+	} else {
+		Q_strncpyz(fs_gamedir, fs_gamedirLast, sizeof(fs_gamedir));
 	}
 
 	// forcegame allows users to override any fs_game settings
@@ -4012,6 +4457,15 @@ is resetting due to a game change
 ================
 */
 void FS_InitFilesystem( void ) {
+#ifdef USE_AIO
+	struct aioinit init;
+	memset( &init, 0, sizeof( init ) );
+	init.aio_threads = 20;
+	init.aio_num = 64;
+	init.aio_idle_time = 300;
+	aio_init( &init );
+	Com_Printf( "Initialized AIO\n" );
+#endif
 	// allow command line parms to override our defaults
 	// we have to specially handle this, because normal command
 	// line variable sets don't happen until after the filesystem
@@ -4022,6 +4476,7 @@ void FS_InitFilesystem( void ) {
 	Com_StartupVariable( "fs_game" );
 	Com_StartupVariable( "fs_copyfiles" );
 	Com_StartupVariable( "fs_dirbeforepak" );
+	Com_StartupVariable( "fs_extragames" );
 #ifdef MACOS_X
 	Com_StartupVariable( "fs_apppath" );
 #endif
@@ -4184,6 +4639,16 @@ int		FS_FOpenFileByMode( const char *qpath, fileHandle_t *f, fsMode_t mode ) {
 	fsh[*f].handleSync = sync;
 
 	return r;
+}
+
+qboolean FS_FEof( fileHandle_t f ) {
+	qboolean eof;
+	if (fsh[f].zipFile == qtrue) {
+		eof = (qboolean)unzeof(fsh[f].handleFiles.file.z);
+	} else {
+		eof = (qboolean)feof(fsh[f].handleFiles.file.o);
+	}
+	return eof;
 }
 
 int		FS_FTell( fileHandle_t f ) {
@@ -4470,4 +4935,72 @@ const char *FS_MV_VerifyDownloadPath(const char *pk3file) {
 	}
 
 	return NULL;
+}
+
+//pipes!!
+fileHandle_t FS_PipeOpen(const char *qcmd, const char *qpath, const char *mode) {
+    char			*ospath;
+    fileHandle_t	f;
+    char            cmd[2048];
+    
+    if (!fs_searchpaths) {
+        Com_Error(ERR_FATAL, "Filesystem call made without initialization\n");
+    }
+    
+    f = FS_HandleForFile();
+    fsh[f].zipFile = qfalse;
+    
+    ospath = FS_BuildOSPath(fs_homepath->string, fs_gamedir, qpath);
+    
+    if (fs_debug->integer) {
+        Com_Printf("FS_PipeOpen ospath: %s\n", ospath);
+    }
+    
+    if(FS_CreatePath(ospath)) {
+        return 0;
+    }
+    
+	Com_sprintf(cmd, sizeof(cmd), "%s", qcmd);
+	FS_ReplaceSeparators(cmd);
+
+    if (fs_debug->integer) {
+        Com_Printf("FS_PipeOpen cmd: %s\n", cmd);
+    }
+    
+#ifdef _WIN32
+    fsh[f].handleFiles.file.o = _popen(cmd, mode);
+#else
+    fsh[f].handleFiles.file.o = popen(cmd, mode);
+#endif
+    
+    Q_strncpyz(fsh[f].name, qpath, sizeof(fsh[f].name));
+    
+    fsh[f].handleSync = qfalse;
+#ifdef USE_AIO
+    fsh[f].handleAsync = qfalse;
+#endif
+    if (!fsh[f].handleFiles.file.o) {
+        f = 0;
+    }
+    return f;
+}
+
+int FS_PipeWrite(const void *buffer, int len, fileHandle_t h) {
+    return FS_Write(buffer, len, h);
+}
+
+void FS_PipeClose(fileHandle_t f) {
+    if (!fs_searchpaths) {
+        Com_Error(ERR_FATAL, "Filesystem call made without initialization\n");
+    }
+    
+    // we didn't find it as a pak, so close it as a unique file
+    if (fsh[f].handleFiles.file.o) {
+#ifdef _WIN32
+        _pclose(fsh[f].handleFiles.file.o);
+#else
+        pclose(fsh[f].handleFiles.file.o);
+#endif
+    }
+    Com_Memset(&fsh[f], 0, sizeof(fsh[f]));
 }

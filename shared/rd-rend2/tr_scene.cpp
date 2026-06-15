@@ -27,7 +27,7 @@ int			r_firstSceneDrawSurf;
 int			r_numdlights;
 int			r_firstSceneDlight;
 
-int			r_numentities;
+int64_t		r_numentities;
 int			r_firstSceneEntity;
 
 int			r_numpolys;
@@ -311,8 +311,11 @@ void RE_AddAdditiveLightToScene( const vec3_t org, float intensity, float r, flo
 	RE_AddDynamicLightToScene( org, intensity, r, g, b, qtrue );
 }
 
+static qboolean timeFractionSet = qfalse;
+
 void RE_BeginScene(const refdef_t *fd)
 {
+	static	int		lastTime = 0;
 	tr.refdef.x = fd->x;
 	tr.refdef.y = fd->y;
 	tr.refdef.width = fd->width;
@@ -327,7 +330,10 @@ void RE_BeginScene(const refdef_t *fd)
 
 	tr.refdef.time = fd->time;
 	tr.refdef.rdflags = fd->rdflags;
-	tr.refdef.frameTime = MIN(fd->time - tr.refdef.lastTime, 50.f);
+	if (!timeFractionSet)
+		tr.refdef.timeFraction = 0.0f;
+	timeFractionSet = qfalse;
+	tr.refdef.frameTime = fd->time - tr.refdef.lastTime;
 
 	// copy the areamask data over and note if it has changed, which
 	// will force a reset of the visible leafs even if the view hasn't moved
@@ -453,7 +459,7 @@ void RE_BeginScene(const refdef_t *fd)
 
 	// derived info
 
-	tr.refdef.floatTime = tr.refdef.time * 0.001f;
+	tr.refdef.floatTime = tr.refdef.time * 0.001 + tr.refdef.timeFraction * 0.001;
 
 	tr.refdef.numDrawSurfs = r_firstSceneDrawSurf;
 	tr.refdef.drawSurfs = backEndData->drawSurfs;
@@ -629,4 +635,9 @@ void RE_RenderScene( const refdef_t *fd )
 	R_PushDebugGroup(AL_VIEW, "2D Pass");
 
 	tr.frontEndMsec += ri.Milliseconds() - startTime;
+}
+
+void R_MME_TimeFraction(float timeFraction) {
+	tr.refdef.timeFraction = timeFraction;
+	timeFractionSet = qtrue;
 }

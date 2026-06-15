@@ -57,12 +57,12 @@ cvar_t	*cl_timeNudge;
 cvar_t	*cl_showTimeDelta;
 cvar_t	*cl_freezeDemo;
 
+cvar_t	*cl_drawRecording;
+
 cvar_t	*cl_shownet;
 cvar_t	*cl_showSend;
 cvar_t	*cl_timedemo;
-cvar_t	*cl_aviFrameRate;
-cvar_t	*cl_aviMotionJpeg;
-cvar_t	*cl_avi2GBLimit;
+cvar_t	*cl_avidemo;
 cvar_t	*cl_forceavidemo;
 
 cvar_t	*cl_freelook;
@@ -83,7 +83,7 @@ cvar_t	*m_filter;
 cvar_t	*cl_activeAction;
 
 cvar_t	*cl_motdString;
-
+cvar_t	*cl_dlURL;
 cvar_t	*cl_allowDownload;
 cvar_t	*cl_allowAltEnter;
 cvar_t	*cl_conXOffset;
@@ -105,13 +105,16 @@ cvar_t	*cl_consoleShiftRequirement;
 
 cvar_t  *cl_lanForcePackets;
 
-cvar_t	*cl_drawRecording;
-
 cvar_t	*cl_downloadName;
 cvar_t	*cl_downloadPrompt;
 cvar_t	*cl_downloadOverlay;
 
 cvar_t	*cl_filterGames;
+
+cvar_t	*cl_autoDemo;
+cvar_t	*cl_autoDemoFormat;
+
+cvar_t	*cl_notify;
 
 vec3_t cl_windVec;
 
@@ -250,14 +253,14 @@ void CL_StopRecord_f( void ) {
 CL_DemoFilename
 ==================
 */
-void CL_DemoFilename( char *buf, int bufSize ) {
+void CL_DemoFilename( char *buf, int bufSize, int protocol ) {
 	time_t rawtime;
 	char timeStr[32] = {0}; // should really only reach ~19 chars
 
 	time( &rawtime );
 	strftime( timeStr, sizeof( timeStr ), "%Y-%m-%d_%H-%M-%S", localtime( &rawtime ) ); // or gmtime
 
-	Com_sprintf( buf, bufSize, "demo%s", timeStr );
+	Com_sprintf( buf, bufSize, "demos/demo%s.dm_%d", timeStr, protocol );
 }
 
 /*
@@ -308,9 +311,7 @@ void CL_Record_f( void ) {
 		Com_sprintf (name, sizeof(name), "demos/%s.dm_%d", demoName, PROTOCOL_VERSION );
 	} else {
 		// timestamp the file
-		CL_DemoFilename( demoName, sizeof( demoName ) );
-
-		Com_sprintf (name, sizeof(name), "demos/%s.dm_%d", demoName, PROTOCOL_VERSION );
+		CL_DemoFilename( demoName, sizeof( demoName ), PROTOCOL_VERSION );
 
 		if ( FS_FileExists( name ) ) {
 			Com_Printf( "Record: Couldn't create a file\n");
@@ -492,15 +493,23 @@ void CL_ReadDemoMessage( void ) {
 CL_CompleteDemoName
 ====================
 */
-static void CL_CompleteDemoName( char *args, int argNum )
-{
-	if( argNum == 2 )
-	{
-		char demoExt[16];
-
-		Com_sprintf(demoExt, sizeof(demoExt), ".dm_%d", PROTOCOL_VERSION);
-		Field_CompleteFilename( "demos", demoExt, qtrue, qtrue );
+static char *CL_WalkDemoExt(const char *arg, char *name, int *demofile) {
+	static char demoExt[8];
+	int i = 0;
+	*demofile = 0;
+	while(demo_protocols[i]) {
+		Com_sprintf (name, MAX_OSPATH, "demos/%s.dm_%d", arg, demo_protocols[i]);
+		FS_FOpenFileRead( name, demofile, qtrue );
+		if (*demofile) {
+			Com_Printf("Demo file: %s\n", name);
+			Com_sprintf(demoExt, sizeof(demoExt), ".dm_%d", demo_protocols[i]);
+			return demoExt;
+		}
+		else
+			Com_Printf("Not found: %s\n", name);
+		i++;
 	}
+	return "";
 }
 
 /*
@@ -511,42 +520,118 @@ demo <demoname>
 
 ====================
 */
+extern void demoCommandSmoothingEnable(qboolean enable);
 void CL_PlayDemo_f( void ) {
-	char		name[MAX_OSPATH], extension[32];
-	char		*arg;
+	char		name[MAX_OSPATH], *testName, testNameActual[MAX_OSPATH];
+	char		*ext = NULL;
+	qboolean	haveConvert, forceNewConvert = qfalse, del = qfalse;
+	cvar_t		*fs_game;
 
-	if (Cmd_Argc() != 2) {
-		Com_Printf ("demo <demoname>\n");
+	if (Cmd_Argc() < 2) {
+		Com_Printf ("demo <demoname> [del]\n");
 		return;
 	}
-
+	if (Cmd_Argc() >= 3 && !Q_stricmp(Cmd_Argv(2), "del")) {
+		del = qtrue;
+	}
+	fs_game = Cvar_FindVar ("fs_game" );
+	if (!fs_game)
+		return;
+	demoCommandSmoothingEnable(qfalse);
+#ifdef __ANDROID__
+	haveConvert = (qboolean)(mme_demoConvert->integer);
+	if (haveConvert && fs_game && (!Q_stricmp(fs_game->string, "")
+		|| !Q_stricmp(fs_game->string, "base")
+		|| !Q_stricmp(fs_game->string, "mme"))) {
+		demoCommandSmoothingEnable(qtrue);
+	}
+	Q_strncpyz( testNameActual, Cmd_Argv(1), sizeof( testNameActual ) );
+#else
+	haveConvert = (qboolean)(mme_demoConvert->integer && cls.mmeStateCGame >= MME_STATE_DEFAULT);
+	if (haveConvert && cls.mmeStateCGame == MME_STATE_DEFAULT)
+		demoCommandSmoothingEnable(qtrue);
+	if (del) {
+		ext = strstr(Cmd_Argv(1), ".mme");
+		if (!ext) {
+			int i = 0;
+			while(demo_protocols[i]) {
+				ext = strstr(Cmd_Argv(1), va(".dm_%d", demo_protocols[i]));
+				if (ext && *ext) {
+					break;
+				}
+				i++;
+			}
+		}
+		if (ext && *ext) {
+			char temp[MAX_OSPATH] = "_";
+			const char *demos = (!Q_stricmp(ext, ".mme")) ? "mmedemos" : "demos";
+			while (FS_FileExists(va("%s/%s%s", demos, temp, ext))) {
+				if (strlen(temp) >= MAX_OSPATH-1)
+					break;
+				Q_strcat(temp, sizeof(temp), "_");
+			}
+			if (FS_CopyFileAbsolute(Cmd_Argv(1), va("%s/%s%s", demos, temp, ext))) {
+				Q_strncpyz( testNameActual, temp, sizeof( testNameActual ) );
+				if (Q_stricmp(ext, ".mme"))
+					forceNewConvert = qtrue;
+			} else {
+				Q_strncpyz( testNameActual, Cmd_Argv(1), sizeof( testNameActual ) );
+			}
+		}
+	} else {
+		Q_strncpyz( testNameActual, Cmd_Argv(1), sizeof( testNameActual ) );
+	}
+#endif
 	// make sure a local server is killed
 	// 2 means don't force disconnect of local client
 	Cvar_Set( "sv_killserver", "2" );
 
-	// open the demo file
-	arg = Cmd_Argv(1);
-
-	CL_Disconnect( qtrue );
-
-	Com_sprintf(extension, sizeof(extension), ".dm_%d", PROTOCOL_VERSION);
-	if ( !Q_stricmp( arg + strlen(arg) - strlen(extension), extension ) ) {
-		Com_sprintf (name, sizeof(name), "demos/%s", arg);
+	testName = testNameActual;
+	// check for an extension .dm_?? (?? is protocol)
+	ext = testName + strlen(testName) - 6;
+	if ((strlen(testName) > 6) && (ext[0] == '.') && ((ext[1] == 'd') || (ext[1] == 'D')) && ((ext[2] == 'm') || (ext[2] == 'M')) && (ext[3] == '_')) {
+		Cvar_Set( "mme_demoExt", ext );
+		ext[0] = 0;	
 	} else {
-		Com_sprintf (name, sizeof(name), "demos/%s.dm_%d", arg, PROTOCOL_VERSION);
+		Cvar_Set( "mme_demoExt", "" );
+	}
+	
+	//stop playing back the current demo
+	if (clc.demofile) { //regular demo player way
+		FS_FCloseFile(clc.demofile);
+		clc.demofile = 0;
+	} else if (clc.demoplaying) {
+		demoStop();
 	}
 
-	FS_FOpenFileRead( name, &clc.demofile, qtrue );
+	Cvar_Set( "mme_demoFileName", testName );
+
+	if (haveConvert && !forceNewConvert) {
+		Com_sprintf (name, MAX_OSPATH, "mmedemos/%s.mme", testName );
+		if (FS_FileExists( name )) {
+			if (demoPlay( name, del ))
+				return;
+		}
+	}
+	
+	Cvar_Set( "mme_demoExt", CL_WalkDemoExt( testName, name, &clc.demofile ) );
 	if (!clc.demofile) {
-		if (!Q_stricmp(arg, "(null)"))
-		{
-			Com_Error( ERR_DROP, SE_GetString("CON_TEXT_NO_DEMO_SELECTED") );
-		}
-		else
-		{
-			Com_Error( ERR_DROP, "couldn't open %s", name);
-		}
+		Com_Error( ERR_DROP, "couldn't open %s", name);
+		demoCommandSmoothingEnable(qfalse);
 		return;
+	} else if ( haveConvert ) {
+		char mmeName[MAX_OSPATH];
+
+		FS_FCloseFile( clc.demofile );
+		clc.demofile = 0;
+
+		Com_sprintf( mmeName, sizeof( mmeName ), "mmedemos/%s", testName );
+		demoConvert( name, mmeName, (qboolean)mme_demoSmoothen->integer );
+		Q_strcat( mmeName , sizeof( mmeName ), ".mme" );
+		if (demoPlay( mmeName, del ))
+			return;
+		Com_Printf("Can't seem to play demo %s\n", testName );
+		demoCommandSmoothingEnable(qfalse);
 	}
 	Q_strncpyz( clc.demoName, Cmd_Argv(1), sizeof( clc.demoName ) );
 
@@ -611,9 +696,6 @@ CL_ShutdownAll
 =====================
 */
 void CL_ShutdownAll( qboolean shutdownRef ) {
-	if(CL_VideoRecording())
-		CL_CloseAVI();
-
 	if(clc.demorecording)
 		CL_StopRecord_f();
 
@@ -621,7 +703,9 @@ void CL_ShutdownAll( qboolean shutdownRef ) {
 	//so it doesn't barf on shutdown saying refentities belong to each other
 	tr.refdef.num_entities = 0;
 #endif
-
+#ifdef USE_CURL
+	CL_cURL_Shutdown();
+#endif
 	// clear sounds
 	S_DisableSounds();
 	// shutdown CGame
@@ -780,7 +864,7 @@ void CL_Disconnect( qboolean showMainMenu ) {
 	if ( !com_cl_running || !com_cl_running->integer ) {
 		return;
 	}
-
+	Com_SetLoadingMsg("Disconnecting...");
 	// shutting down the client so enter full screen ui mode
 	Cvar_Set("r_uiFullScreen", "1");
 
@@ -799,12 +883,15 @@ void CL_Disconnect( qboolean showMainMenu ) {
 		FS_FCloseFile( clc.demofile );
 		clc.demofile = 0;
 	}
-
+	if (clc.newDemoPlayer) {
+		demoStop();
+	}
 	if ( cls.uiStarted && showMainMenu ) {
 		UIVM_SetActiveMenu( UIMENU_NONE );
 	}
 
 	SCR_StopCinematic ();
+	S_MMEWavClose();
 	S_ClearSoundBuffer();
 
 	// send a disconnect message to the server
@@ -826,19 +913,13 @@ void CL_Disconnect( qboolean showMainMenu ) {
 	Com_Memset( &clc, 0, sizeof( clc ) );
 
 	cls.state = CA_DISCONNECTED;
+	cls.cTable = CT_DEFAULT;
 
 	// allow cheats locally
 	Cvar_Set( "sv_cheats", "1" );
 
 	// not connected to a pure server anymore
 	cl_connectedToPureServer = qfalse;
-
-	// Stop recording any video
-	if( CL_VideoRecording( ) ) {
-		// Finish rendering current frame
-		SCR_UpdateScreen( );
-		CL_CloseAVI( );
-	}
 
 	CL_UpdateGUID( NULL, 0 );
 }
@@ -930,7 +1011,7 @@ void CL_RequestMotd( void ) {
 	Info_SetValueForKey( info, "challenge", cls.updateChallenge );
 	Info_SetValueForKey( info, "renderer", cls.glconfig.renderer_string );
 	Info_SetValueForKey( info, "rvendor", cls.glconfig.vendor_string );
-	Info_SetValueForKey( info, "version", JK_VERSION_OLD " " PLATFORM_STRING " " SOURCE_DATE );
+	Info_SetValueForKey( info, "version", JK_VERSION " " PLATFORM_STRING " " SOURCE_DATE );
 
 	//If raven starts filtering for this, add this code back in
 #if 0
@@ -1169,6 +1250,19 @@ void CL_ResetPureClientAtServer( void ) {
 	CL_AddReliableCommand( "vdr", qfalse );
 }
 
+void CL_SetMMEState(void) {
+	mmeState_t state;
+	cvar_t *fs_game = Cvar_FindVar("fs_game");
+	if (fs_game && !Q_stricmp(fs_game->string, "mme")) {
+		state = MME_STATE_DEFAULT;
+	} else if (fs_game && !Q_stricmpn(fs_game->string, "mme", 3)) {
+		state = MME_STATE_CUSTOM;
+	} else {
+		state = MME_STATE_NONE;
+	}
+	cls.mmeStateCGame = cls.mmeStateUI = state;
+}
+
 /*
 =================
 CL_Vid_Restart_f
@@ -1181,11 +1275,8 @@ doesn't know what graphics to reload
 */
 extern bool g_nOverrideChecked;
 void CL_Vid_Restart_f( void ) {
+	CL_SetMMEState();
 	// Settings may have changed so stop recording now
-	if( CL_VideoRecording( ) ) {
-		CL_CloseAVI( );
-	}
-
 	if(clc.demorecording)
 		CL_StopRecord_f();
 
@@ -1238,6 +1329,8 @@ void CL_Vid_Restart_f( void ) {
 	if ( cls.state > CA_CONNECTED && cls.state != CA_CINEMATIC ) {
 		cls.cgameStarted = qtrue;
 		CL_InitCGame();
+		if ( clc.newDemoPlayer )
+			cls.state = CA_ACTIVE;
 		// send pure checksums
 		CL_SendPureChecksums();
 	}
@@ -1256,17 +1349,9 @@ handles will be invalid
 void CL_Snd_Restart_f( void ) {
 	S_Shutdown();
 	S_Init();
-
-//	S_FreeAllSFXMem();			// These two removed by BTO (VV)
-//	S_UnCacheDynamicMusic();	// S_Shutdown() already does this!
+	S_BeginRegistration();
 
 //	CL_Vid_Restart_f();
-
-	extern qboolean	s_soundMuted;
-	s_soundMuted = qfalse;		// we can play again
-
-	extern void S_RestartMusic( void );
-	S_RestartMusic();
 }
 
 
@@ -1327,7 +1412,56 @@ void CL_Clientinfo_f( void ) {
 
 
 //====================================================================
-
+static char referencedPakNames[MAX_STRING_CHARS];
+static char *nextPackPtr = 0;
+static char *mod = "";
+char *getNextPakName() {
+    char* ptr;
+    if (!nextPackPtr) {
+        return 0;
+    }
+    // find first letter of the pak name
+    while (*nextPackPtr == ' ' && *nextPackPtr != '\0') {
+        ++nextPackPtr;
+    }
+    ptr = nextPackPtr;
+    // no pak left
+    if (*nextPackPtr == '\0')  {
+        return 0;
+    }
+    // find the end of pak name
+    while (*nextPackPtr != ' ' && *nextPackPtr != '\0') {
+        ++nextPackPtr;
+    }
+    // prepare for next run
+    if (*nextPackPtr != '\0') {
+        // make it appear as a C string to a caller
+        *nextPackPtr = '\0';
+        ++nextPackPtr;
+    } else {
+        //nothing else is there
+        nextPackPtr = 0;
+    }
+    return ptr;
+}
+char *getNextFileForDownload() {
+    const char *pakName;
+    static char filename[MAX_QPATH];
+    qboolean exists;
+    // go through pak files
+    do {
+        // parse next pak name from refererenced pak names string
+        pakName = getNextPakName();
+        if (!pakName) { //nothing to download at all
+            return 0;
+        }
+        // ignore files that we already have
+        exists = FS_FileExists(va("%s.pk3", pakName+strlen(mod)+1));
+    } while (exists);
+    //we found a pak that we dont have yet, we should try download it
+    Q_strncpyz(filename, va("%s.pk3", pakName), sizeof(filename));
+    return filename;
+}
 /*
 =================
 CL_DownloadsComplete
@@ -1337,7 +1471,22 @@ Called when all downloading has been completed
 */
 void CL_DownloadsComplete( void ) {
 	clc.downloadMenuActive = qfalse;
-
+#ifdef USE_CURL
+	// if we downloaded with cURL
+	if(clc.curl.used) { 
+		clc.curl.used = qfalse;
+		CL_cURL_Shutdown();
+		if(clc.curl.disconnected) {
+			if(clc.downloadRestart) {
+				FS_Restart(clc.checksumFeed);
+				clc.downloadRestart = qfalse;
+			}
+			clc.curl.disconnected = qfalse;
+			CL_Reconnect_f();
+			return;
+		}
+	}
+#endif
 	// if we downloaded files we need to restart the file system
 	if (clc.downloadRestart) {
 		clc.downloadRestart = qfalse;
@@ -1352,7 +1501,28 @@ void CL_DownloadsComplete( void ) {
 		// so we don't want to load stuff yet
 		return;
 	}
-
+#ifdef USE_CURL
+	char *info = cl.gameState.stringData + cl.gameState.stringOffsets[CS_SYSTEMINFO];
+	cvar_t *fs_game = Cvar_FindVar("fs_game");
+	if (fs_game && !Q_stricmp(fs_game->string, ""))
+		mod = "base";
+	else if (fs_game)
+		mod = fs_game->string;
+    Q_strncpyz(referencedPakNames, Info_ValueForKey(info, "sv_referencedPakNames"), sizeof(referencedPakNames));
+    nextPackPtr = referencedPakNames;
+	info = cl.gameState.stringData + cl.gameState.stringOffsets[CS_SERVERINFO];
+	if (!clc.curl.gotError
+		&& !FS_FileExistsInPaks(va("maps/%s.bsp", Info_ValueForKey(info, "mapname")))
+		&& !cl_allowDownload->integer) {
+		// if autodownloading is not enabled on the server
+		cls.state = CA_CONNECTED;
+		*clc.downloadTempName = *clc.downloadName = *clc.downloadList = 0;
+		Cvar_Set("cl_downloadName", "");
+		CL_NextDownload();
+		return;
+	}
+	clc.curl.gotError = qfalse;
+#endif
 	// let the client game init and load data
 	cls.state = CA_LOADING;
 
@@ -1446,11 +1616,16 @@ A download completed or failed
 void CL_NextDownload(void) {
 	char *s;
 	char *remoteName, *localName;
+	qboolean useCURL = qfalse;
 
 	clc.downloadWaitingOnUser = qfalse;
 
 	// A download has finished, check whether this matches a referenced checksum
-	if(*clc.downloadName && clc.downloadSize)
+	if(*clc.downloadName && clc.downloadSize
+#ifdef USE_CURL
+		&& !clc.curl.gotError
+#endif /* USE_CURL */
+		)
 	{
 		char *zippath = FS_BuildOSPath(Cvar_VariableString("fs_homepath"), clc.downloadName, "");
 		zippath[strlen(zippath)-1] = '\0';
@@ -1458,7 +1633,12 @@ void CL_NextDownload(void) {
 		if(!FS_CompareZipChecksum(zippath))
 			Com_Error(ERR_DROP, "Incorrect checksum for file: %s", clc.downloadName);
 	}
-
+#ifdef USE_CURL
+	if(clc.curl.gotError) {
+		if (FS_FileExists(clc.downloadTempName+strlen(mod)+1))
+			FS_FileErase(clc.downloadTempName+strlen(mod)+1);
+	}
+#endif /* USE_CURL */
 	*clc.downloadTempName = *clc.downloadName = 0;
 	Cvar_Set("cl_downloadName", "");
 
@@ -1484,13 +1664,29 @@ void CL_NextDownload(void) {
 			*s++ = 0;
 		else
 			s = localName + strlen(localName); // point at the nul byte
-
-		if (!cl_allowDownload->integer) {
-			Com_Error(ERR_DROP, "UDP Downloads are disabled on your client. (cl_allowDownload is %d)", cl_allowDownload->integer);
-			return;
-		}
-		else {
-			CL_BeginDownload( localName, remoteName );
+#ifdef USE_CURL
+//		if(!(cl_allowDownload->integer & DLF_NO_REDIRECT)) {
+/*			if(clc.sv_allowDownload & DLF_NO_REDIRECT) {
+				Com_Printf("WARNING: server does not allow download redirection (sv_allowDownload is %d)\n", clc.sv_allowDownload);
+			} else */if(!*clc.dlURL) {
+				Com_Printf("WARNING: server allows download redirection, but does not have dlURL set\n");
+			} else if(!CL_cURL_Init()) {
+				Com_Printf("WARNING: could not load cURL library\n");
+			} else {
+				CL_cURL_BeginDownload(localName, va("%s/%s", clc.dlURL, remoteName));
+				useCURL = qtrue;
+			}
+/*		} else if(!(clc.sv_allowDownload & DLF_NO_REDIRECT)) {
+			Com_Printf("WARNING: server allows download redirection, but it disabled by client configuration (cl_allowDownload is %d)\n", cl_allowDownload->integer);
+		}*/
+#endif /* USE_CURL */
+		if(!useCURL) {
+			if (!cl_allowDownload->integer) {
+				Com_Error(ERR_DROP, "UDP Downloads are disabled on your client. (cl_allowDownload is %d)", cl_allowDownload->integer);
+				return;	
+			} else {
+				CL_BeginDownload( localName, remoteName );
+			}
 		}
 
 		clc.downloadRestart = qtrue;
@@ -1500,6 +1696,26 @@ void CL_NextDownload(void) {
 
 		return;
 	}
+#ifdef USE_CURL
+	else if (localName = getNextFileForDownload()) {
+//		if(!(cl_allowDownload->integer & DLF_NO_REDIRECT)) {
+/*			if(clc.sv_allowDownload & DLF_NO_REDIRECT) {
+				Com_Printf("WARNING: server does not allow download redirection (sv_allowDownload is %d)\n", clc.sv_allowDownload);
+			} else */if(!*clc.dlURL) {
+				Com_Printf("WARNING: server allows download redirection, but client does not have dlURL set\n");
+			} else if(!CL_cURL_Init()) {
+				Com_Printf("WARNING: could not load cURL library\n");
+			} else {
+				CL_cURL_BeginDownload(localName, va("%s/%s", clc.dlURL, localName));
+				clc.downloadRestart = qtrue;
+				return;
+			}
+		clc.curl.gotError = qtrue;
+/*		} else if(!(clc.sv_allowDownload & DLF_NO_REDIRECT)) {
+			Com_Printf("WARNING: server allows download redirection, but it disabled by client configuration (cl_allowDownload is %d)\n", cl_allowDownload->integer);
+		}*/
+	}
+#endif /* USE_CURL */
 
 	CL_DownloadsComplete();
 }
@@ -2171,6 +2387,57 @@ void CL_CheckUserinfo( void ) {
 
 }
 
+void CL_CheckNotification( void ) {
+	const char	*cmd;
+	int			i;
+	int			flags;
+	if ( cl_notify->modified ) {
+		cl_notify->modified = qfalse;
+		cls.notification.flags = flags = NOTIFICATION_NONE;
+		Cmd_TokenizeString( cl_notify->string );
+		if ( Cmd_Argc() == 0 ){
+			return;
+		}
+		cls.notification.playersCount = 0;
+		cls.notification.wordsCount = 0;
+		for ( i = 0; i < Cmd_Argc( ); i++ ) {
+			cmd = Cmd_Argv( i );
+			if ( !Q_stricmp( cmd, "flash" ) ) {
+				flags |= NOTIFICATION_FLASH;
+			} else if ( !Q_stricmp( cmd, "text" ) ) {
+				flags |= NOTIFICATION_TEXT;
+			} else if ( !Q_stricmp( cmd, "console" ) ) {
+				flags |= NOTIFICATION_CONSOLE;
+			} else if ( !Q_stricmp( cmd, "vote" ) ) {
+				flags |= NOTIFICATION_VOTE;
+			} else if ( !Q_stricmp( cmd, "pm" ) ) {
+				flags |= NOTIFICATION_PM;
+			} else if ( !Q_stricmp( cmd, "connect" ) ) {
+				flags |= NOTIFICATION_CONNECT;
+			} else if ( !Q_stricmp( cmd, "restart" ) ) {
+				flags |= NOTIFICATION_RESTART;
+			} else if ( !Q_stricmp( cmd, "round" ) ) {
+				flags |= NOTIFICATION_ROUND;
+			} else if ( !Q_stricmpn( cmd, "players=", 8 ) ) {
+				const char *playersCountStr = strchr( cmd, '=' );
+				if ( playersCountStr && ( playersCountStr[ 1 ] ) != 0 ) {
+					cls.notification.playersCount = atoi( playersCountStr + 1 );
+					flags |= NOTIFICATION_PLAYERS;
+				}
+			} else if ( cls.notification.wordsCount < NOTIFICATION_WORDS_MAX ) {
+				char *buf = (char *)&cls.notification.words[ cls.notification.wordsCount++ ];
+				Q_strncpyz( buf, cmd, MAX_STRING_CHARS );
+				flags |= NOTIFICATION_WORD;
+			}
+		}
+		//if any of the above set but nothing of flash, text, console set then they all are set by default
+		if ( flags && !(flags & NOTIFICATION_FULL) ) {
+			flags |= NOTIFICATION_FULL;
+		}
+		cls.notification.flags = flags;
+	}
+}
+
 /*
 ==================
 CL_Frame
@@ -2181,12 +2448,32 @@ static unsigned int frameCount;
 static float avgFrametime=0.0;
 extern void SE_CheckForLanguageUpdates(void);
 void CL_Frame ( int msec ) {
-	qboolean takeVideoFrame = qfalse;
-
 	if ( !com_cl_running->integer ) {
 		return;
 	}
 
+	CL_CheckNotification();
+
+#ifdef USE_CURL
+	if(clc.curl.downloadCURLM) {
+		CL_cURL_PerformDownload();
+		// we can't process frames normally when in disconnected
+		// download mode since the ui vm expects clc.state to be
+		// CA_CONNECTED
+		if(clc.curl.disconnected) {
+			cls.realFrametime = msec;
+			cls.frametime = msec;
+			cls.realtime += cls.frametime;
+			SCR_UpdateScreen();
+			S_Update();
+			Con_RunConsole();
+			cls.framecount++;
+			return;
+		}
+	}
+#endif
+	//reset the loading message
+	Com_SetLoadingMsg("Loading...");
 	SE_CheckForLanguageUpdates();	// will take zero time to execute unless language changes, then will reload strings.
 									//	of course this still doesn't work for menus...
 
@@ -2196,19 +2483,40 @@ void CL_Frame ( int msec ) {
 		S_StopAllSounds();
 		UIVM_SetActiveMenu( UIMENU_MAIN );
 	}
-
-	// if recording an avi, lock to a fixed fps
-	if ( CL_VideoRecording( ) && cl_aviFrameRate->integer && msec) {
-		if ( cls.state == CA_ACTIVE || cl_forceavidemo->integer) {
-			float fps = Q_min(cl_aviFrameRate->value * com_timescale->value, 1000.0f);
-			float frameDuration = Q_max(1000.0f / fps, 1.0f) + clc.aviVideoFrameRemainder;
-			takeVideoFrame = qtrue;
-
-			msec = (int)frameDuration;
-			clc.aviVideoFrameRemainder = frameDuration - msec;
+	if (cl_avidemo->integer > 0 && msec) {
+		// save the current screen
+		if (cls.state == CA_ACTIVE || cl_forceavidemo->integer) {
+			float frameTime, fps;
+			int blurFrames = Cvar_VariableIntegerValue("mme_blurFrames");
+			char shotName[MAX_OSPATH];
+			Com_sprintf( shotName, sizeof( shotName ), "capture/%s/%s", mme_demoFileName->string, Cvar_VariableString("mov_captureName") );
+			if (blurFrames < 1)
+				blurFrames = 1;
+			else if (blurFrames > 256)
+				blurFrames = 256;
+			// fixed time for next frame'
+			fps = cl_avidemo->value * com_timescale->value * (float)blurFrames;
+//			if ( fps > 1000.0f)
+//				fps = 1000.0f;
+			frameTime = (1000.0f / fps);
+			if (frameTime < 0) {
+				frameTime = 0;
+			}
+			//TODO use mme_depthFocus
+			re->Capture( shotName, fps, 0, 0 );
+			frameTime += clc.aviDemoRemain;
+			msec = (int)frameTime;
+			clc.aviDemoRemain = frameTime - msec;
+			/* Signal this frame to be recorded */
+			S_MMERecord(shotName, 1.0f / fps);
 		}
 	}
-
+	if (cl_autoDemo->integer && !clc.demoplaying) {
+		if (cls.state != CA_ACTIVE && clc.demorecording)
+			demoAutoComplete();
+		else if (cls.state == CA_ACTIVE && !clc.demorecording)
+			demoAutoRecord();
+	}
 	// save the msec before checking pause
 	cls.realFrametime = msec;
 
@@ -2241,6 +2549,9 @@ void CL_Frame ( int msec ) {
 	// drop the connection
 	CL_CheckTimeout();
 
+	// MME:
+	CL_MME_CheckCvarChanges();
+
 	// send intentions now
 	CL_SendCmd();
 
@@ -2248,7 +2559,15 @@ void CL_Frame ( int msec ) {
 	CL_CheckForResend();
 
 	// decide on the serverTime to render
-	CL_SetCGameTime();
+//	CL_SetCGameTime();
+	if ( !clc.newDemoPlayer ) {
+		CL_SetCGameTime();
+	} else {
+		CL_DemoSetCGameTime();
+	}
+
+	if (!cls.cgameStarted || !clc.newDemoPlayer)
+		CIN_AdjustTime(-1);
 
 	// update the screen
 	SCR_UpdateScreen();
@@ -2268,11 +2587,6 @@ void CL_Frame ( int msec ) {
 	}
 
 	cls.framecount++;
-
-	if ( takeVideoFrame ) {
-		// save the current screen
-		CL_TakeVideoFrame( );
-	}
 }
 
 
@@ -2341,6 +2655,9 @@ void CL_InitRenderer( void ) {
 
 	cls.whiteShader = re->RegisterShader( "white" );
 	cls.consoleShader = re->RegisterShader( "console" );
+	cls.recordingShader = re->RegisterShaderNoMip("gfx/hud/message_on");
+	cls.recordingShaderNew = re->RegisterShaderNoMip("gfx/2d/demorec");
+	cls.ratioFix = (float)(SCREEN_WIDTH * cls.glconfig.vidHeight) / (float)(SCREEN_HEIGHT * cls.glconfig.vidWidth);
 	g_console_field_width = cls.glconfig.vidWidth / SMALLCHAR_WIDTH - 2;
 	g_consoleField.widthInChars = g_console_field_width;
 
@@ -2386,6 +2703,14 @@ void CL_StartHunkUsers( void ) {
 	}
 }
 
+void CL_ShowNotification( const char *message ) {
+	Com_ShowNotification( message, cls.notification.flags );
+}
+void CL_ShowNotification2( const char *message, const int flag ) {
+	if ( cls.notification.flags & flag )
+		CL_ShowNotification( message );
+}
+
 /*
 ============
 CL_InitRef
@@ -2412,7 +2737,7 @@ static IHeapAllocator *GetG2VertSpaceServer( void ) {
 	return G2VertSpaceServer;
 }
 
-#define DEFAULT_RENDER_LIBRARY "rd-vanilla"
+#define DEFAULT_RENDER_LIBRARY "rd-jamme"
 
 void CL_InitRef( void ) {
 	static refimport_t ri;
@@ -2423,15 +2748,21 @@ void CL_InitRef( void ) {
 	Com_Printf( "----- Initializing Renderer ----\n" );
 
 	cl_renderer = Cvar_Get( "cl_renderer", DEFAULT_RENDER_LIBRARY, CVAR_ARCHIVE|CVAR_LATCH, "Which renderer library to use" );
-
+#ifdef __ANDROID__
+	Com_sprintf( dllName, sizeof( dllName ), "%s" DLL_EXT, cl_renderer->string );
+#else
 	Com_sprintf( dllName, sizeof( dllName ), "%s_" ARCH_STRING DLL_EXT, cl_renderer->string );
-
+#endif
 	if( !(rendererLib = Sys_LoadDll( dllName, qfalse )) && strcmp( cl_renderer->string, cl_renderer->resetString ) )
 	{
 		Com_Printf( "failed: trying to load fallback renderer\n" );
 		Cvar_ForceReset( "cl_renderer" );
 
+#ifdef __ANDROID__
+		Com_sprintf( dllName, sizeof( dllName ), DEFAULT_RENDER_LIBRARY DLL_EXT );
+#else
 		Com_sprintf( dllName, sizeof( dllName ), DEFAULT_RENDER_LIBRARY "_" ARCH_STRING DLL_EXT );
+#endif
 		rendererLib = Sys_LoadDll( dllName, qfalse );
 	}
 
@@ -2480,13 +2811,25 @@ void CL_InitRef( void ) {
 	ri.FS_ReadFile = FS_ReadFile;
 	ri.FS_FCloseFile = FS_FCloseFile;
 	ri.FS_FOpenFileRead = FS_FOpenFileRead;
+#ifdef USE_AIO
+	ri.FS_FOpenFileWriteAsync = FS_FOpenFileWriteAsync;
+#endif
 	ri.FS_FOpenFileWrite = FS_FOpenFileWrite;
+	ri.FS_FDirectOpenFileWrite = FS_FDirectOpenFileWrite;
 	ri.FS_FOpenFileByMode = FS_FOpenFileByMode;
 	ri.FS_FileExists = FS_FileExists;
+	ri.FS_DirectOpen = FS_DirectOpen;
+	ri.FS_FileErase = FS_FileErase;
 	ri.FS_FileIsInPAK = FS_FileIsInPAK;
 	ri.FS_ListFiles = FS_ListFiles;
+	ri.FS_Seek = FS_Seek;
 	ri.FS_Write = FS_Write;
 	ri.FS_WriteFile = FS_WriteFile;
+
+    ri.FS_PipeOpen = FS_PipeOpen;
+    ri.FS_PipeClose = FS_PipeClose;
+    ri.FS_PipeWrite = FS_PipeWrite;
+
 	ri.CM_BoxTrace = CM_BoxTrace;
 	ri.CM_DrawDebugSurface = CM_DrawDebugSurface;
 	ri.CM_CullWorldBox = CM_CullWorldBox;
@@ -2496,12 +2839,9 @@ void CL_InitRef( void ) {
 	ri.CM_PointLeafnum = CM_PointLeafnum;
 	ri.CM_PointContents = CM_PointContents;
 	ri.Com_TheHunkMarkHasBeenMade = Com_TheHunkMarkHasBeenMade;
-	ri.S_RestartMusic = S_RestartMusic;
-	ri.SND_RegisterAudio_LevelLoadEnd = SND_RegisterAudio_LevelLoadEnd;
 	ri.CIN_RunCinematic = CIN_RunCinematic;
 	ri.CIN_PlayCinematic = CIN_PlayCinematic;
 	ri.CIN_UploadCinematic = CIN_UploadCinematic;
-	ri.CL_WriteAVIVideoFrame = CL_WriteAVIVideoFrame;
 
 	// g2 data access
 	ri.GetSharedMemory = GetSharedMemory;
@@ -2528,6 +2868,8 @@ void CL_InitRef( void ) {
 
 	ri.PD_Store = PD_Store;
 	ri.PD_Load = PD_Load;
+	//mme
+	ri.S_MMEAviImport = S_MMEAviImport;
 
 	ret = GetRefAPI( REF_API_VERSION, &ri );
 
@@ -2584,65 +2926,30 @@ void CL_SetForcePowers_f( void ) {
 	return;
 }
 
-/*
-==================
-CL_VideoFilename
-==================
-*/
-void CL_VideoFilename( char *buf, int bufSize ) {
-	time_t rawtime;
-	char timeStr[32] = {0}; // should really only reach ~19 chars
+void CL_PrintGameState_f(void) {
+	int i;
+	char *data;
+	size_t len, offset;
+	for (i = 0; i < MAX_CONFIGSTRINGS; i++) {
+		data = cl.gameState.stringData + cl.gameState.stringOffsets[i];
+		if ( !data[0] ) {
+			continue;		// leave with the default empty string
+		}
 
-	time( &rawtime );
-	strftime( timeStr, sizeof( timeStr ), "%Y-%m-%d_%H-%M-%S", localtime( &rawtime ) ); // or gmtime
+		len = strlen(data);
 
-	Com_sprintf( buf, bufSize, "videos/video%s.avi", timeStr );
-}
-
-/*
-===============
-CL_Video_f
-
-video
-video [filename]
-===============
-*/
-void CL_Video_f( void )
-{
-	char  filename[ MAX_OSPATH ];
-
-	if( !clc.demoplaying )
-	{
-		Com_Printf( "The video command can only be used when playing back demos\n" );
-		return;
+		if (len > 0) {
+			Com_Printf("\n");
+			Com_Printf("gameState at index %d with length %d:\n", i, len);
+		}
+		//2 less bytes because \n\0
+		for (offset = 0; offset < len; offset += 1022) {
+			char print[1022];
+			Com_sprintf(print, sizeof(print), data + offset);
+			Com_Printf("%s\n", print);
+		}
 	}
-
-	if( Cmd_Argc( ) == 2 )
-	{
-		// explicit filename
-		Com_sprintf( filename, MAX_OSPATH, "videos/%s.avi", Cmd_Argv( 1 ) );
-	}
-	else
-	{
-		CL_VideoFilename( filename, MAX_OSPATH );
-
-		if ( FS_FileExists( filename ) ) {
-			Com_Printf( "Video: Couldn't create a file\n");
-			return;
- 		}
-	}
-
-	CL_OpenAVIForWriting( filename );
-}
-
-/*
-===============
-CL_StopVideo_f
-===============
-*/
-void CL_StopVideo_f( void )
-{
-	CL_CloseAVI( );
+	Com_Printf(S_COLOR_YELLOW"gameState data count: %d\n", cl.gameState.dataCount);
 }
 
 static void CL_AddFavorite_f( void ) {
@@ -2755,10 +3062,10 @@ void CL_Init( void ) {
 	rcon_client_password = Cvar_Get ("rconPassword", "", CVAR_TEMP, "Password for remote console access" );
 	cl_activeAction = Cvar_Get( "activeAction", "", CVAR_TEMP );
 
+	cl_drawRecording = Cvar_Get ("cl_drawRecording", "1", CVAR_ARCHIVE );
+
 	cl_timedemo = Cvar_Get ("timedemo", "0", 0);
-	cl_aviFrameRate = Cvar_Get ("cl_aviFrameRate", "25", CVAR_ARCHIVE);
-	cl_aviMotionJpeg = Cvar_Get ("cl_aviMotionJpeg", "1", CVAR_ARCHIVE);
-	cl_avi2GBLimit = Cvar_Get ("cl_avi2GBLimit", "1", CVAR_ARCHIVE );
+	cl_avidemo = Cvar_Get ("cl_avidemo", "0", 0);
 	cl_forceavidemo = Cvar_Get ("cl_forceavidemo", "0", 0);
 
 	rconAddress = Cvar_Get ("rconAddress", "", 0, "Alternate server address to remotely access via rcon protocol");
@@ -2785,6 +3092,7 @@ void CL_Init( void ) {
 	cl_showMouseRate = Cvar_Get ("cl_showmouserate", "0", 0);
 	cl_framerate	= Cvar_Get ("cl_framerate", "0", CVAR_TEMP);
 	cl_allowDownload = Cvar_Get ("cl_allowDownload", "1", CVAR_ARCHIVE_ND, "Allow downloading custom paks from server");
+	cl_dlURL = Cvar_Get ("cl_dlURL", "", CVAR_ARCHIVE);
 	cl_allowAltEnter = Cvar_Get ("cl_allowAltEnter", "1", CVAR_ARCHIVE_ND, "Enables use of ALT+ENTER keyboard combo to toggle fullscreen" );
 
 	cl_autolodscale = Cvar_Get( "cl_autolodscale", "1", CVAR_ARCHIVE_ND );
@@ -2816,8 +3124,6 @@ void CL_Init( void ) {
 
 	cl_lanForcePackets = Cvar_Get ("cl_lanForcePackets", "1", CVAR_ARCHIVE_ND);
 
-	cl_drawRecording = Cvar_Get("cl_drawRecording", "1", CVAR_ARCHIVE);
-
 	// enable the ja_guid player identifier in userinfo by default in OpenJK
 	cl_enableGuid = Cvar_Get("cl_enableGuid", "1", CVAR_ARCHIVE_ND, "Enable GUID userinfo identifier" );
 	cl_guidServerUniq = Cvar_Get ("cl_guidServerUniq", "1", CVAR_ARCHIVE_ND, "Use a unique guid value per server" );
@@ -2832,6 +3138,9 @@ void CL_Init( void ) {
 	cl_downloadName = Cvar_Get( "cl_downloadName", "", CVAR_INTERNAL );
 	cl_downloadPrompt = Cvar_Get( "cl_downloadPrompt", "1", CVAR_ARCHIVE, "Confirm pk3 downloads from the server" );
 	cl_downloadOverlay = Cvar_Get( "cl_downloadOverlay", "1", CVAR_ARCHIVE, "Draw download info overlay" );
+
+	cl_notify = Cvar_Get( "cl_notify", "", CVAR_ARCHIVE );
+	cl_notify->modified = qtrue;
 
 	// userinfo
 	Cvar_Get ("name", "Padawan", CVAR_USERINFO | CVAR_ARCHIVE_ND, "Player name" );
@@ -2860,6 +3169,35 @@ void CL_Init( void ) {
 	// cgame might not be initialized before menu is used
 	Cvar_Get ("cg_viewsize", "100", CVAR_ARCHIVE_ND );
 
+	
+	cl_autoDemo = Cvar_Get ("cl_autoDemo", "1", CVAR_ARCHIVE );
+	cl_autoDemoFormat = Cvar_Get ("cl_autoDemoFormat", "%t_%m", CVAR_ARCHIVE );
+	Cmd_AddCommand ("saveDemo", demoAutoSave_f);
+	Cmd_AddCommand ("saveDemoLast", demoAutoSaveLast_f);
+
+	// MME cvars
+	mme_saveWav = Cvar_Get ("mme_saveWav", "2", CVAR_ARCHIVE );
+//	mme_anykeystopsdemo = Cvar_Get ("mme_anykeystopsdemo", "0", CVAR_ARCHIVE );
+//	mme_gameOverride = Cvar_Get ("mme_gameOverride", "", 0 );
+	mme_demoConvert = Cvar_Get ("mme_demoConvert", "1", CVAR_ARCHIVE );
+	mme_demoListQuit = Cvar_Get ("mme_demoListQuit", "1", CVAR_ARCHIVE );
+	mme_demoSmoothen = Cvar_Get ("mme_demoSmoothen", "1", CVAR_ARCHIVE );
+	mme_demoFileName = Cvar_Get ("mme_demoFileName", "", CVAR_TEMP | CVAR_NORESTART );
+	mme_demoStartProject = Cvar_Get ("mme_demoStartProject", "", CVAR_TEMP );
+	mme_demoAutoQuit = Cvar_Get ("mme_demoAutoQuit", "0", CVAR_ARCHIVE );
+#ifdef __ANDORID__
+	mme_demoRemove = Cvar_Get ("mme_demoRemove", "1", CVAR_ARCHIVE );
+#else
+	mme_demoRemove = Cvar_Get ("mme_demoRemove", "0", CVAR_ARCHIVE );
+#endif
+	mme_demoPrecache = Cvar_Get ("mme_demoPrecache", "0", CVAR_ARCHIVE );
+	mme_demoAutoNext = Cvar_Get ("mme_demoAutoNext", "1", CVAR_ARCHIVE );
+	mme_demoPaused = Cvar_Get ("mme_demoPaused", "0", CVAR_INTERNAL );
+	mme_demoEscapeQuit = Cvar_Get ("mme_demoEscapeQuit", "1", CVAR_ARCHIVE );
+	Cvar_Get ("mme_demoExt", "", CVAR_INTERNAL );
+
+	CL_SetMMEState();
+
 	//
 	// register our commands
 	//
@@ -2868,7 +3206,6 @@ void CL_Init( void ) {
 	Cmd_AddCommand( "addFavorite", CL_AddFavorite_f, "Add server to favorites" );
 	Cmd_AddCommand ("record", CL_Record_f, "Record a demo" );
 	Cmd_AddCommand ("demo", CL_PlayDemo_f, "Playback a demo" );
-	Cmd_SetCommandCompletionFunc( "demo", CL_CompleteDemoName );
 	Cmd_AddCommand ("stoprecord", CL_StopRecord_f, "Stop recording a demo" );
 	Cmd_AddCommand ("configstrings", CL_Configstrings_f, "Prints the configstrings list" );
 	Cmd_AddCommand ("clientinfo", CL_Clientinfo_f, "Prints the userinfo variables" );
@@ -2888,9 +3225,15 @@ void CL_Init( void ) {
 	Cmd_AddCommand ("fs_referencedList", CL_ReferencedPK3List_f, "Lists referenced pak files" );
 	Cmd_AddCommand ("model", CL_SetModel_f, "Set the player model" );
 	Cmd_AddCommand ("forcepowers", CL_SetForcePowers_f );
-	Cmd_AddCommand ("video", CL_Video_f, "Record demo to avi" );
-	Cmd_AddCommand ("stopvideo", CL_StopVideo_f, "Stop avi recording" );
-
+	// MME commands
+//	Cmd_AddCommand("csList", CL_CSList_f);
+	Cmd_AddCommand("mmeDemo", CL_MMEDemo_f);
+	Cmd_AddCommand("demoList", CL_DemoList_f);
+	Cmd_AddCommand("demoCut", CL_DemoCut_f);
+	Cmd_AddCommand("demoListNext", CL_DemoListNext_f);
+	Cmd_AddCommand("demoListNext", CL_DemoListNext_f);
+	Cmd_AddCommand("pause", NULL);
+	Cmd_AddCommand("printGameState", CL_PrintGameState_f);
 	CL_InitRef();
 
 	SCR_Init ();
@@ -2962,8 +3305,6 @@ void CL_Shutdown( void ) {
 	Cmd_RemoveCommand ("fs_referencedList");
 	Cmd_RemoveCommand ("model");
 	Cmd_RemoveCommand ("forcepowers");
-	Cmd_RemoveCommand ("video");
-	Cmd_RemoveCommand ("stopvideo");
 
 	CL_ShutdownInput();
 	Con_Shutdown();

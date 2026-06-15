@@ -43,7 +43,7 @@ added to the sorting list.
 ================
 */
 static qboolean	R_CullSurface( msurface_t *surf, int entityNum ) {
-	if ( r_nocull->integer || surf->cullinfo.type == CULLINFO_NONE) {
+	if ( r_nocull->integer || mme_saveCubemap->integer || surf->cullinfo.type == CULLINFO_NONE) {
 		return qfalse;
 	}
 
@@ -330,6 +330,8 @@ static void R_AddWorldSurface(
 	int dlightBits,
 	int pshadowBits)
 {
+	shader_t *shader;
+
 	// FIXME: bmodel fog?
 
 	// try to cull before dlighting or adding
@@ -345,6 +347,11 @@ static void R_AddWorldSurface(
 		else
 			dlightBits = R_DlightSurface( surf, dlightBits );
 	}
+	//mme
+	if ( tr.mmeWorldShader ) 
+		shader = tr.mmeWorldShader;
+	else
+		shader = surf->shader;
 
 	// set pshadows
 	if ( pshadowBits ) {
@@ -358,7 +365,7 @@ static void R_AddWorldSurface(
 		isPostRenderEntity = R_IsPostRenderEntity(entity);
 	}
 
-	R_AddDrawSurf( surf->data, entityNum, surf->shader, surf->fogIndex,
+	R_AddDrawSurf( surf->data, entityNum, /*surf->shader*/ shader, surf->fogIndex,
 			dlightBits, isPostRenderEntity, surf->cubemapIndex );
 
 	for ( int i = 0, numSprites = surf->numSurfaceSprites;
@@ -532,7 +539,7 @@ void R_RecursiveWorldNode( mnode_t *node, int planeBits, int dlightBits, int psh
 		// if the bounding volume is outside the frustum, nothing
 		// inside can be visible OPTIMIZE: don't do this all the way to leafs?
 
-		if ( !r_nocull->integer ) {
+		if ( !r_nocull->integer && !mme_saveCubemap->integer ) {
 			int		r;
 
 			if ( planeBits & 1 ) {
@@ -839,8 +846,10 @@ void R_MarkLeaves( void )
 		byte *areamask = tr.viewParms.isSkyPortal == qtrue ? tr.skyPortalAreaMask : tr.refdef.areamask;
 
 		// check for door connection
-		if ( (areamask[leaf->area>>3] & (1<<(leaf->area&7)) ) ) {
-			continue;		// not visible
+		if (!r_drawAllAreas->integer) {
+			if ( (areamask[leaf->area>>3] & (1<<(leaf->area&7)) ) ) {
+				continue;		// not visible
+			}
 		}
 
 		mnode_t *parent = leaf;

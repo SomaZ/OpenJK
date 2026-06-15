@@ -15,11 +15,12 @@
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, see <http://www.gnu.org/licenses/>.
 #============================================================================
+cmake_minimum_required(VERSION 3.1)
 
 # Make sure the user is not executing this script directly
-if(NOT InOpenJK)
+if(NOT InjaMME)
 	message(FATAL_ERROR "Use the top-level cmake script!")
-endif(NOT InOpenJK)
+endif(NOT InjaMME)
 
 set(MPGameIncludeDirectories
 	"${MPDir}"
@@ -30,7 +31,7 @@ set(MPGameIncludeDirectories
 if(WIN32)
 	set(MPGameLibraries "winmm")
 endif(WIN32)
-set(MPGameDefines ${MPSharedDefines} "_GAME" )
+set(MPGameDefines ${MPSharedDefines} "_GAME" "QAGAME" "MISSIONPACK" )
 set(MPGameGameFiles
 	"${MPDir}/game/ai_main.c"
 	"${MPDir}/game/ai_util.c"
@@ -68,6 +69,7 @@ set(MPGameGameFiles
 	"${MPDir}/game/g_saga.c"
 	"${MPDir}/game/g_session.c"
 	"${MPDir}/game/g_spawn.c"
+	"${MPDir}/game/g_strap.c"
 	"${MPDir}/game/g_svcmds.c"
 	"${MPDir}/game/g_syscalls.c"
 	"${MPDir}/game/g_target.c"
@@ -125,6 +127,7 @@ set(MPGameGameFiles
 	"${MPDir}/game/bg_local.h"
 	"${MPDir}/game/bg_public.h"
 	"${MPDir}/game/bg_saga.h"
+	"${MPDir}/game/bg_strap.h"
 	"${MPDir}/game/bg_vehicles.h"
 	"${MPDir}/game/bg_weapons.h"
 	"${MPDir}/game/chars.h"
@@ -150,17 +153,13 @@ set(MPGameCommonFiles
 	"${MPDir}/qcommon/disablewarnings.h"
 	"${MPDir}/qcommon/q_shared.h"
 	"${MPDir}/qcommon/tags.h"
+	"${SharedDir}/qcommon/q_string.c"
 
 	${SharedCommonFiles}
 	)
 source_group("common" FILES ${MPGameCommonFiles})
 set(MPGameFiles ${MPGameFiles} ${MPGameCommonFiles})
 
-set(MPGameCommonSafeFiles
-	${SharedCommonSafeFiles}
-	)
-source_group("common/safe" FILES ${MPGameCommonSafeFiles})
-set(MPGameFiles ${MPGameFiles} ${MPGameCommonSafeFiles})
 
 set(MPGameCgameFiles
 	"${MPDir}/cgame/animtable.h"
@@ -213,46 +212,20 @@ add_library(${MPGame} SHARED ${MPGameFiles})
 if(NOT MSVC)
 	# remove "lib" prefix for .so/.dylib files
 	set_target_properties(${MPGame} PROPERTIES PREFIX "")
-endif()
+endif(NOT MSVC)
 
-if(MakeApplicationBundles AND BuildMPEngine)
-	install(TARGETS ${MPGame}
-		LIBRARY
-		DESTINATION "${JKAInstallDir}/${MPEngine}.app/Contents/MacOS/OpenJK"
-		COMPONENT ${JKAMPCoreComponent})
-	install(TARGETS ${MPGame}
-		LIBRARY
-		DESTINATION "${JKAInstallDir}/${MPEngine}.app/Contents/MacOS/base"
-		COMPONENT ${JKAMPCoreComponent})
-elseif(WIN32)
-	install(TARGETS ${MPGame}
-		RUNTIME
-		DESTINATION "${JKAInstallDir}/OpenJK"
-		COMPONENT ${JKAMPCoreComponent})
-
-	# Use OpenJK modules as default
-	install(TARGETS ${MPGame}
-		RUNTIME
-		DESTINATION "${JKAInstallDir}/base"
-		COMPONENT ${JKAMPCoreComponent})
-else()
-	install(TARGETS ${MPGame}
-		LIBRARY
-		DESTINATION "${JKAInstallDir}/OpenJK"
-		COMPONENT ${JKAMPCoreComponent})
-	install(TARGETS ${MPGame}
-		LIBRARY
-		DESTINATION "${JKAInstallDir}/base"
-		COMPONENT ${JKAMPCoreComponent})
-endif()
-
+if(MSVC)
+	install(TARGETS ${MPGame} RUNTIME DESTINATION "${JKAInstallDir}/mme")
+else(MSVC)
+	install(TARGETS ${MPGame} LIBRARY DESTINATION "${JKAInstallDir}/mme")
+endif(MSVC)
 set_target_properties(${MPGame} PROPERTIES COMPILE_DEFINITIONS "${MPGameDefines}")
 
 # Hide symbols not explicitly marked public.
-set_property(TARGET ${MPGame} APPEND PROPERTY COMPILE_OPTIONS ${OPENJK_VISIBILITY_FLAGS})
+set_property(TARGET ${MPGame} APPEND PROPERTY COMPILE_OPTIONS ${VISIBILITY_FLAGS})
 
 set_target_properties(${MPGame} PROPERTIES INCLUDE_DIRECTORIES "${MPGameIncludeDirectories}")
-set_target_properties(${MPGame} PROPERTIES PROJECT_LABEL "MP Game Library")
+set_target_properties(${MPGame} PROPERTIES PROJECT_LABEL "game")
 # no libraries used
 if(MPGameLibraries)
 	target_link_libraries(${MPGame} ${MPGameLibraries})

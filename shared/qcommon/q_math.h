@@ -73,6 +73,9 @@ int   irand( int min, int max );
 
 float erandom( float mean );
 
+#define random()	((rand () & 0x7fff) / ((float)0x7fff))
+#define crandom()	(2.0 * (random() - 0.5))
+
 
 ///////////////////////////////////////////////////////////////////////////
 //
@@ -128,6 +131,8 @@ float AngleMod(float a);
 float AngleNormalize360 ( float angle );
 float AngleNormalize180 ( float angle );
 float AngleDelta( float angle1, float angle2 );
+void LerpOrigin( const vec3_t from, const vec3_t to, vec3_t out, float lerp );
+void LerpAngles( const vec3_t from, const vec3_t to, vec3_t out, float lerp );
 
 
 ///////////////////////////////////////////////////////////////////////////

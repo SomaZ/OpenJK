@@ -121,6 +121,36 @@ static void SCR_DrawChar( int x, int y, float size, int ch ) {
 					   fcol + size, frow + size2,
 					   cls.charSetShader );
 }
+static void SCR_DrawChar2( float x, float y, float width, float height, int ch ) {
+	int row, col;
+	float frow, fcol;
+	float ax, ay, aw, ah;
+	float size, size2;
+
+	ch &= 255;
+
+	if ( ch == ' ' ) {
+		return;
+	}
+
+	ax = x;
+	ay = y;
+	aw = width;
+	ah = height;
+
+	row = ch>>4;
+	col = ch&15;
+
+	frow = row*0.0625;
+	fcol = col*0.0625;
+	size = 0.03125;
+	size2 = 0.0625;
+
+	re->DrawStretchPic( ax, ay, aw, ah,
+					   fcol, frow, 
+					   fcol + size, frow + size2, 
+					   cls.charSetShader );
+}
 
 /*
 ** SCR_DrawSmallChar
@@ -184,8 +214,9 @@ void SCR_DrawStringExt( int x, int y, float size, const char *string, float *set
 	s = string;
 	xx = x;
 	while ( *s ) {
-		if ( !noColorEscape && Q_IsColorString( s ) ) {
-			s += 2;
+		int colorLen = Q_parseColorString( s, 0, cls.cTable );
+		if ( !noColorEscape && colorLen ) {
+			s += colorLen;
 			continue;
 		}
 		SCR_DrawChar( xx+2, y+2, size, *s );
@@ -199,19 +230,64 @@ void SCR_DrawStringExt( int x, int y, float size, const char *string, float *set
 	xx = x;
 	re->SetColor( setColor );
 	while ( *s ) {
-		if ( Q_IsColorString( s ) ) {
+		int colorLen = Q_parseColorString( s, color, cls.cTable );
+		if ( colorLen ) {
 			if ( !forceColor ) {
-				Com_Memcpy( color, g_color_table[ColorIndex(*(s+1))], sizeof( color ) );
 				color[3] = setColor[3];
 				re->SetColor( color );
 			}
 			if ( !noColorEscape ) {
-				s += 2;
+				s += colorLen;
 				continue;
 			}
 		}
 		SCR_DrawChar( xx, y, size, *s );
 		xx += size;
+		s++;
+	}
+	re->SetColor( NULL );
+}
+void SCR_DrawStringExt2( float x, float y, float charWidth, float charHeight, const char *string, float *setColor, qboolean forceColor, qboolean noColorEscape ) {
+	vec4_t		color;
+	const char	*s;
+	float		xx;
+
+	// draw the drop shadow
+	color[0] = color[1] = color[2] = 0;
+	color[3] = setColor[3];
+	re->SetColor( color );
+	s = string;
+	xx = x;
+	while ( *s ) {
+		int colorLen = Q_parseColorString( s, 0, cls.cTable );
+		if ( !noColorEscape && colorLen ) {
+			s += colorLen;
+			continue;
+		}
+		SCR_DrawChar2( xx+2*cls.ratioFix, y+2, charWidth, charHeight, *s );
+		xx += charWidth;
+		s++;
+	}
+
+
+	// draw the colored text
+	s = string;
+	xx = x;
+	re->SetColor( setColor );
+	while ( *s ) {
+		int colorLen = Q_parseColorString( s, color, cls.cTable );
+		if ( colorLen ) {
+			if ( !forceColor ) {
+				color[3] = setColor[3];
+				re->SetColor( color );
+			}
+			if ( !noColorEscape ) {
+				s += colorLen;
+				continue;
+			}
+		}
+		SCR_DrawChar2( xx, y, charWidth, charHeight, *s );
+		xx += charWidth;
 		s++;
 	}
 	re->SetColor( NULL );
@@ -251,14 +327,14 @@ void SCR_DrawSmallStringExt( int x, int y, const char *string, float *setColor, 
 	xx = x;
 	re->SetColor( setColor );
 	while ( *s ) {
-		if ( Q_IsColorString( s ) ) {
+		int colorLen = Q_parseColorString( s, color, cls.cTable );
+		if ( colorLen ) {
 			if ( !forceColor ) {
-				Com_Memcpy( color, g_color_table[ColorIndex(*(s+1))], sizeof( color ) );
 				color[3] = setColor[3];
 				re->SetColor( color );
 			}
 			if ( !noColorEscape ) {
-				s += 2;
+				s += colorLen;
 				continue;
 			}
 		}
@@ -279,12 +355,13 @@ static int SCR_Strlen( const char *str ) {
 	int count = 0;
 
 	while ( *s ) {
-		if ( Q_IsColorString( s ) ) {
-			s += 2;
-		} else {
-			count++;
-			s++;
+		int colorLen = Q_parseColorString( s, 0, cls.cTable);
+		if( colorLen ) {
+			s += colorLen;
+			continue;
 		}
+		count++;
+		s++;
 	}
 
 	return count;
@@ -306,6 +383,7 @@ SCR_DrawDemoRecording
 =================
 */
 void SCR_DrawDemoRecording( void ) {
+	const float ratio = cls.ratioFix;
 	char	string[1024];
 	int		pos;
 
@@ -318,12 +396,36 @@ void SCR_DrawDemoRecording( void ) {
 	if (!cl_drawRecording->integer) {
 		return;
 	}
-	pos = FS_FTell( clc.demofile );
-	Com_sprintf( string, sizeof(string), "RECORDING %s: %ik", clc.demoName, pos / 1024 );
 
-	SCR_DrawStringExt( 320 - strlen( string ) * 4, 20, 8, string, g_color_table[7], qtrue, qfalse );
+	if (cl_drawRecording->integer >= 2 && cls.recordingShaderNew) {
+		static const float width = 60.0f, height = 15.0f;
+		re->SetColor(NULL);
+		re->DrawStretchPic(0*ratio, SCREEN_HEIGHT-height, width*ratio, height, 0, 0, 1, 1, cls.recordingShaderNew);
+	} else if (cl_drawRecording->integer >= 2 && cls.recordingShader) {
+		vec4_t colour = {1.0f, 0.1f, 0.1f, 1.0f};
+		const float size = 10.0f;
+		re->SetColor(colour);
+		if ((cl_drawRecording->integer == 3 && (cls.realtime % 1536) < 768) || cl_drawRecording->integer != 3)
+			re->DrawStretchPic(0-size*ratio/1.84f, SCREEN_HEIGHT-size*1.92f, size*3*ratio, size*3, 0, 0, 1, 1, cls.recordingShader);
+		SCR_DrawStringExt2(0+(size+4)*ratio, SCREEN_HEIGHT-size-2, size*ratio, size, "REC", colour, qtrue, qfalse);
+	} else if (cl_drawRecording->integer) {
+		const float size = 8.0f;
+		pos = FS_FTell(clc.demofile);
+		Com_sprintf(string, sizeof(string), "RECORDING %s: %ik", clc.demoName, pos / 1024);
+		SCR_DrawStringExt2(SCREEN_WIDTH/2.0f-strlen(string)*(size/2.0f)*ratio, 20.0f, size*ratio, size, string, g_color_table[7], qtrue, qfalse);
+	}
 }
 
+extern qboolean s_soundMuted;
+void SCR_DrawMuted(void) {
+	if (!s_soundMuted)
+		return;
+	const float ratio = cls.ratioFix;
+	const float size = 20.0f;
+	re->SetColor(NULL);
+	re->DrawStretchPic(SCREEN_WIDTH-size*ratio, SCREEN_HEIGHT-size, size*ratio, size, 0, 0, 1, 1, re->RegisterShaderNoMip("gfx/mp/voice_icon"));
+	re->DrawStretchPic(SCREEN_WIDTH-size*ratio, SCREEN_HEIGHT-size, size*ratio, size, 0, 0, 1, 1, re->RegisterShaderNoMip("gfx/2d/defer"));
+}
 
 /*
 ===============================================================================
@@ -471,7 +573,8 @@ void SCR_DrawScreenField( stereoFrame_t stereoFrame ) {
 	if ( Key_GetCatcher( ) & KEYCATCH_UI && cls.uiStarted ) {
 		UIVM_Refresh( cls.realtime );
 	}
-
+	
+	SCR_DrawMuted();
 	// Engine internal menu
 	CL_DrawEngineMenus();
 

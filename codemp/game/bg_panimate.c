@@ -1,40 +1,18 @@
-/*
-===========================================================================
-Copyright (C) 2000 - 2013, Raven Software, Inc.
-Copyright (C) 2001 - 2013, Activision, Inc.
-Copyright (C) 2013 - 2015, OpenJK contributors
-
-This file is part of the OpenJK source code.
-
-OpenJK is free software; you can redistribute it and/or modify it
-under the terms of the GNU General Public License version 2 as
-published by the Free Software Foundation.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU General Public License for more details.
-
-You should have received a copy of the GNU General Public License
-along with this program; if not, see <http://www.gnu.org/licenses/>.
-===========================================================================
-*/
-
 // BG_PAnimate.c
-// game and cgame, NOT ui
 
-#include "qcommon/q_shared.h"
+#include "../qcommon/q_shared.h"
 #include "bg_public.h"
+#include "bg_strap.h"
 #include "bg_local.h"
 #include "anims.h"
-#include "cgame/animtable.h"
+#include "../cgame/animtable.h"
+#ifdef QAGAME
+#include "g_local.h"
+#endif
 
-#ifdef _GAME
-	#include "g_local.h"
-#elif _CGAME
-	#include "cgame/cg_local.h"
-#elif UI_BUILD
-	#include "ui/ui_local.h"
+#ifdef CGAME
+extern sfxHandle_t trap_S_RegisterSound( const char *sample);
+extern int trap_FX_RegisterEffect( const char *file);
 #endif
 
 extern saberInfo_t *BG_MySaber( int clientNum, int saberNum );
@@ -654,7 +632,7 @@ qboolean BG_SaberInSpecialAttack( int anim )
 	case BOTH_PULL_IMPALE_SWING:
 	case BOTH_ALORA_SPIN_SLASH:
 	case BOTH_A6_FB:
-	case BOTH_A6_LR:
+	case BOTH_A6_LR:	
 	case BOTH_A7_HILT:
 		return qtrue;
 	}
@@ -863,26 +841,26 @@ qboolean BG_InDeathAnim ( int anim )
 	case BOTH_DEATH5:			//# Fifth Death anim
 	case BOTH_DEATH6:			//# Sixth Death anim
 	case BOTH_DEATH7:			//# Seventh Death anim
-	case BOTH_DEATH8:			//#
-	case BOTH_DEATH9:			//#
-	case BOTH_DEATH10:			//#
+	case BOTH_DEATH8:			//# 
+	case BOTH_DEATH9:			//# 
+	case BOTH_DEATH10:			//# 
 	case BOTH_DEATH11:			//#
-	case BOTH_DEATH12:			//#
-	case BOTH_DEATH13:			//#
-	case BOTH_DEATH14:			//#
+	case BOTH_DEATH12:			//# 
+	case BOTH_DEATH13:			//# 
+	case BOTH_DEATH14:			//# 
 	case BOTH_DEATH14_UNGRIP:	//# Desann's end death (cin #35)
 	case BOTH_DEATH14_SITUP:		//# Tavion sitting up after having been thrown (cin #23)
-	case BOTH_DEATH15:			//#
-	case BOTH_DEATH16:			//#
-	case BOTH_DEATH17:			//#
-	case BOTH_DEATH18:			//#
-	case BOTH_DEATH19:			//#
-	case BOTH_DEATH20:			//#
-	case BOTH_DEATH21:			//#
-	case BOTH_DEATH22:			//#
-	case BOTH_DEATH23:			//#
-	case BOTH_DEATH24:			//#
-	case BOTH_DEATH25:			//#
+	case BOTH_DEATH15:			//# 
+	case BOTH_DEATH16:			//# 
+	case BOTH_DEATH17:			//# 
+	case BOTH_DEATH18:			//# 
+	case BOTH_DEATH19:			//# 
+	case BOTH_DEATH20:			//# 
+	case BOTH_DEATH21:			//# 
+	case BOTH_DEATH22:			//# 
+	case BOTH_DEATH23:			//# 
+	case BOTH_DEATH24:			//# 
+	case BOTH_DEATH25:			//# 
 
 	case BOTH_DEATHFORWARD1:		//# First Death in which they get thrown forward
 	case BOTH_DEATHFORWARD2:		//# Second Death in which they get thrown forward
@@ -904,24 +882,24 @@ qboolean BG_InDeathAnim ( int anim )
 	case BOTH_DEAD5:				//# Fifth Death finished pose
 	case BOTH_DEAD6:				//# Sixth Death finished pose
 	case BOTH_DEAD7:				//# Seventh Death finished pose
-	case BOTH_DEAD8:				//#
-	case BOTH_DEAD9:				//#
-	case BOTH_DEAD10:			//#
+	case BOTH_DEAD8:				//# 
+	case BOTH_DEAD9:				//# 
+	case BOTH_DEAD10:			//# 
 	case BOTH_DEAD11:			//#
-	case BOTH_DEAD12:			//#
-	case BOTH_DEAD13:			//#
-	case BOTH_DEAD14:			//#
-	case BOTH_DEAD15:			//#
-	case BOTH_DEAD16:			//#
-	case BOTH_DEAD17:			//#
-	case BOTH_DEAD18:			//#
-	case BOTH_DEAD19:			//#
-	case BOTH_DEAD20:			//#
-	case BOTH_DEAD21:			//#
-	case BOTH_DEAD22:			//#
-	case BOTH_DEAD23:			//#
-	case BOTH_DEAD24:			//#
-	case BOTH_DEAD25:			//#
+	case BOTH_DEAD12:			//# 
+	case BOTH_DEAD13:			//# 
+	case BOTH_DEAD14:			//# 
+	case BOTH_DEAD15:			//# 
+	case BOTH_DEAD16:			//# 
+	case BOTH_DEAD17:			//# 
+	case BOTH_DEAD18:			//# 
+	case BOTH_DEAD19:			//# 
+	case BOTH_DEAD20:			//# 
+	case BOTH_DEAD21:			//# 
+	case BOTH_DEAD22:			//# 
+	case BOTH_DEAD23:			//# 
+	case BOTH_DEAD24:			//# 
+	case BOTH_DEAD25:			//# 
 	case BOTH_DEADFORWARD1:		//# First thrown forward death finished pose
 	case BOTH_DEADFORWARD2:		//# Second thrown forward death finished pose
 	case BOTH_DEADBACKWARD1:		//# First thrown backward death finished pose
@@ -973,7 +951,7 @@ qboolean BG_InSaberLockOld( int anim )
 	return qfalse;
 }
 
-qboolean BG_InSaberLock( int anim )
+qboolean BG_InSaberLock( int anim ) 
 {
 	switch ( anim )
 	{
@@ -1284,16 +1262,16 @@ qboolean PM_PainAnim( int anim )
 		case BOTH_PAIN6:				//# Sixth take pain anim - from behind
 		case BOTH_PAIN7:				//# Seventh take pain anim - from behind
 		case BOTH_PAIN8:				//# Eigth take pain anim - from behind
-		case BOTH_PAIN9:				//#
-		case BOTH_PAIN10:			//#
-		case BOTH_PAIN11:			//#
-		case BOTH_PAIN12:			//#
-		case BOTH_PAIN13:			//#
-		case BOTH_PAIN14:			//#
-		case BOTH_PAIN15:			//#
-		case BOTH_PAIN16:			//#
-		case BOTH_PAIN17:			//#
-		case BOTH_PAIN18:			//#
+		case BOTH_PAIN9:				//# 
+		case BOTH_PAIN10:			//# 
+		case BOTH_PAIN11:			//# 
+		case BOTH_PAIN12:			//# 
+		case BOTH_PAIN13:			//# 
+		case BOTH_PAIN14:			//# 
+		case BOTH_PAIN15:			//# 
+		case BOTH_PAIN16:			//# 
+		case BOTH_PAIN17:			//# 
+		case BOTH_PAIN18:			//# 
 		return qtrue;
 		break;
 	}
@@ -1383,11 +1361,11 @@ qboolean PM_InOnGroundAnim ( int anim )
 	case BOTH_LYINGDEATH1:
 	case BOTH_LYINGDEAD1:
 	case BOTH_SLEEP1:			//# laying on back-rknee up-rhand on torso
-	case BOTH_KNOCKDOWN1:		//#
-	case BOTH_KNOCKDOWN2:		//#
-	case BOTH_KNOCKDOWN3:		//#
-	case BOTH_KNOCKDOWN4:		//#
-	case BOTH_KNOCKDOWN5:		//#
+	case BOTH_KNOCKDOWN1:		//# 
+	case BOTH_KNOCKDOWN2:		//# 
+	case BOTH_KNOCKDOWN3:		//# 
+	case BOTH_KNOCKDOWN4:		//# 
+	case BOTH_KNOCKDOWN5:		//# 
 	case BOTH_GETUP1:
 	case BOTH_GETUP2:
 	case BOTH_GETUP3:
@@ -1589,21 +1567,28 @@ and anim number. Obviously does not take things like the length of the
 anim while force speeding (as an example) and whatnot into account.
 =============
 */
-int BG_AnimLength( int index, animNumber_t anim ) {
-	if ( (int)anim < 0 || anim >= MAX_ANIMATIONS ) {
-		return 0;
+int BG_AnimLength( int index, animNumber_t anim )
+{
+	if (anim >= MAX_ANIMATIONS)
+	{
+		return -1;
 	}
-
-	return bgAllAnims[index].anims[anim].numFrames * fabs( (float)(bgAllAnims[index].anims[anim].frameLerp) );
+	
+	return bgAllAnims[index].anims[anim].numFrames * fabs((float)(bgAllAnims[index].anims[anim].frameLerp));
 }
 
 //just use whatever pm->animations is
-int PM_AnimLength( int index, animNumber_t anim ) {
-	if ( !pm->animations || (int)anim < 0 || anim >= MAX_ANIMATIONS ) {
-		return 0;
+int PM_AnimLength( int index, animNumber_t anim )
+{
+	if (anim >= MAX_ANIMATIONS || !pm->animations)
+	{
+		return -1;
 	}
-
-	return pm->animations[anim].numFrames * fabs( (float)(pm->animations[anim].frameLerp) );
+	if ( anim < 0 )
+	{
+		Com_Error(ERR_DROP,"ERROR: anim %d < 0\n", anim );
+	}
+	return pm->animations[anim].numFrames * fabs((float)(pm->animations[anim].frameLerp));
 }
 
 void PM_DebugLegsAnim(int anim)
@@ -1680,6 +1665,34 @@ void BG_FlipPart(playerState_t *ps, int part)
 qboolean	BGPAFtextLoaded = qfalse;
 animation_t	bgHumanoidAnimations[MAX_TOTALANIMATIONS]; //humanoid animations are the only ones that are statically allocated.
 
+//#define CONVENIENT_ANIMATION_FILE_DEBUG_THING
+
+#ifdef CONVENIENT_ANIMATION_FILE_DEBUG_THING
+void SpewDebugStuffToFile()
+{
+	fileHandle_t f;
+	int i = 0;
+
+	trap_FS_FOpenFile("file_of_debug_stuff_MP.txt", &f, FS_WRITE);
+
+	if (!f)
+	{
+		return;
+	}
+
+	BGPAFtext[0] = 0;
+
+	while (i < MAX_ANIMATIONS)
+	{
+		strcat(BGPAFtext, va("%i %i\n", i, bgHumanoidAnimations[i].frameLerp));
+		i++;
+	}
+
+	trap_FS_Write(BGPAFtext, strlen(BGPAFtext), f);
+	trap_FS_FCloseFile(f);
+}
+#endif
+
 bgLoadedAnim_t bgAllAnims[MAX_ANIM_FILES];
 int bgNumAllAnims = 2; //start off at 2, because 0 will always be assigned to humanoid, and 1 will always be rockettrooper
 
@@ -1734,29 +1747,30 @@ void BG_AnimsetFree(animation_t *animset)
 	*/
 }
 
-#ifdef _CGAME //none of this is actually needed serverside. Could just be moved to cgame code but it's here since it used to tie in a lot with the anim loading stuff.
-stringID_table_t animEventTypeTable[MAX_ANIM_EVENTS+1] =
+#ifndef QAGAME //none of this is actually needed serverside. Could just be moved to cgame code but it's here since it
+			   //used to tie in a lot with the anim loading stuff.
+stringID_table_t animEventTypeTable[MAX_ANIM_EVENTS+1] = 
 {
 	ENUM2STRING(AEV_SOUND),			//# animID AEV_SOUND framenum soundpath randomlow randomhi chancetoplay
 	ENUM2STRING(AEV_FOOTSTEP),		//# animID AEV_FOOTSTEP framenum footstepType
 	ENUM2STRING(AEV_EFFECT),		//# animID AEV_EFFECT framenum effectpath boltName
 	ENUM2STRING(AEV_FIRE),			//# animID AEV_FIRE framenum altfire chancetofire
 	ENUM2STRING(AEV_MOVE),			//# animID AEV_MOVE framenum forwardpush rightpush uppush
-	ENUM2STRING(AEV_SOUNDCHAN),		//# animID AEV_SOUNDCHAN framenum CHANNEL soundpath randomlow randomhi chancetoplay
-	ENUM2STRING(AEV_SABER_SWING),	//# animID AEV_SABER_SWING framenum CHANNEL randomlow randomhi chancetoplay
-	ENUM2STRING(AEV_SABER_SPIN),	//# animID AEV_SABER_SPIN framenum CHANNEL chancetoplay
+	ENUM2STRING(AEV_SOUNDCHAN),		//# animID AEV_SOUNDCHAN framenum CHANNEL soundpath randomlow randomhi chancetoplay 
+	ENUM2STRING(AEV_SABER_SWING),	//# animID AEV_SABER_SWING framenum CHANNEL randomlow randomhi chancetoplay 
+	ENUM2STRING(AEV_SABER_SPIN),	//# animID AEV_SABER_SPIN framenum CHANNEL chancetoplay 
 	//must be terminated
-	{ NULL,-1 }
+	NULL,-1
 };
 
-stringID_table_t footstepTypeTable[NUM_FOOTSTEP_TYPES+1] =
+stringID_table_t footstepTypeTable[NUM_FOOTSTEP_TYPES+1] = 
 {
 	ENUM2STRING(FOOTSTEP_R),
 	ENUM2STRING(FOOTSTEP_L),
 	ENUM2STRING(FOOTSTEP_HEAVY_R),
 	ENUM2STRING(FOOTSTEP_HEAVY_L),
 	//must be terminated
-	{ NULL,-1 }
+	NULL,-1
 };
 
 int CheckAnimFrameForEventType( animevent_t *animEvents, int keyFrame, animEventType_t eventType )
@@ -1777,7 +1791,7 @@ int CheckAnimFrameForEventType( animevent_t *animEvents, int keyFrame, animEvent
 	return -1;
 }
 
-void ParseAnimationEvtBlock(const char *aeb_filename, animevent_t *animEvents, animation_t *animations, int *i,const char **text_p)
+void ParseAnimationEvtBlock(const char *aeb_filename, animevent_t *animEvents, animation_t *animations, int *i,const char **text_p) 
 {
 	const char		*token;
 	int				num, n, animNum, keyFrame, lowestVal, highestVal, curAnimEvent, lastAnimEvent = 0;
@@ -1785,10 +1799,10 @@ void ParseAnimationEvtBlock(const char *aeb_filename, animevent_t *animEvents, a
 	char			stringData[MAX_QPATH];
 
 	// get past starting bracket
-	while(1)
+	while(1) 
 	{
 		token = COM_Parse( text_p );
-		if ( !Q_stricmp( token, "{" ) )
+		if ( !Q_stricmp( token, "{" ) ) 
 		{
 			break;
 		}
@@ -1799,7 +1813,7 @@ void ParseAnimationEvtBlock(const char *aeb_filename, animevent_t *animEvents, a
 	//			has an event of that type, it stomps it
 
 	// read information for each frame
-	while ( 1 )
+	while ( 1 ) 
 	{
 		if ( lastAnimEvent >= MAX_ANIM_EVENTS )
 		{
@@ -1808,17 +1822,17 @@ void ParseAnimationEvtBlock(const char *aeb_filename, animevent_t *animEvents, a
 		}
 		// Get base frame of sequence
 		token = COM_Parse( text_p );
-		if ( !token || !token[0])
+		if ( !token || !token[0]) 
 		{
 			break;
 		}
 
-		if ( !Q_stricmp( token, "}" ) )		// At end of block
+		if ( !Q_stricmp( token, "}" ) )		// At end of block 
 		{
 			break;
 		}
 
-		//Compare to same table as animations used
+		//Compare to same table as animations used 
 		//	so we don't have to use actual numbers for animation first frames,
 		//	just need offsets.
 		//This way when animation numbers change, this table won't have to be updated,
@@ -1844,7 +1858,7 @@ void ParseAnimationEvtBlock(const char *aeb_filename, animevent_t *animEvents, a
 
 		token = COM_Parse( text_p );
 		eventType = (animEventType_t)GetIDForString(animEventTypeTable, token);
-		if ( eventType == AEV_NONE || eventType == (animEventType_t)-1 )
+		if ( eventType == AEV_NONE || eventType == -1 )
 		{//Unrecognized ANIM EVENT TYOE, or we're skipping this line, keep going till you get a good one
 			//Com_Printf(S_COLOR_YELLOW"WARNING: Unknown token %s in animEvent file %s\n", token, aeb_filename );
 			continue;
@@ -1854,7 +1868,7 @@ void ParseAnimationEvtBlock(const char *aeb_filename, animevent_t *animEvents, a
 		keyFrame = animations[animNum].firstFrame;
 		// Get offset to frame within sequence
 		token = COM_Parse( text_p );
-		if ( !token )
+		if ( !token ) 
 		{
 			break;
 		}
@@ -1876,43 +1890,57 @@ void ParseAnimationEvtBlock(const char *aeb_filename, animevent_t *animEvents, a
 		{
 		case AEV_SOUNDCHAN:		//# animID AEV_SOUNDCHAN framenum CHANNEL soundpath randomlow randomhi chancetoplay
 			token = COM_Parse( text_p );
-			if ( !token )
+			if ( !token ) 
+			{
 				break;
-
-				 if ( !Q_stricmp( token, "CHAN_VOICE_ATTEN" ) )
+			}
+			if ( stricmp( token, "CHAN_VOICE_ATTEN" ) == 0 )
+			{
 				animEvents[curAnimEvent].eventData[AED_SOUNDCHANNEL] = CHAN_VOICE_ATTEN;
-			else if ( !Q_stricmp( token, "CHAN_VOICE_GLOBAL" ) )
+			}
+			else if ( stricmp( token, "CHAN_VOICE_GLOBAL" ) == 0 )
+			{
 				animEvents[curAnimEvent].eventData[AED_SOUNDCHANNEL] = CHAN_VOICE_GLOBAL;
-			else if ( !Q_stricmp( token, "CHAN_ANNOUNCER" ) )
+			}
+			else if ( stricmp( token, "CHAN_ANNOUNCER" ) == 0 )
+			{
 				animEvents[curAnimEvent].eventData[AED_SOUNDCHANNEL] = CHAN_ANNOUNCER;
-			else if ( !Q_stricmp( token, "CHAN_BODY" ) )
+			}
+			else if ( stricmp( token, "CHAN_BODY" ) == 0 )
+			{
 				animEvents[curAnimEvent].eventData[AED_SOUNDCHANNEL] = CHAN_BODY;
-			else if ( !Q_stricmp( token, "CHAN_WEAPON" ) )
+			}
+			else if ( stricmp( token, "CHAN_WEAPON" ) == 0 )
+			{
 				animEvents[curAnimEvent].eventData[AED_SOUNDCHANNEL] = CHAN_WEAPON;
-			else if ( !Q_stricmp( token, "CHAN_VOICE" ) )
+			}
+			else if ( stricmp( token, "CHAN_VOICE" ) == 0 )
+			{
 				animEvents[curAnimEvent].eventData[AED_SOUNDCHANNEL] = CHAN_VOICE;
+			} 
 			else
+			{
 				animEvents[curAnimEvent].eventData[AED_SOUNDCHANNEL] = CHAN_AUTO;
-
+			}
 			//fall through to normal sound
 		case AEV_SOUND:			//# animID AEV_SOUND framenum soundpath randomlow randomhi chancetoplay
 			//get soundstring
 			token = COM_Parse( text_p );
-			if ( !token )
+			if ( !token ) 
 			{
 				break;
-			}
+			}		
 			strcpy(stringData, token);
 			//get lowest value
 			token = COM_Parse( text_p );
-			if ( !token )
+			if ( !token ) 
 			{//WARNING!  BAD TABLE!
 				break;
 			}
 			lowestVal = atoi( token );
 			//get highest value
 			token = COM_Parse( text_p );
-			if ( !token )
+			if ( !token ) 
 			{//WARNING!  BAD TABLE!
 				break;
 			}
@@ -1936,7 +1964,7 @@ void ParseAnimationEvtBlock(const char *aeb_filename, animevent_t *animEvents, a
 					}
 					else
 					{
-						animEvents[curAnimEvent].eventData[num] = trap->S_RegisterSound( va( stringData, n ) );
+						animEvents[curAnimEvent].eventData[num] = trap_S_RegisterSound( va( stringData, n ) );
 					}
 				}
 				animEvents[curAnimEvent].eventData[AED_SOUND_NUMRANDOMSNDS] = num - 1;
@@ -1949,7 +1977,7 @@ void ParseAnimationEvtBlock(const char *aeb_filename, animevent_t *animEvents, a
 				}
 				else
 				{
-					animEvents[curAnimEvent].eventData[AED_SOUNDINDEX_START] = trap->S_RegisterSound( stringData );
+					animEvents[curAnimEvent].eventData[AED_SOUNDINDEX_START] = trap_S_RegisterSound( stringData );
 				}
 #ifndef FINAL_BUILD
 				if ( !animEvents[curAnimEvent].eventData[AED_SOUNDINDEX_START] &&
@@ -1962,7 +1990,7 @@ void ParseAnimationEvtBlock(const char *aeb_filename, animevent_t *animEvents, a
 			}
 			//get probability
 			token = COM_Parse( text_p );
-			if ( !token )
+			if ( !token ) 
 			{//WARNING!  BAD TABLE!
 				break;
 			}
@@ -2021,14 +2049,14 @@ void ParseAnimationEvtBlock(const char *aeb_filename, animevent_t *animEvents, a
 		case AEV_FOOTSTEP:		//# animID AEV_FOOTSTEP framenum footstepType
 			//get footstep type
 			token = COM_Parse( text_p );
-			if ( !token )
+			if ( !token ) 
 			{
 				break;
-			}
+			}		
 			animEvents[curAnimEvent].eventData[AED_FOOTSTEP_TYPE] = GetIDForString(footstepTypeTable, token);
 			//get probability
 			token = COM_Parse( text_p );
-			if ( !token )
+			if ( !token ) 
 			{//WARNING!  BAD TABLE!
 				break;
 			}
@@ -2037,17 +2065,17 @@ void ParseAnimationEvtBlock(const char *aeb_filename, animevent_t *animEvents, a
 		case AEV_EFFECT:		//# animID AEV_EFFECT framenum effectpath boltName
 			//get effect index
 			token = COM_Parse( text_p );
-			if ( !token )
+			if ( !token ) 
 			{
 				break;
 			}
-			animEvents[curAnimEvent].eventData[AED_EFFECTINDEX] = trap->FX_RegisterEffect( token );
+			animEvents[curAnimEvent].eventData[AED_EFFECTINDEX] = trap_FX_RegisterEffect( token );
 			//get bolt index
 			token = COM_Parse( text_p );
-			if ( !token )
+			if ( !token ) 
 			{
 				break;
-			}
+			}		
 			if ( Q_stricmp( "none", token ) != 0 && Q_stricmp( "NULL", token ) != 0 )
 			{//actually are specifying a bolt to use
 				if (!animEvents[curAnimEvent].stringData)
@@ -2057,10 +2085,10 @@ void ParseAnimationEvtBlock(const char *aeb_filename, animevent_t *animEvents, a
 				strcpy(animEvents[curAnimEvent].stringData, token);
 			}
 			//NOTE: this string will later be used to add a bolt and store the index, as below:
-			//animEvent->eventData[AED_BOLTINDEX] = trap->G2API_AddBolt( &cent->gent->ghoul2[cent->gent->playerModel], animEvent->stringData );
+			//animEvent->eventData[AED_BOLTINDEX] = gi.G2API_AddBolt( &cent->gent->ghoul2[cent->gent->playerModel], animEvent->stringData );
 			//get probability
 			token = COM_Parse( text_p );
-			if ( !token )
+			if ( !token ) 
 			{//WARNING!  BAD TABLE!
 				break;
 			}
@@ -2069,14 +2097,14 @@ void ParseAnimationEvtBlock(const char *aeb_filename, animevent_t *animEvents, a
 		case AEV_FIRE:			//# animID AEV_FIRE framenum altfire chancetofire
 			//get altfire
 			token = COM_Parse( text_p );
-			if ( !token )
+			if ( !token ) 
 			{//WARNING!  BAD TABLE!
 				break;
 			}
 			animEvents[curAnimEvent].eventData[AED_FIRE_ALT] = atoi( token );
 			//get probability
 			token = COM_Parse( text_p );
-			if ( !token )
+			if ( !token ) 
 			{//WARNING!  BAD TABLE!
 				break;
 			}
@@ -2085,21 +2113,21 @@ void ParseAnimationEvtBlock(const char *aeb_filename, animevent_t *animEvents, a
 		case AEV_MOVE:			//# animID AEV_MOVE framenum forwardpush rightpush uppush
 			//get forward push
 			token = COM_Parse( text_p );
-			if ( !token )
+			if ( !token ) 
 			{//WARNING!  BAD TABLE!
 				break;
 			}
 			animEvents[curAnimEvent].eventData[AED_MOVE_FWD] = atoi( token );
 			//get right push
 			token = COM_Parse( text_p );
-			if ( !token )
+			if ( !token ) 
 			{//WARNING!  BAD TABLE!
 				break;
 			}
 			animEvents[curAnimEvent].eventData[AED_MOVE_RT] = atoi( token );
 			//get upwards push
 			token = COM_Parse( text_p );
-			if ( !token )
+			if ( !token ) 
 			{//WARNING!  BAD TABLE!
 				break;
 			}
@@ -2115,7 +2143,7 @@ void ParseAnimationEvtBlock(const char *aeb_filename, animevent_t *animEvents, a
 		{
 			lastAnimEvent++;
 		}
-	}
+	}	
 }
 
 /*
@@ -2132,7 +2160,7 @@ This file's presence is not required
 bgLoadedEvents_t bgAllEvents[MAX_ANIM_FILES];
 int bgNumAnimEvents = 1;
 static int bg_animParseIncluding = 0;
-int BG_ParseAnimationEvtFile( const char *as_filename, int animFileIndex, int eventFileIndex )
+int BG_ParseAnimationEvtFile( const char *as_filename, int animFileIndex, int eventFileIndex ) 
 {
 	const char	*text_p;
 	int			len;
@@ -2146,7 +2174,7 @@ int BG_ParseAnimationEvtFile( const char *as_filename, int animFileIndex, int ev
 	animevent_t	*torsoAnimEvents;
 	animation_t		*animations;
 	int				forcedIndex;
-
+	
 	assert(animFileIndex < MAX_ANIM_FILES);
 	assert(eventFileIndex < MAX_ANIM_FILES);
 
@@ -2197,7 +2225,7 @@ int BG_ParseAnimationEvtFile( const char *as_filename, int animFileIndex, int ev
 			torsoAnimEvents[i].eventType = AEV_NONE;
 			legsAnimEvents[i].eventType = AEV_NONE;
 			//Frame to play event on
-			torsoAnimEvents[i].keyFrame = -1;
+			torsoAnimEvents[i].keyFrame = -1;	
 			legsAnimEvents[i].keyFrame = -1;
 			//we allow storage of one string, temporarily (in case we have to look up an index later, then make sure to set stringData to NULL so we only do the look-up once)
 			torsoAnimEvents[i].stringData = NULL;
@@ -2212,14 +2240,14 @@ int BG_ParseAnimationEvtFile( const char *as_filename, int animFileIndex, int ev
 	}
 
 	// load the file
-	len = trap->FS_Open( sfilename, &f, FS_READ );
-	if ( len <= 0 )
+	len = trap_FS_FOpenFile( sfilename, &f, FS_READ );
+	if ( len <= 0 ) 
 	{//no file
 		goto fin;
 	}
-	if ( len >= sizeof( text ) - 1 )
+	if ( len >= sizeof( text ) - 1 ) 
 	{
-		trap->FS_Close(f);
+		trap_FS_FCloseFile(f);
 #ifndef FINAL_BUILD
 		Com_Error(ERR_DROP, "File %s too long\n", sfilename );
 #else
@@ -2228,23 +2256,21 @@ int BG_ParseAnimationEvtFile( const char *as_filename, int animFileIndex, int ev
 		goto fin;
 	}
 
-	trap->FS_Read( text, len, f );
+	trap_FS_Read( text, len, f );
 	text[len] = 0;
-	trap->FS_Close( f );
+	trap_FS_FCloseFile( f );
 
 	// parse the text
 	text_p = text;
 	upper_i =0;
 	lower_i =0;
 
-	COM_BeginParseSession ("BG_ParseAnimationEvtFile");
-
 	// read information for batches of sounds (UPPER or LOWER)
-	while ( 1 )
+	while ( 1 ) 
 	{
 		// Get base frame of sequence
 		token = COM_Parse( &text_p );
-		if ( !token || !token[0] )
+		if ( !token || !token[0] ) 
 		{
 			break;
 		}
@@ -2264,12 +2290,12 @@ int BG_ParseAnimationEvtFile( const char *as_filename, int animFileIndex, int ev
 
 		if ( !Q_stricmp(token,"UPPEREVENTS") )	// A batch of upper sounds
 		{
-			ParseAnimationEvtBlock( as_filename, torsoAnimEvents, animations, &upper_i, &text_p );
+			ParseAnimationEvtBlock( as_filename, torsoAnimEvents, animations, &upper_i, &text_p ); 
 		}
 
 		else if ( !Q_stricmp(token,"LOWEREVENTS") )	// A batch of lower sounds
 		{
-			ParseAnimationEvtBlock( as_filename, legsAnimEvents, animations, &lower_i, &text_p );
+			ParseAnimationEvtBlock( as_filename, legsAnimEvents, animations, &lower_i, &text_p ); 
 		}
 	}
 
@@ -2294,22 +2320,23 @@ fin:
 ======================
 BG_ParseAnimationFile
 
-Read a configuration file containing animation counts and rates
+Read a configuration file containing animation coutns and rates
 models/players/visor/animation.cfg, etc
 
 ======================
 */
-int BG_ParseAnimationFile(const char *filename, animation_t *animset, qboolean isHumanoid)
+int BG_ParseAnimationFile(const char *filename, animation_t *animset, qboolean isHumanoid) 
 {
 	char		*text_p;
 	int			len;
 	int			i;
 	char		*token;
 	float		fps;
+	int			skip;
 	int			usedIndex = -1;
 	int			nextIndex = bgNumAllAnims;
 	qboolean	dynAlloc = qfalse;
-	///qboolean	wasLoaded = qfalse;
+	qboolean	wasLoaded = qfalse;
 	static char BGPAFtext[60000];
 	fileHandle_t	f;
 	int				animNum;
@@ -2372,10 +2399,9 @@ int BG_ParseAnimationFile(const char *filename, animation_t *animset, qboolean i
 	// load the file
 	if (!BGPAFtextLoaded || !isHumanoid)
 	{ //rww - We are always using the same animation config now. So only load it once.
-		len = trap->FS_Open( filename, &f, FS_READ );
-		if ( (len <= 0) || (len >= sizeof( BGPAFtext ) - 1) )
+		len = trap_FS_FOpenFile( filename, &f, FS_READ );
+		if ( (len <= 0) || (len >= sizeof( BGPAFtext ) - 1) ) 
 		{
-			trap->FS_Close( f );
 			if (dynAlloc)
 			{
 				BG_AnimsetFree(animset);
@@ -2387,10 +2413,9 @@ int BG_ParseAnimationFile(const char *filename, animation_t *animset, qboolean i
 			return -1;
 		}
 
-		trap->FS_Read( BGPAFtext, len, f );
-
+		trap_FS_Read( BGPAFtext, len, f );
 		BGPAFtext[len] = 0;
-		trap->FS_Close( f );
+		trap_FS_FCloseFile( f );
 	}
 	else
 	{
@@ -2404,6 +2429,7 @@ int BG_ParseAnimationFile(const char *filename, animation_t *animset, qboolean i
 
 	// parse the text
 	text_p = BGPAFtext;
+	skip = 0;	// quiet the compiler warning
 
 	//FIXME: have some way of playing anims backwards... negative numFrames?
 
@@ -2417,11 +2443,11 @@ int BG_ParseAnimationFile(const char *filename, animation_t *animset, qboolean i
 	}
 
 	// read information for each frame
-	while(1)
+	while(1) 
 	{
 		token = COM_Parse( (const char **)(&text_p) );
 
-		if ( !token || !token[0])
+		if ( !token || !token[0]) 
 		{
 			break;
 		}
@@ -2431,10 +2457,7 @@ int BG_ParseAnimationFile(const char *filename, animation_t *animset, qboolean i
 		{
 //#ifndef FINAL_BUILD
 #ifdef _DEBUG
-			if (strcmp(token,"ROOT"))
-			{
-				Com_Printf(S_COLOR_RED"WARNING: Unknown token %s in %s\n", token, filename);
-			}
+			Com_Printf(S_COLOR_RED"WARNING: Unknown token %s in %s\n", token, filename);
 			while (token[0])
 			{
 				token = COM_ParseExt( (const char **) &text_p, qfalse );	//returns empty string when next token is EOL
@@ -2444,33 +2467,33 @@ int BG_ParseAnimationFile(const char *filename, animation_t *animset, qboolean i
 		}
 
 		token = COM_Parse( (const char **)(&text_p) );
-		if ( !token )
+		if ( !token ) 
 		{
 			break;
 		}
 		animset[animNum].firstFrame = atoi( token );
 
 		token = COM_Parse( (const char **)(&text_p) );
-		if ( !token )
+		if ( !token ) 
 		{
 			break;
 		}
 		animset[animNum].numFrames = atoi( token );
 
 		token = COM_Parse( (const char **)(&text_p) );
-		if ( !token )
+		if ( !token ) 
 		{
 			break;
 		}
 		animset[animNum].loopFrames = atoi( token );
 
 		token = COM_Parse( (const char **)(&text_p) );
-		if ( !token )
+		if ( !token ) 
 		{
 			break;
 		}
 		fps = atof( token );
-		if ( fps == 0 )
+		if ( fps == 0 ) 
 		{
 			fps = 1;//Don't allow divide by zero error
 		}
@@ -2487,7 +2510,7 @@ int BG_ParseAnimationFile(const char *filename, animation_t *animset, qboolean i
 #ifdef _DEBUG
 	//Check the array, and print the ones that have nothing in them.
 	for(i = 0; i < MAX_ANIMATIONS; i++)
-	{
+	{	
 		if (animTable[i].name != NULL)		// This animation reference exists.
 		{
 			if (animset[i].firstFrame <= 0 && animset[i].numFrames <=0)
@@ -2502,7 +2525,7 @@ int BG_ParseAnimationFile(const char *filename, animation_t *animset, qboolean i
 	SpewDebugStuffToFile();
 #endif
 
-//	wasLoaded = BGPAFtextLoaded;
+	wasLoaded = BGPAFtextLoaded;
 
 	if (isHumanoid)
 	{
@@ -2554,6 +2577,9 @@ static void BG_StartLegsAnim( playerState_t *ps, int anim )
 {
 	if ( ps->pm_type >= PM_DEAD )
 	{
+		assert(!BG_InDeathAnim(anim));
+		//please let me know if this assert fires on you (ideally before you close/ignore it) -rww
+
 		//vehicles are allowed to do this.. IF it's a vehicle death anim
 		if (ps->clientNum < MAX_CLIENTS || anim != BOTH_VT_DEATH1)
 		{
@@ -2569,7 +2595,7 @@ static void BG_StartLegsAnim( playerState_t *ps, int anim )
 	{
 		BG_FlipPart(ps, SETANIM_LEGS);
 	}
-#ifdef _GAME
+#ifdef QAGAME
 	else if (g_entities[ps->clientNum].s.legsAnim == anim)
 	{ //toggled anim to one anim then back to the one we were at previously in
 		//one frame, indicating that anim should be restarted.
@@ -2627,6 +2653,8 @@ void BG_StartTorsoAnim( playerState_t *ps, int anim )
 {
 	if ( ps->pm_type >= PM_DEAD )
 	{
+		assert(!BG_InDeathAnim(anim));
+		//please let me know if this assert fires on you (ideally before you close/ignore it) -rww
 		return;
 	}
 
@@ -2634,7 +2662,7 @@ void BG_StartTorsoAnim( playerState_t *ps, int anim )
 	{
 		BG_FlipPart(ps, SETANIM_TORSO);
 	}
-#ifdef _GAME
+#ifdef QAGAME
 	else if (g_entities[ps->clientNum].s.torsoAnim == anim)
 	{ //toggled anim to one anim then back to the one we were at previously in
 		//one frame, indicating that anim should be restarted.
@@ -2697,7 +2725,7 @@ void BG_SaberStartTransAnim( int clientNum, int saberAnimLevel, int weapon, int 
 		if ( weapon == WP_SABER )
 		{
 			saberInfo_t *saber = BG_MySaber( clientNum, 0 );
-			if ( saber
+			if ( saber 
 				&& saber->animSpeedScale != 1.0f )
 			{
 				*animSpeed *= saber->animSpeedScale;
@@ -2711,11 +2739,11 @@ void BG_SaberStartTransAnim( int clientNum, int saberAnimLevel, int weapon, int 
 		}
 	}
 
-	if ( ( (anim) >= BOTH_T1_BR__R &&
+	if ( ( (anim) >= BOTH_T1_BR__R && 
 		(anim) <= BOTH_T1_BL_TL ) ||
-		( (anim) >= BOTH_T2_BR__R &&
+		( (anim) >= BOTH_T2_BR__R && 
 		(anim) <= BOTH_T2_BL_TL ) ||
-		( (anim) >= BOTH_T3_BR__R &&
+		( (anim) >= BOTH_T3_BR__R && 
 		(anim) <= BOTH_T3_BL_TL ) )
 	{
 		if ( saberAnimLevel == FORCE_LEVEL_1 )
@@ -2758,7 +2786,8 @@ qboolean PM_RunningAnim( int anim );
 qboolean PM_WalkingAnim( int anim );
 
 void BG_SetAnimFinal(playerState_t *ps, animation_t *animations,
-					 int setAnimParts,int anim,int setAnimFlags)
+					 int setAnimParts,int anim,int setAnimFlags,
+					 int blendTime)		// default blendTime=350
 {
 	float editAnimSpeed = 1;
 
@@ -2769,6 +2798,9 @@ void BG_SetAnimFinal(playerState_t *ps, animation_t *animations,
 
 	assert(anim > -1);
 	assert(animations[anim].firstFrame > 0 || animations[anim].numFrames > 0);
+
+	//NOTE: Setting blendTime here breaks actual blending..
+	blendTime = 0;
 
 	BG_SaberStartTransAnim(ps->clientNum, ps->fd.saberAnimLevel, ps->weapon, anim, &editAnimSpeed, ps->brokenLimbs);
 
@@ -2782,7 +2814,7 @@ void BG_SetAnimFinal(playerState_t *ps, animation_t *animations,
 		}
 		// or if a more important anim is running
 		if( !(setAnimFlags & SETANIM_FLAG_OVERRIDE) && ((ps->torsoTimer > 0)||(ps->torsoTimer == -1)) )
-		{
+		{	
 			goto setAnimLegs;
 		}
 
@@ -2794,7 +2826,7 @@ void BG_SetAnimFinal(playerState_t *ps, animation_t *animations,
 			{	// Make sure to only wait in full 1/20 sec server frame intervals.
 				int dur;
 				int speedDif;
-
+				
 				dur = (animations[anim].numFrames-1) * fabs((float)(animations[anim].frameLerp));
 				speedDif = dur - (dur * editAnimSpeed);
 				dur += speedDif;
@@ -2830,7 +2862,7 @@ setAnimLegs:
 		}
 		// or if a more important anim is running
 		if( !(setAnimFlags & SETANIM_FLAG_OVERRIDE) && ((ps->legsTimer > 0)||(ps->legsTimer == -1)) )
-		{
+		{	
 			goto setAnimDone;
 		}
 
@@ -2842,7 +2874,7 @@ setAnimLegs:
 			{	// Make sure to only wait in full 1/20 sec server frame intervals.
 				int dur;
 				int speedDif;
-
+				
 				dur = (animations[anim].numFrames-1) * fabs((float)(animations[anim].frameLerp));
 				speedDif = dur - (dur * editAnimSpeed);
 				dur += speedDif;
@@ -2879,9 +2911,10 @@ setAnimDone:
 	return;
 }
 
-void PM_SetAnimFinal(int setAnimParts,int anim,int setAnimFlags)
+void PM_SetAnimFinal(int setAnimParts,int anim,int setAnimFlags,
+					 int blendTime)		// default blendTime=350
 {
-	BG_SetAnimFinal(pm->ps, pm->animations, setAnimParts, anim, setAnimFlags);
+	BG_SetAnimFinal(pm->ps, pm->animations, setAnimParts, anim, setAnimFlags, blendTime);
 }
 
 
@@ -2933,7 +2966,7 @@ int BG_PickAnim( int animIndex, int minAnim, int maxAnim )
 //of a pmove too so I have ported it to true BGishness.
 //Please do not reference pm in this function or any functions that it calls,
 //or I will cry. -rww
-void BG_SetAnim(playerState_t *ps, animation_t *animations, int setAnimParts,int anim,int setAnimFlags)
+void BG_SetAnim(playerState_t *ps, animation_t *animations, int setAnimParts,int anim,int setAnimFlags, int blendTime)
 {
 	if (!animations)
 	{
@@ -2986,11 +3019,49 @@ void BG_SetAnim(playerState_t *ps, animation_t *animations, int setAnimParts,int
 		}
 	}
 
-	BG_SetAnimFinal(ps, animations, setAnimParts, anim, setAnimFlags);
+	BG_SetAnimFinal(ps, animations, setAnimParts, anim, setAnimFlags, blendTime);
 }
 
-void PM_SetAnim(int setAnimParts,int anim,int setAnimFlags)
-{
-	BG_SetAnim(pm->ps, pm->animations, setAnimParts, anim, setAnimFlags);
+void PM_SetAnim(int setAnimParts,int anim,int setAnimFlags, int blendTime) {	
+	BG_SetAnim(pm->ps, pm->animations, setAnimParts, anim, setAnimFlags, blendTime);
 }
 
+
+//[AnimationSys]
+float BG_GetTorsoAnimPoint(playerState_t *ps, int AnimIndex) {
+	float attackAnimLength = 0;
+	float currentPoint = 0;
+	float animSpeedFactor = 1.0f;
+
+	//Be sure to scale by the proper anim speed just as if we were going to play the animation
+	BG_SaberStartTransAnim(ps->clientNum, ps->fd.saberAnimLevel, ps->weapon, ps->torsoAnim, &animSpeedFactor, ps->brokenLimbs);
+
+	if (animSpeedFactor > 0) {
+		attackAnimLength = (bgAllAnims[AnimIndex].anims[ps->torsoAnim].numFrames-1) * fabs((float)(bgAllAnims[AnimIndex].anims[ps->torsoAnim].frameLerp)) * (1/animSpeedFactor);
+		attackAnimLength--;
+	}
+
+	currentPoint = ps->torsoTimer;
+
+	return currentPoint / attackAnimLength;
+}
+
+
+float BG_GetLegsAnimPoint(playerState_t * ps, int AnimIndex) {
+	float attackAnimLength = 0;
+	float currentPoint = 0;
+	float animSpeedFactor = 1.0f;
+
+	//Be sure to scale by the proper anim speed just as if we were going to play the animation
+	BG_SaberStartTransAnim(ps->clientNum, ps->fd.saberAnimLevel, ps->weapon, ps->legsAnim, &animSpeedFactor, ps->brokenLimbs);
+
+	if (animSpeedFactor > 0) {
+		attackAnimLength = (bgAllAnims[AnimIndex].anims[ps->legsAnim].numFrames-1) * fabs((float)(bgAllAnims[AnimIndex].anims[ps->legsAnim].frameLerp)) * (1/animSpeedFactor);
+		attackAnimLength--;
+	}
+
+	currentPoint = ps->legsTimer;
+
+	return currentPoint / attackAnimLength;
+}
+//[/AnimationSys]

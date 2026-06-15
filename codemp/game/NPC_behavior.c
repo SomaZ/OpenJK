@@ -1,25 +1,3 @@
-/*
-===========================================================================
-Copyright (C) 2000 - 2013, Raven Software, Inc.
-Copyright (C) 2001 - 2013, Activision, Inc.
-Copyright (C) 2013 - 2015, OpenJK contributors
-
-This file is part of the OpenJK source code.
-
-OpenJK is free software; you can redistribute it and/or modify it
-under the terms of the GNU General Public License version 2 as
-published by the Free Software Foundation.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU General Public License for more details.
-
-You should have received a copy of the GNU General Public License
-along with this program; if not, see <http://www.gnu.org/licenses/>.
-===========================================================================
-*/
-
 //NPC_behavior.cpp
 /*
 FIXME - MCG:
@@ -30,7 +8,7 @@ we need it...
 
 #include "b_local.h"
 #include "g_nav.h"
-#include "icarus/Q3_Interface.h"
+#include "../icarus/Q3_Interface.h"
 
 extern	qboolean	showBBoxes;
 extern vec3_t NPCDEBUG_BLUE;
@@ -82,7 +60,7 @@ void NPC_BSAdvanceFight (void)
 		//Yaw to enemy
 		VectorMA(NPCS.NPC->enemy->r.absmin, 0.5, NPCS.NPC->enemy->r.maxs, enemy_org);
 		CalcEntitySpot( NPCS.NPC, SPOT_WEAPON, muzzle );
-
+		
 		VectorSubtract (enemy_org, muzzle, delta);
 		vectoangles ( delta, angleToEnemy );
 		distanceToEnemy = VectorNormalize(delta);
@@ -101,7 +79,7 @@ void NPC_BSAdvanceFight (void)
 
 			if(NPCS.enemyVisibility == VIS_FOV)
 			{//He's in our FOV
-
+				
 				attack_ok = qtrue;
 				CalcEntitySpot( NPCS.NPC->enemy, SPOT_HEAD, enemy_head);
 
@@ -110,13 +88,13 @@ void NPC_BSAdvanceFight (void)
 					trace_t		tr;
 					gentity_t	*traceEnt;
 					//are we gonna hit him if we shoot at his center?
-					trap->Trace ( &tr, muzzle, NULL, NULL, enemy_org, NPCS.NPC->s.number, MASK_SHOT, qfalse, 0, 0 );
+					trap_Trace ( &tr, muzzle, NULL, NULL, enemy_org, NPCS.NPC->s.number, MASK_SHOT );
 					traceEnt = &g_entities[tr.entityNum];
 					if( traceEnt != NPCS.NPC->enemy &&
 						(!traceEnt || !traceEnt->client || !NPCS.NPC->client->enemyTeam || NPCS.NPC->client->enemyTeam != traceEnt->client->playerTeam) )
 					{//no, so shoot for the head
 						attack_scale *= 0.75;
-						trap->Trace ( &tr, muzzle, NULL, NULL, enemy_head, NPCS.NPC->s.number, MASK_SHOT, qfalse, 0, 0 );
+						trap_Trace ( &tr, muzzle, NULL, NULL, enemy_head, NPCS.NPC->s.number, MASK_SHOT );
 						traceEnt = &g_entities[tr.entityNum];
 					}
 
@@ -157,13 +135,13 @@ void NPC_BSAdvanceFight (void)
 						VectorMA ( muzzle, distanceToEnemy, forward, hitspot);
 						VectorSubtract(hitspot, enemy_org, diff);
 						aim_off = VectorLength(diff);
-						if(aim_off > Q_flrand(0.0f, 1.0f) * max_aim_off)//FIXME: use aim value to allow poor aim?
+						if(aim_off > random() * max_aim_off)//FIXME: use aim value to allow poor aim?
 						{
 							attack_scale *= 0.75;
 							//see if where we're going to shoot is too far from his head
 							VectorSubtract(hitspot, enemy_head, diff);
 							aim_off = VectorLength(diff);
-							if(aim_off > Q_flrand(0.0f, 1.0f) * max_aim_off)
+							if(aim_off > random() * max_aim_off)
 							{
 								attack_ok = qfalse;
 							}
@@ -181,21 +159,23 @@ void NPC_BSAdvanceFight (void)
 				NPCS.enemyVisibility = VIS_SHOOT;
 				WeaponThink(qtrue);
 			}
+			else
+				attack_ok = qfalse;
 		}
 //Don't do this- only for when stationary and trying to shoot an enemy
 //		else
 //			NPC->cantHitEnemyCounter++;
 	}
 	else
-	{//FIXME:
+	{//FIXME: 
 		NPC_UpdateShootAngles(NPCS.NPC->client->ps.viewangles, qtrue, qtrue);
 	}
 
 	if(!NPCS.ucmd.forwardmove && !NPCS.ucmd.rightmove)
 	{//We reached our captureGoal
-		if(trap->ICARUS_IsInitialized(NPCS.NPC->s.number))
+		if(trap_ICARUS_IsInitialized(NPCS.NPC->s.number))
 		{
-			trap->ICARUS_TaskIDComplete( (sharedEntity_t *)NPCS.NPC, TID_BSTATE );
+			trap_ICARUS_TaskIDComplete( NPCS.NPC, TID_BSTATE );
 		}
 	}
 }
@@ -212,7 +192,7 @@ void MakeOwnerInvis (gentity_t *self);
 void BeamOut (gentity_t *self)
 {
 //	gentity_t *tent = G_Spawn();
-
+	
 /*
 	tent->owner = self;
 	tent->think = MakeOwnerInvis;
@@ -228,7 +208,7 @@ void BeamOut (gentity_t *self)
 	//self->r.svFlags |= SVF_BEAMING; //this appears unused in SP as well
 }
 
-void NPC_BSCinematic( void )
+void NPC_BSCinematic( void ) 
 {
 
 	if( NPCS.NPCInfo->scriptFlags & SCF_FIRE_WEAPON )
@@ -251,7 +231,7 @@ void NPC_BSCinematic( void )
 		CalcEntitySpot( NPCS.NPCInfo->watchTarget, SPOT_HEAD_LEAN, viewSpot );
 
 		VectorSubtract( viewSpot, eyes, viewvec );
-
+		
 		vectoangles( viewvec, viewangles );
 
 		NPCS.NPCInfo->lockedDesiredYaw = NPCS.NPCInfo->desiredYaw = viewangles[YAW];
@@ -261,7 +241,7 @@ void NPC_BSCinematic( void )
 	NPC_UpdateAngles( qtrue, qtrue );
 }
 
-void NPC_BSWait( void )
+void NPC_BSWait( void ) 
 {
 	NPC_UpdateAngles( qtrue, qtrue );
 }
@@ -320,7 +300,7 @@ void NPC_BSInvestigate (void)
 
 	if(	level.time < NPCInfo->walkDebounceTime )
 	{//walk toward investigateGoal
-
+		
 		/*
 		NPCInfo->goalEntity = NPCInfo->tempGoal;
 //		NAV_ClearLastRoute(NPC);
@@ -343,14 +323,14 @@ void NPC_BSInvestigate (void)
 
 		if(NPCInfo->hlookCount > 30)
 		{
-			if(Q_irand(0, 10) > 7)
+			if(Q_irand(0, 10) > 7) 
 			{
 				NPCInfo->hlookCount = 0;
 			}
 		}
 		else if(NPCInfo->hlookCount < -30)
 		{
-			if(Q_irand(0, 10) > 7)
+			if(Q_irand(0, 10) > 7) 
 			{
 				NPCInfo->hlookCount = 0;
 			}
@@ -359,7 +339,7 @@ void NPC_BSInvestigate (void)
 		{
 			NPCInfo->hlookCount = Q_irand(-1, 1);
 		}
-		else if(Q_irand(0, 10) > 7)
+		else if(Q_irand(0, 10) > 7) 
 		{
 			if(NPCInfo->hlookCount > 0)
 			{
@@ -373,14 +353,14 @@ void NPC_BSInvestigate (void)
 
 		if(NPCInfo->vlookCount >= 15)
 		{
-			if(Q_irand(0, 10) > 7)
+			if(Q_irand(0, 10) > 7) 
 			{
 				NPCInfo->vlookCount = 0;
 			}
 		}
 		else if(NPCInfo->vlookCount <= -15)
 		{
-			if(Q_irand(0, 10) > 7)
+			if(Q_irand(0, 10) > 7) 
 			{
 				NPCInfo->vlookCount = 0;
 			}
@@ -389,7 +369,7 @@ void NPC_BSInvestigate (void)
 		{
 			NPCInfo->vlookCount = Q_irand(-1, 1);
 		}
-		else if(Q_irand(0, 10) > 8)
+		else if(Q_irand(0, 10) > 8) 
 		{
 			if(NPCInfo->vlookCount > 0)
 			{
@@ -440,17 +420,17 @@ qboolean NPC_CheckInvestigate( int alertEventNum )
 		return qfalse;
 	}
 
-	if ( owner->s.eType != ET_PLAYER && owner->s.eType != ET_NPC && owner == NPCS.NPCInfo->goalEntity )
+	if ( owner->s.eType != ET_PLAYER && owner->s.eType != ET_NPC && owner == NPCS.NPCInfo->goalEntity ) 
 	{
 		return qfalse;
 	}
 
-	if ( owner->s.eFlags & EF_NODRAW )
+	if ( owner->s.eFlags & EF_NODRAW ) 
 	{
 		return qfalse;
 	}
 
-	if ( owner->flags & FL_NOTARGET )
+	if ( owner->flags & FL_NOTARGET ) 
 	{
 		return qfalse;
 	}
@@ -460,8 +440,8 @@ qboolean NPC_CheckInvestigate( int alertEventNum )
 		return qfalse;
 	}
 
-	//if(!trap->InPVSIgnorePortals(ent->r.currentOrigin, NPC->r.currentOrigin))//should we be able to hear through areaportals?
-	if ( !trap->InPVS( soundPos, NPCS.NPC->r.currentOrigin ) )
+	//if(!trap_InPVSIgnorePortals(ent->r.currentOrigin, NPC->r.currentOrigin))//should we be able to hear through areaportals?
+	if ( !trap_InPVS( soundPos, NPCS.NPC->r.currentOrigin ) )
 	{//can hear through doors?
 		return qfalse;
 	}
@@ -513,9 +493,9 @@ qboolean NPC_CheckInvestigate( int alertEventNum )
 
 
 /*
-void NPC_BSSleep( void )
+void NPC_BSSleep( void ) 
 */
-void NPC_BSSleep( void )
+void NPC_BSSleep( void ) 
 {
 	int alertEvent = NPC_CheckAlertEvents( qtrue, qfalse, -1, qfalse, AEL_MINOR );
 
@@ -575,8 +555,8 @@ void NPC_BSFollowLeader (void)
 				if ( level.alertEvents[eventID].level >= AEL_SUSPICIOUS && (NPCS.NPCInfo->scriptFlags&SCF_LOOK_FOR_ENEMIES) )
 				{
 					NPCS.NPCInfo->lastAlertID = level.alertEvents[eventID].ID;
-					if ( !level.alertEvents[eventID].owner ||
-						!level.alertEvents[eventID].owner->client ||
+					if ( !level.alertEvents[eventID].owner || 
+						!level.alertEvents[eventID].owner->client || 
 						level.alertEvents[eventID].owner->health <= 0 ||
 						level.alertEvents[eventID].owner->client->playerTeam != NPCS.NPC->client->enemyTeam )
 					{//not an enemy
@@ -595,8 +575,8 @@ void NPC_BSFollowLeader (void)
 		}
 		if ( !NPCS.NPC->enemy )
 		{
-			if ( NPCS.NPC->client->leader
-				&& NPCS.NPC->client->leader->enemy
+			if ( NPCS.NPC->client->leader 
+				&& NPCS.NPC->client->leader->enemy 
 				&& NPCS.NPC->client->leader->enemy != NPCS.NPC
 				&& ( (NPCS.NPC->client->leader->enemy->client&&NPCS.NPC->client->leader->enemy->client->playerTeam==NPCS.NPC->client->enemyTeam)
 					||(/*NPC->client->leader->enemy->r.svFlags&SVF_NONNPC_ENEMY*/0&&NPCS.NPC->client->leader->enemy->alliedTeam==NPCS.NPC->client->enemyTeam) )
@@ -608,7 +588,7 @@ void NPC_BSFollowLeader (void)
 			}
 		}
 	}
-	else
+	else 
 	{
 		if ( NPCS.NPC->enemy->health <= 0 || (NPCS.NPC->enemy->flags&FL_NOTARGET) )
 		{
@@ -623,7 +603,7 @@ void NPC_BSFollowLeader (void)
 			NPC_CheckEnemy( (NPCS.NPCInfo->confusionTime<level.time||NPCS.NPCInfo->tempBehavior!=BS_FOLLOW_LEADER), qfalse, qtrue );//don't find new enemy if this is tempbehav
 		}
 	}
-
+	
 	if ( NPCS.NPC->enemy && NPCS.NPC->client->ps.weapon )
 	{//If have an enemy, face him and fire
 		if ( NPCS.NPC->client->ps.weapon == WP_SABER )//|| NPCInfo->confusionTime>level.time )
@@ -641,14 +621,16 @@ void NPC_BSFollowLeader (void)
 		if ( NPCS.enemyVisibility > VIS_PVS )
 		{//face
 			vec3_t	enemy_org, muzzle, delta, angleToEnemy;
+			float	distanceToEnemy;
 
 			CalcEntitySpot( NPCS.NPC->enemy, SPOT_HEAD, enemy_org );
 			NPC_AimWiggle( enemy_org );
 
 			CalcEntitySpot( NPCS.NPC, SPOT_WEAPON, muzzle );
-
+			
 			VectorSubtract( enemy_org, muzzle, delta);
 			vectoangles( delta, angleToEnemy );
+			distanceToEnemy = VectorNormalize( delta );
 
 			NPCS.NPCInfo->desiredYaw = angleToEnemy[YAW];
 			NPCS.NPCInfo->desiredPitch = angleToEnemy[PITCH];
@@ -657,7 +639,7 @@ void NPC_BSFollowLeader (void)
 			if ( NPCS.enemyVisibility >= VIS_SHOOT )
 			{//shoot
 				NPC_AimAdjust( 2 );
-				if ( NPC_GetHFOVPercentage( NPCS.NPC->enemy->r.currentOrigin, NPCS.NPC->r.currentOrigin, NPCS.NPC->client->ps.viewangles, NPCS.NPCInfo->stats.hfov ) > 0.6f
+				if ( NPC_GetHFOVPercentage( NPCS.NPC->enemy->r.currentOrigin, NPCS.NPC->r.currentOrigin, NPCS.NPC->client->ps.viewangles, NPCS.NPCInfo->stats.hfov ) > 0.6f 
 					&& NPC_GetHFOVPercentage( NPCS.NPC->enemy->r.currentOrigin, NPCS.NPC->r.currentOrigin, NPCS.NPC->client->ps.viewangles, NPCS.NPCInfo->stats.vfov ) > 0.5f )
 				{//actually withing our front cone
 					WeaponThink( qtrue );
@@ -667,7 +649,7 @@ void NPC_BSFollowLeader (void)
 			{
 				NPC_AimAdjust( 1 );
 			}
-
+			
 			//NPC_CheckCanAttack(1.0, qfalse);
 		}
 		else
@@ -686,7 +668,7 @@ void NPC_BSFollowLeader (void)
 		VectorNormalize(delta);
 		NPCS.NPC->NPC->desiredYaw = angleToLeader[YAW];
 		NPCS.NPC->NPC->desiredPitch = angleToLeader[PITCH];
-
+		
 		NPC_UpdateAngles(qtrue, qtrue);
 	}
 
@@ -826,31 +808,27 @@ void NPC_BSJump (void)
 
 		//FIXME: length of xy will change curve of parabola, need to account for this
 		//somewhere... PARA_WIDTH
-
+		
 		z = (sqrt(apexHeight + z) - sqrt(apexHeight));
 
 		assert(z >= 0);
 
 //		Com_Printf("apex is %4.2f percent from p1: ", (xy-z)*0.5/xy*100.0f);
 
-		// Don't need to set apex xy if NPC is jumping directly up.
-		if ( xy > 0.0f )
-		{
-			xy -= z;
-			xy *= 0.5;
+		xy -= z;
+		xy *= 0.5;
+		
+		assert(xy > 0);
 
-			assert(xy > 0);
-		}
-
-		VectorMA (p1, xy, dir, apex);
+		VectorMA( p1, xy, dir, apex );
 		apex[2] += apexHeight;
-
+	
 		VectorCopy(apex, NPCS.NPC->pos1);
-
+		
 		//Now we have the apex, aim for it
 		height = apex[2] - NPCS.NPC->r.currentOrigin[2];
 		time = sqrt( height / ( .5 * NPCS.NPC->client->ps.gravity ) );
-		if ( !time )
+		if ( !time ) 
 		{
 //			Com_Printf("ERROR no time in jump\n");
 			return;
@@ -883,7 +861,7 @@ void NPC_BSJump (void)
 
 		if ( NPCS.NPC->s.groundEntityNum != ENTITYNUM_NONE)
 		{//Landed, start landing anim
-			//FIXME: if the
+			//FIXME: if the 
 			VectorClear(NPCS.NPC->client->ps.velocity);
 			NPC_SetAnim(NPCS.NPC, SETANIM_BOTH, BOTH_LAND1, SETANIM_FLAG_OVERRIDE|SETANIM_FLAG_HOLD);
 			NPCS.NPCInfo->jumpState = JS_LANDING;
@@ -908,18 +886,18 @@ void NPC_BSJump (void)
 		{
 			NPCS.NPCInfo->jumpState = JS_WAITING;
 
-
-			//task complete no matter what...
+			
+			//task complete no matter what...  
 			NPC_ClearGoal();
 			NPCS.NPCInfo->goalTime = level.time;
 			NPCS.NPCInfo->aiFlags &= ~NPCAI_MOVING;
 			NPCS.ucmd.forwardmove = 0;
 			NPCS.NPC->flags &= ~FL_NO_KNOCKBACK;
 			//Return that the goal was reached
-			trap->ICARUS_TaskIDComplete( (sharedEntity_t *)NPCS.NPC, TID_MOVE_NAV );
-
+			trap_ICARUS_TaskIDComplete( NPCS.NPC, TID_MOVE_NAV );
+			
 			//Or should we keep jumping until reached goal?
-
+			
 			/*
 			NPCInfo->goalEntity = UpdateGoal();
 			if ( !NPCInfo->goalEntity )
@@ -928,7 +906,7 @@ void NPC_BSJump (void)
 				Q3_TaskIDComplete( NPC, TID_MOVE_NAV );
 			}
 			*/
-
+			
 		}
 		break;
 	case JS_WAITING:
@@ -942,7 +920,7 @@ void NPC_BSRemove (void)
 {
 	NPC_UpdateAngles ( qtrue, qtrue );
 	//OJKFIXME: clientnum 0
-	if( !trap->InPVS( NPCS.NPC->r.currentOrigin, g_entities[0].r.currentOrigin ) )//FIXME: use cg.vieworg?
+	if( !trap_InPVS( NPCS.NPC->r.currentOrigin, g_entities[0].r.currentOrigin ) )//FIXME: use cg.vieworg?
 	{ //rwwFIXMEFIXME: Care about all clients instead of just 0?
 		G_UseTargets2( NPCS.NPC, NPCS.NPC, NPCS.NPC->target3 );
 		NPCS.NPC->s.eFlags |= EF_NODRAW;
@@ -1068,7 +1046,7 @@ void NPC_BSSearch (void)
 			{
 				if ( !Q_irand( 0, 30 ) )
 				{
-					int	numEdges = trap->Nav_GetNodeNumEdges( NPCS.NPCInfo->tempGoal->waypoint );
+					int	numEdges = trap_Nav_GetNodeNumEdges( NPCS.NPCInfo->tempGoal->waypoint );
 
 					if ( numEdges != WAYPOINT_NONE )
 					{
@@ -1076,8 +1054,8 @@ void NPC_BSSearch (void)
 
 						vec3_t	branchPos, lookDir;
 
-						int nextWp = trap->Nav_GetNodeEdge( NPCS.NPCInfo->tempGoal->waypoint, branchNum );
-						trap->Nav_GetNodePosition( nextWp, branchPos );
+						int nextWp = trap_Nav_GetNodeEdge( NPCS.NPCInfo->tempGoal->waypoint, branchNum );
+						trap_Nav_GetNodePosition( nextWp, branchPos );
 
 						VectorSubtract( branchPos, NPCS.NPCInfo->tempGoal->r.currentOrigin, lookDir );
 						NPCS.NPCInfo->desiredYaw = AngleNormalize360( vectoyaw( lookDir ) + flrand( -45, 45 ) );
@@ -1099,17 +1077,17 @@ void NPC_BSSearch (void)
 		else
 		{//Just finished waiting
 			NPCS.NPC->waypoint = NAV_FindClosestWaypointForEnt( NPCS.NPC, WAYPOINT_NONE );
-
+			
 			if ( NPCS.NPC->waypoint == NPCS.NPCInfo->homeWp )
 			{
-				int	numEdges = trap->Nav_GetNodeNumEdges( NPCS.NPCInfo->tempGoal->waypoint );
+				int	numEdges = trap_Nav_GetNodeNumEdges( NPCS.NPCInfo->tempGoal->waypoint );
 
 				if ( numEdges != WAYPOINT_NONE )
 				{
 					int branchNum = Q_irand( 0, numEdges - 1 );
 
-					int nextWp = trap->Nav_GetNodeEdge( NPCS.NPCInfo->homeWp, branchNum );
-					trap->Nav_GetNodePosition( nextWp, NPCS.NPCInfo->tempGoal->r.currentOrigin );
+					int nextWp = trap_Nav_GetNodeEdge( NPCS.NPCInfo->homeWp, branchNum );
+					trap_Nav_GetNodePosition( nextWp, NPCS.NPCInfo->tempGoal->r.currentOrigin );
 					NPCS.NPCInfo->tempGoal->waypoint = nextWp;
 				}
 
@@ -1125,7 +1103,7 @@ void NPC_BSSearch (void)
 			}
 			else
 			{//At a branch, so return home
-				trap->Nav_GetNodePosition( NPCS.NPCInfo->homeWp, NPCS.NPCInfo->tempGoal->r.currentOrigin );
+				trap_Nav_GetNodePosition( NPCS.NPCInfo->homeWp, NPCS.NPCInfo->tempGoal->r.currentOrigin );
 				NPCS.NPCInfo->tempGoal->waypoint = NPCS.NPCInfo->homeWp;
 				/*
 				VectorCopy( waypoints[NPCInfo->homeWp].origin, NPCInfo->tempGoal->r.currentOrigin );
@@ -1165,7 +1143,7 @@ void NPC_BSSearchStart( int homeWp, bState_t bState )
 	NPCS.NPCInfo->tempBehavior = bState;
 	NPCS.NPCInfo->aiFlags |= NPCAI_ENROUTE_TO_HOMEWP;
 	NPCS.NPCInfo->investigateDebounceTime = 0;
-	trap->Nav_GetNodePosition( homeWp, NPCS.NPCInfo->tempGoal->r.currentOrigin );
+	trap_Nav_GetNodePosition( homeWp, NPCS.NPCInfo->tempGoal->r.currentOrigin );
 	NPCS.NPCInfo->tempGoal->waypoint = homeWp;
 	//Com_Printf("\nHeading for wp %d...\n", NPCInfo->homeWp);
 }
@@ -1187,7 +1165,7 @@ void NPC_BSNoClip ( void )
 		float	fDot, rDot, uDot;
 
 		VectorSubtract( NPCS.NPCInfo->goalEntity->r.currentOrigin, NPCS.NPC->r.currentOrigin, dir );
-
+		
 		vectoangles( dir, angles );
 		NPCS.NPCInfo->desiredYaw = angles[YAW];
 
@@ -1262,7 +1240,7 @@ void NPC_BSWander (void)
 			{
 				if ( !Q_irand( 0, 30 ) )
 				{
-					int	numEdges = trap->Nav_GetNodeNumEdges( NPCS.NPCInfo->tempGoal->waypoint );
+					int	numEdges = trap_Nav_GetNodeNumEdges( NPCS.NPCInfo->tempGoal->waypoint );
 
 					if ( numEdges != WAYPOINT_NONE )
 					{
@@ -1270,8 +1248,8 @@ void NPC_BSWander (void)
 
 						vec3_t	branchPos, lookDir;
 
-						int	nextWp = trap->Nav_GetNodeEdge( NPCS.NPCInfo->tempGoal->waypoint, branchNum );
-						trap->Nav_GetNodePosition( nextWp, branchPos );
+						int	nextWp = trap_Nav_GetNodeEdge( NPCS.NPCInfo->tempGoal->waypoint, branchNum );
+						trap_Nav_GetNodePosition( nextWp, branchPos );
 
 						VectorSubtract( branchPos, NPCS.NPCInfo->tempGoal->r.currentOrigin, lookDir );
 						NPCS.NPCInfo->desiredYaw = AngleNormalize360( vectoyaw( lookDir ) + flrand( -45, 45 ) );
@@ -1282,17 +1260,17 @@ void NPC_BSWander (void)
 		else
 		{//Just finished waiting
 			NPCS.NPC->waypoint = NAV_FindClosestWaypointForEnt( NPCS.NPC, WAYPOINT_NONE );
-
+			
 			if ( NPCS.NPC->waypoint != WAYPOINT_NONE )
 			{
-				int	numEdges = trap->Nav_GetNodeNumEdges( NPCS.NPC->waypoint );
+				int	numEdges = trap_Nav_GetNodeNumEdges( NPCS.NPC->waypoint );
 
 				if ( numEdges != WAYPOINT_NONE )
 				{
 					int branchNum = Q_irand( 0, numEdges - 1 );
 
-					int nextWp = trap->Nav_GetNodeEdge( NPCS.NPC->waypoint, branchNum );
-					trap->Nav_GetNodePosition( nextWp, NPCS.NPCInfo->tempGoal->r.currentOrigin );
+					int nextWp = trap_Nav_GetNodeEdge( NPCS.NPC->waypoint, branchNum );
+					trap_Nav_GetNodePosition( nextWp, NPCS.NPCInfo->tempGoal->r.currentOrigin );
 					NPCS.NPCInfo->tempGoal->waypoint = nextWp;
 				}
 
@@ -1324,7 +1302,7 @@ void NPC_BSFaceLeader (void)
 	VectorNormalize( delta );
 	NPC->NPC->desiredYaw = angleToLeader[YAW];
 	NPC->NPC->desiredPitch = angleToLeader[PITCH];
-
+	
 	NPC_UpdateAngles(qtrue, qtrue);
 }
 */
@@ -1342,7 +1320,7 @@ void NPC_Surrender( void )
 	{
 		return;
 	}
-	if ( NPCS.NPC->s.weapon != WP_NONE &&
+	if ( NPCS.NPC->s.weapon != WP_NONE && 
 		NPCS.NPC->s.weapon != WP_STUN_BATON &&
 		NPCS.NPC->s.weapon != WP_SABER )
 	{
@@ -1362,14 +1340,14 @@ void NPC_Surrender( void )
 
 qboolean NPC_CheckSurrender( void )
 {
-	if ( !trap->ICARUS_TaskIDPending( (sharedEntity_t *)NPCS.NPC, TID_MOVE_NAV )
-		&& NPCS.NPC->client->ps.groundEntityNum != ENTITYNUM_NONE
+	if ( !trap_ICARUS_TaskIDPending( NPCS.NPC, TID_MOVE_NAV ) 
+		&& NPCS.NPC->client->ps.groundEntityNum != ENTITYNUM_NONE 
 		&& !NPCS.NPC->client->ps.weaponTime && !PM_InKnockDown( &NPCS.NPC->client->ps )
-		&& NPCS.NPC->enemy && NPCS.NPC->enemy->client && NPCS.NPC->enemy->enemy == NPCS.NPC && NPCS.NPC->enemy->s.weapon != WP_NONE && NPCS.NPC->enemy->s.weapon != WP_STUN_BATON
+		&& NPCS.NPC->enemy && NPCS.NPC->enemy->client && NPCS.NPC->enemy->enemy == NPCS.NPC && NPCS.NPC->enemy->s.weapon != WP_NONE && NPCS.NPC->enemy->s.weapon != WP_STUN_BATON 
 		&& NPCS.NPC->enemy->health > 20 && NPCS.NPC->enemy->painDebounceTime < level.time - 3000 && NPCS.NPC->enemy->client->ps.fd.forcePowerDebounce[FP_SABER_DEFENSE] < level.time - 1000 )
 	{//don't surrender if scripted to run somewhere or if we're in the air or if we're busy or if we don't have an enemy or if the enemy is not mad at me or is hurt or not a threat or busy being attacked
 		//FIXME: even if not in a group, don't surrender if there are other enemies in the PVS and within a certain range?
-		if ( NPCS.NPC->s.weapon != WP_ROCKET_LAUNCHER
+		if ( NPCS.NPC->s.weapon != WP_ROCKET_LAUNCHER 
 			&& NPCS.NPC->s.weapon != WP_REPEATER
 			&& NPCS.NPC->s.weapon != WP_FLECHETTE
 			&& NPCS.NPC->s.weapon != WP_SABER )
@@ -1397,7 +1375,7 @@ qboolean NPC_CheckSurrender( void )
 					{//they're not close
 						return qfalse;
 					}
-					else if ( !trap->InPVS( NPCS.NPC->r.currentOrigin, NPCS.NPC->enemy->r.currentOrigin ) )
+					else if ( !trap_InPVS( NPCS.NPC->r.currentOrigin, NPCS.NPC->enemy->r.currentOrigin ) )
 					{//they're not in the same room
 						return qfalse;
 					}
@@ -1407,7 +1385,7 @@ qboolean NPC_CheckSurrender( void )
 			/*
 			if ( NPCInfo->group && NPCInfo->group->numGroup <= 1 )
 			{//I'm alone but I was in a group//FIXME: surrender anyway if just melee or no weap?
-				if ( NPC->s.weapon == WP_NONE
+				if ( NPC->s.weapon == WP_NONE 
 					//NPC has a weapon
 					|| (NPC->enemy && NPC->enemy->s.number < MAX_CLIENTS)
 					|| (NPC->enemy->s.weapon == WP_SABER&&NPC->enemy->client&&!NPC->enemy->client->ps.saberHolstered)
@@ -1428,7 +1406,7 @@ qboolean NPC_CheckSurrender( void )
 							{//they're looking at me
 								if ( DistanceSquared( NPC->r.currentOrigin, NPC->enemy->r.currentOrigin ) < 16384 )
 								{//they're close
-									if ( trap->InPVS( NPC->r.currentOrigin, NPC->enemy->r.currentOrigin ) )
+									if ( trap_InPVS( NPC->r.currentOrigin, NPC->enemy->r.currentOrigin ) )
 									{//they're in the same room
 										NPC_Surrender();
 										NPC_UpdateAngles( qtrue, qtrue );
@@ -1445,7 +1423,7 @@ qboolean NPC_CheckSurrender( void )
 						{//they're looking at me
 							if ( DistanceSquared( NPC->r.currentOrigin, NPC->enemy->r.currentOrigin ) < 4096 )
 							{//they're close
-								if ( trap->InPVS( NPC->r.currentOrigin, NPC->enemy->r.currentOrigin ) )
+								if ( trap_InPVS( NPC->r.currentOrigin, NPC->enemy->r.currentOrigin ) )
 								{//they're in the same room
 									//FIXME: should player-team NPCs not fire on surrendered NPCs?
 									NPC_Surrender();
@@ -1471,7 +1449,7 @@ void NPC_BSFlee( void )
 	{
 		NPCS.NPCInfo->tempBehavior = BS_DEFAULT;
 		NPCS.NPCInfo->squadState = SQUAD_IDLE;
-		//FIXME: should we set some timer to make him stay in this spot for a bit,
+		//FIXME: should we set some timer to make him stay in this spot for a bit, 
 		//so he doesn't just suddenly turn around and come back at the enemy?
 		//OR, just stop running toward goal for last second or so of flee?
 	}
@@ -1503,7 +1481,7 @@ void NPC_BSFlee( void )
 		}
 		if ( NPCS.NPC->waypoint != WAYPOINT_NONE )
 		{
-			int	numEdges = trap->Nav_GetNodeNumEdges( NPCS.NPC->waypoint );
+			int	numEdges = trap_Nav_GetNodeNumEdges( NPCS.NPC->waypoint );
 
 			if ( numEdges != WAYPOINT_NONE )
 			{
@@ -1518,8 +1496,8 @@ void NPC_BSFlee( void )
 				{
 					vec3_t	branchPos, runDir;
 
-					nextWp = trap->Nav_GetNodeEdge( NPCS.NPC->waypoint, branchNum );
-					trap->Nav_GetNodePosition( nextWp, branchPos );
+					nextWp = trap_Nav_GetNodeEdge( NPCS.NPC->waypoint, branchNum );
+					trap_Nav_GetNodePosition( nextWp, branchPos );
 
 					VectorSubtract( branchPos, NPCS.NPC->r.currentOrigin, runDir );
 					VectorNormalize( runDir );
@@ -1548,6 +1526,7 @@ void NPC_BSFlee( void )
 		if ( moved == qfalse )
 		{
 			vec3_t	dir;
+			float	dist;
 			if ( reverseCourse )
 			{
 				VectorSubtract( NPCS.NPC->r.currentOrigin, goal->r.currentOrigin, dir );
@@ -1556,7 +1535,7 @@ void NPC_BSFlee( void )
 			{
 				VectorSubtract( goal->r.currentOrigin, NPCS.NPC->r.currentOrigin, dir );
 			}
-			NPCS.NPCInfo->distToGoal = VectorNormalize( dir );
+			NPCS.NPCInfo->distToGoal = dist = VectorNormalize( dir );
 			NPCS.NPCInfo->desiredYaw = vectoyaw( dir );
 			NPCS.NPCInfo->desiredPitch = 0;
 			NPCS.ucmd.forwardmove = 127;
@@ -1582,7 +1561,7 @@ void NPC_StartFlee( gentity_t *enemy, vec3_t dangerPoint, int dangerLevel, int f
 {
 	int cp = -1;
 
-	if ( trap->ICARUS_TaskIDPending( (sharedEntity_t *)NPCS.NPC, TID_MOVE_NAV ) )
+	if ( trap_ICARUS_TaskIDPending( NPCS.NPC, TID_MOVE_NAV ) )
 	{//running somewhere that a script requires us to go, don't interrupt that!
 		return;
 	}
@@ -1597,7 +1576,7 @@ void NPC_StartFlee( gentity_t *enemy, vec3_t dangerPoint, int dangerLevel, int f
 	{
 		G_SetEnemy( NPCS.NPC, enemy );
 	}
-
+	
 	//FIXME: if don't have a weapon, find nearest one we have a route to and run for it?
 	if ( dangerLevel > AEL_DANGER || NPCS.NPC->s.weapon == WP_NONE || ((!NPCS.NPCInfo->group || NPCS.NPCInfo->group->numGroup <= 1) && NPCS.NPC->health <= 10 ) )
 	{//IF either great danger OR I have no weapon OR I'm alone and low on health, THEN try to find a combat point out of PVS
@@ -1647,7 +1626,7 @@ void NPC_StartFlee( gentity_t *enemy, vec3_t dangerPoint, int dangerLevel, int f
 	NPCS.NPCInfo->squadState = SQUAD_RETREAT;
 	TIMER_Set( NPCS.NPC, "flee", Q_irand( fleeTimeMin, fleeTimeMax ) );
 	TIMER_Set( NPCS.NPC, "panic", Q_irand( 1000, 4000 ) );//how long to wait before trying to nav to a dropped weapon
-
+	
 	if (NPCS.NPC->client->NPC_class != CLASS_PROTOCOL)
 	{
 		TIMER_Set( NPCS.NPC, "duck", 0 );
@@ -1721,7 +1700,7 @@ void NPC_BSEmplaced( void )
 		}
 	}
 /*
-	else if ( trap->InPVS( NPC->enemy->r.currentOrigin, NPC->r.currentOrigin ) )
+	else if ( trap_InPVS( NPC->enemy->r.currentOrigin, NPC->r.currentOrigin ) )
 	{
 		NPCInfo->enemyLastSeenTime = level.time;
 		faceEnemy = qtrue;

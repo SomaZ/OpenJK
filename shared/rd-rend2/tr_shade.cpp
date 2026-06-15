@@ -81,7 +81,7 @@ R_BindAnimatedImageToTMU
 =================
 */
 void R_BindAnimatedImageToTMU( textureBundle_t *bundle, int tmu ) {
-	int		index;
+	uint32_t index;
 
 	if ( bundle->isVideoMap ) {
 		int oldtmu = glState.currenttmu;
@@ -105,12 +105,9 @@ void R_BindAnimatedImageToTMU( textureBundle_t *bundle, int tmu ) {
 	{
 		// it is necessary to do this messy calc to make sure animations line up
 		// exactly with waveforms of the same frequency
-		index = Q_ftol( tess.shaderTime * bundle->imageAnimationSpeed * FUNCTABLE_SIZE );
-		index >>= FUNCTABLE_SIZE2;
-
-		if ( index < 0 ) {
-			index = 0;	// may happen with shader time offsets
-		}
+//		index = Q_dutol( tess.shaderTime * bundle->imageAnimationSpeed * FUNCTABLE_SIZE );
+//		index >>= FUNCTABLE_SIZE2;
+		index = (uint32_t)(tess.shaderTime * (double)bundle->imageAnimationSpeed * (double)FUNCTABLE_SIZE / 1024.0);
 	}
 
 	if ( bundle->oneShotAnimMap )
@@ -127,7 +124,7 @@ void R_BindAnimatedImageToTMU( textureBundle_t *bundle, int tmu ) {
 		index %= bundle->numImageAnimations;
 	}
 
-	GL_BindToTMU( bundle->image[ index ], tmu );
+	GL_BindToTMU( bundle->image[ (int)index ], tmu );
 }
 
 /*
@@ -139,7 +136,7 @@ because a surface may be forced to perform a RB_End due
 to overflow.
 ==============
 */
-void RB_BeginSurface( shader_t *shader, int fogNum, int cubemapIndex ) 
+void RB_BeginSurface( shader_t *shader, int64_t fogNum, int64_t cubemapIndex ) 
 {
 	tess.numIndexes = 0;
 	tess.firstIndex = 0;
@@ -566,9 +563,9 @@ static void CaptureDrawData(const shaderCommands_t *input, shaderStage_t *stage,
 	}
 }
 
-uint32_t RB_CreateSkySortKey(const DrawItem& item, int stage, int skyNumber, int layer)
+uint64_t RB_CreateSkySortKey(const DrawItem& item, int stage, int skyNumber, int layer)
 {
-	uint32_t key = 0;
+	uint64_t key = 0;
 	uintptr_t shaderProgram = (uintptr_t)item.program;
 
 	assert(stage < 16);
@@ -581,9 +578,9 @@ uint32_t RB_CreateSkySortKey(const DrawItem& item, int stage, int skyNumber, int
 	return key;
 }
 
-uint32_t RB_CreateSortKey( const DrawItem& item, int stage, int layer )
+uint64_t RB_CreateSortKey( const DrawItem& item, int stage, int layer )
 {
-	uint32_t key = 0;
+	uint64_t key = 0;
 	uintptr_t shaderProgram = (uintptr_t)item.program;
 
 	assert(stage < 16);
@@ -1012,7 +1009,7 @@ static void DrawTris(shaderCommands_t *input, const VertexArraysProperties *vert
 
 		RB_FillDrawCommand(item.draw, GL_TRIANGLES, 1, input);
 
-		uint32_t key = RB_CreateSortKey(item, 15, 15);
+		uint64_t key = RB_CreateSortKey(item, 15, 15);
 
 		RB_AddDrawItem(backEndData->currentPass, key, item);
 	}
@@ -1109,7 +1106,7 @@ static void ProjectPshadowVBOGLSL( const shaderCommands_t *input, const VertexAr
 
 		RB_FillDrawCommand(item.draw, GL_TRIANGLES, 1, input);
 
-		uint32_t key = RB_CreateSortKey(item, 13, input->shader->sort);
+		uint64_t key = RB_CreateSortKey(item, 13, input->shader->sort);
 		RB_AddDrawItem(backEndData->currentPass, key, item);
 
 		backEnd.pc.c_totalIndexes += tess.numIndexes;
@@ -1242,7 +1239,7 @@ static void RB_FogPass( shaderCommands_t *input, const VertexArraysProperties *v
 
 	RB_FillDrawCommand(item.draw, GL_TRIANGLES, 1, input);
 
-	uint32_t key;
+	uint64_t key;
 	if (input->shader->sort == SS_ENVIRONMENT)
 		key = RB_CreateSkySortKey(item, 14, input->shader->isSky ? backEnd.skyNumber : 0, input->shader->sort);
 	else
@@ -1300,7 +1297,7 @@ static void RB_FogPass( shaderCommands_t *input, const VertexArraysProperties *v
 
 		RB_FillDrawCommand(backItem.draw, GL_TRIANGLES, 1, input);
 
-		const uint32_t key = RB_CreateSortKey(backItem, 14, input->shader->sort);
+		const uint64_t key = RB_CreateSortKey(backItem, 14, input->shader->sort);
 		RB_AddDrawItem(backEndData->currentPass, key, backItem);
 	}
 }
@@ -1579,7 +1576,7 @@ void RB_ShadowTessEnd(shaderCommands_t *input, const VertexArraysProperties *ver
 
 	RB_FillDrawCommand(item.draw, GL_TRIANGLES, 1, input);
 
-	const uint32_t key = RB_CreateSortKey(item, 13, 15);
+	const uint64_t key = RB_CreateSortKey(item, 13, 15);
 	RB_AddDrawItem(backEndData->currentPass, key, item);
 }
 
@@ -1641,7 +1638,7 @@ static void RB_IterateStagesGeneric( shaderCommands_t *input, const VertexArrays
 				disintegrationInfo[0] = backEnd.currentEntity->e.oldorigin[0];
 				disintegrationInfo[1] = backEnd.currentEntity->e.oldorigin[1];
 				disintegrationInfo[2] = backEnd.currentEntity->e.oldorigin[2];
-				disintegrationInfo[3] = (backEnd.refdef.time - backEnd.currentEntity->e.endTime) * 0.045f;
+				disintegrationInfo[3] = ((backEnd.refdef.time - backEnd.currentEntity->e.endTime) + backEnd.refdef.timeFraction) * 0.045f;
 				disintegrationInfo[3] *= disintegrationInfo[3];
 			}
 			else if ( backEnd.currentEntity->e.renderfx & RF_RGB_TINT )
@@ -2084,7 +2081,7 @@ static void RB_IterateStagesGeneric( shaderCommands_t *input, const VertexArrays
 
 		RB_FillDrawCommand(item.draw, GL_TRIANGLES, 1, input);
 
-		uint32_t key;
+		uint64_t key;
 		if (input->shader->sort == SS_ENVIRONMENT)
 			key = RB_CreateSkySortKey(item, stage + 1, input->shader->isSky ? backEnd.skyNumber : 0, input->shader->sort);
 		else

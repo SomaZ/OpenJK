@@ -36,6 +36,10 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 
 #define	RETRANSMIT_TIMEOUT	3000	// time between connection packet retransmits
 
+#ifdef USE_CURL
+#include "cl_curl.h"
+#endif /* USE_CURL */
+
 // file full of random crap that gets used to create ja_guid
 #define QKEY_FILE "jakey"
 #define QKEY_SIZE 2048
@@ -90,6 +94,12 @@ typedef struct outPacket_s {
 
 extern int g_console_field_width;
 
+typedef enum {
+	MME_STATE_NONE, //fs_game != "mme[*]"
+	MME_STATE_DEFAULT, //fs_game == "mme"
+	MME_STATE_CUSTOM //fs_game == "mme*" like "mmeMBII"
+} mmeState_t;
+
 typedef struct clientActive_s {
 	int			timeoutcount;		// it requres several frames in a timeout condition
 									// to disconnect, preventing debugging breaks from
@@ -97,6 +107,7 @@ typedef struct clientActive_s {
 	clSnapshot_t	snap;			// latest received from server
 
 	int			serverTime;			// may be paused during play
+	int			serverTimeLast;		// server time from the last snapshot
 	int			oldServerTime;		// to prevent time from flowing bakcwards
 	int			oldFrameServerTime;	// to check tournament restarts
 	int			serverTimeDelta;	// cl.serverTime = cls.realtime + cl.serverTimeDelta
@@ -236,6 +247,7 @@ typedef struct clientConnection_s {
 	qboolean	demowaiting;	// don't record until a non-delta message is received
 	qboolean	firstDemoFrameSkipped;
 	fileHandle_t	demofile;
+	qboolean	newDemoPlayer;
 
 	int			timeDemoFrames;		// counter of rendered frames
 	int			timeDemoStart;		// cls.realtime before first frame
@@ -246,6 +258,22 @@ typedef struct clientConnection_s {
 
 	// big stuff at end of structure so most offsets are 15 bits or less
 	netchan_t	netchan;
+
+	float		aviDemoRemain;		// Used for accurate fps recording
+	float		aviSoundRemain;		// Used for accurate fps recording
+
+#ifdef USE_CURL
+	struct {
+		qboolean	gotError;
+		qboolean	enabled;
+		qboolean	used;
+		qboolean	disconnected;
+		char		downloadURL[MAX_OSPATH];
+		CURL		*downloadCURL;
+		CURLM		*downloadCURLM;
+	} curl;
+#endif /* USE_CURL */
+	char		dlURL[MAX_CVAR_VALUE_STRING];
 } clientConnection_t;
 
 extern	clientConnection_t clc;
@@ -258,6 +286,17 @@ no client connection is active at all
 
 ==================================================================
 */
+
+//first 3 defined in q_shared.h
+#define NOTIFICATION_VOTE		(1 << 3)
+#define NOTIFICATION_PM			(1 << 4)
+#define NOTIFICATION_CONNECT	(1 << 5)
+#define NOTIFICATION_RESTART	(1 << 6)
+#define NOTIFICATION_ROUND		(1 << 7)
+#define NOTIFICATION_PLAYERS	(1 << 8)
+#define NOTIFICATION_WORD		(1 << 9)
+
+#define NOTIFICATION_WORDS_MAX	16
 
 typedef struct ping_s {
 	netadr_t	adr;
@@ -331,6 +370,22 @@ typedef struct clientStatic_s {
 	qhandle_t	whiteShader;
 	qhandle_t	consoleShader;
 	int			consoleFont;
+	qhandle_t	recordingShader;
+	qhandle_t	recordingShaderNew;
+	float		ratioFix;
+	qboolean	uiEditingField;
+	
+	colorTable_t	cTable;
+
+	mmeState_t	mmeStateCGame;
+	mmeState_t	mmeStateUI;
+
+	struct {
+		int		flags;
+		int		playersCount;
+		char	words[NOTIFICATION_WORDS_MAX][MAX_STRING_CHARS];
+		int		wordsCount;
+	} notification;
 
 	// Cursor
 	qboolean	cursorActive;
@@ -344,19 +399,18 @@ typedef struct clientStatic_s {
 
 #define	CON_TEXTSIZE	0x30000 //was 32768
 #define	NUM_CON_TIMES	4
+typedef enum {
+	conHidden,
+	conShort,
+	conFull,
+	conMax,
+} conState_t;
 
-typedef union {
-	struct {
-		unsigned char	color;
-		char			character;
-	} f;
-	unsigned short	compare;
-} conChar_t;
 
 typedef struct {
 	qboolean	initialized;
 
-	conChar_t	text[CON_TEXTSIZE];
+	int		text[CON_TEXTSIZE];
 	int		current;		// line where next message will be printed
 	int		x;				// offset in current line for next print
 	int		display;		// bottom of console displays this line
@@ -379,6 +433,7 @@ typedef struct {
 	int		times[NUM_CON_TIMES];	// cls.realtime time the line was generated
 								// for transparent notify lines
 	vec4_t	color;
+	conState_t state;
 } console_t;
 
 extern	clientStatic_t		cls;
@@ -399,6 +454,8 @@ extern	cvar_t	*cl_showSend;
 extern	cvar_t	*cl_timeNudge;
 extern	cvar_t	*cl_showTimeDelta;
 extern	cvar_t	*cl_freezeDemo;
+
+extern	cvar_t	*cl_drawRecording;
 
 extern	cvar_t	*cl_yawspeed;
 extern	cvar_t	*cl_pitchspeed;
@@ -421,14 +478,11 @@ extern	cvar_t	*m_side;
 extern	cvar_t	*m_filter;
 
 extern	cvar_t	*cl_timedemo;
-extern	cvar_t	*cl_aviFrameRate;
-extern	cvar_t	*cl_aviMotionJpeg;
-extern	cvar_t	*cl_avi2GBLimit;
-
+extern	cvar_t	*cl_avidemo;
 extern	cvar_t	*cl_forceavidemo;
 
 extern	cvar_t	*cl_activeAction;
-
+extern	cvar_t	*cl_dlURL;
 extern	cvar_t	*cl_allowDownload;
 extern	cvar_t	*cl_allowAltEnter;
 extern	cvar_t	*cl_conXOffset;
@@ -442,7 +496,38 @@ extern  cvar_t  *cl_lanForcePackets;
 
 extern	cvar_t	*cl_drawRecording;
 
+extern	cvar_t	*cl_autoDemo;
+extern	cvar_t	*cl_autoDemoFormat;
+
+extern	cvar_t	*cl_notify;
+
+
+// MME cvars
+//extern	cvar_t	*mme_anykeystopsdemo;
+extern	cvar_t	*mme_saveWav;
+//extern	cvar_t	*mme_gameOverride;
+extern	cvar_t	*mme_demoConvert;
+extern	cvar_t	*mme_demoSmoothen;
+extern	cvar_t	*mme_demoFileName;
+extern  cvar_t	*mme_demoListQuit;
+extern	cvar_t	*mme_demoStartProject;
+extern	cvar_t	*mme_demoAutoQuit;
+extern	cvar_t	*mme_demoRemove;
+extern	cvar_t	*mme_demoPrecache;
+extern	cvar_t	*mme_demoAutoNext;
+extern	cvar_t	*mme_demoPaused;
+extern	cvar_t	*mme_demoEscapeQuit;
 //=================================================
+// cl_demos
+void CL_MMEDemo_f( void );
+void CL_DemoList_f( void );
+void CL_DemoListNext_f( void );
+void CL_DemoCut_f( void );
+//void CL_DemoShutDown( void );
+void CL_DemoSetCGameTime( void );
+void demoConvert( const char *oldName, const char *newName, qboolean smoothen );
+qboolean demoPlay( const char *fileName, qboolean delDemo = qfalse );
+void demoStop( void );
 
 //
 // cl_main
@@ -486,6 +571,9 @@ qboolean CL_CheckPaused(void);
 void CL_DrawEngineMenus( void );
 void CL_UpdateCursorPosition( int dx, int dy );
 void CL_CursorButton( int key );
+
+void CL_ShowNotification( const char *message );
+void CL_ShowNotification2( const char *message, const int flag );
 
 //
 // cl_input
@@ -563,6 +651,7 @@ void	SCR_DrawPic( float x, float y, float width, float height, qhandle_t hShader
 void	SCR_DrawNamedPic( float x, float y, float width, float height, const char *picname );
 
 void	SCR_DrawBigString( int x, int y, const char *s, float alpha, qboolean noColorEscape );			// draws a string with embedded color control characters with fade
+void	SCR_DrawStringExt2( float x, float y, float charWidth, float charHeight, const char *string, float *setColor, qboolean forceColor, qboolean noColorEscape );
 void	SCR_DrawBigStringColor( int x, int y, const char *s, vec4_t color, qboolean noColorEscape );	// ignores embedded color control characters
 void	SCR_DrawSmallStringExt( int x, int y, const char *string, float *setColor, qboolean forceColor, qboolean noColorEscape );
 void	SCR_DrawSmallChar( int x, int y, int ch );
@@ -584,6 +673,7 @@ void CIN_SetExtents (int handle, int x, int y, int w, int h);
 void CIN_SetLooping (int handle, qboolean loop);
 void CIN_UploadCinematic(int handle);
 void CIN_CloseAllVideos(void);
+void CIN_AdjustTime(int time);
 
 //
 // cl_cgame.c
@@ -614,12 +704,17 @@ void CL_Netchan_Transmit( netchan_t *chan, msg_t* msg);	//int length, const byte
 void CL_Netchan_TransmitNextFragment( netchan_t *chan );
 qboolean CL_Netchan_Process( netchan_t *chan, msg_t *msg );
 
+
 //
-// cl_avi.c
+// cl_mme.c
 //
-qboolean CL_OpenAVIForWriting( const char *filename );
-void CL_TakeVideoFrame( void );
-void CL_WriteAVIVideoFrame( const byte *imageBuffer, int size );
-void CL_WriteAVIAudioFrame( const byte *pcmBuffer, int size );
-qboolean CL_CloseAVI( void );
-qboolean CL_VideoRecording( void );
+void CL_MME_CheckCvarChanges(void);
+
+
+// cg_demos_auto.c
+
+extern void demoAutoSave_f(void);
+extern void demoAutoSaveLast_f(void);
+extern void demoAutoComplete(void);
+extern void demoAutoRecord(void);
+extern void demoAutoInit(void);

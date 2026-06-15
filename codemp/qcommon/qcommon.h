@@ -25,7 +25,13 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 #pragma once
 
 // qcommon.h -- definitions common between client and server, but not game.or ref modules
-
+#ifdef __ANDROID__
+#include <android/log.h>
+#define LOGTAG "jaMME"
+#define LOGI(...) ((void)__android_log_print(ANDROID_LOG_INFO,LOGTAG, __VA_ARGS__))
+#define LOGW(...) ((void)__android_log_print(ANDROID_LOG_WARN,LOGTAG, __VA_ARGS__))
+#define LOGE(...) ((void)__android_log_print(ANDROID_LOG_ERROR,LOGTAG, __VA_ARGS__))
+#endif
 #include "qcommon/q_shared.h"
 #include "sys/sys_public.h"
 
@@ -538,7 +544,10 @@ void Cvar_CheckRange( cvar_t *cv, float minVal, float maxVal, qboolean shouldBeI
 void	Cvar_Restart(qboolean unsetVM);
 void	Cvar_Restart_f( void );
 
-void Cvar_CompleteCvarName( char *args, int argNum );
+void	Cvar_CompleteCvarName( char *args, int argNum );
+
+// MME: make Cvar_FindCvar public
+cvar_t *Cvar_FindVar( const char *var_name );
 
 extern uint32_t cvar_modifiedFlags;
 // whenever a cvar is modifed, its flags will be OR'd into this, so
@@ -574,6 +583,9 @@ issues.
 #	define Q3CONFIG_CFG PRODUCT_NAME ".cfg"
 #endif
 
+qboolean FS_CopyFileAbsolute( char *fromOSPath, char *toOSPath );
+qboolean FS_CopyFile( char *fromOSPath, char *toOSPath, char *newOSPath, const int newSize );
+
 qboolean FS_Initialized();
 
 void	FS_InitFilesystem (void);
@@ -597,7 +609,10 @@ void FS_HomeRemove( const char *homePath );
 void FS_Rmdir( const char *osPath, qboolean recursive );
 void FS_HomeRmdir( const char *homePath, qboolean recursive );
 
+qboolean FS_FileExistsInPaks( const char *qpath );
 qboolean FS_FileExists( const char *file );
+FILE *	FS_DirectOpen( const char *name, const char *mode );
+qboolean FS_FileErase( const char *file );
 
 char   *FS_BuildOSPath( const char *base, const char *game, const char *qpath );
 qboolean FS_CompareZipChecksum(const char *zipfile);
@@ -606,6 +621,8 @@ int		FS_GetFileList(  const char *path, const char *extension, char *listbuf, in
 int		FS_GetModList(  char *listbuf, int bufsize );
 
 fileHandle_t	FS_FOpenFileWrite( const char *qpath, qboolean safe=qtrue );
+fileHandle_t	FS_FDirectOpenFileWrite( const char *filename, const char *mode );
+fileHandle_t	FS_FOpenFileReadWrite( const char *filename );
 // will properly create any needed paths and deal with seperater character issues
 
 int		FS_filelength( fileHandle_t f );
@@ -627,6 +644,7 @@ qboolean FS_FindPureDLL(const char *name);
 
 int		FS_Write( const void *buffer, int len, fileHandle_t f );
 
+int		FS_Read2( void *buffer, int len, fileHandle_t f );
 int		FS_Read( void *buffer, int len, fileHandle_t f );
 // properly handles partial reads and reads from other dlls
 
@@ -652,6 +670,9 @@ void	FS_WriteFile( const char *qpath, const void *buffer, int size );
 
 int		FS_filelength( fileHandle_t f );
 // doesn't work for files that are opened from a pack file
+
+qboolean FS_FEof( fileHandle_t f );
+// did we reach the end?
 
 int		FS_FTell( fileHandle_t f );
 // where are we?
@@ -707,6 +728,10 @@ void FS_Rename( const char *from, const char *to );
 
 qboolean FS_WriteToTemporaryFile( const void *data, size_t dataLength, char **tempFileName );
 const char *FS_MV_VerifyDownloadPath(const char *pk3file);
+
+fileHandle_t FS_PipeOpen(const char *qcmd, const char *qpath, const char *mode);
+void FS_PipeClose(fileHandle_t f);
+int FS_PipeWrite(const void *buffer, int len, fileHandle_t f);
 
 
 /*
@@ -767,6 +792,9 @@ qboolean	Com_SafeMode( void );
 void		Com_RunAndTimeServerPacket(const netadr_t *evFrom, msg_t *buf);
 
 void		Com_StartupVariable( const char *match );
+
+extern char	loadingMsg[64];
+void		Com_SetLoadingMsg(char *msg);
 // checks for and removes command line "+set var arg" constructs
 // if match is NULL, all set commands will be executed, otherwise
 // only a set with the exact name.  Only used during startup.
@@ -813,6 +841,8 @@ extern	qboolean	com_errorEntered;
 extern	fileHandle_t	logfile;
 extern	fileHandle_t	com_journalFile;
 extern	fileHandle_t	com_journalDataFile;
+
+void Com_ShowNotification( const char *message, const int flags );
 
 /*
 typedef enum {
@@ -900,6 +930,9 @@ void Hunk_Log( void);
 void Hunk_Trash( void );
 
 void Com_TouchMemory( void );
+
+void Com_ParseCommandLine( char *cmdLine );
+qboolean Com_AddStartupCommands( void );
 
 // commandLine should not include the executable name (argv[0])
 void Com_Init( char *commandLine );

@@ -17,7 +17,7 @@ void NormalizePath( char *out, const char *path, size_t outSize )
 }
 
 // This differs significantly from Raven's own caching code.
-// For starters, we are allowed to use ri-> whatever because we don't care about running on dedicated (use rd-vanilla!)
+// For starters, we are allowed to use ri-> whatever because we don't care about running on dedicated (use rd-jamme!)
 
 CModelCacheManager *CModelCache = new CModelCacheManager();
 

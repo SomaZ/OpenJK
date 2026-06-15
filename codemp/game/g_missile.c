@@ -1,29 +1,8 @@
-/*
-===========================================================================
-Copyright (C) 1999 - 2005, Id Software, Inc.
-Copyright (C) 2000 - 2013, Raven Software, Inc.
-Copyright (C) 2001 - 2013, Activision, Inc.
-Copyright (C) 2013 - 2015, OpenJK contributors
-
-This file is part of the OpenJK source code.
-
-OpenJK is free software; you can redistribute it and/or modify it
-under the terms of the GNU General Public License version 2 as
-published by the Free Software Foundation.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU General Public License for more details.
-
-You should have received a copy of the GNU General Public License
-along with this program; if not, see <http://www.gnu.org/licenses/>.
-===========================================================================
-*/
-
+// Copyright (C) 1999-2000 Id Software, Inc.
+//
 #include "g_local.h"
 #include "w_saber.h"
-#include "qcommon/q_shared.h"
+#include "../qcommon/q_shared.h"
 
 #define	MISSILE_PRESTEP_TIME	50
 
@@ -40,12 +19,18 @@ G_ReflectMissile
 ================
 */
 float RandFloat(float min, float max);
-void G_ReflectMissile( gentity_t *ent, gentity_t *missile, vec3_t forward )
+void G_ReflectMissile( gentity_t *ent, gentity_t *missile, vec3_t forward ) 
 {
 	vec3_t	bounce_dir;
 	int		i;
 	float	speed;
+	gentity_t	*owner = ent;
 	int		isowner = 0;
+
+	if ( ent->r.ownerNum )
+	{
+		owner = &g_entities[ent->r.ownerNum];
+	}
 
 	if (missile->r.ownerNum == ent->s.number)
 	{ //the original owner is bouncing the missile, so don't try to bounce it back at him
@@ -55,6 +40,7 @@ void G_ReflectMissile( gentity_t *ent, gentity_t *missile, vec3_t forward )
 	//save the original speed
 	speed = VectorNormalize( missile->s.pos.trDelta );
 
+	//if ( ent && owner && owner->NPC && owner->enemy && Q_stricmp( "Tavion", owner->NPC_type ) == 0 && Q_irand( 0, 3 ) )
 	if ( &g_entities[missile->r.ownerNum] && missile->s.weapon != WP_SABER && missile->s.weapon != G2_MODEL_PART && !isowner )
 	{//bounce back at them if you can
 		VectorSubtract( g_entities[missile->r.ownerNum].r.currentOrigin, missile->r.currentOrigin, bounce_dir );
@@ -100,12 +86,18 @@ void G_ReflectMissile( gentity_t *ent, gentity_t *missile, vec3_t forward )
 	}
 }
 
-void G_DeflectMissile( gentity_t *ent, gentity_t *missile, vec3_t forward )
+void G_DeflectMissile( gentity_t *ent, gentity_t *missile, vec3_t forward ) 
 {
 	vec3_t	bounce_dir;
 	int		i;
 	float	speed;
+	int		isowner = 0;
 	vec3_t missile_dir;
+
+	if (missile->r.ownerNum == ent->s.number)
+	{ //the original owner is bouncing the missile, so don't try to bounce it back at him
+		isowner = 1;
+	}
 
 	//save the original speed
 	speed = VectorNormalize( missile->s.pos.trDelta );
@@ -163,7 +155,7 @@ void G_BounceMissile( gentity_t *ent, trace_t *trace ) {
 	VectorMA( velocity, -2*dot, trace->plane.normal, ent->s.pos.trDelta );
 
 
-	if ( ent->flags & FL_BOUNCE_SHRAPNEL )
+	if ( ent->flags & FL_BOUNCE_SHRAPNEL ) 
 	{
 		VectorScale( ent->s.pos.trDelta, 0.25f, ent->s.pos.trDelta );
 		ent->s.pos.trType = TR_GRAVITY;
@@ -176,11 +168,11 @@ void G_BounceMissile( gentity_t *ent, trace_t *trace ) {
 			return;
 		}
 	}
-	else if ( ent->flags & FL_BOUNCE_HALF )
+	else if ( ent->flags & FL_BOUNCE_HALF ) 
 	{
 		VectorScale( ent->s.pos.trDelta, 0.65f, ent->s.pos.trDelta );
 		// check for stop
-		if ( trace->plane.normal[2] > 0.2 && VectorLength( ent->s.pos.trDelta ) < 40 )
+		if ( trace->plane.normal[2] > 0.2 && VectorLength( ent->s.pos.trDelta ) < 40 ) 
 		{
 			G_SetOrigin( ent, trace->endpos );
 			return;
@@ -238,8 +230,8 @@ void G_ExplodeMissile( gentity_t *ent ) {
 	ent->takedamage = qfalse;
 	// splash damage
 	if ( ent->splashDamage ) {
-		if( G_RadiusDamage( ent->r.currentOrigin, ent->parent, ent->splashDamage, ent->splashRadius, ent,
-				ent, ent->splashMethodOfDeath ) )
+		if( G_RadiusDamage( ent->r.currentOrigin, ent->parent, ent->splashDamage, ent->splashRadius, ent, 
+				ent, ent->splashMethodOfDeath ) ) 
 		{
 			if (ent->parent)
 			{
@@ -252,7 +244,7 @@ void G_ExplodeMissile( gentity_t *ent ) {
 		}
 	}
 
-	trap->LinkEntity( (sharedEntity_t *)ent );
+	trap_LinkEntity( ent );
 }
 
 void G_RunStuckMissile( gentity_t *ent )
@@ -263,7 +255,7 @@ void G_RunStuckMissile( gentity_t *ent )
 		{
 			gentity_t *other = &g_entities[ent->s.groundEntityNum];
 
-			if ( (!VectorCompare( vec3_origin, other->s.pos.trDelta ) && other->s.pos.trType != TR_STATIONARY) ||
+			if ( (!VectorCompare( vec3_origin, other->s.pos.trDelta ) && other->s.pos.trType != TR_STATIONARY) || 
 				(!VectorCompare( vec3_origin, other->s.apos.trDelta ) && other->s.apos.trType != TR_STATIONARY) )
 			{//thing I stuck to is moving or rotating now, kill me
 				G_Damage( ent, other, other, NULL, NULL, 99999, 0, MOD_CRUSH );
@@ -294,14 +286,14 @@ void G_BounceProjectile( vec3_t start, vec3_t impact, vec3_t dir, vec3_t endout 
 
 
 //-----------------------------------------------------------------------------
-gentity_t *CreateMissile( vec3_t org, vec3_t dir, float vel, int life,
+gentity_t *CreateMissile( vec3_t org, vec3_t dir, float vel, int life, 
 							gentity_t *owner, qboolean altFire)
 //-----------------------------------------------------------------------------
 {
 	gentity_t	*missile;
 
 	missile = G_Spawn();
-
+	
 	missile->nextthink = level.time + life;
 	missile->think = G_FreeEntity;
 	missile->s.eType = ET_MISSILE;
@@ -385,9 +377,9 @@ void G_MissileImpact( gentity_t *ent, trace_t *trace ) {
 
 		isKnockedSaber = qtrue;
 	}
-
+	
 	// I would glom onto the FL_BOUNCE code section above, but don't feel like risking breaking something else
-	if ( (!other->takedamage && (ent->bounceCount > 0 || ent->bounceCount == -5) && ( ent->flags&(FL_BOUNCE_SHRAPNEL) ) ) || ((trace->surfaceFlags&SURF_FORCEFIELD)&&!ent->splashDamage&&!ent->splashRadius&&(ent->bounceCount > 0 || ent->bounceCount == -5)) )
+	if ( (!other->takedamage && (ent->bounceCount > 0 || ent->bounceCount == -5) && ( ent->flags&(FL_BOUNCE_SHRAPNEL) ) ) || ((trace->surfaceFlags&SURF_FORCEFIELD)&&!ent->splashDamage&&!ent->splashRadius&&(ent->bounceCount > 0 || ent->bounceCount == -5)) ) 
 	{
 		G_BounceMissile( ent, trace );
 
@@ -402,11 +394,11 @@ void G_MissileImpact( gentity_t *ent, trace_t *trace ) {
 	if ( !other->takedamage && ent->s.weapon == WP_THERMAL && !ent->alt_fire )
 	{//rolling thermal det - FIXME: make this an eFlag like bounce & stick!!!
 		//G_BounceRollMissile( ent, trace );
-		if ( ent->owner && ent->owner->s.number == 0 )
+		if ( ent->owner && ent->owner->s.number == 0 ) 
 		{
 			G_MissileAddAlerts( ent );
 		}
-		//trap->linkentity( ent );
+		//gi.linkentity( ent );
 		return;
 	}
 	*/
@@ -472,7 +464,7 @@ void G_MissileImpact( gentity_t *ent, trace_t *trace ) {
 		ent->s.weapon != WP_DEMP2 &&
 		ent->s.weapon != WP_EMPLACED_GUN &&
 		ent->methodOfDeath != MOD_REPEATER_ALT &&
-		ent->methodOfDeath != MOD_FLECHETTE_ALT_SPLASH &&
+		ent->methodOfDeath != MOD_FLECHETTE_ALT_SPLASH && 
 		ent->methodOfDeath != MOD_TURBLAST &&
 		ent->methodOfDeath != MOD_VEHICLE &&
 		ent->methodOfDeath != MOD_CONC &&
@@ -494,7 +486,7 @@ void G_MissileImpact( gentity_t *ent, trace_t *trace ) {
 		G_MissileBounceEffect(ent, ent->r.currentOrigin, fwd);
 		return;
 	}
-
+		
 	if (other->takedamage && other->client &&
 		ent->s.weapon != WP_ROCKET_LAUNCHER &&
 		ent->s.weapon != WP_THERMAL &&
@@ -643,7 +635,7 @@ void G_MissileImpact( gentity_t *ent, trace_t *trace ) {
 	}
 
 	// check for sticking
-	if ( !other->takedamage && ( ent->s.eFlags & EF_MISSILE_STICK ) )
+	if ( !other->takedamage && ( ent->s.eFlags & EF_MISSILE_STICK ) ) 
 	{
 		laserTrapStick( ent, trace->endpos, trace->plane.normal );
 		G_AddEvent( ent, EV_MISSILE_STICK, 0 );
@@ -673,8 +665,8 @@ void G_MissileImpact( gentity_t *ent, trace_t *trace ) {
 				{
 					/* fix: there are rare situations where flechette did
 					explode by timeout AND by impact in the very same frame, then here
-					ent->think was set to G_FreeEntity, so the folowing think
-					did invalidate this entity, BUT it would be reused later in this
+					ent->think was set to G_FreeEntity, so the folowing think 
+					did invalidate this entity, BUT it would be reused later in this 
 					function for explosion event. This, then, would set ent->freeAfterEvent
 					to qtrue, so event later, when reusing this entity by using G_InitEntity(),
 					it would have this freeAfterEvent set AND this would in case of dropped
@@ -686,7 +678,7 @@ void G_MissileImpact( gentity_t *ent, trace_t *trace ) {
 				else
 				{
 					G_Damage (other, ent, &g_entities[ent->r.ownerNum], velocity,
-						/*ent->s.origin*/ent->r.currentOrigin, ent->damage,
+						/*ent->s.origin*/ent->r.currentOrigin, ent->damage, 
 						DAMAGE_HALF_ABSORB, ent->methodOfDeath);
 					didDmg = qtrue;
 				}
@@ -694,7 +686,7 @@ void G_MissileImpact( gentity_t *ent, trace_t *trace ) {
 			else
 			{
 				G_Damage (other, ent, &g_entities[ent->r.ownerNum], velocity,
-					/*ent->s.origin*/ent->r.currentOrigin, ent->damage,
+					/*ent->s.origin*/ent->r.currentOrigin, ent->damage, 
 					0, ent->methodOfDeath);
 				didDmg = qtrue;
 			}
@@ -790,9 +782,9 @@ killProj:
 	ent->takedamage = qfalse;
 	// splash damage (doesn't apply to person directly hit)
 	if ( ent->splashDamage ) {
-		if( G_RadiusDamage( trace->endpos, ent->parent, ent->splashDamage, ent->splashRadius,
+		if( G_RadiusDamage( trace->endpos, ent->parent, ent->splashDamage, ent->splashRadius, 
 			other, ent, ent->splashMethodOfDeath ) ) {
-			if( !hitClient
+			if( !hitClient 
 				&& g_entities[ent->r.ownerNum].client ) {
 				g_entities[ent->r.ownerNum].client->accuracy_hits++;
 			}
@@ -804,7 +796,7 @@ killProj:
 		ent->freeAfterEvent = qfalse; //it will free itself
 	}
 
-	trap->LinkEntity( (sharedEntity_t *)ent );
+	trap_LinkEntity( ent );
 }
 
 /*
@@ -833,7 +825,7 @@ void G_RunMissile( gentity_t *ent ) {
 	}
 	else {
 		// ignore interactions with the missile owner
-		if ( (ent->r.svFlags&SVF_OWNERNOTSHARED)
+		if ( (ent->r.svFlags&SVF_OWNERNOTSHARED) 
 			&& (ent->s.eFlags&EF_JETPACK_ACTIVE) )
 		{//A vehicle missile that should be solid to its owner
 			//I don't care about hitting my owner
@@ -847,7 +839,7 @@ void G_RunMissile( gentity_t *ent ) {
 	// trace a line from the previous position to the current position
 	if (d_projectileGhoul2Collision.integer)
 	{
-		trap->Trace( &tr, ent->r.currentOrigin, ent->r.mins, ent->r.maxs, origin, passent, ent->clipmask, qfalse, G2TRFLAG_DOGHOULTRACE|G2TRFLAG_GETSURFINDEX|G2TRFLAG_THICK|G2TRFLAG_HITCORPSES, g_g2TraceLod.integer );
+		trap_G2Trace( &tr, ent->r.currentOrigin, ent->r.mins, ent->r.maxs, origin, passent, ent->clipmask, G2TRFLAG_DOGHOULTRACE|G2TRFLAG_GETSURFINDEX|G2TRFLAG_THICK|G2TRFLAG_HITCORPSES, g_g2TraceLod.integer );
 
 		if (tr.fraction != 1.0 && tr.entityNum < ENTITYNUM_WORLD)
 		{
@@ -867,12 +859,12 @@ void G_RunMissile( gentity_t *ent ) {
 	}
 	else
 	{
-		trap->Trace( &tr, ent->r.currentOrigin, ent->r.mins, ent->r.maxs, origin, passent, ent->clipmask, qfalse, 0, 0 );
+		trap_Trace( &tr, ent->r.currentOrigin, ent->r.mins, ent->r.maxs, origin, passent, ent->clipmask );
 	}
 
 	if ( tr.startsolid || tr.allsolid ) {
 		// make sure the tr.entityNum is set to the entity we're stuck in
-		trap->Trace( &tr, ent->r.currentOrigin, ent->r.mins, ent->r.maxs, ent->r.currentOrigin, passent, ent->clipmask, qfalse, 0, 0 );
+		trap_Trace( &tr, ent->r.currentOrigin, ent->r.mins, ent->r.maxs, ent->r.currentOrigin, passent, ent->clipmask );
 		tr.fraction = 0;
 	}
 	else {
@@ -882,11 +874,11 @@ void G_RunMissile( gentity_t *ent ) {
 	if (ent->passThroughNum && tr.entityNum == (ent->passThroughNum-1))
 	{
 		VectorCopy( origin, ent->r.currentOrigin );
-		trap->LinkEntity( (sharedEntity_t *)ent );
+		trap_LinkEntity( ent );
 		goto passthrough;
 	}
 
-	trap->LinkEntity( (sharedEntity_t *)ent );
+	trap_LinkEntity( ent );
 
 	if (ent->s.weapon == G2_MODEL_PART && !ent->bounceCount)
 	{
@@ -895,7 +887,7 @@ void G_RunMissile( gentity_t *ent ) {
 
 		VectorCopy(ent->r.currentOrigin, lowerOrg);
 		lowerOrg[2] -= 1;
-		trap->Trace( &trG, ent->r.currentOrigin, ent->r.mins, ent->r.maxs, lowerOrg, passent, ent->clipmask, qfalse, 0, 0 );
+		trap_Trace( &trG, ent->r.currentOrigin, ent->r.mins, ent->r.maxs, lowerOrg, passent, ent->clipmask );
 
 		VectorCopy(trG.endpos, groundSpot);
 

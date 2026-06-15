@@ -43,6 +43,7 @@ bool g_bRenderGlowingObjects = false;
 bool g_bDynamicGlowSupported = false;
 
 extern void R_RotateForViewer(void);
+extern void R_SetupProjection( void );
 extern void R_SetupFrustum(void);
 
 static const float s_flipMatrix[16] = {
@@ -75,6 +76,12 @@ void GL_Bind( image_t *image ) {
 		image->frameUsed = tr.frameCount;
 		glState.currenttextures[glState.currenttmu] = texnum;
 		qglBindTexture (GL_TEXTURE_2D, texnum);
+#ifdef __ANDROID__
+		extern void R_ReCreateImage( image_t *const image );
+		if ( image->recreate ) {
+			R_ReCreateImage( image );
+		}
+#endif
 	}
 }
 
@@ -337,6 +344,7 @@ void GL_State( uint32_t stateBits )
 	//
 	if ( diff & GLS_POLYMODE_LINE )
 	{
+#ifndef HAVE_GLES
 		if ( stateBits & GLS_POLYMODE_LINE )
 		{
 			qglPolygonMode( GL_FRONT_AND_BACK, GL_LINE );
@@ -345,6 +353,7 @@ void GL_State( uint32_t stateBits )
 		{
 			qglPolygonMode( GL_FRONT_AND_BACK, GL_FILL );
 		}
+#endif
 	}
 
 	//
@@ -421,8 +430,92 @@ static void RB_Hyperspace( void ) {
 }
 
 
+/*static void SetFinalProjection( void ) {
+	float	xmin, xmax, ymin, ymax;
+	float	width, height, depth;
+	float	zNear, zFar, zProj, stereoSep;
+	float	dx, dy;
+	float	fovX, fovY;
+	vec2_t	pixelJitter, eyeJitter;
+	
+	//
+	// set up projection matrix
+	//
+	zNear	= r_znear->value;
+	zFar	= backEnd.viewParms.zFar;
+
+	zProj	= r_zproj->value;
+	stereoSep = r_stereoSeparation->value / 100.0f;
+
+	if ( R_MME_CubemapActive( (qboolean)( stereoSep > 0.0f ) ) ) {
+		fovY = 90.0f * M_PI / 360.0f;
+		fovX = atan2( backEnd.viewParms.viewportWidth, backEnd.viewParms.viewportHeight / tan( 90.0f / 360.0f * M_PI ) );
+	} else {
+		fovY = backEnd.viewParms.fovY * M_PI / 360.0f;
+		fovX = backEnd.viewParms.fovX * M_PI / 360.0f;
+	}
+
+	ymax = zNear * tan( fovY );
+	ymin = -ymax;
+
+	xmax = zNear * tan( fovX );
+	xmin = -xmax;
+
+	width = xmax - xmin;
+	height = ymax - ymin;
+	depth = zFar - zNear;
+
+	pixelJitter[0] = pixelJitter[1] = 0;
+	eyeJitter[0] = eyeJitter[1] = 0;
+	/* Jitter the view *//*
+	R_MME_JitterView( pixelJitter, eyeJitter, (qboolean)( stereoSep > 0.0f ) );
+	if ( R_MME_CubemapActive( (qboolean)( stereoSep > 0.0f ) ) )
+		stereoSep = 0.0f;
+
+	dx = ( pixelJitter[0]*width ) / backEnd.viewParms.viewportWidth;
+	dy = ( pixelJitter[1]*height ) / backEnd.viewParms.viewportHeight;
+	dx += eyeJitter[0];
+	dy += eyeJitter[1];
+
+	xmin += dx; xmax += dx;
+	ymin += dy; ymax += dy;
+
+	qglMatrixMode(GL_PROJECTION);
+	qglPushMatrix();
+	qglLoadIdentity();
+	qglFrustum( xmin, xmax, ymin, ymax, zNear, zFar );
+	qglGetFloatv(GL_PROJECTION_MATRIX, backEnd.viewParms.projectionMatrix );
+	qglPopMatrix();
+
+	backEnd.viewParms.projectionMatrix[0] = 2 * zNear / width;
+	backEnd.viewParms.projectionMatrix[4] = 0;
+	backEnd.viewParms.projectionMatrix[8] = ( xmax + xmin + 2 * stereoSep ) / width;	// normally 0
+	backEnd.viewParms.projectionMatrix[12] = 2 * zProj * stereoSep / width;
+
+	backEnd.viewParms.projectionMatrix[1] = 0;
+	backEnd.viewParms.projectionMatrix[5] = 2 * zNear / height;
+	backEnd.viewParms.projectionMatrix[9] = ( ymax + ymin ) / height;	// normally 0
+	backEnd.viewParms.projectionMatrix[13] = 0;
+
+	backEnd.viewParms.projectionMatrix[2] = 0;
+	backEnd.viewParms.projectionMatrix[6] = 0;
+	backEnd.viewParms.projectionMatrix[10] = -( zFar + zNear ) / depth;
+	backEnd.viewParms.projectionMatrix[14] = -2 * zFar * zNear / depth;
+
+	backEnd.viewParms.projectionMatrix[3] = 0;
+	backEnd.viewParms.projectionMatrix[7] = 0;
+	backEnd.viewParms.projectionMatrix[11] = -1;
+	backEnd.viewParms.projectionMatrix[15] = 0;
+}*/
+
 void SetViewportAndScissor( void ) {
 	qglMatrixMode(GL_PROJECTION);
+
+//entTODO: do something
+//	R_SetupFrustum();
+//	R_SetupProjection();
+//	SetFinalProjection();
+
 	qglLoadMatrixf( backEnd.viewParms.projectionMatrix );
 	qglMatrixMode(GL_MODELVIEW);
 
@@ -466,7 +559,7 @@ void RB_BeginDrawingView (void) {
 	GL_State( GLS_DEFAULT );
 
 	// clear relevant buffers
-	if ( r_measureOverdraw->integer || r_shadows->integer == 2 || tr_stencilled )
+	if ( r_measureOverdraw->integer || r_shadows->integer == 2 || tr_stencilled /*|| mme_saveStencil->integer*/ )
 	{
 		clearBits |= GL_STENCIL_BUFFER_BIT;
 		tr_stencilled = false;
@@ -539,7 +632,11 @@ void RB_BeginDrawingView (void) {
 	// clip to the plane of the portal
 	if ( backEnd.viewParms.isPortal ) {
 		float	plane[4];
+#ifdef HAVE_GLES
+		float	plane2[4];
+#else
 		double	plane2[4];
+#endif
 
 		plane[0] = backEnd.viewParms.portalPlane.normal[0];
 		plane[1] = backEnd.viewParms.portalPlane.normal[1];
@@ -622,9 +719,9 @@ RB_RenderDrawSurfList
 #define MAX_POST_RENDERS	128
 
 typedef struct postRender_s {
-	int			fogNum;
-	int			entNum;
-	int			dlighted;
+	int64_t		fogNum;
+	int64_t		entNum;
+	int64_t		dlighted;
 	int			depthRange;
 	drawSurf_t	*drawSurf;
 	shader_t	*shader;
@@ -672,14 +769,14 @@ static inline bool R_AverageTessXYZ(vec3_t dest)
 
 void RB_RenderDrawSurfList( drawSurf_t *drawSurfs, int numDrawSurfs ) {
 	shader_t		*shader, *oldShader;
-	int				fogNum, oldFogNum;
-	int				entityNum, oldEntityNum;
-	int				dlighted, oldDlighted;
+	int64_t			fogNum, oldFogNum;
+	int64_t			entityNum, oldEntityNum;
+	int64_t			dlighted, oldDlighted;
 	int				depthRange, oldDepthRange;
 	int				i;
 	drawSurf_t		*drawSurf;
-	unsigned int	oldSort;
-	float			originalTime;
+	uint64_t		oldSort;
+	double			originalTime;
 	trRefEntity_t	*curEnt;
 	postRender_t	*pRender;
 	bool			didShadowPass = false;
@@ -702,7 +799,7 @@ void RB_RenderDrawSurfList( drawSurf_t *drawSurfs, int numDrawSurfs ) {
 	oldFogNum = -1;
 	oldDepthRange = qfalse;
 	oldDlighted = qfalse;
-	oldSort = (unsigned int) -1;
+	oldSort = (uint64_t) -1;
 	depthRange = qfalse;
 
 	backEnd.pc.c_surfaces += numDrawSurfs;
@@ -1204,7 +1301,7 @@ void	RB_SetGL2D (void) {
 
 	// set time for 2D shaders
 	backEnd.refdef.time = ri.Milliseconds()*ri.Cvar_VariableValue( "timescale" );
-	backEnd.refdef.floatTime = backEnd.refdef.time * 0.001f;
+	backEnd.refdef.floatTime = backEnd.refdef.time * 0.001;
 }
 
 
@@ -1250,7 +1347,13 @@ void RE_StretchRaw (int x, int y, int w, int h, int cols, int rows, const byte *
 	if ( cols != tr.scratchImage[client]->width || rows != tr.scratchImage[client]->height ) {
 		tr.scratchImage[client]->width = cols;
 		tr.scratchImage[client]->height = rows;
-		qglTexImage2D( GL_TEXTURE_2D, 0, GL_RGB8, cols, rows, 0, GL_RGBA, GL_UNSIGNED_BYTE, data );
+#ifdef HAVE_GLES
+		//don't do qglTexImage2D as this may end up doing a compressed image
+		//on which we are not allowed to do further sub images
+		qglTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, cols, rows, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
+#else
+		qglTexImage2D(GL_TEXTURE_2D, 0, GL_RGB8, cols, rows, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
+#endif
 		qglTexParameterf( GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR );
 		qglTexParameterf( GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR );
 		qglTexParameterf( GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, glConfig.clampToEdgeAvailable ? GL_CLAMP_TO_EDGE : GL_CLAMP );
@@ -1272,6 +1375,34 @@ void RE_StretchRaw (int x, int y, int w, int h, int cols, int rows, const byte *
 
 	qglColor3f( tr.identityLight, tr.identityLight, tr.identityLight );
 
+#ifdef HAVE_GLES
+	qglColor4f(tr.identityLight, tr.identityLight, tr.identityLight, 1.0f);
+	GLfloat tex[] = {
+		0.5 / cols,  0.5 / rows,
+		(cols - 0.5) / cols ,  0.5 / rows,
+		(cols - 0.5) / cols, (rows - 0.5) / rows,
+		0.5 / cols, (rows - 0.5) / rows
+	};
+	GLfloat vtx[] = {
+		x, y,
+		x + w, y,
+		x + w, y + h,
+		x, y + h
+	};
+	GLboolean text = qglIsEnabled(GL_TEXTURE_COORD_ARRAY);
+	GLboolean glcol = qglIsEnabled(GL_COLOR_ARRAY);
+	if (glcol)
+		qglDisableClientState(GL_COLOR_ARRAY);
+	if (!text)
+		qglEnableClientState(GL_TEXTURE_COORD_ARRAY);
+	qglTexCoordPointer(2, GL_FLOAT, 0, tex);
+	qglVertexPointer(2, GL_FLOAT, 0, vtx);
+	qglDrawArrays(GL_TRIANGLE_FAN, 0, 4);
+	if (glcol)
+		qglEnableClientState(GL_COLOR_ARRAY);
+	if (!text)
+		qglDisableClientState(GL_TEXTURE_COORD_ARRAY);
+#else
 	qglBegin (GL_QUADS);
 	qglTexCoord2f ( 0.5f / cols,  0.5f / rows );
 	qglVertex2f (x, y);
@@ -1282,6 +1413,7 @@ void RE_StretchRaw (int x, int y, int w, int h, int cols, int rows, const byte *
 	qglTexCoord2f ( 0.5f / cols, ( rows - 0.5f ) / rows );
 	qglVertex2f (x, y+h);
 	qglEnd ();
+#endif
 }
 
 void RE_UploadCinematic (int cols, int rows, const byte *data, int client, qboolean dirty) {
@@ -1293,7 +1425,13 @@ void RE_UploadCinematic (int cols, int rows, const byte *data, int client, qbool
 		// Note: q3 has the commented sections being uploaded width/height
 		tr.scratchImage[client]->width = /*tr.scratchImage[client]->width =*/ cols;
 		tr.scratchImage[client]->height = /*tr.scratchImage[client]->height =*/ rows;
-		qglTexImage2D( GL_TEXTURE_2D, 0, GL_RGB8, cols, rows, 0, GL_RGBA, GL_UNSIGNED_BYTE, data );
+#ifdef HAVE_GLES
+		//don't do qglTexImage2D as this may end up doing a compressed image
+		//on which we are not allowed to do further sub images
+		qglTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, cols, rows, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
+#else
+		qglTexImage2D(GL_TEXTURE_2D, 0, GL_RGB8, cols, rows, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
+#endif
 		qglTexParameterf( GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR );
 		qglTexParameterf( GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR );
 		qglTexParameterf( GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, glConfig.clampToEdgeAvailable ? GL_CLAMP_TO_EDGE : GL_CLAMP );
@@ -1501,6 +1639,22 @@ const void *RB_RotatePic ( const void *data )
 
 /*
 =============
+RB_RotatePic2RatioFix
+=============
+*/
+static float ratioFix = 1.0f;
+const void *RB_RotatePic2RatioFix( const void *data ) {
+	const rotatePicRatioFixCommand_t *cmd;
+	cmd = (const rotatePicRatioFixCommand_t *)data;
+	if (cmd->ratio <= 0.0f)
+		ratioFix = 1.0f;
+	else
+		ratioFix = cmd->ratio;
+	return (const void *)(cmd + 1);
+}
+
+/*
+=============
 RB_DrawRotatePic2
 =============
 */
@@ -1536,7 +1690,7 @@ const void *RB_RotatePic2 ( const void *data )
 			RB_CHECKOVERFLOW( 4, 6 );
 			int numVerts = tess.numVertexes;
 			int numIndexes = tess.numIndexes;
-
+//entTODO: apply ratio fix scale
 			float angle = DEG2RAD( cmd-> a );
 			float s = sinf( angle );
 			float c = cosf( angle );
@@ -1606,6 +1760,27 @@ const void *RB_RotatePic2 ( const void *data )
 	return (const void *)(cmd + 1);
 }
 
+extern void R_MirrorPoint(vec3_t in, orientation_t *surface, orientation_t *camera, vec3_t out);
+extern void R_MirrorVector(vec3_t in, orientation_t *surface, orientation_t *camera, vec3_t out);
+static void RB_MirrorView( orientationr_t* oldOri, orientationr_t* ori ) {
+	orientation_t	surface, camera;
+	
+	VectorCopy( backEnd.viewParms.portalPlane.normal, surface.axis[0] );
+	PerpendicularVector( surface.axis[1], surface.axis[0]);
+	CrossProduct( surface.axis[0], surface.axis[1], surface.axis[2] );
+
+	VectorScale( backEnd.viewParms.portalPlane.normal, backEnd.viewParms.portalPlane.dist, surface.origin );
+	VectorCopy( surface.origin, camera.origin );
+	VectorSubtract( vec3_origin, surface.axis[0], camera.axis[0] );
+	VectorCopy( surface.axis[1], camera.axis[1] );
+	VectorCopy( surface.axis[2], camera.axis[2] );
+
+	R_MirrorPoint( oldOri->origin, &surface, &camera, ori->origin );
+
+	R_MirrorVector( oldOri->axis[0], &surface, &camera, ori->axis[0] );
+	R_MirrorVector( oldOri->axis[1], &surface, &camera, ori->axis[1] );
+	R_MirrorVector( oldOri->axis[2], &surface, &camera, ori->axis[2] );
+}
 
 /*
 =============
@@ -1625,7 +1800,87 @@ const void	*RB_DrawSurfs( const void *data ) {
 
 	backEnd.refdef = cmd->refdef;
 	backEnd.viewParms = cmd->viewParms;
+	//Jitter the camera origin
+	if ( !(backEnd.refdef.rdflags & RDF_NOWORLDMODEL) ) {
+		float x, y;
+		int index;
+		if ( R_MME_CubemapIndex( &index, (qboolean)(r_stereoSeparation->value > 0) ) ) {
+			vec3_t oldAxis[3];
+			float stereoSep = r_stereoSeparation->value;
+			orientationr_t* ori = &backEnd.viewParms.ori;
+			orientationr_t* world = &backEnd.viewParms.world;
 
+			if ( backEnd.viewParms.isMirror ) {
+				ori = &backEnd.viewParms.oldOri;
+			}
+
+			/* Fixed camera for free observing */
+			if ( mme_saveCubemap->integer < 0 ) {
+				VectorSet( ori->axis[0], 1.0f, 0.0f, 0.0f );
+				VectorSet( ori->axis[1], 0.0f, 1.0f, 0.0f );
+				VectorSet( ori->axis[2], 0.0f, 0.0f, 1.0f );
+			}
+
+			if ( stereoSep ) {
+				vec3_t projOrigin;
+				VectorMA( ori->origin, r_zproj->value, ori->axis[0], projOrigin );
+				VectorMA( ori->origin, stereoSep, ori->axis[1], ori->origin );
+				VectorSubtract( projOrigin, ori->origin, ori->axis[0] );
+				VectorNormalize( ori->axis[0] );
+				CrossProduct( ori->axis[2], ori->axis[0], ori->axis[1] );
+			}
+
+			if ( backEnd.viewParms.isMirror ) {
+				orientationr_t* oldOri = ori;
+				ori = &backEnd.viewParms.ori;
+				RB_MirrorView( oldOri, ori );
+			}
+
+			AxisCopy( ori->axis, oldAxis );
+			/* Backward indexing so the last one is the front face */
+			switch ( index ) {
+				case 5: //front
+					break;
+				case 4: //right
+					VectorSubtract( vec3_origin, oldAxis[1], ori->axis[0] );
+					VectorCopy( oldAxis[0], ori->axis[1] );
+					break;
+				case 3: //back
+					VectorSubtract( vec3_origin, oldAxis[0], ori->axis[0] );
+					VectorSubtract( vec3_origin, oldAxis[1], ori->axis[1] );
+					break;
+				case 2: //left
+					VectorCopy( oldAxis[1], ori->axis[0] );
+					VectorSubtract( vec3_origin, oldAxis[0], ori->axis[1] );
+					break;
+				case 1: //top
+					VectorCopy( oldAxis[2], ori->axis[0] );
+					VectorSubtract( vec3_origin, oldAxis[0], ori->axis[2] );
+					break;
+				case 0: //bottom
+					VectorSubtract( vec3_origin, oldAxis[2], ori->axis[0] );
+					VectorCopy( oldAxis[0], ori->axis[2] );
+					break;
+			}
+
+			R_RotateForWorld( ori, world );
+		} else if ( R_MME_JitterOrigin( &x, &y, (qboolean)(r_stereoSeparation->value > 0) ) ) {
+			orientationr_t* ori = &backEnd.viewParms.ori;
+			orientationr_t* world = &backEnd.viewParms.world;
+
+			if ( backEnd.viewParms.isMirror ) {
+				ori = &backEnd.viewParms.oldOri;
+			}
+			VectorMA( ori->origin, x, ori->axis[1], ori->origin );
+			VectorMA( ori->origin, y, ori->axis[2], ori->origin );
+			if ( backEnd.viewParms.isMirror ) {
+				orientationr_t* oldOri = ori;
+				ori = &backEnd.viewParms.ori;
+				RB_MirrorView( oldOri, ori );
+			}
+			R_RotateForWorld( ori, world );
+		}
+	}
 	RB_RenderDrawSurfList( cmd->drawSurfs, cmd->numDrawSurfs );
 
 	// Dynamic Glow/Flares:
@@ -1638,7 +1893,8 @@ const void	*RB_DrawSurfs( const void *data ) {
 	*/
 
 	// Render dynamic glowing/flaring objects.
-	if ( !(backEnd.refdef.rdflags & RDF_NOWORLDMODEL) && g_bDynamicGlowSupported && r_DynamicGlow->integer )
+#ifndef HAVE_GLES
+	if ( !(backEnd.refdef.rdflags & RDF_NOWORLDMODEL) && !(backEnd.refdef.rdflags & RDF_NOGLOW) && g_bDynamicGlowSupported && r_DynamicGlow->integer )
 	{
 		// Copy the normal scene to texture.
 		qglDisable( GL_TEXTURE_2D );
@@ -1694,6 +1950,7 @@ const void	*RB_DrawSurfs( const void *data ) {
 		// Draw the glow additively over the screen.
 		RB_DrawGlowOverlay();
 	}
+#endif	// HAVE_GLES
 
 	return (const void *)(cmd + 1);
 }
@@ -1710,7 +1967,9 @@ const void	*RB_DrawBuffer( const void *data ) {
 
 	cmd = (const drawBufferCommand_t *)data;
 
+#ifndef HAVE_GLES
 	qglDrawBuffer( cmd->buffer );
+#endif
 
 	// clear screen for debugging
 	if (tr.world && tr.world->globalFog != -1)
@@ -1788,6 +2047,14 @@ void RB_ShowImages( void ) {
 //	start = ri.Milliseconds()*ri.Cvar_VariableValue( "timescale" );
 
 
+#ifdef HAVE_GLES
+	GLboolean text = qglIsEnabled(GL_TEXTURE_COORD_ARRAY);
+	GLboolean glcol = qglIsEnabled(GL_COLOR_ARRAY);
+	if (glcol)
+		qglDisableClientState(GL_COLOR_ARRAY);
+	if (!text)
+		qglEnableClientState(GL_TEXTURE_COORD_ARRAY);
+#endif
 	int i=0;
 	   				 R_Images_StartIteration();
 	while ( (image = R_Images_GetNextIteration()) != NULL)
@@ -1804,6 +2071,23 @@ void RB_ShowImages( void ) {
 		}
 
 		GL_Bind( image );
+#ifdef HAVE_GLES
+		static const GLfloat tex[] = {
+			0.0f, 0.0f,
+			1.0f, 0.0f,
+			1.0f, 1.0f,
+			0.0f, 1.0f
+		};
+		GLfloat vtx[] = {
+			x, y,
+			x + w, y,
+			x + w, y + h,
+			x, y + h
+		};
+		qglTexCoordPointer(2, GL_FLOAT, 0, tex);
+		qglVertexPointer(2, GL_FLOAT, 0, vtx);
+		qglDrawArrays(GL_TRIANGLE_FAN, 0, 4);
+#else
 		qglBegin (GL_QUADS);
 		qglTexCoord2f( 0, 0 );
 		qglVertex2f( x, y );
@@ -1814,9 +2098,16 @@ void RB_ShowImages( void ) {
 		qglTexCoord2f( 0, 1 );
 		qglVertex2f( x, y + h );
 		qglEnd();
+#endif
 		i++;
 	}
 
+#ifdef HAVE_GLES
+	if (glcol)
+		qglEnableClientState(GL_COLOR_ARRAY);
+	if (!text)
+		qglDisableClientState(GL_TEXTURE_COORD_ARRAY);
+#endif
 	qglFinish();
 
 //	end = ri.Milliseconds()*ri.Cvar_VariableValue( "timescale" );
@@ -1895,8 +2186,28 @@ const void	*RB_SwapBuffers( const void *data ) {
 
 	cmd = (const swapBuffersCommand_t *)data;
 
+	tr.capturingMultiPass = qfalse;
+	tr.firstMultiPassFrame = qfalse;
+	tr.latestMultiPassFrame = qfalse;
+
+	/* Take and merge multi pass frames */
+	if ( r_stereoSeparation->value <= 0.0f && !tr.finishStereo) {
+		if ( R_MME_CubemapNext( qfalse ) ) {
+			return (const void *)NULL;
+		} else if ( R_MME_MultiPassNext( qfalse ) ) {
+			return (const void *)NULL;
+		}
+	} else if ( r_stereoSeparation->value > 0.0f) {
+		if ( R_MME_CubemapNext( qtrue ) ) {
+			return (const void *)NULL;
+		} else if ( R_MME_MultiPassNext( qtrue ) ) {
+			return (const void *)NULL;
+		}
+	}
+	tr.capturingMultiPass = qfalse;
 	// we measure overdraw by reading back the stencil buffer and
 	// counting up the number of increments that have happened
+#ifndef HAVE_GLES
 	if ( r_measureOverdraw->integer ) {
 		int i;
 		long sum = 0;
@@ -1912,9 +2223,32 @@ const void	*RB_SwapBuffers( const void *data ) {
 		backEnd.pc.c_overDraw += sum;
 		Hunk_FreeTempMemory( stencilReadback );
 	}
+#endif
 
     if ( !glState.finishCalled ) {
         qglFinish();
+	}
+	/* Allow MME to take a screenshot */
+	if ( r_stereoSeparation->value < 0.0f && tr.finishStereo) {
+		tr.capturingMultiPass = qtrue;
+		tr.latestMultiPassFrame = qtrue;
+		ri.Cvar_SetValue("r_stereoSeparation", -r_stereoSeparation->value);
+		return (const void *)NULL;
+	} else if ( r_stereoSeparation->value <= 0.0f) {
+		if ( R_MME_TakeShot( qfalse ) && r_stereoSeparation->value != 0.0f) {
+			tr.capturingMultiPass = qtrue;
+			tr.latestMultiPassFrame = qfalse;
+			ri.Cvar_SetValue("r_stereoSeparation", -r_stereoSeparation->value);
+			tr.finishStereo = qtrue;
+			return (const void *)NULL;
+		}
+	} else if ( r_stereoSeparation->value > 0.0f) {
+		if ( tr.finishStereo) {
+			R_MME_TakeShot( qtrue );
+			R_MME_DoNotTake( );
+			ri.Cvar_SetValue("r_stereoSeparation", -r_stereoSeparation->value);
+			tr.finishStereo = qfalse;
+		}
 	}
 
     GLimp_LogComment( "***************** RB_SwapBuffers *****************\n\n\n" );
@@ -1953,11 +2287,14 @@ RB_ExecuteRenderCommands
 ====================
 */
 extern const void *R_DrawWireframeAutomap(const void *data); //tr_world.cpp
-void RB_ExecuteRenderCommands( const void *data ) {
+void RB_ExecuteRenderCommands( const void *oldData ) {
 	int		t1, t2;
+	const void* data;
 
 	t1 = ri.Milliseconds()*ri.Cvar_VariableValue( "timescale" );
-
+again:
+	data = oldData;
+	R_MME_PrepareMultiCapture( data );
 	while ( 1 ) {
 		data = PADP(data, sizeof(void *));
 
@@ -1974,6 +2311,9 @@ void RB_ExecuteRenderCommands( const void *data ) {
 		case RC_ROTATE_PIC2:
 			data = RB_RotatePic2( data );
 			break;
+		case RC_ROTATE_PIC2_RATIOFIX:
+			data = RB_RotatePic2RatioFix( data );
+			break;
 		case RC_DRAW_SURFS:
 			data = RB_DrawSurfs( data );
 			break;
@@ -1982,15 +2322,20 @@ void RB_ExecuteRenderCommands( const void *data ) {
 			break;
 		case RC_SWAP_BUFFERS:
 			data = RB_SwapBuffers( data );
-			break;
-		case RC_VIDEOFRAME:
-			data = RB_TakeVideoFrameCmd( data );
+			if (data == NULL)
+				goto again;
 			break;
 		case RC_WORLD_EFFECTS:
 			data = RB_WorldEffects( data );
 			break;
 		case RC_AUTO_MAP:
 			data = R_DrawWireframeAutomap(data);
+			break;
+		case RC_SCREENSHOT:
+			data = RB_ScreenShotCmd( data );
+			break;
+		case RC_CAPTURE:
+			data = R_MME_CaptureShotCmd( data );
 			break;
 		case RC_END_OF_LIST:
 		default:
@@ -2003,6 +2348,7 @@ void RB_ExecuteRenderCommands( const void *data ) {
 
 }
 
+#ifndef HAVE_GLES
 // What Pixel Shader type is currently active (regcoms or fragment programs).
 GLuint g_uiCurrentPixelShaderType = 0x0;
 
@@ -2366,3 +2712,4 @@ static inline void RB_DrawGlowOverlay()
 
 	qglEnable( GL_DEPTH_TEST );
 }
+#endif //HAVE_GLES

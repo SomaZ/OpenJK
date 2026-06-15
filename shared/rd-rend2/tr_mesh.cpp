@@ -347,8 +347,8 @@ void R_AddMD3Surfaces( trRefEntity_t *ent, int entityNum ) {
 	shader_t		*shader = NULL;
 	int				cull;
 	int				lod;
-	int				fogNum;
-	int             cubemapIndex;
+	int32_t			fogNum;
+	int32_t			cubemapIndex;
 	qboolean		personalModel;
 
 	// don't add third_person objects if not in a portal

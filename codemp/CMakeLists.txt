@@ -1,9 +1,9 @@
 #============================================================================
 # Copyright (C) 2013 - 2018, OpenJK contributors
 #
-# This file is part of the OpenJK source code.
+# This file is part of the jaMME source code.
 #
-# OpenJK is free software; you can redistribute it and/or modify it
+# jaMME is free software; you can redistribute it and/or modify it
 # under the terms of the GNU General Public License version 2 as
 # published by the Free Software Foundation.
 #
@@ -17,9 +17,9 @@
 #============================================================================
 
 # Make sure the user is not executing this script directly
-if(NOT InOpenJK)
+if(NOT InjaMME)
 	message(FATAL_ERROR "Use the top-level cmake script!")
-endif(NOT InOpenJK)
+endif(NOT InjaMME)
 
 set(MPSharedDefines ${SharedDefines})
 
@@ -164,11 +164,11 @@ if(BuildMPEngine OR BuildMPDed)
 	add_library(${MPBotLib} STATIC ${MPBotlibFiles})
 
 	# Hide symbols not explicitly marked public.
-	set_property(TARGET ${MPBotLib} APPEND PROPERTY COMPILE_OPTIONS ${OPENJK_VISIBILITY_FLAGS})
+	set_property(TARGET ${MPBotLib} APPEND PROPERTY COMPILE_OPTIONS ${VISIBILITY_FLAGS})
 
 	set_target_properties(${MPBotLib} PROPERTIES COMPILE_DEFINITIONS "${MPBotlibDefines}")
 	set_target_properties(${MPBotLib} PROPERTIES INCLUDE_DIRECTORIES "${MPBotlibIncludeDirectories}")
-	set_target_properties(${MPBotLib} PROPERTIES PROJECT_LABEL "Bot Library")
+	set_target_properties(${MPBotLib} PROPERTIES PROJECT_LABEL "botlib")
 
 	#    Common files/libraries/defines of both Engine and Dedicated Server
 
@@ -247,6 +247,7 @@ if(BuildMPEngine OR BuildMPDed)
 		"${MPDir}/qcommon/net_ip.cpp"
 		"${MPDir}/qcommon/persistence.cpp"
 		"${MPDir}/qcommon/q_shared.cpp"
+		"${MPDir}/qcommon/q_string.cpp"
 		"${MPDir}/qcommon/qcommon.h"
 		"${MPDir}/qcommon/qfiles.h"
 		"${MPDir}/qcommon/RoffSystem.cpp"
@@ -354,51 +355,39 @@ if(BuildMPEngine)
 	set(MPEngineIncludeDirectories ${MPEngineAndDedIncludeDirectories})
 	set(MPEngineFiles ${MPEngineAndDedFiles})
 	set(MPEngineDefines ${MPSharedDefines})
+	if(WIN64)
+		set(MPEngineDefines ${MPSharedDefines} "FPM_64BIT")
+	endif(WIN64)
 
 	#    Dependencies
+	
+	if(UseCurl)
+		set(MPEngineDefines ${MPEngineDefines} "USE_CURL" "CURL_STATICLIB" "_WINSOCK_H")
+	endif(UseCurl)
 
 	if (NOT WIN32)
 		# OpenGL
 		find_package(OpenGL REQUIRED)
 		set(MPEngineIncludeDirectories ${MPEngineIncludeDirectories} ${OPENGL_INCLUDE_DIR})
 		set(MPEngineLibraries ${MPEngineLibraries} ${OPENGL_LIBRARIES})
-	endif()
+	endif(NOT WIN32)
 
-	# OpenAL (is optionally included for Windows)
-	if (MSVC AND NOT WIN64)
-		if(UseInternalOpenAL)
-			# There's a libs/OpenAL32.lib
-			# (mrw) TODO Is this actually required on windows? It is loaded at runtime, should not be linked?
-			find_library(OpenALLibrary NAMES OpenAL32 PATHS ${OpenJKLibDir})
-			if(NOT OpenALLibrary)
-				message(FATAL_ERROR "UseInternalOpenAL enabled, but lib/OpenAL32.lib not found!")
-			endif(NOT OpenALLibrary)
-			set(MPEngineLibraries ${MPEngineLibraries} ${OpenALLibrary})
-		else(UseInternalOpenAL)
-			find_package(OpenAL REQUIRED)
-			set(MPEngineIncludeDirectories ${MPEngineIncludeDirectories} ${OPENAL_INCLUDE_DIR})
-			set(MPEngineLibraries ${MPEngineLibraries} ${OPENAL_LIBRARY})
-		endif(UseInternalOpenAL)
-	endif()
+	if(NOT WIN64)
+		set(LibArch "x86")
+	else(NOT WIN64)
+		set(LibArch "x64")
+	endif(NOT WIN64)
 
 	if(UseInternalSDL2)
-		if(CMAKE_SIZEOF_VOID_P EQUAL 4)
-			set(MPEngineLibraries
-				${MPEngineLibraries}
-				${OpenJKLibDir}/SDL2/lib/x86/SDL2main.lib
-				${OpenJKLibDir}/SDL2/lib/x86/SDL2.lib
-				)
-		else()
-			set(MPEngineLibraries
-				${MPEngineLibraries}
-				${OpenJKLibDir}/SDL2/lib/x64/SDL2main.lib
-				${OpenJKLibDir}/SDL2/lib/x64/SDL2.lib
-				)
-		endif()
+		set(MPEngineLibraries
+			${MPEngineLibraries}
+			${LibDir}/SDL2/lib/${LibArch}/SDL2main.lib
+			${LibDir}/SDL2/lib/${LibArch}/SDL2.lib
+			)
 
 		set(MPEngineIncludeDirectories
 			${MPEngineIncludeDirectories}
-			${OpenJKLibDir}/SDL2/include
+			${LibDir}/SDL2/include
 			)
 	else()
 		find_package(SDL2 REQUIRED CONFIG)
@@ -411,36 +400,83 @@ if(BuildMPEngine)
 		set(MPEngineLibraries ${MPEngineLibraries} ${SDL2_LIBRARIES})
 	endif()
 
-	# EAX is Windows-Only (right?)
-	if(MSVC)
-		set(MPEngineEAXFiles
-			"${MPDir}/client/eax/eax.h"
-			"${MPDir}/client/eax/EaxMan.h"
-			)
-		source_group("eax" FILES ${MPEngineEAXFiles})
-		set(MPEngineFiles ${MPEngineFiles} ${MPEngineEAXFiles})
-	endif(MSVC)
+	#library stuff
+	if(WIN32)
+		if(MSVC14)
+			set(MPEngineLibraries ${MPEngineLibraries} legacy_stdio_definitions.lib)
+		endif(MSVC14)
+		if(CMAKE_BUILD_TYPE MATCHES "DEBUG" OR CMAKE_BUILD_TYPE MATCHES "Debug")
+			set(MPEngineLibraries ${MPEngineLibraries} ${LibDir}/win32/libdebug/${LibArch}/libmad.lib)
+			if(NOT WIN64)
+				set(MPEngineLibraries ${MPEngineLibraries} ${LibDir}/win32/libdebug/${LibArch}/libFLAC_static.lib)
+				set(MPEngineLibraries ${MPEngineLibraries} ${LibDir}/win32/libdebug/${LibArch}/libogg_static.lib)
+				set(MPEngineLibraries ${MPEngineLibraries} ${LibDir}/win32/libdebug/${LibArch}/libvorbis_static.lib)
+				if(BuildCurl)
+					set(MPEngineLibraries ${MPEngineLibraries} ${LibDir}/win32/libdebug/${LibArch}/libcurld.lib)
+				endif(BuildCurl)
+				set(MPEngineLibraries ${MPEngineLibraries} ${LibDir}/win32/libdebug/${LibArch}/win_utf8_io_static.lib)
+			endif(NOT WIN64)
+		else()
+			set(MPEngineLibraries ${MPEngineLibraries} ${LibDir}/win32/lib/${LibArch}/libmad.lib)
+			if(NOT WIN64)
+				set(MPEngineLibraries ${MPEngineLibraries} ${LibDir}/win32/lib/${LibArch}/libFLAC_static.lib)
+				set(MPEngineLibraries ${MPEngineLibraries} ${LibDir}/win32/lib/${LibArch}/libogg_static.lib)
+				set(MPEngineLibraries ${MPEngineLibraries} ${LibDir}/win32/lib/${LibArch}/libvorbis_static.lib)
+				if(UseCurl)
+					set(MPEngineLibraries ${MPEngineLibraries} ${LibDir}/win32/lib/${LibArch}/libcurl.lib)
+				endif(UseCurl)
+				set(MPEngineLibraries ${MPEngineLibraries} ${LibDir}/win32/lib/${LibArch}/win_utf8_io_static.lib)
+			endif(NOT WIN64)
+		endif()
+	endif(WIN32)
+	if(UNIX)
+		if(APPLE)
+			set(MPEngineLibraries ${MPEngineLibraries} ${LibDir}/macosx/lib/libmad.a)
+			set(MPEngineLibraries ${MPEngineLibraries} ${LibDir}/macosx/lib/libFLAC.a)
+			set(MPEngineLibraries ${MPEngineLibraries} ${LibDir}/macosx/lib/libogg.a)
+			set(MPEngineLibraries ${MPEngineLibraries} ${LibDir}/macosx/lib/libvorbis.a)
+			if(BuildCurl)
+				set(MPEngineLibraries ${MPEngineLibraries} curl)
+			endif(BuildCurl)
+		else(APPLE)
+			set(MPEngineLibraries ${MPEngineLibraries} mad)
+			if(UseCurl)
+				set(MPEngineLibraries ${MPEngineLibraries} curl)
+			endif(UseCurl)
+		endif(APPLE)
+	endif(UNIX)
+	
+	set(MPEngineIncludeDirectories ${MPEngineIncludeDirectories} ${LibDir}/win32/include)
 
 	#    Source Files
 
 	set(MPEngineClientFiles
-		"${MPDir}/client/cl_avi.cpp"
 		"${MPDir}/client/cl_cgame.cpp"
 		"${MPDir}/client/cl_cgameapi.cpp"
 		"${MPDir}/client/cl_cgameapi.h"
 		"${MPDir}/client/cl_cin.cpp"
 		"${MPDir}/client/cl_console.cpp"
+		"${MPDir}/client/cl_curl.cpp"
+		"${MPDir}/client/cl_demos.cpp"
+		"${MPDir}/client/cl_demos_auto.cpp"
+		"${MPDir}/client/cl_demos_cut.cpp"
 		"${MPDir}/client/cl_input.cpp"
 		"${MPDir}/client/cl_keys.cpp"
 		"${MPDir}/client/cl_lan.cpp"
 		"${MPDir}/client/cl_lan.h"
 		"${MPDir}/client/cl_main.cpp"
+		"${MPDir}/client/cl_mme.cpp"
 		"${MPDir}/client/cl_net_chan.cpp"
 		"${MPDir}/client/cl_parse.cpp"
 		"${MPDir}/client/cl_scrn.cpp"
 		"${MPDir}/client/cl_ui.cpp"
 		"${MPDir}/client/cl_uiapi.cpp"
 		"${MPDir}/client/cl_uiapi.h"
+		)
+	source_group("client" FILES ${MPEngineClientFiles})
+	set(MPEngineFiles ${MPEngineFiles} ${MPEngineClientFiles})
+
+	set(MPEngineEffectsFiles
 		"${MPDir}/client/FXExport.cpp"
 		"${MPDir}/client/FXExport.h"
 		"${MPDir}/client/FxPrimitives.cpp"
@@ -452,19 +488,24 @@ if(BuildMPEngine)
 		"${MPDir}/client/FxTemplate.cpp"
 		"${MPDir}/client/FxUtil.cpp"
 		"${MPDir}/client/FxUtil.h"
+		)
+	source_group("fx" FILES ${MPEngineEffectsFiles})
+	set(MPEngineFiles ${MPEngineFiles} ${MPEngineEffectsFiles})
+	
+	set(MPEngineSoundFiles
 		"${MPDir}/client/snd_ambient.cpp"
 		"${MPDir}/client/snd_ambient.h"
 		"${MPDir}/client/snd_dma.cpp"
+		"${MPDir}/client/snd_effects.cpp"
 		"${MPDir}/client/snd_local.h"
+		"${MPDir}/client/snd_main.cpp"
 		"${MPDir}/client/snd_mem.cpp"
 		"${MPDir}/client/snd_mix.cpp"
-		"${MPDir}/client/snd_mp3.cpp"
-		"${MPDir}/client/snd_mp3.h"
-		"${MPDir}/client/snd_music.cpp"
-		"${MPDir}/client/snd_music.h"
+		"${MPDir}/client/snd_mme.cpp"
+		"${MPDir}/client/snd_public.h"
 		)
-	source_group("client" FILES ${MPEngineClientFiles})
-	set(MPEngineFiles ${MPEngineFiles} ${MPEngineClientFiles})
+	source_group("sound" FILES ${MPEngineSoundFiles})
+	set(MPEngineFiles ${MPEngineFiles} ${MPEngineSoundFiles})
 
 	set(MPEngineRatlFiles
 		"${MPDir}/Ratl/bits_vs.h"
@@ -480,41 +521,6 @@ if(BuildMPEngine)
 	source_group("ravl" FILES ${MPEngineRavlFiles})
 	set(MPEngineFiles ${MPEngineFiles} ${MPEngineRavlFiles})
 
-	set(MPEngineMp3Files
-		"${MPDir}/mp3code/cdct.c"
-		"${MPDir}/mp3code/config.h"
-		"${MPDir}/mp3code/csbt.c"
-		"${MPDir}/mp3code/csbtb.c"
-		"${MPDir}/mp3code/csbtl3.c"
-		"${MPDir}/mp3code/cup.c"
-		"${MPDir}/mp3code/cupini.c"
-		"${MPDir}/mp3code/cupl1.c"
-		"${MPDir}/mp3code/cupl3.c"
-		"${MPDir}/mp3code/cwin.c"
-		"${MPDir}/mp3code/cwinb.c"
-		"${MPDir}/mp3code/cwinm.c"
-		"${MPDir}/mp3code/htable.h"
-		"${MPDir}/mp3code/hwin.c"
-		"${MPDir}/mp3code/jdw.h"
-		"${MPDir}/mp3code/l3.h"
-		"${MPDir}/mp3code/l3dq.c"
-		"${MPDir}/mp3code/l3init.c"
-		"${MPDir}/mp3code/mdct.c"
-		"${MPDir}/mp3code/mhead.c"
-		"${MPDir}/mp3code/mhead.h"
-		"${MPDir}/mp3code/mp3struct.h"
-		"${MPDir}/mp3code/msis.c"
-		"${MPDir}/mp3code/port.h"
-		"${MPDir}/mp3code/small_header.h"
-		"${MPDir}/mp3code/tableawd.h"
-		"${MPDir}/mp3code/towave.c"
-		"${MPDir}/mp3code/uph.c"
-		"${MPDir}/mp3code/upsf.c"
-		"${MPDir}/mp3code/wavep.c"
-		)
-	source_group("mp3code" FILES ${MPEngineMp3Files})
-	set(MPEngineFiles ${MPEngineFiles} ${MPEngineMp3Files})
-
 	set(MPEngineSysFiles
 		"${SharedDir}/sdl/sdl_window.cpp"
 		"${SharedDir}/sdl/sdl_icon.h"
@@ -529,11 +535,11 @@ if(BuildMPEngine)
 		"${SharedDir}/sys/con_log.cpp"
 		)
 
-	if(WIN32)
+	if(MSVC)
 		set(MPEngineWin32Files
 			"${MPDir}/win32/icon.ico"
 			"${MPDir}/win32/resource.h"
-			"${MPDir}/win32/openjk.rc"
+			"${MPDir}/win32/jamme.rc"
 			"${SharedDir}/sys/win_manifest.manifest"
 			)
 
@@ -545,13 +551,13 @@ if(BuildMPEngine)
 			"${SharedDir}/sys/sys_win32.cpp"
 			"${SharedDir}/sys/con_passive.cpp"
 			)
-	else(WIN32)
+	else(MSVC)
 		set(MPEngineSysFiles
 			${MPEngineSysFiles}
 			"${SharedDir}/sys/sys_unix.cpp"
 			"${SharedDir}/sys/con_tty.cpp"
 			)
-	endif(WIN32)
+	endif(MSVC)
 
 	set(MPEngineFiles ${MPEngineFiles} ${MPEngineSysFiles})
 	source_group("sys" FILES ${MPEngineSysFiles})
@@ -559,9 +565,9 @@ if(BuildMPEngine)
 	if(MakeApplicationBundles)
 		set(MACOSX_BUNDLE_BUNDLE_NAME ${MPEngine})
 		set(MACOSX_BUNDLE_DISPLAY_NAME ${MPEngine})
-		set(MACOSX_BUNDLE_ICON_FILE OpenJK.icns)
-		set_source_files_properties(${MPDir}/macosx/OpenJK.icns PROPERTIES MACOSX_PACKAGE_LOCATION Resources)
-		set(MPEngineFiles ${MPEngineFiles} ${MPDir}/macosx/OpenJK.icns)
+		set(MACOSX_BUNDLE_ICON_FILE jaMME.icns)
+		set_source_files_properties(${MPDir}/macosx/jaMME.icns PROPERTIES MACOSX_PACKAGE_LOCATION Resources)
+		set(MPEngineFiles ${MPEngineFiles} ${MPDir}/macosx/jaMME.icns)
 		set_source_files_properties(${MPDir}/macosx/English.lproj/InfoPlist.strings PROPERTIES MACOSX_PACKAGE_LOCATION Resources/English.lproj)
 		set(MPEngineFiles ${MPEngineFiles} ${MPDir}/macosx/English.lproj/InfoPlist.strings)
 	endif(MakeApplicationBundles)
@@ -571,18 +577,18 @@ if(BuildMPEngine)
 		if(UseInternalSDL2)
 			if(CMAKE_SIZEOF_VOID_P EQUAL 4)
 				set(MPEngineExtraInstallFiles
-					${OpenJKLibDir}/SDL2/bin/x86/SDL2.dll
+					${LibDir}/SDL2/bin/x86/SDL2.dll
 					)
 			else()
 				set(MPEngineExtraInstallFiles
-					${OpenJKLibDir}/SDL2/bin/x64/SDL2.dll
+					${LibDir}/SDL2/bin/x64/SDL2.dll
 					)
 			endif()
 		endif()
 	else(WIN32)
 		if(MakeApplicationBundles)
 			add_executable(${MPEngine} MACOSX_BUNDLE ${MPEngineFiles})
-			set_target_properties(${MPEngine} PROPERTIES MACOSX_BUNDLE_INFO_PLIST "${MPDir}/macosx/OpenJKInfo.plist")
+			set_target_properties(${MPEngine} PROPERTIES MACOSX_BUNDLE_INFO_PLIST "${MPDir}/macosx/jaMMEInfo.plist")
 		else(MakeApplicationBundles)
 			add_executable(${MPEngine} ${MPEngineFiles})
 		endif(MakeApplicationBundles)
@@ -614,101 +620,9 @@ if(BuildMPEngine)
 	set_target_properties(${MPEngine} PROPERTIES COMPILE_DEFINITIONS "${MPEngineDefines}")
 
 	# Hide symbols not explicitly marked public.
-	set_property(TARGET ${MPEngine} APPEND PROPERTY COMPILE_OPTIONS ${OPENJK_VISIBILITY_FLAGS})
+	set_property(TARGET ${MPEngine} APPEND PROPERTY COMPILE_OPTIONS ${VISIBILITY_FLAGS})
 
 	set_target_properties(${MPEngine} PROPERTIES INCLUDE_DIRECTORIES "${MPEngineIncludeDirectories}")
-	set_target_properties(${MPEngine} PROPERTIES PROJECT_LABEL "MP Client")
+	set_target_properties(${MPEngine} PROPERTIES PROJECT_LABEL "jamme")
 	target_link_libraries(${MPEngine} ${MPEngineLibraries})
 endif(BuildMPEngine)
-
-#        Dedicated Server (Engine) (jampded.exe)
-
-if(BuildMPDed)
-	set(MPDedLibraries ${MPEngineAndDedLibraries})
-	set(MPDedIncludeDirectories ${MPEngineAndDedIncludeDirectories})
-	set(MPDedFiles ${MPEngineAndDedFiles})
-	set(MPDedDefines ${MPSharedDefines} "_CONSOLE" "DEDICATED")
-
-	# Dedicated renderer is compiled with the server.
-	set(MPDedicatedRendererFiles
-		"${MPDir}/ghoul2/G2_gore.cpp"
-		"${MPDir}/rd-common/mdx_format.h"
-		"${MPDir}/rd-common/tr_public.h"
-		"${MPDir}/rd-dedicated/tr_local.h"
-		"${MPDir}/rd-dedicated/G2_API.cpp"
-		"${MPDir}/rd-dedicated/G2_bolts.cpp"
-		"${MPDir}/rd-dedicated/G2_bones.cpp"
-		"${MPDir}/rd-dedicated/G2_misc.cpp"
-		"${MPDir}/rd-dedicated/G2_surfaces.cpp"
-		"${MPDir}/rd-dedicated/tr_backend.cpp"
-		"${MPDir}/rd-dedicated/tr_ghoul2.cpp"
-		"${MPDir}/rd-dedicated/tr_init.cpp"
-		"${MPDir}/rd-dedicated/tr_main.cpp"
-		"${MPDir}/rd-dedicated/tr_mesh.cpp"
-		"${MPDir}/rd-dedicated/tr_model.cpp"
-		"${MPDir}/rd-dedicated/tr_shader.cpp"
-		"${MPDir}/rd-dedicated/tr_skin.cpp")
-	source_group("renderer" FILES ${MPDedicatedRendererFiles})
-	set(MPDedFiles ${MPDedFiles} ${MPDedicatedRendererFiles})
-
-	set(MPDedNullFiles
-		"${MPDir}/null/null_client.cpp"
-		"${MPDir}/null/null_input.cpp"
-		"${MPDir}/null/null_renderer.cpp"
-		"${MPDir}/null/null_snddma.cpp"
-		)
-	source_group("null" FILES ${MPDedNullFiles})
-	set(MPDedFiles ${MPDedFiles} ${MPDedNullFiles})
-	if(WIN32)
-		set(MPDedWin32Files
-			"${MPDir}/win32/openjkded.rc"
-			)
-		source_group("win32" FILES ${MPDedWin32Files})
-		set(MPDedFiles ${MPDedFiles} ${MPDedWin32Files})
-
-		set(MPDedSysFiles
-			"${SharedDir}/sys/sys_loadlib.h"
-			"${SharedDir}/sys/sys_local.h"
-			"${SharedDir}/sys/sys_main.cpp"
-			"${SharedDir}/sys/sys_event.cpp"
-			"${SharedDir}/sys/sys_public.h"
-			"${SharedDir}/sys/sys_win32.cpp"
-			"${SharedDir}/sys/con_local.h"
-			"${SharedDir}/sys/con_log.cpp"
-			"${SharedDir}/sys/con_win32.cpp"
-			)
-		set(MPDedLibraries ${MPDedLibraries} ${CMAKE_DL_LIBS})
-		source_group("sys" FILES ${MPDedSysFiles})
-		set(MPDedFiles ${MPDedFiles} ${MPDedSysFiles})
-	else(WIN32)
-		set(MPDedSysFiles
-			"${SharedDir}/sys/sys_loadlib.h"
-			"${SharedDir}/sys/sys_local.h"
-			"${SharedDir}/sys/sys_main.cpp"
-			"${SharedDir}/sys/sys_event.cpp"
-			"${SharedDir}/sys/sys_public.h"
-			"${SharedDir}/sys/sys_unix.cpp"
-			"${SharedDir}/sys/con_local.h"
-			"${SharedDir}/sys/con_log.cpp"
-			"${SharedDir}/sys/con_tty.cpp"
-			)
-		set(MPDedLibraries ${MPDedLibraries} ${CMAKE_DL_LIBS})
-		source_group("sys" FILES ${MPDedSysFiles})
-		set(MPDedFiles ${MPDedFiles} ${MPDedSysFiles})
-	endif(WIN32)
-
-	add_executable(${MPDed} ${MPDedFiles})
-	install(TARGETS ${MPDed}
-		RUNTIME
-		DESTINATION ${JKAInstallDir}
-		COMPONENT ${JKAMPServerComponent})
-
-	set_target_properties(${MPDed} PROPERTIES COMPILE_DEFINITIONS "${MPDedDefines}")
-
-	# Hide symbols not explicitly marked public.
-	set_property(TARGET ${MPDed} APPEND PROPERTY COMPILE_OPTIONS ${OPENJK_VISIBILITY_FLAGS})
-
-	set_target_properties(${MPDed} PROPERTIES INCLUDE_DIRECTORIES "${MPDedIncludeDirectories}")
-	set_target_properties(${MPDed} PROPERTIES PROJECT_LABEL "MP Dedicated Server")
-	target_link_libraries(${MPDed} ${MPDedLibraries})
-endif(BuildMPDed)

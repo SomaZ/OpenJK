@@ -24,7 +24,7 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 
 #include "FxSystem.h"
 
-#define MAX_EFFECTS			1800
+#define MAX_EFFECTS			1<<15
 
 // Generic group flags, used by parser, then get converted to the appropriate specific flags
 #define FX_PARM_MASK		0xC	// use this to mask off any transition types that use a parm
@@ -173,7 +173,7 @@ public:
 	inline void AddFlags( int flags )		{ mFlags |= flags;				}
 	inline void ClearFlags( int flags )		{ mFlags &= ~flags;				}
 	inline void SetOrigin1( vec3_t org )	{ if(org){VectorCopy(org,mOrigin1);}else{VectorClear(mOrigin1);}	}
-	inline void SetTimeStart( int time )	{ mTimeStart = time; if (mFlags&FX_SET_SHADER_TIME) { mRefEnt.shaderTime = time * 0.001f; }}
+	inline void SetTimeStart( int time )	{ mTimeStart = time; if (mFlags&FX_SET_SHADER_TIME) { mRefEnt.shaderTime = time * 0.001; }}
 	inline void	SetTimeEnd( int time )		{ mTimeEnd = time;				}
 	inline void SetImpactFxID( int id )		{ mImpactFxID = id;				}
 	inline void SetDeathFxID( int id )		{ mDeathFxID = id;				}
@@ -600,7 +600,7 @@ public:
 	vec2_t	mST[MAX_CPOLY_VERTS];
 
 	float	mRot[3][3];
-	int		mLastFrameTime;
+	float	mLastFrameTime;
 
 
 	CPoly() {}
@@ -619,3 +619,8 @@ public:
 	inline void SetMotionTimeStamp( int t )				{ mTimeStamp = theFxHelper.GetTime() + t; }
 	inline int	GetMotionTimeStamp()					{ return mTimeStamp; }
 };
+
+#define FX_FORCE_PHYSICS_EXPENSIVE	0x01
+#define FX_FORCE_PHYSICS_GHOUL2		0x02
+#define FX_FORCE_PHYSICS_BBOX		0x04
+#define FX_FORCE_PHYSICS_APPLY		0x08

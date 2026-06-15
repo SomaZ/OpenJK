@@ -1,30 +1,8 @@
-/*
-===========================================================================
-Copyright (C) 2000 - 2013, Raven Software, Inc.
-Copyright (C) 2001 - 2013, Activision, Inc.
-Copyright (C) 2013 - 2015, OpenJK contributors
-
-This file is part of the OpenJK source code.
-
-OpenJK is free software; you can redistribute it and/or modify it
-under the terms of the GNU General Public License version 2 as
-published by the Free Software Foundation.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU General Public License for more details.
-
-You should have received a copy of the GNU General Public License
-along with this program; if not, see <http://www.gnu.org/licenses/>.
-===========================================================================
-*/
-
 //NPC_stats.cpp
 #include "b_local.h"
 #include "b_public.h"
 #include "anims.h"
-#include "ghoul2/G2.h"
+#include "../ghoul2/G2.h"
 
 extern qboolean NPCsPrecached;
 
@@ -37,71 +15,6 @@ stringID_table_t TeamTable[] =
 	ENUM2STRING(NPCTEAM_PLAYER),
 	ENUM2STRING(NPCTEAM_ENEMY),
 	ENUM2STRING(NPCTEAM_NEUTRAL),	// most droids are team_neutral, there are some exceptions like Probe,Seeker,Interrogator
-	{"",	-1}
-};
-
-// this list was made using the model directories, this MUST be in the same order as the CLASS_ enum in teams.h
-stringID_table_t ClassTable[] =
-{
-	ENUM2STRING(CLASS_NONE),				// hopefully this will never be used by an npc), just covering all bases
-	ENUM2STRING(CLASS_ATST),				// technically droid...
-	ENUM2STRING(CLASS_BARTENDER),
-	ENUM2STRING(CLASS_BESPIN_COP),
-	ENUM2STRING(CLASS_CLAW),
-	ENUM2STRING(CLASS_COMMANDO),
-	ENUM2STRING(CLASS_DESANN),
-	ENUM2STRING(CLASS_FISH),
-	ENUM2STRING(CLASS_FLIER2),
-	ENUM2STRING(CLASS_GALAK),
-	ENUM2STRING(CLASS_GLIDER),
-	ENUM2STRING(CLASS_GONK),				// droid
-	ENUM2STRING(CLASS_GRAN),
-	ENUM2STRING(CLASS_HOWLER),
-//	ENUM2STRING(CLASS_RANCOR),
-	ENUM2STRING(CLASS_IMPERIAL),
-	ENUM2STRING(CLASS_IMPWORKER),
-	ENUM2STRING(CLASS_INTERROGATOR),		// droid
-	ENUM2STRING(CLASS_JAN),
-	ENUM2STRING(CLASS_JEDI),
-	ENUM2STRING(CLASS_KYLE),
-	ENUM2STRING(CLASS_LANDO),
-	ENUM2STRING(CLASS_LIZARD),
-	ENUM2STRING(CLASS_LUKE),
-	ENUM2STRING(CLASS_MARK1),			// droid
-	ENUM2STRING(CLASS_MARK2),			// droid
-	ENUM2STRING(CLASS_GALAKMECH),		// droid
-	ENUM2STRING(CLASS_MINEMONSTER),
-	ENUM2STRING(CLASS_MONMOTHA),
-	ENUM2STRING(CLASS_MORGANKATARN),
-	ENUM2STRING(CLASS_MOUSE),			// droid
-	ENUM2STRING(CLASS_MURJJ),
-	ENUM2STRING(CLASS_PRISONER),
-	ENUM2STRING(CLASS_PROBE),			// droid
-	ENUM2STRING(CLASS_PROTOCOL),			// droid
-	ENUM2STRING(CLASS_R2D2),				// droid
-	ENUM2STRING(CLASS_R5D2),				// droid
-	ENUM2STRING(CLASS_REBEL),
-	ENUM2STRING(CLASS_REBORN),
-	ENUM2STRING(CLASS_REELO),
-	ENUM2STRING(CLASS_REMOTE),
-	ENUM2STRING(CLASS_RODIAN),
-	ENUM2STRING(CLASS_SEEKER),			// droid
-	ENUM2STRING(CLASS_SENTRY),
-	ENUM2STRING(CLASS_SHADOWTROOPER),
-	ENUM2STRING(CLASS_STORMTROOPER),
-	ENUM2STRING(CLASS_SWAMP),
-	ENUM2STRING(CLASS_SWAMPTROOPER),
-	ENUM2STRING(CLASS_TAVION),
-	ENUM2STRING(CLASS_TRANDOSHAN),
-	ENUM2STRING(CLASS_UGNAUGHT),
-	ENUM2STRING(CLASS_JAWA),
-	ENUM2STRING(CLASS_WEEQUAY),
-	ENUM2STRING(CLASS_BOBAFETT),
-	//ENUM2STRING(CLASS_ROCKETTROOPER),
-	//ENUM2STRING(CLASS_PLAYER),
-	ENUM2STRING(CLASS_VEHICLE),
-	ENUM2STRING(CLASS_RANCOR),
-	ENUM2STRING(CLASS_WAMPA),
 	{"",	-1}
 };
 
@@ -148,16 +61,30 @@ stringID_table_t BSETTable[] =
 extern stringID_table_t WPTable[];
 extern stringID_table_t FPTable[];
 
-char	*TeamNames[TEAM_NUM_TEAMS] =
+char	*TeamNames[TEAM_NUM_TEAMS] = 
 {
 	"",
+//	"starfleet",
+//	"borg",
+//	"parasite",
+//	"scavengers",
+//	"klingon",
+//	"malon",
+//	"hirogen",
+//	"imperial",
+//	"stasis",
+//	"species8472",
+//	"dreadnought",
+//	"forge",
+//	"disguise",
+//	"player (not valid)"
 	"player",
 	"enemy",
 	"neutral"
 };
 
 // this list was made using the model directories, this MUST be in the same order as the CLASS_ enum in teams.h
-char	*ClassNames[CLASS_NUM_CLASSES] =
+char	*ClassNames[CLASS_NUM_CLASSES] = 
 {
 	"",				// class none
 	"atst",
@@ -170,7 +97,7 @@ char	*ClassNames[CLASS_NUM_CLASSES] =
 	"flier2",
 	"galak",
 	"glider",
-	"gonk",
+	"gonk",			
 	"gran",
 	"howler",
 	"imperial",
@@ -221,7 +148,7 @@ char	*ClassNames[CLASS_NUM_CLASSES] =
 NPC_ReactionTime
 */
 //FIXME use grandom in here
-int NPC_ReactionTime ( void )
+int NPC_ReactionTime ( void ) 
 {
 	return 200 * ( 6 - NPCS.NPCInfo->stats.reactions );
 }
@@ -237,9 +164,10 @@ extern qboolean BG_ParseLiteral( const char **data, const char *string );
 //
 #define MAX_NPC_DATA_SIZE 0x40000
 char	NPCParms[MAX_NPC_DATA_SIZE];
+char	NPCFile[MAX_QPATH];
 
 /*
-team_t TranslateTeamName( const char *name )
+team_t TranslateTeamName( const char *name ) 
 {
 	int n;
 
@@ -250,11 +178,11 @@ team_t TranslateTeamName( const char *name )
 			return ((team_t) n);
 		}
 	}
-
+	
 	return NPCTEAM_FREE;
 }
 
-class_t TranslateClassName( const char *name )
+class_t TranslateClassName( const char *name ) 
 {
 	int n;
 
@@ -265,54 +193,64 @@ class_t TranslateClassName( const char *name )
 			return ((class_t) n);
 		}
 	}
-
+	
 	return CLASS_NONE;  // I hope this never happens, maybe print a warning
 }
 */
 
 /*
-static rank_t TranslateRankName( const char *name )
+static race_t TranslateRaceName( const char *name ) 
+{
+	if ( !Q_stricmp( name, "human" ) ) 
+	{
+		return RACE_HUMAN;
+	}
+	return RACE_NONE;
+}
+*/
+/*
+static rank_t TranslateRankName( const char *name ) 
 
   Should be used to determine pip bolt-ons
 */
-static rank_t TranslateRankName( const char *name )
+static rank_t TranslateRankName( const char *name ) 
 {
-	if ( !Q_stricmp( name, "civilian" ) )
+	if ( !Q_stricmp( name, "civilian" ) ) 
 	{
 		return RANK_CIVILIAN;
 	}
 
-	if ( !Q_stricmp( name, "crewman" ) )
+	if ( !Q_stricmp( name, "crewman" ) ) 
 	{
 		return RANK_CREWMAN;
 	}
-
-	if ( !Q_stricmp( name, "ensign" ) )
+	
+	if ( !Q_stricmp( name, "ensign" ) ) 
 	{
 		return RANK_ENSIGN;
 	}
-
-	if ( !Q_stricmp( name, "ltjg" ) )
+	
+	if ( !Q_stricmp( name, "ltjg" ) ) 
 	{
 		return RANK_LT_JG;
 	}
-
-	if ( !Q_stricmp( name, "lt" ) )
+	
+	if ( !Q_stricmp( name, "lt" ) ) 
 	{
 		return RANK_LT;
 	}
-
-	if ( !Q_stricmp( name, "ltcomm" ) )
+	
+	if ( !Q_stricmp( name, "ltcomm" ) ) 
 	{
 		return RANK_LT_COMM;
 	}
-
-	if ( !Q_stricmp( name, "commander" ) )
+	
+	if ( !Q_stricmp( name, "commander" ) ) 
 	{
 		return RANK_COMMANDER;
 	}
-
-	if ( !Q_stricmp( name, "captain" ) )
+	
+	if ( !Q_stricmp( name, "captain" ) ) 
 	{
 		return RANK_CAPTAIN;
 	}
@@ -359,7 +297,7 @@ static int ItemNameToNumber( const char *name, int itemType ) {
 
 //rwwFIXMEFIXME: movetypes
 /*
-static int MoveTypeNameToEnum( const char *name )
+static int MoveTypeNameToEnum( const char *name ) 
 {
 	if(!Q_stricmp("runjump", name))
 	{
@@ -391,7 +329,7 @@ void SpewDebugStuffToFile(animation_t *anims)
 	fileHandle_t f;
 	int i = 0;
 
-	trap->FS_Open("file_of_debug_stuff_SP.txt", &f, FS_WRITE);
+	trap_FS_FOpenFile("file_of_debug_stuff_SP.txt", &f, FS_WRITE);
 
 	if (!f)
 	{
@@ -406,8 +344,8 @@ void SpewDebugStuffToFile(animation_t *anims)
 		i++;
 	}
 
-	trap->FS_Write(BGPAFtext, strlen(BGPAFtext), f);
-	trap->FS_Close(f);
+	trap_FS_Write(BGPAFtext, strlen(BGPAFtext), f);
+	trap_FS_FCloseFile(f);
 }
 #endif
 
@@ -444,13 +382,13 @@ void NPC_PrecacheAnimationCFG( const char *NPC_type )
 	COM_BeginParseSession(NPCFile);
 
 	// look for the right NPC
-	while ( p )
+	while ( p ) 
 	{
 		token = COM_ParseExt( &p, qtrue );
 		if ( token[0] == 0 )
 			return;
 
-		if ( !Q_stricmp( token, NPC_type ) )
+		if ( !Q_stricmp( token, NPC_type ) ) 
 		{
 			break;
 		}
@@ -458,35 +396,35 @@ void NPC_PrecacheAnimationCFG( const char *NPC_type )
 		SkipBracedSection( &p, 0 );
 	}
 
-	if ( !p )
+	if ( !p ) 
 	{
 		return;
 	}
 
-	if ( BG_ParseLiteral( &p, "{" ) )
+	if ( BG_ParseLiteral( &p, "{" ) ) 
 	{
 		return;
 	}
 
 	// parse the NPC info block
-	while ( 1 )
+	while ( 1 ) 
 	{
 		token = COM_ParseExt( &p, qtrue );
-		if ( !token[0] )
+		if ( !token[0] ) 
 		{
 			Com_Printf( S_COLOR_RED"ERROR: unexpected EOF while parsing '%s'\n", NPC_type );
 			return;
 		}
 
-		if ( !Q_stricmp( token, "}" ) )
+		if ( !Q_stricmp( token, "}" ) ) 
 		{
 			break;
 		}
 
 		// legsmodel
-		if ( !Q_stricmp( token, "legsmodel" ) )
+		if ( !Q_stricmp( token, "legsmodel" ) ) 
 		{
-			if ( COM_ParseString( &p, &value ) )
+			if ( COM_ParseString( &p, &value ) ) 
 			{
 				continue;
 			}
@@ -497,9 +435,9 @@ void NPC_PrecacheAnimationCFG( const char *NPC_type )
 		}
 
 		// playerModel
-		if ( !Q_stricmp( token, "playerModel" ) )
+		if ( !Q_stricmp( token, "playerModel" ) ) 
 		{
-			if ( COM_ParseString( &p, &value ) )
+			if ( COM_ParseString( &p, &value ) ) 
 			{
 				continue;
 			}
@@ -508,11 +446,11 @@ void NPC_PrecacheAnimationCFG( const char *NPC_type )
 			char	*GLAName;
 			char	*slash = NULL;
 			char	*strippedName;
-
-			int handle = trap->G2API_PrecacheGhoul2Model( va( "models/players/%s/model.glm", value ) );
+			
+			int handle = gi.G2API_PrecacheGhoul2Model( va( "models/players/%s/model.glm", value ) );
 			if ( handle > 0 )//FIXME: isn't 0 a valid handle?
 			{
-				GLAName = trap->G2API_GetAnimFileNameIndex( handle );
+				GLAName = gi.G2API_GetAnimFileNameIndex( handle );
 				if ( GLAName )
 				{
 					Q_strncpyz( animName, GLAName, sizeof( animName ), qtrue );
@@ -564,8 +502,8 @@ void NPC_PrecacheWeapons( team_t playerTeam, int spawnflags, char *NPCtype )
 			//precache the in-hand/in-world ghoul2 weapon model
 
 			char weaponModel[64];
-
-			strcpy (weaponModel, weaponData[curWeap].weaponMdl);
+			
+			strcpy (weaponModel, weaponData[curWeap].weaponMdl);	
 			if (char *spot = strstr(weaponModel, ".md3") ) {
 				*spot = 0;
 				spot = strstr(weaponModel, "_w");//i'm using the in view weapon array instead of scanning the item list, so put the _w back on
@@ -574,7 +512,7 @@ void NPC_PrecacheWeapons( team_t playerTeam, int spawnflags, char *NPCtype )
 				}
 				strcat (weaponModel, ".glm");	//and change to ghoul2
 			}
-			trap->G2API_PrecacheGhoul2Model( weaponModel ); // correct way is item->world_model
+			gi.G2API_PrecacheGhoul2Model( weaponModel ); // correct way is item->world_model
 		}
 	}
 #endif
@@ -597,7 +535,6 @@ void NPC_Precache ( gentity_t *spawner )
 	qboolean	md3Model = qfalse;
 	char	playerModel[MAX_QPATH];
 	char	customSkin[MAX_QPATH];
-	char	sessionName[MAX_QPATH+15];
 
 	if ( !Q_stricmp( "random", spawner->NPC_type ) )
 	{//sorry, can't precache a random just yet
@@ -606,17 +543,16 @@ void NPC_Precache ( gentity_t *spawner )
 	strcpy(customSkin,"default");
 
 	p = NPCParms;
-	Com_sprintf( sessionName, sizeof(sessionName), "NPC_Precache(%s)", spawner->NPC_type );
-	COM_BeginParseSession(sessionName);
+	COM_BeginParseSession(NPCFile);
 
 	// look for the right NPC
-	while ( p )
+	while ( p ) 
 	{
 		token = COM_ParseExt( &p, qtrue );
 		if ( token[0] == 0 )
 			return;
 
-		if ( !Q_stricmp( token, spawner->NPC_type ) )
+		if ( !Q_stricmp( token, spawner->NPC_type ) ) 
 		{
 			break;
 		}
@@ -624,35 +560,35 @@ void NPC_Precache ( gentity_t *spawner )
 		SkipBracedSection( &p, 0 );
 	}
 
-	if ( !p )
+	if ( !p ) 
 	{
 		return;
 	}
 
-	if ( BG_ParseLiteral( &p, "{" ) )
+	if ( BG_ParseLiteral( &p, "{" ) ) 
 	{
 		return;
 	}
 
 	// parse the NPC info block
-	while ( 1 )
+	while ( 1 ) 
 	{
 		token = COM_ParseExt( &p, qtrue );
-		if ( !token[0] )
+		if ( !token[0] ) 
 		{
 			Com_Printf( S_COLOR_RED"ERROR: unexpected EOF while parsing '%s'\n", spawner->NPC_type );
 			return;
 		}
 
-		if ( !Q_stricmp( token, "}" ) )
+		if ( !Q_stricmp( token, "}" ) ) 
 		{
 			break;
 		}
 
 		// headmodel
-		if ( !Q_stricmp( token, "headmodel" ) )
+		if ( !Q_stricmp( token, "headmodel" ) ) 
 		{
-			if ( COM_ParseString( &p, &value ) )
+			if ( COM_ParseString( &p, &value ) ) 
 			{
 				continue;
 			}
@@ -667,11 +603,11 @@ void NPC_Precache ( gentity_t *spawner )
 			md3Model = qtrue;
 			continue;
 		}
-
+		
 		// torsomodel
-		if ( !Q_stricmp( token, "torsomodel" ) )
+		if ( !Q_stricmp( token, "torsomodel" ) ) 
 		{
-			if ( COM_ParseString( &p, &value ) )
+			if ( COM_ParseString( &p, &value ) ) 
 			{
 				continue;
 			}
@@ -688,56 +624,56 @@ void NPC_Precache ( gentity_t *spawner )
 		}
 
 		// legsmodel
-		if ( !Q_stricmp( token, "legsmodel" ) )
+		if ( !Q_stricmp( token, "legsmodel" ) ) 
 		{
-			if ( COM_ParseString( &p, &value ) )
+			if ( COM_ParseString( &p, &value ) ) 
 			{
 				continue;
 			}
-			//Q_strncpyz( ri.legsModelName, value, sizeof(ri.legsModelName), qtrue);
+			//Q_strncpyz( ri.legsModelName, value, sizeof(ri.legsModelName), qtrue);			
 			md3Model = qtrue;
 			continue;
 		}
 
 		// playerModel
-		if ( !Q_stricmp( token, "playerModel" ) )
+		if ( !Q_stricmp( token, "playerModel" ) ) 
 		{
-			if ( COM_ParseString( &p, &value ) )
+			if ( COM_ParseString( &p, &value ) ) 
 			{
 				continue;
 			}
-			Q_strncpyz( playerModel, value, sizeof(playerModel));
+			Q_strncpyz( playerModel, value, sizeof(playerModel));			
 			md3Model = qfalse;
 			continue;
 		}
 
 		// customSkin
-		if ( !Q_stricmp( token, "customSkin" ) )
+		if ( !Q_stricmp( token, "customSkin" ) ) 
 		{
-			if ( COM_ParseString( &p, &value ) )
+			if ( COM_ParseString( &p, &value ) ) 
 			{
 				continue;
 			}
-			Q_strncpyz( customSkin, value, sizeof(customSkin));
+			Q_strncpyz( customSkin, value, sizeof(customSkin));			
 			continue;
 		}
 
 		// playerTeam
-		if ( !Q_stricmp( token, "playerTeam" ) )
+		if ( !Q_stricmp( token, "playerTeam" ) ) 
 		{
 			char tk[4096]; //rww - hackilicious!
 
-			if ( COM_ParseString( &p, &value ) )
+			if ( COM_ParseString( &p, &value ) ) 
 			{
 				continue;
 			}
 			//playerTeam = TranslateTeamName(value);
 			Com_sprintf(tk, sizeof(tk), "NPC%s", token);
-			playerTeam = GetIDForString( TeamTable, tk );
+			playerTeam = (team_t)GetIDForString( TeamTable, tk );
 			continue;
 		}
 
-
+	
 		// snd
 		if ( !Q_stricmp( token, "snd" ) ) {
 			if ( COM_ParseString( &p, &value ) ) {
@@ -748,7 +684,7 @@ void NPC_Precache ( gentity_t *spawner )
 				//FIXME: store this in some sound field or parse in the soundTable like the animTable...
 				Q_strncpyz( sound, value, sizeof( sound ) );
 				patch = strstr( sound, "/" );
-				if ( patch )
+				if ( patch ) 
 				{
 					*patch = 0;
 				}
@@ -767,7 +703,7 @@ void NPC_Precache ( gentity_t *spawner )
 				//FIXME: store this in some sound field or parse in the soundTable like the animTable...
 				Q_strncpyz( sound, value, sizeof( sound ) );
 				patch = strstr( sound, "/" );
-				if ( patch )
+				if ( patch ) 
 				{
 					*patch = 0;
 				}
@@ -775,7 +711,7 @@ void NPC_Precache ( gentity_t *spawner )
 			}
 			continue;
 		}
-
+		
 		// sndextra
 		if ( !Q_stricmp( token, "sndextra" ) ) {
 			if ( COM_ParseString( &p, &value ) ) {
@@ -786,7 +722,7 @@ void NPC_Precache ( gentity_t *spawner )
 				//FIXME: store this in some sound field or parse in the soundTable like the animTable...
 				Q_strncpyz( sound, value, sizeof( sound ) );
 				patch = strstr( sound, "/" );
-				if ( patch )
+				if ( patch ) 
 				{
 					*patch = 0;
 				}
@@ -805,7 +741,7 @@ void NPC_Precache ( gentity_t *spawner )
 				//FIXME: store this in some sound field or parse in the soundTable like the animTable...
 				Q_strncpyz( sound, value, sizeof( sound ) );
 				patch = strstr( sound, "/" );
-				if ( patch )
+				if ( patch ) 
 				{
 					*patch = 0;
 				}
@@ -856,7 +792,7 @@ void NPC_Precache ( gentity_t *spawner )
 	}
 
 	//precache this NPC's possible weapons
-	NPC_PrecacheWeapons( (team_t)playerTeam, spawner->spawnflags, spawner->NPC_type );
+	NPC_PrecacheWeapons( playerTeam, spawner->spawnflags, spawner->NPC_type );
 
 //	CG_RegisterNPCCustomSounds( &ci );
 //	CG_RegisterNPCEffects( playerTeam );
@@ -963,7 +899,7 @@ void NPC_BuildRandom( gentity_t *NPC )
 #endif
 
 extern void SetupGameGhoul2Model(gentity_t *ent, char *modelname, char *skinName);
-qboolean NPC_ParseParms( const char *NPCName, gentity_t *NPC )
+qboolean NPC_ParseParms( const char *NPCName, gentity_t *NPC ) 
 {
 	const char	*token;
 	const char	*value;
@@ -974,7 +910,6 @@ qboolean NPC_ParseParms( const char *NPCName, gentity_t *NPC )
 	char	sound[MAX_QPATH];
 	char	playerModel[MAX_QPATH];
 	char	customSkin[MAX_QPATH];
-	char	sessionName[MAX_QPATH+17];
 	renderInfo_t	*ri = &NPC->client->renderInfo;
 	gNPCstats_t		*stats = NULL;
 	qboolean	md3Model = qtrue;
@@ -990,7 +925,7 @@ qboolean NPC_ParseParms( const char *NPCName, gentity_t *NPC )
 	VectorSet(playerMaxs, 15, 15, DEFAULT_MAXS_2);
 
 	strcpy(customSkin,"default");
-	if ( !NPCName || !NPCName[0])
+	if ( !NPCName || !NPCName[0]) 
 	{
 		NPCName = "Player";
 	}
@@ -1047,7 +982,7 @@ qboolean NPC_ParseParms( const char *NPCName, gentity_t *NPC )
 	//FIXME: should we have one for weapon too?
 	memset( (char *)surfOff, 0, sizeof(surfOff) );
 	memset( (char *)surfOn, 0, sizeof(surfOn) );
-
+	
 	/*
 	ri->headYawRangeLeft = 50;
 	ri->headYawRangeRight = 50;
@@ -1102,11 +1037,10 @@ qboolean NPC_ParseParms( const char *NPCName, gentity_t *NPC )
 		int fp;
 
 		p = NPCParms;
-		Com_sprintf( sessionName, sizeof(sessionName), "NPC_ParseParms(%s)", NPCName );
-		COM_BeginParseSession(sessionName);
+		COM_BeginParseSession(NPCFile);
 
 		// look for the right NPC
-		while ( p )
+		while ( p ) 
 		{
 			token = COM_ParseExt( &p, qtrue );
 			if ( token[0] == 0 )
@@ -1114,42 +1048,42 @@ qboolean NPC_ParseParms( const char *NPCName, gentity_t *NPC )
 				return qfalse;
 			}
 
-			if ( !Q_stricmp( token, NPCName ) )
+			if ( !Q_stricmp( token, NPCName ) ) 
 			{
 				break;
 			}
 
 			SkipBracedSection( &p, 0 );
 		}
-		if ( !p )
+		if ( !p ) 
 		{
 			return qfalse;
 		}
 
-		if ( BG_ParseLiteral( &p, "{" ) )
+		if ( BG_ParseLiteral( &p, "{" ) ) 
 		{
 			return qfalse;
 		}
-
+			
 		// parse the NPC info block
-		while ( 1 )
+		while ( 1 ) 
 		{
 			token = COM_ParseExt( &p, qtrue );
-			if ( !token[0] )
+			if ( !token[0] ) 
 			{
 				Com_Printf( S_COLOR_RED"ERROR: unexpected EOF while parsing '%s'\n", NPCName );
 				return qfalse;
 			}
 
-			if ( !Q_stricmp( token, "}" ) )
+			if ( !Q_stricmp( token, "}" ) ) 
 			{
 				break;
 			}
 	//===MODEL PROPERTIES===========================================================
 			// custom color
-			if ( !Q_stricmp( token, "customRGBA" ) )
+			if ( !Q_stricmp( token, "customRGBA" ) ) 
 			{
-				if ( COM_ParseString( &p, &value ) )
+				if ( COM_ParseString( &p, &value ) ) 
 				{
 					continue;
 				}
@@ -1159,350 +1093,24 @@ qboolean NPC_ParseParms( const char *NPCName, gentity_t *NPC )
 					NPC->client->ps.customRGBA[1]=Q_irand(0,255);
 					NPC->client->ps.customRGBA[2]=Q_irand(0,255);
 					NPC->client->ps.customRGBA[3]=255;
-				}
-				else if ( !Q_stricmp( value, "random1" ) )
-				{
-					NPC->client->ps.customRGBA[3] = 255;
-					switch ( Q_irand( 0, 5 ) )
-					{
-					default:
-					case 0:
-						NPC->client->ps.customRGBA[0] = 127;
-						NPC->client->ps.customRGBA[1] = 153;
-						NPC->client->ps.customRGBA[2] = 255;
-						break;
-					case 1:
-						NPC->client->ps.customRGBA[0] = 177;
-						NPC->client->ps.customRGBA[1] = 29;
-						NPC->client->ps.customRGBA[2] = 13;
-						break;
-					case 2:
-						NPC->client->ps.customRGBA[0] = 47;
-						NPC->client->ps.customRGBA[1] = 90;
-						NPC->client->ps.customRGBA[2] = 40;
-						break;
-					case 3:
-						NPC->client->ps.customRGBA[0] = 181;
-						NPC->client->ps.customRGBA[1] = 207;
-						NPC->client->ps.customRGBA[2] = 255;
-						break;
-					case 4:
-						NPC->client->ps.customRGBA[0] = 138;
-						NPC->client->ps.customRGBA[1] = 83;
-						NPC->client->ps.customRGBA[2] = 0;
-						break;
-					case 5:
-						NPC->client->ps.customRGBA[0] = 254;
-						NPC->client->ps.customRGBA[1] = 199;
-						NPC->client->ps.customRGBA[2] = 14;
-						break;
-					}
-				}
-				else if ( !Q_stricmp( value, "jedi_hf" ) )
-				{
-					NPC->client->ps.customRGBA[3] = 255;
-					switch ( Q_irand( 0, 7 ) )
-					{
-					default:
-					case 0://red1
-						NPC->client->ps.customRGBA[0] = 165;
-						NPC->client->ps.customRGBA[1] = 48;
-						NPC->client->ps.customRGBA[2] = 21;
-						break;
-					case 1://yellow1
-						NPC->client->ps.customRGBA[0] = 254;
-						NPC->client->ps.customRGBA[1] = 230;
-						NPC->client->ps.customRGBA[2] = 132;
-						break;
-					case 2://bluegray
-						NPC->client->ps.customRGBA[0] = 181;
-						NPC->client->ps.customRGBA[1] = 207;
-						NPC->client->ps.customRGBA[2] = 255;
-						break;
-					case 3://pink
-						NPC->client->ps.customRGBA[0] = 233;
-						NPC->client->ps.customRGBA[1] = 183;
-						NPC->client->ps.customRGBA[2] = 208;
-						break;
-					case 4://lt blue
-						NPC->client->ps.customRGBA[0] = 161;
-						NPC->client->ps.customRGBA[1] = 226;
-						NPC->client->ps.customRGBA[2] = 240;
-						break;
-					case 5://blue
-						NPC->client->ps.customRGBA[0] = 101;
-						NPC->client->ps.customRGBA[1] = 159;
-						NPC->client->ps.customRGBA[2] = 255;
-						break;
-					case 6://orange
-						NPC->client->ps.customRGBA[0] = 255;
-						NPC->client->ps.customRGBA[1] = 157;
-						NPC->client->ps.customRGBA[2] = 114;
-						break;
-					case 7://violet
-						NPC->client->ps.customRGBA[0] = 216;
-						NPC->client->ps.customRGBA[1] = 160;
-						NPC->client->ps.customRGBA[2] = 255;
-						break;
-					}
-				}
-				else if ( !Q_stricmp( value, "jedi_hm" ) )
-				{
-					NPC->client->ps.customRGBA[3] = 255;
-					switch ( Q_irand( 0, 7 ) )
-					{
-					default:
-					case 0://yellow
-						NPC->client->ps.customRGBA[0] = 252;
-						NPC->client->ps.customRGBA[1] = 243;
-						NPC->client->ps.customRGBA[2] = 180;
-						break;
-					case 1://blue
-						NPC->client->ps.customRGBA[0] = 69;
-						NPC->client->ps.customRGBA[1] = 109;
-						NPC->client->ps.customRGBA[2] = 255;
-						break;
-					case 2://gold
-						NPC->client->ps.customRGBA[0] = 254;
-						NPC->client->ps.customRGBA[1] = 197;
-						NPC->client->ps.customRGBA[2] = 73;
-						break;
-					case 3://orange
-						NPC->client->ps.customRGBA[0] = 178;
-						NPC->client->ps.customRGBA[1] = 78;
-						NPC->client->ps.customRGBA[2] = 18;
-						break;
-					case 4://bluegreen
-						NPC->client->ps.customRGBA[0] = 112;
-						NPC->client->ps.customRGBA[1] = 153;
-						NPC->client->ps.customRGBA[2] = 161;
-						break;
-					case 5://blue2
-						NPC->client->ps.customRGBA[0] = 123;
-						NPC->client->ps.customRGBA[1] = 182;
-						NPC->client->ps.customRGBA[2] = 255;
-						break;
-					case 6://green2
-						NPC->client->ps.customRGBA[0] = 0;
-						NPC->client->ps.customRGBA[1] = 88;
-						NPC->client->ps.customRGBA[2] = 105;
-						break;
-					case 7://violet
-						NPC->client->ps.customRGBA[0] = 138;
-						NPC->client->ps.customRGBA[1] = 0;
-						NPC->client->ps.customRGBA[2] = 0;
-						break;
-					}
-				}
-				else if ( !Q_stricmp( value, "jedi_kdm" ) )
-				{
-					NPC->client->ps.customRGBA[3] = 255;
-					switch ( Q_irand( 0, 8 ) )
-					{
-					default:
-					case 0://blue
-						NPC->client->ps.customRGBA[0] = 85;
-						NPC->client->ps.customRGBA[1] = 120;
-						NPC->client->ps.customRGBA[2] = 255;
-						break;
-					case 1://violet
-						NPC->client->ps.customRGBA[0] = 173;
-						NPC->client->ps.customRGBA[1] = 142;
-						NPC->client->ps.customRGBA[2] = 219;
-						break;
-					case 2://brown1
-						NPC->client->ps.customRGBA[0] = 254;
-						NPC->client->ps.customRGBA[1] = 197;
-						NPC->client->ps.customRGBA[2] = 73;
-						break;
-					case 3://orange
-						NPC->client->ps.customRGBA[0] = 138;
-						NPC->client->ps.customRGBA[1] = 83;
-						NPC->client->ps.customRGBA[2] = 0;
-						break;
-					case 4://gold
-						NPC->client->ps.customRGBA[0] = 254;
-						NPC->client->ps.customRGBA[1] = 199;
-						NPC->client->ps.customRGBA[2] = 14;
-						break;
-					case 5://blue2
-						NPC->client->ps.customRGBA[0] = 68;
-						NPC->client->ps.customRGBA[1] = 194;
-						NPC->client->ps.customRGBA[2] = 217;
-						break;
-					case 6://red1
-						NPC->client->ps.customRGBA[0] = 170;
-						NPC->client->ps.customRGBA[1] = 3;
-						NPC->client->ps.customRGBA[2] = 30;
-						break;
-					case 7://yellow1
-						NPC->client->ps.customRGBA[0] = 225;
-						NPC->client->ps.customRGBA[1] = 226;
-						NPC->client->ps.customRGBA[2] = 144;
-						break;
-					case 8://violet2
-						NPC->client->ps.customRGBA[0] = 167;
-						NPC->client->ps.customRGBA[1] = 202;
-						NPC->client->ps.customRGBA[2] = 255;
-						break;
-					}
-				}
-				else if ( !Q_stricmp( value, "jedi_rm" ) )
-				{
-					NPC->client->ps.customRGBA[3] = 255;
-					switch ( Q_irand( 0, 8 ) )
-					{
-					default:
-					case 0://blue
-						NPC->client->ps.customRGBA[0] = 127;
-						NPC->client->ps.customRGBA[1] = 153;
-						NPC->client->ps.customRGBA[2] = 255;
-						break;
-					case 1://green1
-						NPC->client->ps.customRGBA[0] = 208;
-						NPC->client->ps.customRGBA[1] = 249;
-						NPC->client->ps.customRGBA[2] = 85;
-						break;
-					case 2://blue2
-						NPC->client->ps.customRGBA[0] = 181;
-						NPC->client->ps.customRGBA[1] = 207;
-						NPC->client->ps.customRGBA[2] = 255;
-						break;
-					case 3://gold
-						NPC->client->ps.customRGBA[0] = 138;
-						NPC->client->ps.customRGBA[1] = 83;
-						NPC->client->ps.customRGBA[2] = 0;
-						break;
-					case 4://gold
-						NPC->client->ps.customRGBA[0] = 224;
-						NPC->client->ps.customRGBA[1] = 171;
-						NPC->client->ps.customRGBA[2] = 44;
-						break;
-					case 5://green2
-						NPC->client->ps.customRGBA[0] = 49;
-						NPC->client->ps.customRGBA[1] = 155;
-						NPC->client->ps.customRGBA[2] = 131;
-						break;
-					case 6://red1
-						NPC->client->ps.customRGBA[0] = 163;
-						NPC->client->ps.customRGBA[1] = 79;
-						NPC->client->ps.customRGBA[2] = 17;
-						break;
-					case 7://violet2
-						NPC->client->ps.customRGBA[0] = 148;
-						NPC->client->ps.customRGBA[1] = 104;
-						NPC->client->ps.customRGBA[2] = 228;
-						break;
-					case 8://green3
-						NPC->client->ps.customRGBA[0] = 138;
-						NPC->client->ps.customRGBA[1] = 136;
-						NPC->client->ps.customRGBA[2] = 0;
-						break;
-					}
-				}
-				else if ( !Q_stricmp( value, "jedi_tf" ) )
-				{
-					NPC->client->ps.customRGBA[3] = 255;
-					switch ( Q_irand( 0, 5 ) )
-					{
-					default:
-					case 0://green1
-						NPC->client->ps.customRGBA[0] = 255;
-						NPC->client->ps.customRGBA[1] = 235;
-						NPC->client->ps.customRGBA[2] = 100;
-						break;
-					case 1://blue1
-						NPC->client->ps.customRGBA[0] = 62;
-						NPC->client->ps.customRGBA[1] = 155;
-						NPC->client->ps.customRGBA[2] = 255;
-						break;
-					case 2://red1
-						NPC->client->ps.customRGBA[0] = 255;
-						NPC->client->ps.customRGBA[1] = 110;
-						NPC->client->ps.customRGBA[2] = 120;
-						break;
-					case 3://purple
-						NPC->client->ps.customRGBA[0] = 180;
-						NPC->client->ps.customRGBA[1] = 150;
-						NPC->client->ps.customRGBA[2] = 255;
-						break;
-					case 4://flesh
-						NPC->client->ps.customRGBA[0] = 255;
-						NPC->client->ps.customRGBA[1] = 200;
-						NPC->client->ps.customRGBA[2] = 212;
-						break;
-					case 5://base
-						NPC->client->ps.customRGBA[0] = 255;
-						NPC->client->ps.customRGBA[1] = 255;
-						NPC->client->ps.customRGBA[2] = 255;
-						break;
-					}
-				}
-				else if ( !Q_stricmp( value, "jedi_zf" ) )
-				{
-					NPC->client->ps.customRGBA[3] = 255;
-					switch ( Q_irand( 0, 7 ) )
-					{
-					default:
-					case 0://red1
-						NPC->client->ps.customRGBA[0] = 204;
-						NPC->client->ps.customRGBA[1] = 19;
-						NPC->client->ps.customRGBA[2] = 21;
-						break;
-					case 1://orange1
-						NPC->client->ps.customRGBA[0] = 255;
-						NPC->client->ps.customRGBA[1] = 107;
-						NPC->client->ps.customRGBA[2] = 40;
-						break;
-					case 2://pink1
-						NPC->client->ps.customRGBA[0] = 255;
-						NPC->client->ps.customRGBA[1] = 148;
-						NPC->client->ps.customRGBA[2] = 155;
-						break;
-					case 3://gold
-						NPC->client->ps.customRGBA[0] = 255;
-						NPC->client->ps.customRGBA[1] = 164;
-						NPC->client->ps.customRGBA[2] = 59;
-						break;
-					case 4://violet1
-						NPC->client->ps.customRGBA[0] = 216;
-						NPC->client->ps.customRGBA[1] = 160;
-						NPC->client->ps.customRGBA[2] = 255;
-						break;
-					case 5://blue1
-						NPC->client->ps.customRGBA[0] = 101;
-						NPC->client->ps.customRGBA[1] = 159;
-						NPC->client->ps.customRGBA[2] = 255;
-						break;
-					case 6://blue2
-						NPC->client->ps.customRGBA[0] = 161;
-						NPC->client->ps.customRGBA[1] = 226;
-						NPC->client->ps.customRGBA[2] = 240;
-						break;
-					case 7://blue3
-						NPC->client->ps.customRGBA[0] = 37;
-						NPC->client->ps.customRGBA[1] = 155;
-						NPC->client->ps.customRGBA[2] = 181;
-						break;
-					}
-				}
-				else
+				} 
+				else 
 				{
 					NPC->client->ps.customRGBA[0]=atoi(value);
-
-					if ( COM_ParseInt( &p, &n ) )
+					
+					if ( COM_ParseInt( &p, &n ) ) 
 					{
 						continue;
 					}
 					NPC->client->ps.customRGBA[1]=n;
-
-					if ( COM_ParseInt( &p, &n ) )
+					
+					if ( COM_ParseInt( &p, &n ) ) 
 					{
 						continue;
 					}
 					NPC->client->ps.customRGBA[2]=n;
-
-					if ( COM_ParseInt( &p, &n ) )
+					
+					if ( COM_ParseInt( &p, &n ) ) 
 					{
 						continue;
 					}
@@ -1512,9 +1120,9 @@ qboolean NPC_ParseParms( const char *NPCName, gentity_t *NPC )
 			}
 
 			// headmodel
-			if ( !Q_stricmp( token, "headmodel" ) )
+			if ( !Q_stricmp( token, "headmodel" ) ) 
 			{
-				if ( COM_ParseString( &p, &value ) )
+				if ( COM_ParseString( &p, &value ) ) 
 				{
 					continue;
 				}
@@ -1522,18 +1130,18 @@ qboolean NPC_ParseParms( const char *NPCName, gentity_t *NPC )
 				if(!Q_stricmp("none", value))
 				{
 					//Zero the head clamp range so the torso & legs don't lag behind
-					ri->headYawRangeLeft =
-					ri->headYawRangeRight =
-					ri->headPitchRangeUp =
+					ri->headYawRangeLeft = 
+					ri->headYawRangeRight = 
+					ri->headPitchRangeUp = 
 					ri->headPitchRangeDown = 0;
 				}
 				continue;
 			}
-
+			
 			// torsomodel
-			if ( !Q_stricmp( token, "torsomodel" ) )
+			if ( !Q_stricmp( token, "torsomodel" ) ) 
 			{
-				if ( COM_ParseString( &p, &value ) )
+				if ( COM_ParseString( &p, &value ) ) 
 				{
 					continue;
 				}
@@ -1541,23 +1149,23 @@ qboolean NPC_ParseParms( const char *NPCName, gentity_t *NPC )
 				if(!Q_stricmp("none", value))
 				{
 					//Zero the torso clamp range so the legs don't lag behind
-					ri->torsoYawRangeLeft =
-					ri->torsoYawRangeRight =
-					ri->torsoPitchRangeUp =
+					ri->torsoYawRangeLeft = 
+					ri->torsoYawRangeRight = 
+					ri->torsoPitchRangeUp = 
 					ri->torsoPitchRangeDown = 0;
 				}
 				continue;
 			}
 
 			// legsmodel
-			if ( !Q_stricmp( token, "legsmodel" ) )
+			if ( !Q_stricmp( token, "legsmodel" ) ) 
 			{
-				if ( COM_ParseString( &p, &value ) )
+				if ( COM_ParseString( &p, &value ) ) 
 				{
 					continue;
 				}
 				/*
-				Q_strncpyz( ri->legsModelName, value, sizeof(ri->legsModelName), qtrue);
+				Q_strncpyz( ri->legsModelName, value, sizeof(ri->legsModelName), qtrue);			
 				//Need to do this here to get the right index
 				G_ParseAnimFileSet( ri->legsModelName, ri->legsModelName, &ci->animFileIndex );
 				*/
@@ -1565,32 +1173,32 @@ qboolean NPC_ParseParms( const char *NPCName, gentity_t *NPC )
 			}
 
 			// playerModel
-			if ( !Q_stricmp( token, "playerModel" ) )
+			if ( !Q_stricmp( token, "playerModel" ) ) 
 			{
-				if ( COM_ParseString( &p, &value ) )
+				if ( COM_ParseString( &p, &value ) ) 
 				{
 					continue;
 				}
-				Q_strncpyz( playerModel, value, sizeof(playerModel));
+				Q_strncpyz( playerModel, value, sizeof(playerModel));			
 				md3Model = qfalse;
 				continue;
 			}
-
+			
 			// customSkin
-			if ( !Q_stricmp( token, "customSkin" ) )
+			if ( !Q_stricmp( token, "customSkin" ) ) 
 			{
-				if ( COM_ParseString( &p, &value ) )
+				if ( COM_ParseString( &p, &value ) ) 
 				{
 					continue;
 				}
-				Q_strncpyz( customSkin, value, sizeof(customSkin));
+				Q_strncpyz( customSkin, value, sizeof(customSkin));			
 				continue;
 			}
 
 			// surfOff
-			if ( !Q_stricmp( token, "surfOff" ) )
+			if ( !Q_stricmp( token, "surfOff" ) ) 
 			{
-				if ( COM_ParseString( &p, &value ) )
+				if ( COM_ParseString( &p, &value ) ) 
 				{
 					continue;
 				}
@@ -1605,11 +1213,11 @@ qboolean NPC_ParseParms( const char *NPCName, gentity_t *NPC )
 				}
 				continue;
 			}
-
+			
 			// surfOn
-			if ( !Q_stricmp( token, "surfOn" ) )
+			if ( !Q_stricmp( token, "surfOn" ) ) 
 			{
-				if ( COM_ParseString( &p, &value ) )
+				if ( COM_ParseString( &p, &value ) ) 
 				{
 					continue;
 				}
@@ -1624,16 +1232,16 @@ qboolean NPC_ParseParms( const char *NPCName, gentity_t *NPC )
 				}
 				continue;
 			}
-
+			
 			//headYawRangeLeft
-			if ( !Q_stricmp( token, "headYawRangeLeft" ) )
+			if ( !Q_stricmp( token, "headYawRangeLeft" ) ) 
 			{
-				if ( COM_ParseInt( &p, &n ) )
+				if ( COM_ParseInt( &p, &n ) ) 
 				{
 					SkipRestOfLine( &p );
 					continue;
 				}
-				if ( n < 0 )
+				if ( n < 0 ) 
 				{
 					Com_Printf( S_COLOR_YELLOW"WARNING: bad %s in NPC '%s'\n", token, NPCName );
 					continue;
@@ -1643,14 +1251,14 @@ qboolean NPC_ParseParms( const char *NPCName, gentity_t *NPC )
 			}
 
 			//headYawRangeRight
-			if ( !Q_stricmp( token, "headYawRangeRight" ) )
+			if ( !Q_stricmp( token, "headYawRangeRight" ) ) 
 			{
-				if ( COM_ParseInt( &p, &n ) )
+				if ( COM_ParseInt( &p, &n ) ) 
 				{
 					SkipRestOfLine( &p );
 					continue;
 				}
-				if ( n < 0 )
+				if ( n < 0 ) 
 				{
 					Com_Printf( S_COLOR_YELLOW"WARNING: bad %s in NPC '%s'\n", token, NPCName );
 					continue;
@@ -1660,14 +1268,14 @@ qboolean NPC_ParseParms( const char *NPCName, gentity_t *NPC )
 			}
 
 			//headPitchRangeUp
-			if ( !Q_stricmp( token, "headPitchRangeUp" ) )
+			if ( !Q_stricmp( token, "headPitchRangeUp" ) ) 
 			{
-				if ( COM_ParseInt( &p, &n ) )
+				if ( COM_ParseInt( &p, &n ) ) 
 				{
 					SkipRestOfLine( &p );
 					continue;
 				}
-				if ( n < 0 )
+				if ( n < 0 ) 
 				{
 					Com_Printf( S_COLOR_YELLOW"WARNING: bad %s in NPC '%s'\n", token, NPCName );
 					continue;
@@ -1675,16 +1283,16 @@ qboolean NPC_ParseParms( const char *NPCName, gentity_t *NPC )
 				ri->headPitchRangeUp = n;
 				continue;
 			}
-
+			
 			//headPitchRangeDown
-			if ( !Q_stricmp( token, "headPitchRangeDown" ) )
+			if ( !Q_stricmp( token, "headPitchRangeDown" ) ) 
 			{
-				if ( COM_ParseInt( &p, &n ) )
+				if ( COM_ParseInt( &p, &n ) ) 
 				{
 					SkipRestOfLine( &p );
 					continue;
 				}
-				if ( n < 0 )
+				if ( n < 0 ) 
 				{
 					Com_Printf( S_COLOR_YELLOW"WARNING: bad %s in NPC '%s'\n", token, NPCName );
 					continue;
@@ -1694,14 +1302,14 @@ qboolean NPC_ParseParms( const char *NPCName, gentity_t *NPC )
 			}
 
 			//torsoYawRangeLeft
-			if ( !Q_stricmp( token, "torsoYawRangeLeft" ) )
+			if ( !Q_stricmp( token, "torsoYawRangeLeft" ) ) 
 			{
-				if ( COM_ParseInt( &p, &n ) )
+				if ( COM_ParseInt( &p, &n ) ) 
 				{
 					SkipRestOfLine( &p );
 					continue;
 				}
-				if ( n < 0 )
+				if ( n < 0 ) 
 				{
 					Com_Printf( S_COLOR_YELLOW"WARNING: bad %s in NPC '%s'\n", token, NPCName );
 					continue;
@@ -1711,14 +1319,14 @@ qboolean NPC_ParseParms( const char *NPCName, gentity_t *NPC )
 			}
 
 			//torsoYawRangeRight
-			if ( !Q_stricmp( token, "torsoYawRangeRight" ) )
+			if ( !Q_stricmp( token, "torsoYawRangeRight" ) ) 
 			{
-				if ( COM_ParseInt( &p, &n ) )
+				if ( COM_ParseInt( &p, &n ) ) 
 				{
 					SkipRestOfLine( &p );
 					continue;
 				}
-				if ( n < 0 )
+				if ( n < 0 ) 
 				{
 					Com_Printf( S_COLOR_YELLOW"WARNING: bad %s in NPC '%s'\n", token, NPCName );
 					continue;
@@ -1728,14 +1336,14 @@ qboolean NPC_ParseParms( const char *NPCName, gentity_t *NPC )
 			}
 
 			//torsoPitchRangeUp
-			if ( !Q_stricmp( token, "torsoPitchRangeUp" ) )
+			if ( !Q_stricmp( token, "torsoPitchRangeUp" ) ) 
 			{
-				if ( COM_ParseInt( &p, &n ) )
+				if ( COM_ParseInt( &p, &n ) ) 
 				{
 					SkipRestOfLine( &p );
 					continue;
 				}
-				if ( n < 0 )
+				if ( n < 0 ) 
 				{
 					Com_Printf( S_COLOR_YELLOW"WARNING: bad %s in NPC '%s'\n", token, NPCName );
 					continue;
@@ -1745,14 +1353,14 @@ qboolean NPC_ParseParms( const char *NPCName, gentity_t *NPC )
 			}
 
 			//torsoPitchRangeDown
-			if ( !Q_stricmp( token, "torsoPitchRangeDown" ) )
+			if ( !Q_stricmp( token, "torsoPitchRangeDown" ) ) 
 			{
-				if ( COM_ParseInt( &p, &n ) )
+				if ( COM_ParseInt( &p, &n ) ) 
 				{
 					SkipRestOfLine( &p );
 					continue;
 				}
-				if ( n < 0 )
+				if ( n < 0 ) 
 				{
 					Com_Printf( S_COLOR_YELLOW"WARNING: bad %s in NPC '%s'\n", token, NPCName );
 					continue;
@@ -1762,14 +1370,14 @@ qboolean NPC_ParseParms( const char *NPCName, gentity_t *NPC )
 			}
 
 			// Uniform XYZ scale
-			if ( !Q_stricmp( token, "scale" ) )
+			if ( !Q_stricmp( token, "scale" ) ) 
 			{
-				if ( COM_ParseInt( &p, &n ) )
+				if ( COM_ParseInt( &p, &n ) ) 
 				{
 					SkipRestOfLine( &p );
 					continue;
 				}
-				if ( n < 0 )
+				if ( n < 0 ) 
 				{
 					Com_Printf(  "bad %s in NPC '%s'\n", token, NPCName );
 					continue;
@@ -1789,14 +1397,14 @@ qboolean NPC_ParseParms( const char *NPCName, gentity_t *NPC )
 			}
 
 			//X scale
-			if ( !Q_stricmp( token, "scaleX" ) )
+			if ( !Q_stricmp( token, "scaleX" ) ) 
 			{
-				if ( COM_ParseInt( &p, &n ) )
+				if ( COM_ParseInt( &p, &n ) ) 
 				{
 					SkipRestOfLine( &p );
 					continue;
 				}
-				if ( n < 0 )
+				if ( n < 0 ) 
 				{
 					Com_Printf(  "bad %s in NPC '%s'\n", token, NPCName );
 					continue;
@@ -1810,14 +1418,14 @@ qboolean NPC_ParseParms( const char *NPCName, gentity_t *NPC )
 			}
 
 			//Y scale
-			if ( !Q_stricmp( token, "scaleY" ) )
+			if ( !Q_stricmp( token, "scaleY" ) ) 
 			{
-				if ( COM_ParseInt( &p, &n ) )
+				if ( COM_ParseInt( &p, &n ) ) 
 				{
 					SkipRestOfLine( &p );
 					continue;
 				}
-				if ( n < 0 )
+				if ( n < 0 ) 
 				{
 					Com_Printf(  "bad %s in NPC '%s'\n", token, NPCName );
 					continue;
@@ -1831,14 +1439,14 @@ qboolean NPC_ParseParms( const char *NPCName, gentity_t *NPC )
 			}
 
 			//Z scale
-			if ( !Q_stricmp( token, "scaleZ" ) )
+			if ( !Q_stricmp( token, "scaleZ" ) ) 
 			{
-				if ( COM_ParseInt( &p, &n ) )
+				if ( COM_ParseInt( &p, &n ) ) 
 				{
 					SkipRestOfLine( &p );
 					continue;
 				}
-				if ( n < 0 )
+				if ( n < 0 ) 
 				{
 					Com_Printf(  "bad %s in NPC '%s'\n", token, NPCName );
 					continue;
@@ -1894,7 +1502,7 @@ qboolean NPC_ParseParms( const char *NPCName, gentity_t *NPC )
 						SkipRestOfLine( &p );
 						continue;
 					}
-					if ( f < 0.0f )
+					if ( f < 0.0f ) 
 					{
 						Com_Printf( "bad %s in NPC '%s'\n", token, NPCName );
 						continue;
@@ -1907,14 +1515,14 @@ qboolean NPC_ParseParms( const char *NPCName, gentity_t *NPC )
 				}
 
 				// evasion
-				if ( !Q_stricmp( token, "evasion" ) )
+				if ( !Q_stricmp( token, "evasion" ) ) 
 				{
-					if ( COM_ParseInt( &p, &n ) )
+					if ( COM_ParseInt( &p, &n ) ) 
 					{
 						SkipRestOfLine( &p );
 						continue;
 					}
-					if ( n < 1 || n > 5 )
+					if ( n < 1 || n > 5 ) 
 					{
 						Com_Printf( S_COLOR_YELLOW"WARNING: bad %s in NPC '%s'\n", token, NPCName );
 						continue;
@@ -1959,7 +1567,7 @@ qboolean NPC_ParseParms( const char *NPCName, gentity_t *NPC )
 					}
 					continue;
 				}
-
+				
 				// move
 				if ( !Q_stricmp( token, "move" ) ) {
 					if ( COM_ParseInt( &p, &n ) ) {
@@ -2000,7 +1608,7 @@ qboolean NPC_ParseParms( const char *NPCName, gentity_t *NPC )
 						SkipRestOfLine( &p );
 						continue;
 					}
-					if ( f < 0.0f )
+					if ( f < 0.0f ) 
 					{
 						Com_Printf( "bad %s in NPC '%s'\n", token, NPCName );
 						continue;
@@ -2035,7 +1643,7 @@ qboolean NPC_ParseParms( const char *NPCName, gentity_t *NPC )
 						SkipRestOfLine( &p );
 						continue;
 					}
-					if ( f < 0.0f )
+					if ( f < 0.0f ) 
 					{
 						Com_Printf( "bad %s in NPC '%s'\n", token, NPCName );
 						continue;
@@ -2053,7 +1661,7 @@ qboolean NPC_ParseParms( const char *NPCName, gentity_t *NPC )
 						SkipRestOfLine( &p );
 						continue;
 					}
-					if ( f < 0.0f )
+					if ( f < 0.0f ) 
 					{
 						Com_Printf( "bad %s in NPC '%s'\n", token, NPCName );
 						continue;
@@ -2066,9 +1674,9 @@ qboolean NPC_ParseParms( const char *NPCName, gentity_t *NPC )
 				}
 
 				// race
-		//		if ( !Q_stricmp( token, "race" ) )
+		//		if ( !Q_stricmp( token, "race" ) ) 
 		//		{
-		//			if ( COM_ParseString( &p, &value ) )
+		//			if ( COM_ParseString( &p, &value ) ) 
 		//			{
 		//				continue;
 		//			}
@@ -2077,9 +1685,9 @@ qboolean NPC_ParseParms( const char *NPCName, gentity_t *NPC )
 		//		}
 
 				// rank
-				if ( !Q_stricmp( token, "rank" ) )
+				if ( !Q_stricmp( token, "rank" ) ) 
 				{
-					if ( COM_ParseString( &p, &value ) )
+					if ( COM_ParseString( &p, &value ) ) 
 					{
 						continue;
 					}
@@ -2092,14 +1700,14 @@ qboolean NPC_ParseParms( const char *NPCName, gentity_t *NPC )
 			}
 
 			// health
-			if ( !Q_stricmp( token, "health" ) )
+			if ( !Q_stricmp( token, "health" ) ) 
 			{
-				if ( COM_ParseInt( &p, &n ) )
+				if ( COM_ParseInt( &p, &n ) ) 
 				{
 					SkipRestOfLine( &p );
 					continue;
 				}
-				if ( n < 0 )
+				if ( n < 0 ) 
 				{
 					Com_Printf( S_COLOR_YELLOW"WARNING: bad %s in NPC '%s'\n", token, NPCName );
 					continue;
@@ -2116,9 +1724,9 @@ qboolean NPC_ParseParms( const char *NPCName, gentity_t *NPC )
 			}
 
 			// fullName
-			if ( !Q_stricmp( token, "fullName" ) )
+			if ( !Q_stricmp( token, "fullName" ) ) 
 			{
-				if ( COM_ParseString( &p, &value ) )
+				if ( COM_ParseString( &p, &value ) ) 
 				{
 					continue;
 				}
@@ -2127,11 +1735,11 @@ qboolean NPC_ParseParms( const char *NPCName, gentity_t *NPC )
 			}
 
 			// playerTeam
-			if ( !Q_stricmp( token, "playerTeam" ) )
+			if ( !Q_stricmp( token, "playerTeam" ) ) 
 			{
 				char tk[4096]; //rww - hackilicious!
 
-				if ( COM_ParseString( &p, &value ) )
+				if ( COM_ParseString( &p, &value ) ) 
 				{
 					continue;
 				}
@@ -2141,23 +1749,23 @@ qboolean NPC_ParseParms( const char *NPCName, gentity_t *NPC )
 			}
 
 			// enemyTeam
-			if ( !Q_stricmp( token, "enemyTeam" ) )
+			if ( !Q_stricmp( token, "enemyTeam" ) ) 
 			{
 				char tk[4096]; //rww - hackilicious!
 
-				if ( COM_ParseString( &p, &value ) )
+				if ( COM_ParseString( &p, &value ) ) 
 				{
 					continue;
 				}
 				Com_sprintf(tk, sizeof(tk), "NPC%s", token);
-				NPC->client->enemyTeam = GetIDForString( TeamTable, tk );//TranslateTeamName(value);
+				NPC->client->enemyTeam = (team_t)GetIDForString( TeamTable, tk );//TranslateTeamName(value);
 				continue;
 			}
 
 			// class
-			if ( !Q_stricmp( token, "class" ) )
+			if ( !Q_stricmp( token, "class" ) ) 
 			{
-				if ( COM_ParseString( &p, &value ) )
+				if ( COM_ParseString( &p, &value ) ) 
 				{
 					continue;
 				}
@@ -2184,7 +1792,7 @@ qboolean NPC_ParseParms( const char *NPCName, gentity_t *NPC )
 					SkipRestOfLine( &p );
 					continue;
 				}
-				if ( n < 0 )
+				if ( n < 0 ) 
 				{
 					Com_Printf( "bad %s in NPC '%s'\n", token, NPCName );
 					continue;
@@ -2203,7 +1811,7 @@ qboolean NPC_ParseParms( const char *NPCName, gentity_t *NPC )
 					SkipRestOfLine( &p );
 					continue;
 				}
-				if ( n < 0 )
+				if ( n < 0 ) 
 				{
 					Com_Printf( "bad %s in NPC '%s'\n", token, NPCName );
 					continue;
@@ -2221,7 +1829,7 @@ qboolean NPC_ParseParms( const char *NPCName, gentity_t *NPC )
 					SkipRestOfLine( &p );
 					continue;
 				}
-				if ( n < 0 )
+				if ( n < 0 ) 
 				{
 					Com_Printf( "bad %s in NPC '%s'\n", token, NPCName );
 					continue;
@@ -2239,7 +1847,7 @@ qboolean NPC_ParseParms( const char *NPCName, gentity_t *NPC )
 					SkipRestOfLine( &p );
 					continue;
 				}
-				if ( n < 0 )
+				if ( n < 0 ) 
 				{
 					Com_Printf( "bad %s in NPC '%s'\n", token, NPCName );
 					continue;
@@ -2257,7 +1865,7 @@ qboolean NPC_ParseParms( const char *NPCName, gentity_t *NPC )
 					SkipRestOfLine( &p );
 					continue;
 				}
-				if ( n < 0 )
+				if ( n < 0 ) 
 				{
 					Com_Printf( "bad %s in NPC '%s'\n", token, NPCName );
 					continue;
@@ -2270,10 +1878,10 @@ qboolean NPC_ParseParms( const char *NPCName, gentity_t *NPC )
 			}
 
 	//===MOVEMENT STATS============================================================
-
-			if ( !Q_stricmp( token, "width" ) )
+			
+			if ( !Q_stricmp( token, "width" ) ) 
 			{
-				if ( COM_ParseInt( &p, &n ) )
+				if ( COM_ParseInt( &p, &n ) ) 
 				{
 					continue;
 				}
@@ -2283,9 +1891,9 @@ qboolean NPC_ParseParms( const char *NPCName, gentity_t *NPC )
 				continue;
 			}
 
-			if ( !Q_stricmp( token, "height" ) )
+			if ( !Q_stricmp( token, "height" ) ) 
 			{
-				if ( COM_ParseInt( &p, &n ) )
+				if ( COM_ParseInt( &p, &n ) ) 
 				{
 					continue;
 				}
@@ -2303,16 +1911,16 @@ qboolean NPC_ParseParms( const char *NPCName, gentity_t *NPC )
 					VectorCopy(NPC->s.origin, NPC->client->ps.origin);
 					VectorCopy(NPC->s.origin, NPC->r.currentOrigin);
 					G_SetOrigin( NPC, NPC->s.origin );
-					trap->LinkEntity((sharedEntity_t *)NPC);
+					trap_LinkEntity(NPC);
 					//now trace down
 					/*
 					VectorCopy( NPC->s.origin, bottom );
 					bottom[2] -= adjust;
-					trap->Trace( &tr, NPC->s.origin, NPC->r.mins, NPC->r.maxs, bottom, NPC->s.number, MASK_NPCSOLID );
+					trap_Trace( &tr, NPC->s.origin, NPC->r.mins, NPC->r.maxs, bottom, NPC->s.number, MASK_NPCSOLID );
 					if ( !tr.allsolid && !tr.startsolid )
 					{
 						G_SetOrigin( NPC, tr.endpos );
-						trap->LinkEntity((sharedEntity_t *)NPC);
+						trap_LinkEntity(NPC);
 					}
 					*/
 				}
@@ -2325,9 +1933,9 @@ qboolean NPC_ParseParms( const char *NPCName, gentity_t *NPC )
 				continue;
 			}
 
-			if ( !Q_stricmp( token, "crouchheight" ) )
+			if ( !Q_stricmp( token, "crouchheight" ) ) 
 			{
-				if ( COM_ParseInt( &p, &n ) )
+				if ( COM_ParseInt( &p, &n ) ) 
 				{
 					continue;
 				}
@@ -2338,9 +1946,9 @@ qboolean NPC_ParseParms( const char *NPCName, gentity_t *NPC )
 
 			if ( !parsingPlayer )
 			{
-				if ( !Q_stricmp( token, "movetype" ) )
+				if ( !Q_stricmp( token, "movetype" ) ) 
 				{
-					if ( COM_ParseString( &p, &value ) )
+					if ( COM_ParseString( &p, &value ) ) 
 					{
 						continue;
 					}
@@ -2352,7 +1960,7 @@ qboolean NPC_ParseParms( const char *NPCName, gentity_t *NPC )
 					//rwwFIXMEFIXME: support for movetypes
 					continue;
 				}
-
+					
 				// yawSpeed
 				if ( !Q_stricmp( token, "yawSpeed" ) ) {
 					if ( COM_ParseInt( &p, &n ) ) {
@@ -2371,14 +1979,14 @@ qboolean NPC_ParseParms( const char *NPCName, gentity_t *NPC )
 				}
 
 				// walkSpeed
-				if ( !Q_stricmp( token, "walkSpeed" ) )
+				if ( !Q_stricmp( token, "walkSpeed" ) ) 
 				{
-					if ( COM_ParseInt( &p, &n ) )
+					if ( COM_ParseInt( &p, &n ) ) 
 					{
 						SkipRestOfLine( &p );
 						continue;
 					}
-					if ( n < 0 )
+					if ( n < 0 ) 
 					{
 						Com_Printf( S_COLOR_YELLOW"WARNING: bad %s in NPC '%s'\n", token, NPCName );
 						continue;
@@ -2389,16 +1997,16 @@ qboolean NPC_ParseParms( const char *NPCName, gentity_t *NPC )
 					}
 					continue;
 				}
-
+				
 				//runSpeed
-				if ( !Q_stricmp( token, "runSpeed" ) )
+				if ( !Q_stricmp( token, "runSpeed" ) ) 
 				{
-					if ( COM_ParseInt( &p, &n ) )
+					if ( COM_ParseInt( &p, &n ) ) 
 					{
 						SkipRestOfLine( &p );
 						continue;
 					}
-					if ( n < 0 )
+					if ( n < 0 ) 
 					{
 						Com_Printf( S_COLOR_YELLOW"WARNING: bad %s in NPC '%s'\n", token, NPCName );
 						continue;
@@ -2411,14 +2019,14 @@ qboolean NPC_ParseParms( const char *NPCName, gentity_t *NPC )
 				}
 
 				//acceleration
-				if ( !Q_stricmp( token, "acceleration" ) )
+				if ( !Q_stricmp( token, "acceleration" ) ) 
 				{
-					if ( COM_ParseInt( &p, &n ) )
+					if ( COM_ParseInt( &p, &n ) ) 
 					{
 						SkipRestOfLine( &p );
 						continue;
 					}
-					if ( n < 0 )
+					if ( n < 0 ) 
 					{
 						Com_Printf( S_COLOR_YELLOW"WARNING: bad %s in NPC '%s'\n", token, NPCName );
 						continue;
@@ -2430,21 +2038,21 @@ qboolean NPC_ParseParms( const char *NPCName, gentity_t *NPC )
 					continue;
 				}
 				//sex - skip in MP
-				if ( !Q_stricmp( token, "sex" ) )
+				if ( !Q_stricmp( token, "sex" ) ) 
 				{
 					SkipRestOfLine( &p );
 					continue;
 				}
 //===MISC===============================================================================
 				// default behavior
-				if ( !Q_stricmp( token, "behavior" ) )
+				if ( !Q_stricmp( token, "behavior" ) ) 
 				{
-					if ( COM_ParseInt( &p, &n ) )
+					if ( COM_ParseInt( &p, &n ) ) 
 					{
 						SkipRestOfLine( &p );
 						continue;
 					}
-					if ( n < BS_DEFAULT || n >= NUM_BSTATES )
+					if ( n < BS_DEFAULT || n >= NUM_BSTATES ) 
 					{
 						Com_Printf( S_COLOR_YELLOW"WARNING: bad %s in NPC '%s'\n", token, NPCName );
 						continue;
@@ -2458,9 +2066,9 @@ qboolean NPC_ParseParms( const char *NPCName, gentity_t *NPC )
 			}
 
 			// snd
-			if ( !Q_stricmp( token, "snd" ) )
+			if ( !Q_stricmp( token, "snd" ) ) 
 			{
-				if ( COM_ParseString( &p, &value ) )
+				if ( COM_ParseString( &p, &value ) ) 
 				{
 					continue;
 				}
@@ -2469,7 +2077,7 @@ qboolean NPC_ParseParms( const char *NPCName, gentity_t *NPC )
 					//FIXME: store this in some sound field or parse in the soundTable like the animTable...
 					Q_strncpyz( sound, value, sizeof( sound ) );
 					patch = strstr( sound, "/" );
-					if ( patch )
+					if ( patch ) 
 					{
 						*patch = 0;
 					}
@@ -2480,9 +2088,9 @@ qboolean NPC_ParseParms( const char *NPCName, gentity_t *NPC )
 			}
 
 			// sndcombat
-			if ( !Q_stricmp( token, "sndcombat" ) )
+			if ( !Q_stricmp( token, "sndcombat" ) ) 
 			{
-				if ( COM_ParseString( &p, &value ) )
+				if ( COM_ParseString( &p, &value ) ) 
 				{
 					continue;
 				}
@@ -2491,7 +2099,7 @@ qboolean NPC_ParseParms( const char *NPCName, gentity_t *NPC )
 					//FIXME: store this in some sound field or parse in the soundTable like the animTable...
 					Q_strncpyz( sound, value, sizeof( sound ) );
 					patch = strstr( sound, "/" );
-					if ( patch )
+					if ( patch ) 
 					{
 						*patch = 0;
 					}
@@ -2499,11 +2107,11 @@ qboolean NPC_ParseParms( const char *NPCName, gentity_t *NPC )
 				}
 				continue;
 			}
-
+			
 			// sndextra
-			if ( !Q_stricmp( token, "sndextra" ) )
+			if ( !Q_stricmp( token, "sndextra" ) ) 
 			{
-				if ( COM_ParseString( &p, &value ) )
+				if ( COM_ParseString( &p, &value ) ) 
 				{
 					continue;
 				}
@@ -2512,7 +2120,7 @@ qboolean NPC_ParseParms( const char *NPCName, gentity_t *NPC )
 					//FIXME: store this in some sound field or parse in the soundTable like the animTable...
 					Q_strncpyz( sound, value, sizeof( sound ) );
 					patch = strstr( sound, "/" );
-					if ( patch )
+					if ( patch ) 
 					{
 						*patch = 0;
 					}
@@ -2522,9 +2130,9 @@ qboolean NPC_ParseParms( const char *NPCName, gentity_t *NPC )
 			}
 
 			// sndjedi
-			if ( !Q_stricmp( token, "sndjedi" ) )
+			if ( !Q_stricmp( token, "sndjedi" ) ) 
 			{
-				if ( COM_ParseString( &p, &value ) )
+				if ( COM_ParseString( &p, &value ) ) 
 				{
 					continue;
 				}
@@ -2533,7 +2141,7 @@ qboolean NPC_ParseParms( const char *NPCName, gentity_t *NPC )
 					//FIXME: store this in some sound field or parse in the soundTable like the animTable...
 					Q_strncpyz( sound, value, sizeof( sound ) );
 					patch = strstr( sound, "/" );
-					if ( patch )
+					if ( patch ) 
 					{
 						*patch = 0;
 					}
@@ -2544,17 +2152,17 @@ qboolean NPC_ParseParms( const char *NPCName, gentity_t *NPC )
 
 			//New NPC/jedi stats:
 			//starting weapon
-			if ( !Q_stricmp( token, "weapon" ) )
+			if ( !Q_stricmp( token, "weapon" ) ) 
 			{
 				int weap;
 
-				if ( COM_ParseString( &p, &value ) )
+				if ( COM_ParseString( &p, &value ) ) 
 				{
 					continue;
 				}
 				//FIXME: need to precache the weapon, too?  (in above func)
 				weap = GetIDForString( WPTable, value );
-				if ( weap >= WP_NONE && weap < WP_NUM_WEAPONS )///*WP_BLASTER_PISTOL*/WP_SABER ) //?!
+				if ( weap >= WP_NONE && weap <= WP_NUM_WEAPONS )///*WP_BLASTER_PISTOL*/WP_SABER ) //?!
 				{
 					NPC->client->ps.weapon = weap;
 					NPC->client->ps.stats[STAT_WEAPONS] |= ( 1 << NPC->client->ps.weapon );
@@ -2566,13 +2174,13 @@ qboolean NPC_ParseParms( const char *NPCName, gentity_t *NPC )
 				}
 				continue;
 			}
-
+			
 			if ( !parsingPlayer )
 			{
 				//altFire
-				if ( !Q_stricmp( token, "altFire" ) )
+				if ( !Q_stricmp( token, "altFire" ) ) 
 				{
-					if ( COM_ParseInt( &p, &n ) )
+					if ( COM_ParseInt( &p, &n ) ) 
 					{
 						SkipRestOfLine( &p );
 						continue;
@@ -2593,7 +2201,7 @@ qboolean NPC_ParseParms( const char *NPCName, gentity_t *NPC )
 			fp = GetIDForString( FPTable, token );
 			if ( fp >= FP_FIRST && fp < NUM_FORCE_POWERS )
 			{
-				if ( COM_ParseInt( &p, &n ) )
+				if ( COM_ParseInt( &p, &n ) ) 
 				{
 					SkipRestOfLine( &p );
 					continue;
@@ -2621,9 +2229,9 @@ qboolean NPC_ParseParms( const char *NPCName, gentity_t *NPC )
 			}
 
 			//max force power
-			if ( !Q_stricmp( token, "forcePowerMax" ) )
+			if ( !Q_stricmp( token, "forcePowerMax" ) ) 
 			{
-				if ( COM_ParseInt( &p, &n ) )
+				if ( COM_ParseInt( &p, &n ) ) 
 				{
 					SkipRestOfLine( &p );
 					continue;
@@ -2633,9 +2241,9 @@ qboolean NPC_ParseParms( const char *NPCName, gentity_t *NPC )
 			}
 
 			//force regen rate - default is 100ms
-			if ( !Q_stricmp( token, "forceRegenRate" ) )
+			if ( !Q_stricmp( token, "forceRegenRate" ) ) 
 			{
-				if ( COM_ParseInt( &p, &n ) )
+				if ( COM_ParseInt( &p, &n ) ) 
 				{
 					SkipRestOfLine( &p );
 					continue;
@@ -2646,9 +2254,9 @@ qboolean NPC_ParseParms( const char *NPCName, gentity_t *NPC )
 			}
 
 			//force regen amount - default is 1 (points per second)
-			if ( !Q_stricmp( token, "forceRegenAmount" ) )
+			if ( !Q_stricmp( token, "forceRegenAmount" ) ) 
 			{
-				if ( COM_ParseInt( &p, &n ) )
+				if ( COM_ParseInt( &p, &n ) ) 
 				{
 					SkipRestOfLine( &p );
 					continue;
@@ -2660,11 +2268,11 @@ qboolean NPC_ParseParms( const char *NPCName, gentity_t *NPC )
 
 			//have a sabers.cfg and just name your saber in your NPCs.cfg/ICARUS script
 			//saber name
-			if ( !Q_stricmp( token, "saber" ) )
+			if ( !Q_stricmp( token, "saber" ) ) 
 			{
 				char *saberName;
 
-				if ( COM_ParseString( &p, &value ) )
+				if ( COM_ParseString( &p, &value ) ) 
 				{
 					continue;
 				}
@@ -2678,11 +2286,11 @@ qboolean NPC_ParseParms( const char *NPCName, gentity_t *NPC )
 				BG_TempFree(4096);
 				continue;
 			}
-
+			
 			//second saber name
-			if ( !Q_stricmp( token, "saber2" ) )
+			if ( !Q_stricmp( token, "saber2" ) ) 
 			{
-				if ( COM_ParseString( &p, &value ) )
+				if ( COM_ParseString( &p, &value ) ) 
 				{
 					continue;
 				}
@@ -2708,9 +2316,9 @@ qboolean NPC_ParseParms( const char *NPCName, gentity_t *NPC )
 			}
 
 			// saberColor
-			if ( !Q_stricmp( token, "saberColor" ) )
+			if ( !Q_stricmp( token, "saberColor" ) ) 
 			{
-				if ( COM_ParseString( &p, &value ) )
+				if ( COM_ParseString( &p, &value ) ) 
 				{
 					continue;
 				}
@@ -2720,16 +2328,14 @@ qboolean NPC_ParseParms( const char *NPCName, gentity_t *NPC )
 					for ( n = 0; n < MAX_BLADES; n++ )
 					{
 						NPC->client->saber[0].blade[n].color = color;
-						NPC->s.boltToPlayer = NPC->s.boltToPlayer & 0x38;//(111000)
-						NPC->s.boltToPlayer += (color + 1);
 					}
 				}
 				continue;
 			}
 
-			if ( !Q_stricmp( token, "saberColor2" ) )
+			if ( !Q_stricmp( token, "saberColor2" ) ) 
 			{
-				if ( COM_ParseString( &p, &value ) )
+				if ( COM_ParseString( &p, &value ) ) 
 				{
 					continue;
 				}
@@ -2740,9 +2346,9 @@ qboolean NPC_ParseParms( const char *NPCName, gentity_t *NPC )
 				continue;
 			}
 
-			if ( !Q_stricmp( token, "saberColor3" ) )
+			if ( !Q_stricmp( token, "saberColor3" ) ) 
 			{
-				if ( COM_ParseString( &p, &value ) )
+				if ( COM_ParseString( &p, &value ) ) 
 				{
 					continue;
 				}
@@ -2753,9 +2359,9 @@ qboolean NPC_ParseParms( const char *NPCName, gentity_t *NPC )
 				continue;
 			}
 
-			if ( !Q_stricmp( token, "saberColor4" ) )
+			if ( !Q_stricmp( token, "saberColor4" ) ) 
 			{
-				if ( COM_ParseString( &p, &value ) )
+				if ( COM_ParseString( &p, &value ) ) 
 				{
 					continue;
 				}
@@ -2766,9 +2372,9 @@ qboolean NPC_ParseParms( const char *NPCName, gentity_t *NPC )
 				continue;
 			}
 
-			if ( !Q_stricmp( token, "saberColor5" ) )
+			if ( !Q_stricmp( token, "saberColor5" ) ) 
 			{
-				if ( COM_ParseString( &p, &value ) )
+				if ( COM_ParseString( &p, &value ) ) 
 				{
 					continue;
 				}
@@ -2779,9 +2385,9 @@ qboolean NPC_ParseParms( const char *NPCName, gentity_t *NPC )
 				continue;
 			}
 
-			if ( !Q_stricmp( token, "saberColor6" ) )
+			if ( !Q_stricmp( token, "saberColor6" ) ) 
 			{
-				if ( COM_ParseString( &p, &value ) )
+				if ( COM_ParseString( &p, &value ) ) 
 				{
 					continue;
 				}
@@ -2792,9 +2398,9 @@ qboolean NPC_ParseParms( const char *NPCName, gentity_t *NPC )
 				continue;
 			}
 
-			if ( !Q_stricmp( token, "saberColor7" ) )
+			if ( !Q_stricmp( token, "saberColor7" ) ) 
 			{
-				if ( COM_ParseString( &p, &value ) )
+				if ( COM_ParseString( &p, &value ) ) 
 				{
 					continue;
 				}
@@ -2805,9 +2411,9 @@ qboolean NPC_ParseParms( const char *NPCName, gentity_t *NPC )
 				continue;
 			}
 
-			if ( !Q_stricmp( token, "saberColor8" ) )
+			if ( !Q_stricmp( token, "saberColor8" ) ) 
 			{
-				if ( COM_ParseString( &p, &value ) )
+				if ( COM_ParseString( &p, &value ) ) 
 				{
 					continue;
 				}
@@ -2818,9 +2424,9 @@ qboolean NPC_ParseParms( const char *NPCName, gentity_t *NPC )
 				continue;
 			}
 
-			if ( !Q_stricmp( token, "saber2Color" ) )
+			if ( !Q_stricmp( token, "saber2Color" ) ) 
 			{
-				if ( COM_ParseString( &p, &value ) )
+				if ( COM_ParseString( &p, &value ) ) 
 				{
 					continue;
 				}
@@ -2830,16 +2436,14 @@ qboolean NPC_ParseParms( const char *NPCName, gentity_t *NPC )
 					for ( n = 0; n < MAX_BLADES; n++ )
 					{
 						NPC->client->saber[1].blade[n].color = color;
-						NPC->s.boltToPlayer = NPC->s.boltToPlayer & 0x7;//(000111)
-						NPC->s.boltToPlayer += ((color + 1) << 3);
 					}
 				}
 				continue;
 			}
 
-			if ( !Q_stricmp( token, "saber2Color2" ) )
+			if ( !Q_stricmp( token, "saber2Color2" ) ) 
 			{
-				if ( COM_ParseString( &p, &value ) )
+				if ( COM_ParseString( &p, &value ) ) 
 				{
 					continue;
 				}
@@ -2850,9 +2454,9 @@ qboolean NPC_ParseParms( const char *NPCName, gentity_t *NPC )
 				continue;
 			}
 
-			if ( !Q_stricmp( token, "saber2Color3" ) )
+			if ( !Q_stricmp( token, "saber2Color3" ) ) 
 			{
-				if ( COM_ParseString( &p, &value ) )
+				if ( COM_ParseString( &p, &value ) ) 
 				{
 					continue;
 				}
@@ -2863,9 +2467,9 @@ qboolean NPC_ParseParms( const char *NPCName, gentity_t *NPC )
 				continue;
 			}
 
-			if ( !Q_stricmp( token, "saber2Color4" ) )
+			if ( !Q_stricmp( token, "saber2Color4" ) ) 
 			{
-				if ( COM_ParseString( &p, &value ) )
+				if ( COM_ParseString( &p, &value ) ) 
 				{
 					continue;
 				}
@@ -2876,9 +2480,9 @@ qboolean NPC_ParseParms( const char *NPCName, gentity_t *NPC )
 				continue;
 			}
 
-			if ( !Q_stricmp( token, "saber2Color5" ) )
+			if ( !Q_stricmp( token, "saber2Color5" ) ) 
 			{
-				if ( COM_ParseString( &p, &value ) )
+				if ( COM_ParseString( &p, &value ) ) 
 				{
 					continue;
 				}
@@ -2889,9 +2493,9 @@ qboolean NPC_ParseParms( const char *NPCName, gentity_t *NPC )
 				continue;
 			}
 
-			if ( !Q_stricmp( token, "saber2Color6" ) )
+			if ( !Q_stricmp( token, "saber2Color6" ) ) 
 			{
-				if ( COM_ParseString( &p, &value ) )
+				if ( COM_ParseString( &p, &value ) ) 
 				{
 					continue;
 				}
@@ -2902,9 +2506,9 @@ qboolean NPC_ParseParms( const char *NPCName, gentity_t *NPC )
 				continue;
 			}
 
-			if ( !Q_stricmp( token, "saber2Color7" ) )
+			if ( !Q_stricmp( token, "saber2Color7" ) ) 
 			{
-				if ( COM_ParseString( &p, &value ) )
+				if ( COM_ParseString( &p, &value ) ) 
 				{
 					continue;
 				}
@@ -2915,9 +2519,9 @@ qboolean NPC_ParseParms( const char *NPCName, gentity_t *NPC )
 				continue;
 			}
 
-			if ( !Q_stricmp( token, "saber2Color8" ) )
+			if ( !Q_stricmp( token, "saber2Color8" ) ) 
 			{
-				if ( COM_ParseString( &p, &value ) )
+				if ( COM_ParseString( &p, &value ) ) 
 				{
 					continue;
 				}
@@ -2929,9 +2533,9 @@ qboolean NPC_ParseParms( const char *NPCName, gentity_t *NPC )
 			}
 
 			//saber length
-			if ( !Q_stricmp( token, "saberLength" ) )
+			if ( !Q_stricmp( token, "saberLength" ) ) 
 			{
-				if ( COM_ParseFloat( &p, &f ) )
+				if ( COM_ParseFloat( &p, &f ) ) 
 				{
 					SkipRestOfLine( &p );
 					continue;
@@ -2949,9 +2553,9 @@ qboolean NPC_ParseParms( const char *NPCName, gentity_t *NPC )
 				continue;
 			}
 
-			if ( !Q_stricmp( token, "saberLength2" ) )
+			if ( !Q_stricmp( token, "saberLength2" ) ) 
 			{
-				if ( COM_ParseFloat( &p, &f ) )
+				if ( COM_ParseFloat( &p, &f ) ) 
 				{
 					SkipRestOfLine( &p );
 					continue;
@@ -2965,9 +2569,9 @@ qboolean NPC_ParseParms( const char *NPCName, gentity_t *NPC )
 				continue;
 			}
 
-			if ( !Q_stricmp( token, "saberLength3" ) )
+			if ( !Q_stricmp( token, "saberLength3" ) ) 
 			{
-				if ( COM_ParseFloat( &p, &f ) )
+				if ( COM_ParseFloat( &p, &f ) ) 
 				{
 					SkipRestOfLine( &p );
 					continue;
@@ -2981,9 +2585,9 @@ qboolean NPC_ParseParms( const char *NPCName, gentity_t *NPC )
 				continue;
 			}
 
-			if ( !Q_stricmp( token, "saberLength4" ) )
+			if ( !Q_stricmp( token, "saberLength4" ) ) 
 			{
-				if ( COM_ParseFloat( &p, &f ) )
+				if ( COM_ParseFloat( &p, &f ) ) 
 				{
 					SkipRestOfLine( &p );
 					continue;
@@ -2997,9 +2601,9 @@ qboolean NPC_ParseParms( const char *NPCName, gentity_t *NPC )
 				continue;
 			}
 
-			if ( !Q_stricmp( token, "saberLength5" ) )
+			if ( !Q_stricmp( token, "saberLength5" ) ) 
 			{
-				if ( COM_ParseFloat( &p, &f ) )
+				if ( COM_ParseFloat( &p, &f ) ) 
 				{
 					SkipRestOfLine( &p );
 					continue;
@@ -3013,9 +2617,9 @@ qboolean NPC_ParseParms( const char *NPCName, gentity_t *NPC )
 				continue;
 			}
 
-			if ( !Q_stricmp( token, "saberLength6" ) )
+			if ( !Q_stricmp( token, "saberLength6" ) ) 
 			{
-				if ( COM_ParseFloat( &p, &f ) )
+				if ( COM_ParseFloat( &p, &f ) ) 
 				{
 					SkipRestOfLine( &p );
 					continue;
@@ -3029,9 +2633,9 @@ qboolean NPC_ParseParms( const char *NPCName, gentity_t *NPC )
 				continue;
 			}
 
-			if ( !Q_stricmp( token, "saberLength7" ) )
+			if ( !Q_stricmp( token, "saberLength7" ) ) 
 			{
-				if ( COM_ParseFloat( &p, &f ) )
+				if ( COM_ParseFloat( &p, &f ) ) 
 				{
 					SkipRestOfLine( &p );
 					continue;
@@ -3045,9 +2649,9 @@ qboolean NPC_ParseParms( const char *NPCName, gentity_t *NPC )
 				continue;
 			}
 
-			if ( !Q_stricmp( token, "saberLength8" ) )
+			if ( !Q_stricmp( token, "saberLength8" ) ) 
 			{
-				if ( COM_ParseFloat( &p, &f ) )
+				if ( COM_ParseFloat( &p, &f ) ) 
 				{
 					SkipRestOfLine( &p );
 					continue;
@@ -3061,9 +2665,9 @@ qboolean NPC_ParseParms( const char *NPCName, gentity_t *NPC )
 				continue;
 			}
 
-			if ( !Q_stricmp( token, "saber2Length" ) )
+			if ( !Q_stricmp( token, "saber2Length" ) ) 
 			{
-				if ( COM_ParseFloat( &p, &f ) )
+				if ( COM_ParseFloat( &p, &f ) ) 
 				{
 					SkipRestOfLine( &p );
 					continue;
@@ -3080,9 +2684,9 @@ qboolean NPC_ParseParms( const char *NPCName, gentity_t *NPC )
 				continue;
 			}
 
-			if ( !Q_stricmp( token, "saber2Length2" ) )
+			if ( !Q_stricmp( token, "saber2Length2" ) ) 
 			{
-				if ( COM_ParseFloat( &p, &f ) )
+				if ( COM_ParseFloat( &p, &f ) ) 
 				{
 					SkipRestOfLine( &p );
 					continue;
@@ -3096,9 +2700,9 @@ qboolean NPC_ParseParms( const char *NPCName, gentity_t *NPC )
 				continue;
 			}
 
-			if ( !Q_stricmp( token, "saber2Length3" ) )
+			if ( !Q_stricmp( token, "saber2Length3" ) ) 
 			{
-				if ( COM_ParseFloat( &p, &f ) )
+				if ( COM_ParseFloat( &p, &f ) ) 
 				{
 					SkipRestOfLine( &p );
 					continue;
@@ -3112,9 +2716,9 @@ qboolean NPC_ParseParms( const char *NPCName, gentity_t *NPC )
 				continue;
 			}
 
-			if ( !Q_stricmp( token, "saber2Length4" ) )
+			if ( !Q_stricmp( token, "saber2Length4" ) ) 
 			{
-				if ( COM_ParseFloat( &p, &f ) )
+				if ( COM_ParseFloat( &p, &f ) ) 
 				{
 					SkipRestOfLine( &p );
 					continue;
@@ -3128,9 +2732,9 @@ qboolean NPC_ParseParms( const char *NPCName, gentity_t *NPC )
 				continue;
 			}
 
-			if ( !Q_stricmp( token, "saber2Length5" ) )
+			if ( !Q_stricmp( token, "saber2Length5" ) ) 
 			{
-				if ( COM_ParseFloat( &p, &f ) )
+				if ( COM_ParseFloat( &p, &f ) ) 
 				{
 					SkipRestOfLine( &p );
 					continue;
@@ -3144,9 +2748,9 @@ qboolean NPC_ParseParms( const char *NPCName, gentity_t *NPC )
 				continue;
 			}
 
-			if ( !Q_stricmp( token, "saber2Length6" ) )
+			if ( !Q_stricmp( token, "saber2Length6" ) ) 
 			{
-				if ( COM_ParseFloat( &p, &f ) )
+				if ( COM_ParseFloat( &p, &f ) ) 
 				{
 					SkipRestOfLine( &p );
 					continue;
@@ -3160,9 +2764,9 @@ qboolean NPC_ParseParms( const char *NPCName, gentity_t *NPC )
 				continue;
 			}
 
-			if ( !Q_stricmp( token, "saber2Length7" ) )
+			if ( !Q_stricmp( token, "saber2Length7" ) ) 
 			{
-				if ( COM_ParseFloat( &p, &f ) )
+				if ( COM_ParseFloat( &p, &f ) ) 
 				{
 					SkipRestOfLine( &p );
 					continue;
@@ -3176,9 +2780,9 @@ qboolean NPC_ParseParms( const char *NPCName, gentity_t *NPC )
 				continue;
 			}
 
-			if ( !Q_stricmp( token, "saber2Length8" ) )
+			if ( !Q_stricmp( token, "saber2Length8" ) ) 
 			{
-				if ( COM_ParseFloat( &p, &f ) )
+				if ( COM_ParseFloat( &p, &f ) ) 
 				{
 					SkipRestOfLine( &p );
 					continue;
@@ -3193,9 +2797,9 @@ qboolean NPC_ParseParms( const char *NPCName, gentity_t *NPC )
 			}
 
 			//saber radius
-			if ( !Q_stricmp( token, "saberRadius" ) )
+			if ( !Q_stricmp( token, "saberRadius" ) ) 
 			{
-				if ( COM_ParseFloat( &p, &f ) )
+				if ( COM_ParseFloat( &p, &f ) ) 
 				{
 					SkipRestOfLine( &p );
 					continue;
@@ -3212,9 +2816,9 @@ qboolean NPC_ParseParms( const char *NPCName, gentity_t *NPC )
 				continue;
 			}
 
-			if ( !Q_stricmp( token, "saberRadius2" ) )
+			if ( !Q_stricmp( token, "saberRadius2" ) ) 
 			{
-				if ( COM_ParseFloat( &p, &f ) )
+				if ( COM_ParseFloat( &p, &f ) ) 
 				{
 					SkipRestOfLine( &p );
 					continue;
@@ -3228,9 +2832,9 @@ qboolean NPC_ParseParms( const char *NPCName, gentity_t *NPC )
 				continue;
 			}
 
-			if ( !Q_stricmp( token, "saberRadius3" ) )
+			if ( !Q_stricmp( token, "saberRadius3" ) ) 
 			{
-				if ( COM_ParseFloat( &p, &f ) )
+				if ( COM_ParseFloat( &p, &f ) ) 
 				{
 					SkipRestOfLine( &p );
 					continue;
@@ -3244,9 +2848,9 @@ qboolean NPC_ParseParms( const char *NPCName, gentity_t *NPC )
 				continue;
 			}
 
-			if ( !Q_stricmp( token, "saberRadius4" ) )
+			if ( !Q_stricmp( token, "saberRadius4" ) ) 
 			{
-				if ( COM_ParseFloat( &p, &f ) )
+				if ( COM_ParseFloat( &p, &f ) ) 
 				{
 					SkipRestOfLine( &p );
 					continue;
@@ -3260,9 +2864,9 @@ qboolean NPC_ParseParms( const char *NPCName, gentity_t *NPC )
 				continue;
 			}
 
-			if ( !Q_stricmp( token, "saberRadius5" ) )
+			if ( !Q_stricmp( token, "saberRadius5" ) ) 
 			{
-				if ( COM_ParseFloat( &p, &f ) )
+				if ( COM_ParseFloat( &p, &f ) ) 
 				{
 					SkipRestOfLine( &p );
 					continue;
@@ -3276,9 +2880,9 @@ qboolean NPC_ParseParms( const char *NPCName, gentity_t *NPC )
 				continue;
 			}
 
-			if ( !Q_stricmp( token, "saberRadius6" ) )
+			if ( !Q_stricmp( token, "saberRadius6" ) ) 
 			{
-				if ( COM_ParseFloat( &p, &f ) )
+				if ( COM_ParseFloat( &p, &f ) ) 
 				{
 					SkipRestOfLine( &p );
 					continue;
@@ -3292,9 +2896,9 @@ qboolean NPC_ParseParms( const char *NPCName, gentity_t *NPC )
 				continue;
 			}
 
-			if ( !Q_stricmp( token, "saberRadius7" ) )
+			if ( !Q_stricmp( token, "saberRadius7" ) ) 
 			{
-				if ( COM_ParseFloat( &p, &f ) )
+				if ( COM_ParseFloat( &p, &f ) ) 
 				{
 					SkipRestOfLine( &p );
 					continue;
@@ -3308,9 +2912,9 @@ qboolean NPC_ParseParms( const char *NPCName, gentity_t *NPC )
 				continue;
 			}
 
-			if ( !Q_stricmp( token, "saberRadius8" ) )
+			if ( !Q_stricmp( token, "saberRadius8" ) ) 
 			{
-				if ( COM_ParseFloat( &p, &f ) )
+				if ( COM_ParseFloat( &p, &f ) ) 
 				{
 					SkipRestOfLine( &p );
 					continue;
@@ -3324,9 +2928,9 @@ qboolean NPC_ParseParms( const char *NPCName, gentity_t *NPC )
 				continue;
 			}
 
-			if ( !Q_stricmp( token, "saber2Radius" ) )
+			if ( !Q_stricmp( token, "saber2Radius" ) ) 
 			{
-				if ( COM_ParseFloat( &p, &f ) )
+				if ( COM_ParseFloat( &p, &f ) ) 
 				{
 					SkipRestOfLine( &p );
 					continue;
@@ -3343,9 +2947,9 @@ qboolean NPC_ParseParms( const char *NPCName, gentity_t *NPC )
 				continue;
 			}
 
-			if ( !Q_stricmp( token, "saber2Radius2" ) )
+			if ( !Q_stricmp( token, "saber2Radius2" ) ) 
 			{
-				if ( COM_ParseFloat( &p, &f ) )
+				if ( COM_ParseFloat( &p, &f ) ) 
 				{
 					SkipRestOfLine( &p );
 					continue;
@@ -3359,9 +2963,9 @@ qboolean NPC_ParseParms( const char *NPCName, gentity_t *NPC )
 				continue;
 			}
 
-			if ( !Q_stricmp( token, "saber2Radius3" ) )
+			if ( !Q_stricmp( token, "saber2Radius3" ) ) 
 			{
-				if ( COM_ParseFloat( &p, &f ) )
+				if ( COM_ParseFloat( &p, &f ) ) 
 				{
 					SkipRestOfLine( &p );
 					continue;
@@ -3375,9 +2979,9 @@ qboolean NPC_ParseParms( const char *NPCName, gentity_t *NPC )
 				continue;
 			}
 
-			if ( !Q_stricmp( token, "saber2Radius4" ) )
+			if ( !Q_stricmp( token, "saber2Radius4" ) ) 
 			{
-				if ( COM_ParseFloat( &p, &f ) )
+				if ( COM_ParseFloat( &p, &f ) ) 
 				{
 					SkipRestOfLine( &p );
 					continue;
@@ -3391,9 +2995,9 @@ qboolean NPC_ParseParms( const char *NPCName, gentity_t *NPC )
 				continue;
 			}
 
-			if ( !Q_stricmp( token, "saber2Radius5" ) )
+			if ( !Q_stricmp( token, "saber2Radius5" ) ) 
 			{
-				if ( COM_ParseFloat( &p, &f ) )
+				if ( COM_ParseFloat( &p, &f ) ) 
 				{
 					SkipRestOfLine( &p );
 					continue;
@@ -3407,9 +3011,9 @@ qboolean NPC_ParseParms( const char *NPCName, gentity_t *NPC )
 				continue;
 			}
 
-			if ( !Q_stricmp( token, "saber2Radius6" ) )
+			if ( !Q_stricmp( token, "saber2Radius6" ) ) 
 			{
-				if ( COM_ParseFloat( &p, &f ) )
+				if ( COM_ParseFloat( &p, &f ) ) 
 				{
 					SkipRestOfLine( &p );
 					continue;
@@ -3423,9 +3027,9 @@ qboolean NPC_ParseParms( const char *NPCName, gentity_t *NPC )
 				continue;
 			}
 
-			if ( !Q_stricmp( token, "saber2Radius7" ) )
+			if ( !Q_stricmp( token, "saber2Radius7" ) ) 
 			{
-				if ( COM_ParseFloat( &p, &f ) )
+				if ( COM_ParseFloat( &p, &f ) ) 
 				{
 					SkipRestOfLine( &p );
 					continue;
@@ -3439,9 +3043,9 @@ qboolean NPC_ParseParms( const char *NPCName, gentity_t *NPC )
 				continue;
 			}
 
-			if ( !Q_stricmp( token, "saber2Radius8" ) )
+			if ( !Q_stricmp( token, "saber2Radius8" ) ) 
 			{
-				if ( COM_ParseFloat( &p, &f ) )
+				if ( COM_ParseFloat( &p, &f ) ) 
 				{
 					SkipRestOfLine( &p );
 					continue;
@@ -3460,9 +3064,9 @@ qboolean NPC_ParseParms( const char *NPCName, gentity_t *NPC )
 			//loop sound (like Vader's breathing or droid bleeps, etc.)
 
 			//starting saber style
-			if ( !Q_stricmp( token, "saberStyle" ) )
+			if ( !Q_stricmp( token, "saberStyle" ) ) 
 			{
-				if ( COM_ParseInt( &p, &n ) )
+				if ( COM_ParseInt( &p, &n ) ) 
 				{
 					SkipRestOfLine( &p );
 					continue;
@@ -3504,7 +3108,7 @@ Ghoul2 Insert Start
 		if (npcSaber1 == 0)
 		{ //use "kyle" for a default then
 			npcSaber1 = G_ModelIndex("@Kyle");
-			WP_SaberParseParms( DEFAULT_SABER, &NPC->client->saber[0] );
+			WP_SaberParseParms( "Kyle", &NPC->client->saber[0] );
 		}
 
 		NPC->s.npcSaber1 = npcSaber1;
@@ -3558,9 +3162,9 @@ Ghoul2 Insert End
 
 char npcParseBuffer[MAX_NPC_DATA_SIZE];
 
-void NPC_LoadParms( void )
+void NPC_LoadParms( void ) 
 {
-	int			len, totallen, npcExtFNLen, fileCnt, i;
+	int			len, totallen, npcExtFNLen, mainBlockLen, fileCnt, i;
 //	const char	*filename = "ext_data/NPC2.cfg";
 	char		/**buffer,*/ *holdChar, *marker;
 	char		npcExtensionListBuf[2048];			//	The list of file names read in
@@ -3568,33 +3172,32 @@ void NPC_LoadParms( void )
 	len = 0;
 
 	//remember where to store the next one
-	totallen = len;
+	totallen = mainBlockLen = len;
 	marker = NPCParms+totallen;
 	*marker = 0;
 
 	//now load in the extra .npc extensions
-	fileCnt = trap->FS_GetFileList("ext_data/NPCs", ".npc", npcExtensionListBuf, sizeof(npcExtensionListBuf) );
+	fileCnt = trap_FS_GetFileList("ext_data/NPCs", ".npc", npcExtensionListBuf, sizeof(npcExtensionListBuf) );
 
 	holdChar = npcExtensionListBuf;
-	for ( i = 0; i < fileCnt; i++, holdChar += npcExtFNLen + 1 )
+	for ( i = 0; i < fileCnt; i++, holdChar += npcExtFNLen + 1 ) 
 	{
 		npcExtFNLen = strlen( holdChar );
 
 //		Com_Printf( "Parsing %s\n", holdChar );
 
-		len = trap->FS_Open(va( "ext_data/NPCs/%s", holdChar), &f, FS_READ);
+		len = trap_FS_FOpenFile(va( "ext_data/NPCs/%s", holdChar), &f, FS_READ);
 
-		if ( len == -1 )
+		if ( len == -1 ) 
 		{
 			Com_Printf( "error reading file\n" );
 		}
 		else
 		{
 			if ( totallen + len >= MAX_NPC_DATA_SIZE ) {
-				trap->FS_Close( f );
-				trap->Error( ERR_DROP, "NPC extensions (*.npc) are too large" );
+				G_Error( "NPC extensions (*.npc) are too large" );
 			}
-			trap->FS_Read(npcParseBuffer, len, f);
+			trap_FS_Read(npcParseBuffer, len, f);
 			npcParseBuffer[len] = 0;
 
 			len = COM_Compress( npcParseBuffer );
@@ -3602,7 +3205,7 @@ void NPC_LoadParms( void )
 			strcat( marker, npcParseBuffer );
 			strcat(marker, "\n");
 			len++;
-			trap->FS_Close(f);
+			trap_FS_FCloseFile(f);
 
 			totallen += len;
 			marker = NPCParms+totallen;

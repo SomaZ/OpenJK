@@ -1,36 +1,15 @@
-/*
-===========================================================================
-Copyright (C) 2000 - 2013, Raven Software, Inc.
-Copyright (C) 2001 - 2013, Activision, Inc.
-Copyright (C) 2013 - 2015, OpenJK contributors
-
-This file is part of the OpenJK source code.
-
-OpenJK is free software; you can redistribute it and/or modify it
-under the terms of the GNU General Public License version 2 as
-published by the Free Software Foundation.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU General Public License for more details.
-
-You should have received a copy of the GNU General Public License
-along with this program; if not, see <http://www.gnu.org/licenses/>.
-===========================================================================
-*/
-
+//
 /*
 =======================================================================
 
-FORCE INTERFACE
+FORCE INTERFACE 
 
 =======================================================================
 */
 
 // use this to get a demo build without an explicit demo build, i.e. to get the demo ui files to build
 #include "ui_local.h"
-#include "qcommon/qfiles.h"
+#include "../qcommon/qfiles.h"
 #include "ui_force.h"
 
 int uiForceSide = FORCE_LIGHTSIDE;
@@ -44,6 +23,7 @@ int uiForceAvailable=0;
 extern const char *UI_TeamName(int team);
 
 qboolean gTouchedForce = qfalse;
+vmCvar_t	ui_freeSaber, ui_forcePowerDisable;
 
 void Menu_ShowItemByName(menuDef_t *menu, const char *p, qboolean bShow);
 
@@ -116,41 +96,41 @@ int uiForceStarShaders[NUM_FORCE_STAR_IMAGES][2];
 int uiSaberColorShaders[NUM_SABER_COLORS];
 void UI_InitForceShaders(void)
 {
-	uiForceStarShaders[0][0] = trap->R_RegisterShaderNoMip("forcestar0");
-	uiForceStarShaders[0][1] = trap->R_RegisterShaderNoMip("forcestar0");
-	uiForceStarShaders[1][0] = trap->R_RegisterShaderNoMip("forcecircle1");
-	uiForceStarShaders[1][1] = trap->R_RegisterShaderNoMip("forcestar1");
-	uiForceStarShaders[2][0] = trap->R_RegisterShaderNoMip("forcecircle2");
-	uiForceStarShaders[2][1] = trap->R_RegisterShaderNoMip("forcestar2");
-	uiForceStarShaders[3][0] = trap->R_RegisterShaderNoMip("forcecircle3");
-	uiForceStarShaders[3][1] = trap->R_RegisterShaderNoMip("forcestar3");
-	uiForceStarShaders[4][0] = trap->R_RegisterShaderNoMip("forcecircle4");
-	uiForceStarShaders[4][1] = trap->R_RegisterShaderNoMip("forcestar4");
-	uiForceStarShaders[5][0] = trap->R_RegisterShaderNoMip("forcecircle5");
-	uiForceStarShaders[5][1] = trap->R_RegisterShaderNoMip("forcestar5");
-	uiForceStarShaders[6][0] = trap->R_RegisterShaderNoMip("forcecircle6");
-	uiForceStarShaders[6][1] = trap->R_RegisterShaderNoMip("forcestar6");
-	uiForceStarShaders[7][0] = trap->R_RegisterShaderNoMip("forcecircle7");
-	uiForceStarShaders[7][1] = trap->R_RegisterShaderNoMip("forcestar7");
-	uiForceStarShaders[8][0] = trap->R_RegisterShaderNoMip("forcecircle8");
-	uiForceStarShaders[8][1] = trap->R_RegisterShaderNoMip("forcestar8");
+	uiForceStarShaders[0][0] = trap_R_RegisterShaderNoMip("forcestar0");
+	uiForceStarShaders[0][1] = trap_R_RegisterShaderNoMip("forcestar0");
+	uiForceStarShaders[1][0] = trap_R_RegisterShaderNoMip("forcecircle1");
+	uiForceStarShaders[1][1] = trap_R_RegisterShaderNoMip("forcestar1");
+	uiForceStarShaders[2][0] = trap_R_RegisterShaderNoMip("forcecircle2");
+	uiForceStarShaders[2][1] = trap_R_RegisterShaderNoMip("forcestar2");
+	uiForceStarShaders[3][0] = trap_R_RegisterShaderNoMip("forcecircle3");
+	uiForceStarShaders[3][1] = trap_R_RegisterShaderNoMip("forcestar3");
+	uiForceStarShaders[4][0] = trap_R_RegisterShaderNoMip("forcecircle4");
+	uiForceStarShaders[4][1] = trap_R_RegisterShaderNoMip("forcestar4");
+	uiForceStarShaders[5][0] = trap_R_RegisterShaderNoMip("forcecircle5");
+	uiForceStarShaders[5][1] = trap_R_RegisterShaderNoMip("forcestar5");
+	uiForceStarShaders[6][0] = trap_R_RegisterShaderNoMip("forcecircle6");
+	uiForceStarShaders[6][1] = trap_R_RegisterShaderNoMip("forcestar6");
+	uiForceStarShaders[7][0] = trap_R_RegisterShaderNoMip("forcecircle7");
+	uiForceStarShaders[7][1] = trap_R_RegisterShaderNoMip("forcestar7");
+	uiForceStarShaders[8][0] = trap_R_RegisterShaderNoMip("forcecircle8");
+	uiForceStarShaders[8][1] = trap_R_RegisterShaderNoMip("forcestar8");
 
-	uiSaberColorShaders[SABER_RED]		= trap->R_RegisterShaderNoMip("menu/art/saber_red");
-	uiSaberColorShaders[SABER_ORANGE]	= trap->R_RegisterShaderNoMip("menu/art/saber_orange");
-	uiSaberColorShaders[SABER_YELLOW]	= trap->R_RegisterShaderNoMip("menu/art/saber_yellow");
-	uiSaberColorShaders[SABER_GREEN]	= trap->R_RegisterShaderNoMip("menu/art/saber_green");
-	uiSaberColorShaders[SABER_BLUE]		= trap->R_RegisterShaderNoMip("menu/art/saber_blue");
-	uiSaberColorShaders[SABER_PURPLE]	= trap->R_RegisterShaderNoMip("menu/art/saber_purple");
+	uiSaberColorShaders[SABER_RED]		= trap_R_RegisterShaderNoMip("menu/art/saber_red");
+	uiSaberColorShaders[SABER_ORANGE]	= trap_R_RegisterShaderNoMip("menu/art/saber_orange");
+	uiSaberColorShaders[SABER_YELLOW]	= trap_R_RegisterShaderNoMip("menu/art/saber_yellow");
+	uiSaberColorShaders[SABER_GREEN]	= trap_R_RegisterShaderNoMip("menu/art/saber_green");
+	uiSaberColorShaders[SABER_BLUE]		= trap_R_RegisterShaderNoMip("menu/art/saber_blue");
+	uiSaberColorShaders[SABER_PURPLE]	= trap_R_RegisterShaderNoMip("menu/art/saber_purple");
 }
 
 // Draw the stars spent on the current force power
-void UI_DrawForceStars(rectDef_t *rect, float scale, vec4_t color, int textStyle, int forceindex, int val, int min, int max)
+void UI_DrawForceStars(rectDef_t *rect, float scale, vec4_t color, int textStyle, int forceindex, int val, int min, int max) 
 {
 	int	i,pad = 4;
 	int	xPos,width = 16;
 	int starcolor;
 
-	if (val < min || val > max)
+	if (val < min || val > max) 
 	{
 		val = min;
 	}
@@ -166,7 +146,7 @@ void UI_DrawForceStars(rectDef_t *rect, float scale, vec4_t color, int textStyle
 			if (uiForcePowersDisabled[forceindex])
 			{
 				vec4_t grColor = {0.2f, 0.2f, 0.2f, 1.0f};
-				trap->R_SetColor(grColor);
+				trap_R_SetColor(grColor);
 			}
 
 			if (val >= i)
@@ -180,7 +160,7 @@ void UI_DrawForceStars(rectDef_t *rect, float scale, vec4_t color, int textStyle
 
 			if (uiForcePowersDisabled[forceindex])
 			{
-				trap->R_SetColor(NULL);
+				trap_R_SetColor(NULL);
 			}
 
 			xPos += width + pad;
@@ -191,7 +171,7 @@ void UI_DrawForceStars(rectDef_t *rect, float scale, vec4_t color, int textStyle
 // Set the client's force power layout.
 void UI_UpdateClientForcePowers(const char *teamArg)
 {
-	trap->Cvar_Set( "forcepowers", va("%i-%i-%i%i%i%i%i%i%i%i%i%i%i%i%i%i%i%i%i%i",
+	trap_Cvar_Set( "forcepowers", va("%i-%i-%i%i%i%i%i%i%i%i%i%i%i%i%i%i%i%i%i%i",
 		uiForceRank, uiForceSide, uiForcePowersRank[0], uiForcePowersRank[1],
 		uiForcePowersRank[2], uiForcePowersRank[3], uiForcePowersRank[4],
 		uiForcePowersRank[5], uiForcePowersRank[6], uiForcePowersRank[7],
@@ -204,11 +184,11 @@ void UI_UpdateClientForcePowers(const char *teamArg)
 	{
 		if (teamArg && teamArg[0])
 		{
-			trap->Cmd_ExecuteText( EXEC_APPEND, va("forcechanged \"%s\"\n", teamArg) );
+			trap_Cmd_ExecuteText( EXEC_APPEND, va("forcechanged \"%s\"\n", teamArg) );
 		}
 		else
 		{
-			trap->Cmd_ExecuteText( EXEC_APPEND, "forcechanged\n" );
+			trap_Cmd_ExecuteText( EXEC_APPEND, "forcechanged\n" );
 		}
 	}
 
@@ -244,11 +224,11 @@ void UI_SaveForceTemplate()
 
 	if (uiForceSide == FORCE_LIGHTSIDE)
 	{ //write it into the light side folder
-		trap->FS_Open(va("forcecfg/light/%s.fcf", selectedName), &f, FS_WRITE);
+		trap_FS_FOpenFile(va("forcecfg/light/%s.fcf", selectedName), &f, FS_WRITE);
 	}
 	else
 	{ //if it isn't light it must be dark
-		trap->FS_Open(va("forcecfg/dark/%s.fcf", selectedName), &f, FS_WRITE);
+		trap_FS_FOpenFile(va("forcecfg/dark/%s.fcf", selectedName), &f, FS_WRITE);
 	}
 
 	if (!f)
@@ -271,8 +251,8 @@ void UI_SaveForceTemplate()
 	fcfString[strPlace] = '\n';
 	fcfString[strPlace+1] = 0;
 
-	trap->FS_Write(fcfString, strlen(fcfString), f);
-	trap->FS_Close(f);
+	trap_FS_Write(fcfString, strlen(fcfString), f);
+	trap_FS_FCloseFile(f);
 
 	Com_Printf("Template saved as \"%s\".\n", selectedName);
 
@@ -303,7 +283,7 @@ void UI_SaveForceTemplate()
 }
 
 
-//
+// 
 extern qboolean UI_TrueJediEnabled( void );
 void UpdateForceUsed()
 {
@@ -371,7 +351,7 @@ void UpdateForceUsed()
 			if ( update )
 			{
 				int myTeam;
-				myTeam = (int)(trap->Cvar_VariableValue("ui_myteam"));
+				myTeam = (int)(trap_Cvar_VariableValue("ui_myteam"));
 				if ( myTeam != TEAM_SPECTATOR )
 				{
 					UI_UpdateClientForcePowers(UI_TeamName(myTeam));//will cause him to respawn, if it's been 5 seconds since last one
@@ -512,11 +492,11 @@ void UI_ReadLegalForce(void)
 	fcfString[strPlace+1] = 0;
 
 	info[0] = '\0';
-	trap->GetConfigString(CS_SERVERINFO, info, sizeof(info));
+	trap_GetConfigString(CS_SERVERINFO, info, sizeof(info));
 
 	if (atoi( Info_ValueForKey( info, "g_forceBasedTeams" ) ))
 	{
-		switch((int)(trap->Cvar_VariableValue("ui_myteam")))
+		switch((int)(trap_Cvar_VariableValue("ui_myteam")))
 		{
 		case TEAM_RED:
 			forceTeam = FORCE_DARKSIDE;
@@ -529,7 +509,7 @@ void UI_ReadLegalForce(void)
 		}
 	}
 	//Second, legalize them.
-	if (!BG_LegalizedForcePowers(fcfString, sizeof (fcfString), uiMaxRank, ui_freeSaber.integer, forceTeam, atoi( Info_ValueForKey( info, "g_gametype" )), 0))
+	if (!BG_LegalizedForcePowers(fcfString, uiMaxRank, ui_freeSaber.integer, forceTeam, atoi( Info_ValueForKey( info, "g_gametype" )), 0))
 	{ //if they were illegal, we should refresh them.
 		updateForceLater = qtrue;
 	}
@@ -591,7 +571,7 @@ void UI_ReadLegalForce(void)
 		singleBuf[0] = fcfString[i];
 		singleBuf[1] = 0;
 		iBuf = atoi(singleBuf);	// So, that means that Force Power "c" wants to be set to rank "iBuf".
-
+		
 		if (iBuf < 0)
 		{
 			iBuf = 0;
@@ -611,7 +591,7 @@ void UI_ReadLegalForce(void)
 
 		// Accrue cost for each assigned rank for this power.
 		for (currank=FORCE_LEVEL_1;currank<=forcePowerRank;currank++)
-		{
+		{	
 			if (bgForcePowerCost[c][currank] > uiForceAvailable)
 			{	// Break out, we can't afford any more power.
 				break;
@@ -777,9 +757,9 @@ validitycheck:
 extern int	uiSkinColor;
 extern int	uiHoldSkinColor;
 
-qboolean UI_SkinColor_HandleKey(int flags, float *special, int key, int num, int min, int max, int type)
+qboolean UI_SkinColor_HandleKey(int flags, float *special, int key, int num, int min, int max, int type) 
 {
-  if (key == A_MOUSE1 || key == A_MOUSE2 || key == A_ENTER || key == A_KP_ENTER)
+  if (key == A_MOUSE1 || key == A_MOUSE2 || key == A_ENTER || key == A_KP_ENTER) 
   {
   	int i = num;
 
@@ -817,16 +797,16 @@ qboolean UI_SkinColor_HandleKey(int flags, float *special, int key, int num, int
 
 
 
-qboolean UI_ForceSide_HandleKey(int flags, float *special, int key, int num, int min, int max, int type)
+qboolean UI_ForceSide_HandleKey(int flags, float *special, int key, int num, int min, int max, int type) 
 {
 	char info[MAX_INFO_VALUE];
 
 	info[0] = '\0';
-	trap->GetConfigString(CS_SERVERINFO, info, sizeof(info));
+	trap_GetConfigString(CS_SERVERINFO, info, sizeof(info));
 
 	if (atoi( Info_ValueForKey( info, "g_forceBasedTeams" ) ))
 	{
-		switch((int)(trap->Cvar_VariableValue("ui_myteam")))
+		switch((int)(trap_Cvar_VariableValue("ui_myteam")))
 		{
 		case TEAM_RED:
 			return qfalse;
@@ -837,7 +817,7 @@ qboolean UI_ForceSide_HandleKey(int flags, float *special, int key, int num, int
 		}
 	}
 
-	if (key == A_MOUSE1 || key == A_MOUSE2 || key == A_ENTER || key == A_KP_ENTER)
+	if (key == A_MOUSE1 || key == A_MOUSE2 || key == A_ENTER || key == A_KP_ENTER) 
 	{
 		int i = num;
 		int x = 0;
@@ -885,19 +865,19 @@ qboolean UI_ForceSide_HandleKey(int flags, float *special, int key, int num, int
 	return qfalse;
 }
 
-qboolean UI_JediNonJedi_HandleKey(int flags, float *special, int key, int num, int min, int max, int type)
+qboolean UI_JediNonJedi_HandleKey(int flags, float *special, int key, int num, int min, int max, int type) 
 {
 	char info[MAX_INFO_VALUE];
 
 	info[0] = '\0';
-	trap->GetConfigString(CS_SERVERINFO, info, sizeof(info));
+	trap_GetConfigString(CS_SERVERINFO, info, sizeof(info));
 
 	if ( !UI_TrueJediEnabled() )
 	{//true jedi mode is not set
 		return qfalse;
 	}
 
-	if (key == A_MOUSE1 || key == A_MOUSE2 || key == A_ENTER || key == A_KP_ENTER)
+	if (key == A_MOUSE1 || key == A_MOUSE2 || key == A_ENTER || key == A_KP_ENTER) 
 	{
 		int i = num;
 		int x = 0;
@@ -927,7 +907,7 @@ qboolean UI_JediNonJedi_HandleKey(int flags, float *special, int key, int num, i
 		// Resetting power ranks based on if light or dark side is chosen
 		if ( !num )
 		{//not a jedi?
-			int myTeam = (int)(trap->Cvar_VariableValue("ui_myteam"));
+			int myTeam = (int)(trap_Cvar_VariableValue("ui_myteam"));
 			while ( x < NUM_FORCE_POWERS )
 			{//clear all force powers
 				uiForcePowersRank[x] = 0;
@@ -962,9 +942,9 @@ qboolean UI_JediNonJedi_HandleKey(int flags, float *special, int key, int num, i
 	return qfalse;
 }
 
-qboolean UI_ForceMaxRank_HandleKey(int flags, float *special, int key, int num, int min, int max, int type)
+qboolean UI_ForceMaxRank_HandleKey(int flags, float *special, int key, int num, int min, int max, int type) 
 {
-  if (key == A_MOUSE1 || key == A_MOUSE2 || key == A_ENTER || key == A_KP_ENTER)
+  if (key == A_MOUSE1 || key == A_MOUSE2 || key == A_ENTER || key == A_KP_ENTER) 
   {
   	int i = num;
 
@@ -990,7 +970,7 @@ qboolean UI_ForceMaxRank_HandleKey(int flags, float *special, int key, int num, 
 
 	uiMaxRank = num;
 
-	trap->Cvar_Set( "g_maxForceRank", va("%i", num));
+	trap_Cvar_Set( "g_maxForceRank", va("%i", num));
 
 	// The update force used will remove overallocated powers automatically.
 	UpdateForceUsed();
@@ -1004,17 +984,17 @@ qboolean UI_ForceMaxRank_HandleKey(int flags, float *special, int key, int num, 
 
 
 // This function will either raise or lower a power by one rank.
-qboolean UI_ForcePowerRank_HandleKey(int flags, float *special, int key, int num, int min, int max, int type)
+qboolean UI_ForcePowerRank_HandleKey(int flags, float *special, int key, int num, int min, int max, int type) 
 {
 	qboolean raising;
 
-	if (key == A_MOUSE1 || key == A_MOUSE2 || key == A_ENTER || key == A_KP_ENTER || key == A_BACKSPACE)
+	if (key == A_MOUSE1 || key == A_MOUSE2 || key == A_ENTER || key == A_KP_ENTER || key == A_BACKSPACE) 
 	{
 		int forcepower, rank;
 
 		//this will give us the index as long as UI_FORCE_RANK is always one below the first force rank index
 		forcepower = (type-UI_FORCE_RANK)-1;
-
+		
 		//the power is disabled on the server
 		if (uiForcePowersDisabled[forcepower])
 		{
@@ -1174,8 +1154,10 @@ void UI_ForceConfigHandle( int oldindex, int newindex )
 	{ //we should only be displaying lightside configs, so.. look in the light folder
 		newindex += uiInfo.forceConfigLightIndexBegin;
 		if (newindex >= uiInfo.forceConfigCount)
+		{
 			return;
-		len = trap->FS_Open(va("forcecfg/light/%s.fcf", uiInfo.forceConfigNames[newindex]), &f, FS_READ);
+		}
+		len = trap_FS_FOpenFile(va("forcecfg/light/%s.fcf", uiInfo.forceConfigNames[newindex]), &f, FS_READ);
 	}
 	else
 	{ //else dark
@@ -1184,15 +1166,19 @@ void UI_ForceConfigHandle( int oldindex, int newindex )
 		{ //dark gets read in before light
 			return;
 		}
-		len = trap->FS_Open(va("forcecfg/dark/%s.fcf", uiInfo.forceConfigNames[newindex]), &f, FS_READ);
+		len = trap_FS_FOpenFile(va("forcecfg/dark/%s.fcf", uiInfo.forceConfigNames[newindex]), &f, FS_READ);
 	}
 
 	if (len <= 0)
 	{ //This should not have happened. But, before we quit out, attempt searching the other light/dark folder for the file.
 		if (uiForceSide == FORCE_LIGHTSIDE)
-			len = trap->FS_Open(va("forcecfg/dark/%s.fcf", uiInfo.forceConfigNames[newindex]), &f, FS_READ);
+		{
+			len = trap_FS_FOpenFile(va("forcecfg/dark/%s.fcf", uiInfo.forceConfigNames[newindex]), &f, FS_READ);
+		}
 		else
-			len = trap->FS_Open(va("forcecfg/light/%s.fcf", uiInfo.forceConfigNames[newindex]), &f, FS_READ);
+		{
+			len = trap_FS_FOpenFile(va("forcecfg/light/%s.fcf", uiInfo.forceConfigNames[newindex]), &f, FS_READ);
+		}
 
 		if (len <= 0)
 		{ //still failure? Oh well.
@@ -1202,22 +1188,21 @@ void UI_ForceConfigHandle( int oldindex, int newindex )
 
 	if (len >= 8192)
 	{
-		trap->FS_Close( f );
 		return;
 	}
 
-	trap->FS_Read(fcfBuffer, len, f);
+	trap_FS_Read(fcfBuffer, len, f);
 	fcfBuffer[len] = 0;
-	trap->FS_Close(f);
+	trap_FS_FCloseFile(f);
 
 	i = 0;
 
 	info[0] = '\0';
-	trap->GetConfigString(CS_SERVERINFO, info, sizeof(info));
+	trap_GetConfigString(CS_SERVERINFO, info, sizeof(info));
 
 	if (atoi( Info_ValueForKey( info, "g_forceBasedTeams" ) ))
 	{
-		switch((int)(trap->Cvar_VariableValue("ui_myteam")))
+		switch((int)(trap_Cvar_VariableValue("ui_myteam")))
 		{
 		case TEAM_RED:
 			forceTeam = FORCE_DARKSIDE;
@@ -1230,7 +1215,7 @@ void UI_ForceConfigHandle( int oldindex, int newindex )
 		}
 	}
 
-	BG_LegalizedForcePowers(fcfBuffer, sizeof (fcfBuffer), uiMaxRank, ui_freeSaber.integer, forceTeam, atoi( Info_ValueForKey( info, "g_gametype" )), 0);
+	BG_LegalizedForcePowers(fcfBuffer, uiMaxRank, ui_freeSaber.integer, forceTeam, atoi( Info_ValueForKey( info, "g_gametype" )), 0);
 	//legalize the config based on the max rank
 
 	//now that we're done with the handle, it's time to parse our force data out of the string
@@ -1308,7 +1293,7 @@ void UI_ForceConfigHandle( int oldindex, int newindex )
 		singleBuf[0] = fcfBuffer[i];
 		singleBuf[1] = 0;
 		iBuf = atoi(singleBuf);	// So, that means that Force Power "c" wants to be set to rank "iBuf".
-
+		
 		if (iBuf < 0)
 		{
 			iBuf = 0;
@@ -1328,7 +1313,7 @@ void UI_ForceConfigHandle( int oldindex, int newindex )
 
 		// Accrue cost for each assigned rank for this power.
 		for (currank=FORCE_LEVEL_1;currank<=forcePowerRank;currank++)
-		{
+		{	
 			if (bgForcePowerCost[c][currank] > uiForceAvailable)
 			{	// Break out, we can't afford any more power.
 				break;

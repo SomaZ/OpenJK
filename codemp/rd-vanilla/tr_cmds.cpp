@@ -105,7 +105,11 @@ void R_IssueRenderCommands( qboolean runPerformanceCounters ) {
 	}
 
 	// actually start the commands going
-	if ( !r_skipBackEnd->integer ) {
+	if ( !r_skipBackEnd->integer
+#ifdef __ANDROID__
+		&& !ri.Cvar_VariableIntegerValue( "com_minimized" )
+#endif
+		) {
 		// let it start on the new batch
 		RB_ExecuteRenderCommands( cmdList->cmds );
 	}
@@ -160,7 +164,7 @@ R_GetCommandBuffer
 make sure there is enough command space
 ============
 */
-static void *R_GetCommandBuffer( int bytes ) {
+void *R_GetCommandBuffer( int bytes ) {
 	return R_GetCommandBufferReserved( bytes, PAD( sizeof( swapBuffersCommand_t ), sizeof(void *) ) );
 }
 
@@ -279,6 +283,22 @@ void RE_RotatePic ( float x, float y, float w, float h,
 RE_RotatePic2
 =============
 */
+void RE_RotatePic2RatioFix ( float ratio ) {
+	rotatePicRatioFixCommand_t	*cmd;
+
+	cmd = (rotatePicRatioFixCommand_t *) R_GetCommandBuffer( sizeof( *cmd ) );
+	if ( !cmd ) {
+		return;
+	}
+	cmd->commandId = RC_ROTATE_PIC2_RATIOFIX;
+	cmd->ratio = ratio;
+}
+
+/*
+=============
+RE_RotatePic2
+=============
+*/
 void RE_RotatePic2 ( float x, float y, float w, float h,
 					  float s1, float t1, float s2, float t2,float a, qhandle_t hShader ) {
 	rotatePicCommand_t	*cmd;
@@ -342,6 +362,13 @@ for each RE_EndFrame
 ====================
 */
 void RE_BeginFrame( stereoFrame_t stereoFrame ) {
+#ifdef __ANDROID__
+	//The touch screen contols can mess up the GL state, fix here
+	GL_State(glState.glStateBits);
+	qglTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE);
+	qglBindTexture(GL_TEXTURE_2D, glState.currenttextures[glState.currenttmu]);
+#endif
+
 	drawBufferCommand_t	*cmd = NULL;
 
 	if ( !tr.registered ) {
@@ -351,10 +378,15 @@ void RE_BeginFrame( stereoFrame_t stereoFrame ) {
 
 	tr.frameCount++;
 	tr.frameSceneNum = 0;
+//entTODO: find out
+//	backEnd.doneBloom = qfalse;
+//	backEnd.doneSurfaces = qfalse;
+//	backEnd.sceneZfar = 2048;
 
 	//
 	// do overdraw measurement
 	//
+#ifndef HAVE_GLES
 	if ( r_measureOverdraw->integer )
 	{
 		if ( glConfig.stencilBits < 4 )
@@ -389,6 +421,7 @@ void RE_BeginFrame( stereoFrame_t stereoFrame ) {
 		}
 		r_measureOverdraw->modified = qfalse;
 	}
+#endif
 
 	//
 	// texturemode stuff
@@ -421,6 +454,15 @@ void RE_BeginFrame( stereoFrame_t stereoFrame ) {
 		}
 	}
 
+	if ( mme_worldShader->modified) {
+		if (R_FindShaderText( mme_worldShader->string )) {
+			tr.mmeWorldShader = R_FindShader( mme_worldShader->string, lightmapsNone, stylesDefault, qtrue );
+		} else {
+			tr.mmeWorldShader = 0;
+		}
+		mme_worldShader->modified = qfalse;
+	}
+
 	//
 	// draw buffer stuff
 	//
@@ -430,6 +472,7 @@ void RE_BeginFrame( stereoFrame_t stereoFrame ) {
 	}
 	cmd->commandId = RC_DRAW_BUFFER;
 
+#ifndef HAVE_GLES
 	if ( glConfig.stereoEnabled ) {
 		if ( stereoFrame == STEREO_LEFT ) {
 			cmd->buffer = (int)GL_BACK_LEFT;
@@ -438,7 +481,9 @@ void RE_BeginFrame( stereoFrame_t stereoFrame ) {
 		} else {
 			Com_Error( ERR_FATAL, "RE_BeginFrame: Stereo is enabled, but stereoFrame was %i", stereoFrame );
 		}
-	} else {
+	} else
+#endif
+	{
 		if ( stereoFrame != STEREO_CENTER ) {
 			Com_Error( ERR_FATAL, "RE_BeginFrame: Stereo is disabled, but stereoFrame was %i", stereoFrame );
 		}
@@ -485,29 +530,4 @@ void RE_EndFrame( int *frontEndMsec, int *backEndMsec ) {
 		*backEndMsec = backEnd.pc.msec;
 	}
 	backEnd.pc.msec = 0;
-}
-
-/*
-=============
-RE_TakeVideoFrame
-=============
-*/
-void RE_TakeVideoFrame( int width, int height, byte *captureBuffer, byte *encodeBuffer, qboolean motionJpeg )
-{
-	videoFrameCommand_t *cmd;
-
-	if ( !tr.registered )
-		return;
-
-	cmd = (videoFrameCommand_t *)R_GetCommandBuffer( sizeof( *cmd ) );
-	if ( !cmd )
-		return;
-
-	cmd->commandId = RC_VIDEOFRAME;
-
-	cmd->width = width;
-	cmd->height = height;
-	cmd->captureBuffer = captureBuffer;
-	cmd->encodeBuffer = encodeBuffer;
-	cmd->motionJpeg = motionJpeg;
 }

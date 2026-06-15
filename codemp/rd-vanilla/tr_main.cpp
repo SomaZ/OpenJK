@@ -58,7 +58,7 @@ int R_CullLocalBox (const vec3_t bounds[2]) {
 	int			anyBack;
 	int			front, back;
 
-	if ( r_nocull->integer==1 ) {
+	if ( r_nocull->integer==1 || mme_saveCubemap->integer ) {
 		return CULL_CLIP;
 	}
 
@@ -127,7 +127,7 @@ int R_CullPointAndRadius( const vec3_t pt, float radius )
 	cplane_t	*frust;
 	qboolean mightBeClipped = qfalse;
 
-	if ( r_nocull->integer==1 ) {
+	if ( r_nocull->integer==1 || mme_saveCubemap->integer ) {
 		return CULL_CLIP;
 	}
 
@@ -365,7 +365,7 @@ Sets up the modelview matrix for a given viewParm
 */
 void R_RotateForViewer (void)
 {
-	float	viewerMatrix[16];
+/*	float	viewerMatrix[16];
 	vec3_t	origin;
 
 	memset (&tr.ori, 0, sizeof(tr.ori));
@@ -400,7 +400,8 @@ void R_RotateForViewer (void)
 	// convert from our coordinate system (looking down X)
 	// to OpenGL's coordinate system (looking down -Z)
 	myGlMultMatrix( viewerMatrix, s_flipMatrix, tr.ori.modelMatrix );
-
+*/
+	R_RotateForWorld( &tr.viewParms.ori, &tr.ori );
 	tr.viewParms.world = tr.ori;
 
 }
@@ -491,7 +492,7 @@ R_SetupProjection
 void R_SetupProjection( void ) {
 	float	xmin, xmax, ymin, ymax;
 	float	width, height, depth;
-	float	zNear, zFar;
+	float	zNear, zFar, zProj, stereoSep;
 
 	// dynamically compute far clip plane distance
 	SetFarClip();
@@ -500,7 +501,11 @@ void R_SetupProjection( void ) {
 	// set up projection matrix
 	//
 	zNear	= r_znear->value;
+	zProj	= r_zproj->value;
 	zFar	= tr.viewParms.zFar;
+	stereoSep = r_stereoSeparation->value / 100.0f;
+	if ( R_MME_CubemapActive( (qboolean)(stereoSep > 0.0f) ) )
+		stereoSep = 0.0f;
 
 	ymax = zNear * tan( tr.refdef.fov_y * M_PI / 360.0f );
 	ymin = -ymax;
@@ -514,8 +519,8 @@ void R_SetupProjection( void ) {
 
 	tr.viewParms.projectionMatrix[0] = 2 * zNear / width;
 	tr.viewParms.projectionMatrix[4] = 0;
-	tr.viewParms.projectionMatrix[8] = ( xmax + xmin ) / width;	// normally 0
-	tr.viewParms.projectionMatrix[12] = 0;
+	tr.viewParms.projectionMatrix[8] = (xmax + xmin + 2 * stereoSep) / width;	// normally 0
+	tr.viewParms.projectionMatrix[12] = 2 * zProj * stereoSep / width;
 
 	tr.viewParms.projectionMatrix[1] = 0;
 	tr.viewParms.projectionMatrix[5] = 2 * zNear / height;
@@ -544,6 +549,18 @@ void R_SetupFrustum (void) {
 	int		i;
 	float	xs, xc;
 	float	ang;
+	float	stereoSep;
+	vec3_t	origin;
+
+	stereoSep = r_stereoSeparation->value / 100.0f;
+	if ( R_MME_CubemapActive( (qboolean)(stereoSep > 0.0f) ) )
+		stereoSep = 0.0f;
+	
+	if(stereoSep == 0) {
+		VectorCopy(tr.viewParms.ori.origin, origin);
+	} else {
+		VectorMA(tr.viewParms.ori.origin, stereoSep*r_zproj->value, tr.viewParms.ori.axis[1], origin);
+	}
 
 	ang = tr.viewParms.fovX / 180 * M_PI * 0.5f;
 	xs = sin( ang );
@@ -567,7 +584,7 @@ void R_SetupFrustum (void) {
 
 	for (i=0 ; i<4 ; i++) {
 		tr.viewParms.frustum[i].type = PLANE_NON_AXIAL;
-		tr.viewParms.frustum[i].dist = DotProduct (tr.viewParms.ori.origin, tr.viewParms.frustum[i].normal);
+		tr.viewParms.frustum[i].dist = DotProduct (origin, tr.viewParms.frustum[i].normal);
 		SetPlaneSignbits( &tr.viewParms.frustum[i] );
 	}
 }
@@ -659,7 +676,7 @@ be moving and rotating.
 Returns qtrue if it should be mirrored
 =================
 */
-qboolean R_GetPortalOrientations( drawSurf_t *drawSurf, int entityNum,
+qboolean R_GetPortalOrientations( drawSurf_t *drawSurf, int64_t entityNum,
 							 orientation_t *surface, orientation_t *camera,
 							 vec3_t pvsOrigin, qboolean *mirror ) {
 	int			i;
@@ -741,13 +758,13 @@ qboolean R_GetPortalOrientations( drawSurf_t *drawSurf, int entityNum,
 			// if a speed is specified
 			if ( e->e.frame ) {
 				// continuous rotate
-				d = (tr.refdef.time/1000.0f) * e->e.frame;
+				d = (tr.refdef.time/1000.0) * e->e.frame + (tr.refdef.timeFraction / 1000.0) * e->e.frame;
 				VectorCopy( camera->axis[1], transformed );
 				RotatePointAroundVector( camera->axis[1], camera->axis[0], transformed, d );
 				CrossProduct( camera->axis[0], camera->axis[1], camera->axis[2] );
 			} else {
 				// bobbing rotate, with skinNum being the rotation offset
-				d = sin( tr.refdef.time * 0.003f );
+				d = sin( tr.refdef.time * 0.003 + tr.refdef.timeFraction * 0.003 );
 				d = e->e.skinNum + d * 4;
 				VectorCopy( camera->axis[1], transformed );
 				RotatePointAroundVector( camera->axis[1], camera->axis[0], transformed, d );
@@ -778,7 +795,7 @@ qboolean R_GetPortalOrientations( drawSurf_t *drawSurf, int entityNum,
 	return qfalse;
 }
 
-static qboolean IsMirror( const drawSurf_t *drawSurf, int entityNum )
+static qboolean IsMirror( const drawSurf_t *drawSurf, int64_t entityNum )
 {
 	int			i;
 	cplane_t	originalPlane, plane;
@@ -845,11 +862,11 @@ static qboolean IsMirror( const drawSurf_t *drawSurf, int entityNum )
 */
 static qboolean SurfIsOffscreen( const drawSurf_t *drawSurf, vec4_t clipDest[128] ) {
 	float shortest = 100000000;
-	int entityNum;
+	int64_t entityNum;
 	int numTriangles;
 	shader_t *shader;
-	int		fogNum;
-	int dlighted;
+	int64_t	fogNum;
+	int64_t dlighted;
 	vec4_t clip, eye;
 	int i;
 	unsigned int pointOr = 0;
@@ -942,7 +959,7 @@ R_MirrorViewBySurface
 Returns qtrue if another view has been rendered
 ========================
 */
-qboolean R_MirrorViewBySurface (drawSurf_t *drawSurf, int entityNum) {
+qboolean R_MirrorViewBySurface (drawSurf_t *drawSurf, int64_t entityNum) {
 	vec4_t			clipDest[128];
 	viewParms_t		newParms;
 	viewParms_t		oldParms;
@@ -959,7 +976,7 @@ qboolean R_MirrorViewBySurface (drawSurf_t *drawSurf, int entityNum) {
 	}
 
 	// trivially reject portal/mirror
-	if ( SurfIsOffscreen( drawSurf, clipDest ) ) {
+	if ( SurfIsOffscreen( drawSurf, clipDest ) && !mme_saveCubemap->integer ) {
 		return qfalse;
 	}
 
@@ -981,6 +998,8 @@ qboolean R_MirrorViewBySurface (drawSurf_t *drawSurf, int entityNum) {
 	R_MirrorVector (oldParms.ori.axis[0], &surface, &camera, newParms.ori.axis[0]);
 	R_MirrorVector (oldParms.ori.axis[1], &surface, &camera, newParms.ori.axis[1]);
 	R_MirrorVector (oldParms.ori.axis[2], &surface, &camera, newParms.ori.axis[2]);
+
+	newParms.oldOri = oldParms.ori;
 
 	// OPTIMIZE: restrict the viewport on the mirrored view
 
@@ -1076,7 +1095,15 @@ static void R_RadixSort( drawSurf_t *source, int size )
   R_Radix( 1, size, scratch, source );
   R_Radix( 2, size, source, scratch );
   R_Radix( 3, size, scratch, source );
+  R_Radix( 4, size, source, scratch ); // added 4..7 for 64bit sorting
+  R_Radix( 5, size, scratch, source );
+  R_Radix( 6, size, source, scratch );
+  R_Radix( 7, size, scratch, source );
 #else
+  R_Radix( 7, size, source, scratch );
+  R_Radix( 6, size, scratch, source );
+  R_Radix( 5, size, source, scratch );
+  R_Radix( 4, size, scratch, source );
   R_Radix( 3, size, source, scratch );
   R_Radix( 2, size, scratch, source );
   R_Radix( 1, size, source, scratch );
@@ -1092,7 +1119,7 @@ R_AddDrawSurf
 =================
 */
 void R_AddDrawSurf( surfaceType_t *surface, shader_t *shader,
-				   int fogIndex, int dlightMap ) {
+				   int64_t fogIndex, int64_t dlightMap ) {
 	int			index;
 
 	if (tr.refdef.rdflags & RDF_NOFOG)
@@ -1111,7 +1138,7 @@ void R_AddDrawSurf( surfaceType_t *surface, shader_t *shader,
 	// the sort data is packed into a single 32 bit value so it can be
 	// compared quickly during the qsorting process
 	tr.refdef.drawSurfs[index].sort = (shader->sortedIndex << QSORT_SHADERNUM_SHIFT)
-		| tr.shiftedEntityNum | ( fogIndex << QSORT_FOGNUM_SHIFT ) | (int)dlightMap;
+		| tr.shiftedEntityNum | ( fogIndex << QSORT_FOGNUM_SHIFT ) | (int64_t)dlightMap;
 	tr.refdef.drawSurfs[index].surface = surface;
 	tr.refdef.numDrawSurfs++;
 }
@@ -1121,8 +1148,8 @@ void R_AddDrawSurf( surfaceType_t *surface, shader_t *shader,
 R_DecomposeSort
 =================
 */
-void R_DecomposeSort( unsigned sort, int *entityNum, shader_t **shader,
-					 int *fogNum, int *dlightMap ) {
+void R_DecomposeSort( const uint64_t sort, int64_t *entityNum, shader_t **shader,
+					 int64_t *fogNum, int64_t *dlightMap ) {
 	*fogNum = ( sort >> QSORT_FOGNUM_SHIFT ) & 31;
 	*shader = tr.sortedShaders[ ( sort >> QSORT_SHADERNUM_SHIFT ) & (MAX_SHADERS-1) ];
 	*entityNum = ( sort >> QSORT_REFENTITYNUM_SHIFT ) & REFENTITYNUM_MASK;
@@ -1136,9 +1163,9 @@ R_SortDrawSurfs
 */
 void R_SortDrawSurfs( drawSurf_t *drawSurfs, int numDrawSurfs ) {
 	shader_t		*shader;
-	int				fogNum;
-	int				entityNum;
-	int				dlighted;
+	int64_t			fogNum;
+	int64_t			entityNum;
+	int64_t			dlighted;
 	int				i;
 
 	// it is possible for some views to not have any surfaces
@@ -1338,22 +1365,36 @@ void R_DebugPolygon( int color, int numPoints, float *points ) {
 
 	// draw solid shade
 
+#ifdef HAVE_GLES
+	qglColor4f(color & 1, (color >> 1) & 1, (color >> 2) & 1, 1.0f);
+	qglVertexPointer(3, GL_FLOAT, 0, points);
+	qglDrawArrays(GL_TRIANGLE_FAN, 0, numPoints);
+#else
 	qglColor3f( color&1, (color>>1)&1, (color>>2)&1 );
 	qglBegin( GL_POLYGON );
 	for ( i = 0 ; i < numPoints ; i++ ) {
 		qglVertex3fv( points + i * 3 );
 	}
 	qglEnd();
+#endif
 
 	// draw wireframe outline
-	GL_State( GLS_POLYMODE_LINE | GLS_DEPTHMASK_TRUE | GLS_SRCBLEND_ONE | GLS_DSTBLEND_ONE );
+#ifndef HAVE_GLES
+	GL_State(GLS_POLYMODE_LINE | GLS_DEPTHMASK_TRUE | GLS_SRCBLEND_ONE | GLS_DSTBLEND_ONE);
+#endif
 	qglDepthRange( 0, 0 );
+#ifdef HAVE_GLES
+	qglColor4f(1.0f, 1.0f, 1.0f, 1.0f);
+	qglVertexPointer(3, GL_FLOAT, 0, points);
+	qglDrawArrays(GL_LINES, 0, numPoints);
+#else
 	qglColor3f( 1, 1, 1 );
 	qglBegin( GL_POLYGON );
 	for ( i = 0 ; i < numPoints ; i++ ) {
 		qglVertex3fv( points + i * 3 );
 	}
 	qglEnd();
+#endif
 	qglDepthRange( 0, 1 );
 }
 
@@ -1414,4 +1455,44 @@ void R_RenderView (viewParms_t *parms) {
 
 	// draw main system development information (surface outlines, etc)
 	R_DebugGraphics();
+}
+
+void R_RotateForWorld ( const orientationr_t* input, orientationr_t* world ) 
+{
+	float	viewerMatrix[16];
+	const float	*origin = input->origin;
+
+	Com_Memset ( world, 0, sizeof(*world));
+	world->axis[0][0] = 1;
+	world->axis[1][1] = 1;
+	world->axis[2][2] = 1;
+
+	// transform by the camera placement
+	VectorCopy( origin, world->viewOrigin );
+//	VectorCopy( origin, world->viewOrigin );
+
+	viewerMatrix[0] = input->axis[0][0];
+	viewerMatrix[4] = input->axis[0][1];
+	viewerMatrix[8] = input->axis[0][2];
+	viewerMatrix[12] = -origin[0] * viewerMatrix[0] + -origin[1] * viewerMatrix[4] + -origin[2] * viewerMatrix[8];
+
+	viewerMatrix[1] = input->axis[1][0];
+	viewerMatrix[5] = input->axis[1][1];
+	viewerMatrix[9] = input->axis[1][2];
+	viewerMatrix[13] = -origin[0] * viewerMatrix[1] + -origin[1] * viewerMatrix[5] + -origin[2] * viewerMatrix[9];
+
+	viewerMatrix[2] = input->axis[2][0];
+	viewerMatrix[6] = input->axis[2][1];
+	viewerMatrix[10] = input->axis[2][2];
+	viewerMatrix[14] = -origin[0] * viewerMatrix[2] + -origin[1] * viewerMatrix[6] + -origin[2] * viewerMatrix[10];
+
+	viewerMatrix[3] = 0;
+	viewerMatrix[7] = 0;
+	viewerMatrix[11] = 0;
+	viewerMatrix[15] = 1;
+
+	// convert from our coordinate system (looking down X)
+	// to OpenGL's coordinate system (looking down -Z)
+	myGlMultMatrix( viewerMatrix, s_flipMatrix, world->modelMatrix );
+
 }

@@ -302,3 +302,91 @@ void LoadPNG ( const char *filename, byte **data, int *width, int *height )
 	reader.Read (data, width, height);
 }
 
+//mme
+#include <zlib.h>
+typedef struct {
+	char *buffer;
+	unsigned int bufferSize;
+	unsigned int bufferUsed;
+} PNGWriteData_t;
+
+static void PNG_write_data(png_structp png_ptr, png_bytep data, png_size_t length) {
+	PNGWriteData_t *ioData = (PNGWriteData_t *)png_get_io_ptr( png_ptr );
+	if ( ioData->bufferUsed + length < ioData->bufferSize) {
+		Com_Memcpy( ioData->buffer + ioData->bufferUsed, data, length );
+		ioData->bufferUsed += length;
+	}
+}
+
+static void PNG_flush_data(png_structp png_ptr) {
+
+}
+
+/* Save PNG */
+int SavePNG( int compresslevel, int image_width, int image_height, mmeShotType_t image_type, byte *image_buffer, byte *out_buffer, int out_size ) {
+	png_structp png_ptr = 0;
+	png_infop info_ptr = 0;
+	png_bytep *row_pointers = 0;
+	PNGWriteData_t writeData;
+	int i, rowSize;
+
+	writeData.bufferUsed = 0;
+	writeData.bufferSize = out_size;
+	writeData.buffer = (char *)out_buffer;
+	if (!writeData.buffer)
+		goto skip_shot;
+	png_ptr = png_create_write_struct(PNG_LIBPNG_VER_STRING, NULL,NULL, NULL);
+	if (!png_ptr)
+		goto skip_shot;
+	info_ptr = png_create_info_struct(png_ptr);
+	if (!info_ptr)
+		goto skip_shot;
+
+	/* Finalize the initing of png library */
+    png_set_write_fn(png_ptr, &writeData, PNG_write_data, PNG_flush_data );
+	if (compresslevel < 0 || compresslevel > Z_BEST_COMPRESSION)
+		compresslevel = Z_DEFAULT_COMPRESSION;
+	png_set_compression_level(png_ptr, compresslevel );
+	
+	/* set other zlib parameters */
+	png_set_compression_mem_level(png_ptr, 8);
+	png_set_compression_strategy(png_ptr,Z_DEFAULT_STRATEGY);
+	png_set_compression_window_bits(png_ptr, 15);
+	png_set_compression_method(png_ptr, 8);
+	png_set_compression_buffer_size(png_ptr, 8192);
+	if ( image_type == mmeShotTypeRGB ) {
+		rowSize = image_width*3;
+		png_set_IHDR(png_ptr, info_ptr, image_width, image_height, 8, 
+			PNG_COLOR_TYPE_RGB, PNG_INTERLACE_NONE,
+			PNG_COMPRESSION_TYPE_DEFAULT, PNG_FILTER_TYPE_DEFAULT);
+		png_write_info(png_ptr, info_ptr );
+	} else if ( image_type == mmeShotTypeRGBA ) {
+		rowSize = image_width*4;
+		png_set_IHDR(png_ptr, info_ptr, image_width, image_height, 8, 
+			PNG_COLOR_TYPE_RGBA, PNG_INTERLACE_NONE,
+			PNG_COMPRESSION_TYPE_DEFAULT, PNG_FILTER_TYPE_DEFAULT);
+		png_write_info(png_ptr, info_ptr );
+	} else if ( image_type == mmeShotTypeGray ) {
+		rowSize = image_width*1;
+		png_set_IHDR(png_ptr, info_ptr, image_width, image_height, 8, 
+			PNG_COLOR_TYPE_GRAY, PNG_INTERLACE_NONE,
+			PNG_COMPRESSION_TYPE_DEFAULT, PNG_FILTER_TYPE_DEFAULT);
+		png_write_info(png_ptr, info_ptr );
+	}
+	/*Allocate an array of scanline pointers*/
+	row_pointers=(png_bytep*)malloc(image_height*sizeof(png_bytep));
+	for (i=0;i<image_height;i++) {
+		row_pointers[i]=(image_buffer+(image_height -1 - i )*rowSize );
+	}
+	/*tell the png library what to encode.*/
+	png_write_image(png_ptr, row_pointers);
+	png_write_end(png_ptr, 0);
+
+	//PNG_TRANSFORM_PACKSWAP | PNG_TRANSFORM_STRIP_FILLER
+skip_shot:
+	if (png_ptr)
+		png_destroy_write_struct(&png_ptr, &info_ptr);
+	if (row_pointers)
+		free(row_pointers);
+	return writeData.bufferUsed;
+}

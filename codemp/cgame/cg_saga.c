@@ -1,36 +1,16 @@
-/*
-===========================================================================
-Copyright (C) 2000 - 2013, Raven Software, Inc.
-Copyright (C) 2001 - 2013, Activision, Inc.
-Copyright (C) 2013 - 2015, OpenJK contributors
-
-This file is part of the OpenJK source code.
-
-OpenJK is free software; you can redistribute it and/or modify it
-under the terms of the GNU General Public License version 2 as
-published by the Free Software Foundation.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU General Public License for more details.
-
-You should have received a copy of the GNU General Public License
-along with this program; if not, see <http://www.gnu.org/licenses/>.
-===========================================================================
-*/
-
+// Copyright (C) 2000-2002 Raven Software, Inc.
+//
 /*****************************************************************************
  * name:		cg_siege.c
  *
  * desc:		Clientgame-side module for Siege gametype.
  *
- * $Author: osman $
+ * $Author: osman $ 
  * $Revision: 1.5 $
  *
  *****************************************************************************/
 #include "cg_local.h"
-#include "game/bg_saga.h"
+#include "../game/bg_saga.h"
 
 int cgSiegeRoundState = 0;
 int cgSiegeRoundTime = 0;
@@ -43,6 +23,12 @@ int			team2Timed = 0;
 
 int			cgSiegeTeam1PlShader = 0;
 int			cgSiegeTeam2PlShader = 0;
+
+//[TrueView]
+#define		MAX_TRUEVIEW_INFO_SIZE		4096
+char		true_view_info[MAX_TRUEVIEW_INFO_SIZE];
+int			true_view_valid;
+//[/TrueView]
 
 static char cgParseObjectives[MAX_SIEGE_INFO_SIZE];
 
@@ -60,7 +46,7 @@ void CG_PrecacheSiegeObjectiveAssetsForTeam(int myTeam)
 
 	if (!siege_valid)
 	{
-		trap->Error( ERR_DROP, "Siege data does not exist on client!\n");
+		CG_Error("Siege data does not exist on client!\n");
 		return;
 	}
 
@@ -86,27 +72,27 @@ void CG_PrecacheSiegeObjectiveAssetsForTeam(int myTeam)
 
 				if (BG_SiegeGetPairedValue(foundobjective, "sound_team1", str))
 				{
-					trap->S_RegisterSound(str);
+					trap_S_RegisterSound(str);
 				}
 				if (BG_SiegeGetPairedValue(foundobjective, "sound_team2", str))
 				{
-					trap->S_RegisterSound(str);
+					trap_S_RegisterSound(str);
 				}
 				if (BG_SiegeGetPairedValue(foundobjective, "objgfx", str))
 				{
-					trap->R_RegisterShaderNoMip(str);
+					trap_R_RegisterShaderNoMip(str);
 				}
 				if (BG_SiegeGetPairedValue(foundobjective, "mapicon", str))
 				{
-					trap->R_RegisterShaderNoMip(str);
+					trap_R_RegisterShaderNoMip(str);
 				}
 				if (BG_SiegeGetPairedValue(foundobjective, "litmapicon", str))
 				{
-					trap->R_RegisterShaderNoMip(str);
+					trap_R_RegisterShaderNoMip(str);
 				}
 				if (BG_SiegeGetPairedValue(foundobjective, "donemapicon", str))
 				{
-					trap->R_RegisterShaderNoMip(str);
+					trap_R_RegisterShaderNoMip(str);
 				}
 			}
 			else
@@ -139,17 +125,17 @@ void CG_PrecachePlayersForSiegeTeam(int team)
 			clientInfo_t fake;
 
 			memset(&fake, 0, sizeof(fake));
-			Q_strncpyz(fake.modelName, scl->forcedModel, sizeof(fake.modelName));
+			strcpy(fake.modelName, scl->forcedModel);
 
-			trap->R_RegisterModel(va("models/players/%s/model.glm", scl->forcedModel));
+			trap_R_RegisterModel(va("models/players/%s/model.glm", scl->forcedModel));
 			if (scl->forcedSkin[0])
 			{
-				trap->R_RegisterSkin(va("models/players/%s/model_%s.skin", scl->forcedModel, scl->forcedSkin));
-				Q_strncpyz(fake.skinName, scl->forcedSkin, sizeof(fake.modelName));
+				trap_R_RegisterSkin(va("models/players/%s/model_%s.skin", scl->forcedModel, scl->forcedSkin));
+				strcpy(fake.skinName, scl->forcedSkin);
 			}
 			else
 			{
-				Q_strncpyz(fake.skinName, "default", sizeof(fake.skinName));
+				strcpy(fake.skinName, "default");
 			}
 
 			//precache the sounds for the model...
@@ -179,26 +165,39 @@ void CG_InitSiegeMode(void)
 		goto failure;
 	}
 
-	Com_sprintf(levelname, sizeof(levelname), "%s.siege", cgs.rawmapname);
+	Com_sprintf(levelname, sizeof(levelname), "%s\0", cgs.mapname);
 
-	if (!levelname[0])
+	i = strlen(levelname)-1;
+
+	while (i > 0 && levelname[i] && levelname[i] != '.')
+	{
+		i--;
+	}
+
+	if (i <= 0)
 	{
 		goto failure;
 	}
 
-	len = trap->FS_Open(levelname, &f, FS_READ);
+	levelname[i] = '\0'; //kill the ".bsp"
 
-	if ( !f ) {
+	Com_sprintf(levelname, sizeof(levelname), "%s.siege\0", levelname); 
+
+	if (!levelname || !levelname[0])
+	{
 		goto failure;
 	}
-	if ( len >= MAX_SIEGE_INFO_SIZE ) {
-		trap->FS_Close( f );
+
+	len = trap_FS_FOpenFile(levelname, &f, FS_READ);
+
+	if (!f || len >= MAX_SIEGE_INFO_SIZE)
+	{
 		goto failure;
 	}
 
-	trap->FS_Read(siege_info, len, f);
+	trap_FS_Read(siege_info, len, f);
 
-	trap->FS_Close(f);
+	trap_FS_FCloseFile(f);
 
 	siege_valid = 1;
 
@@ -206,10 +205,10 @@ void CG_InitSiegeMode(void)
 	{
 		char buf[1024];
 
-		trap->Cvar_VariableStringBuffer("cg_siegeTeam1", buf, 1024);
+		trap_Cvar_VariableStringBuffer("cg_siegeTeam1", buf, 1024);
 		if (buf[0] && Q_stricmp(buf, "none"))
 		{
-			Q_strncpyz(team1, buf, sizeof(team1));
+			strcpy(team1, buf);
 		}
 		else
 		{
@@ -219,18 +218,18 @@ void CG_InitSiegeMode(void)
 		if (team1[0] == '@')
 		{ //it's a damn stringed reference.
 			char b[256];
-			trap->SE_GetStringTextString(team1+1, b, 256);
-			trap->Cvar_Set("cg_siegeTeam1Name", b);
+			trap_SP_GetStringTextString(team1+1, b, 256);
+			trap_Cvar_Set("cg_siegeTeam1Name", b);
 		}
 		else
 		{
-			trap->Cvar_Set("cg_siegeTeam1Name", team1);
+			trap_Cvar_Set("cg_siegeTeam1Name", team1);
 		}
 
-		trap->Cvar_VariableStringBuffer("cg_siegeTeam2", buf, 1024);
+		trap_Cvar_VariableStringBuffer("cg_siegeTeam2", buf, 1024);
 		if (buf[0] && Q_stricmp(buf, "none"))
 		{
-			Q_strncpyz(team2, buf, sizeof(team2));
+			strcpy(team2, buf);
 		}
 		else
 		{
@@ -240,24 +239,24 @@ void CG_InitSiegeMode(void)
 		if (team2[0] == '@')
 		{ //it's a damn stringed reference.
 			char b[256];
-			trap->SE_GetStringTextString(team2+1, b, 256);
-			trap->Cvar_Set("cg_siegeTeam2Name", b);
+			trap_SP_GetStringTextString(team2+1, b, 256);
+			trap_Cvar_Set("cg_siegeTeam2Name", b);
 		}
 		else
 		{
-			trap->Cvar_Set("cg_siegeTeam2Name", team2);
+			trap_Cvar_Set("cg_siegeTeam2Name", team2);
 		}
 	}
 	else
 	{
-		trap->Error( ERR_DROP, "Siege teams not defined");
+		CG_Error("Siege teams not defined");
 	}
 
 	if (BG_SiegeGetValueGroup(siege_info, team1, teamInfo))
 	{
 		if (BG_SiegeGetPairedValue(teamInfo, "TeamIcon", teamIcon))
 		{
-			trap->Cvar_Set( "team1_icon", teamIcon);
+			trap_Cvar_Set( "team1_icon", teamIcon);
 		}
 
 		if (BG_SiegeGetPairedValue(teamInfo, "Timed", btime))
@@ -272,32 +271,32 @@ void CG_InitSiegeMode(void)
 	}
 	else
 	{
-		trap->Error( ERR_DROP, "No team entry for '%s'\n", team1);
+		CG_Error("No team entry for '%s'\n", team1);
 	}
 
 	if (BG_SiegeGetPairedValue(siege_info, "mapgraphic", teamInfo))
 	{
-		trap->Cvar_Set("siege_mapgraphic", teamInfo);
+		trap_Cvar_Set("siege_mapgraphic", teamInfo);
 	}
 	else
 	{
-		trap->Cvar_Set("siege_mapgraphic", "gfx/mplevels/siege1_hoth");
+		trap_Cvar_Set("siege_mapgraphic", "gfx/mplevels/siege1_hoth");
 	}
 
 	if (BG_SiegeGetPairedValue(siege_info, "missionname", teamInfo))
 	{
-		trap->Cvar_Set("siege_missionname", teamInfo);
+		trap_Cvar_Set("siege_missionname", teamInfo);
 	}
 	else
 	{
-		trap->Cvar_Set("siege_missionname", " ");
+		trap_Cvar_Set("siege_missionname", " ");
 	}
 
 	if (BG_SiegeGetValueGroup(siege_info, team2, teamInfo))
 	{
 		if (BG_SiegeGetPairedValue(teamInfo, "TeamIcon", teamIcon))
 		{
-			trap->Cvar_Set( "team2_icon", teamIcon);
+			trap_Cvar_Set( "team2_icon", teamIcon);
 		}
 
 		if (BG_SiegeGetPairedValue(teamInfo, "Timed", btime))
@@ -312,7 +311,7 @@ void CG_InitSiegeMode(void)
 	}
 	else
 	{
-		trap->Error( ERR_DROP, "No team entry for '%s'\n", team2);
+		CG_Error("No team entry for '%s'\n", team2);
 	}
 
 	//Load the player class types
@@ -320,7 +319,7 @@ void CG_InitSiegeMode(void)
 
 	if (!bgNumSiegeClasses)
 	{ //We didn't find any?!
-		trap->Error( ERR_DROP, "Couldn't find any player classes for Siege");
+		CG_Error("Couldn't find any player classes for Siege");
 	}
 
 	//Now load the teams since we have class data.
@@ -328,7 +327,7 @@ void CG_InitSiegeMode(void)
 
 	if (!bgNumSiegeTeams)
 	{ //React same as with classes.
-		trap->Error( ERR_DROP, "Couldn't find any player teams for Siege");
+		CG_Error("Couldn't find any player teams for Siege");
 	}
 
 	//Get and set the team themes for each team. This will control which classes can be
@@ -341,7 +340,7 @@ void CG_InitSiegeMode(void)
 		}
 		if (BG_SiegeGetPairedValue(teamInfo, "FriendlyShader", btime))
 		{
-			cgSiegeTeam1PlShader = trap->R_RegisterShaderNoMip(btime);
+			cgSiegeTeam1PlShader = trap_R_RegisterShaderNoMip(btime);
 		}
 		else
 		{
@@ -356,7 +355,7 @@ void CG_InitSiegeMode(void)
 		}
 		if (BG_SiegeGetPairedValue(teamInfo, "FriendlyShader", btime))
 		{
-			cgSiegeTeam2PlShader = trap->R_RegisterShaderNoMip(btime);
+			cgSiegeTeam2PlShader = trap_R_RegisterShaderNoMip(btime);
 		}
 		else
 		{
@@ -395,7 +394,7 @@ void CG_InitSiegeMode(void)
 
 			if (cl->forcedModel[0])
 			{ //This class has a forced model, so precache it.
-				trap->R_RegisterModel(va("models/players/%s/model.glm", cl->forcedModel));
+				trap_R_RegisterModel(va("models/players/%s/model.glm", cl->forcedModel));
 
 				if (cl->forcedSkin[0])
 				{ //also has a forced skin, precache it.
@@ -410,10 +409,10 @@ void CG_InitSiegeMode(void)
 						useSkinName = va("models/players/%s/model_%s.skin", cl->forcedModel, cl->forcedSkin);
 					}
 
-					trap->R_RegisterSkin(useSkinName);
+					trap_R_RegisterSkin(useSkinName);
 				}
 			}
-
+			
 			j++;
 		}
 		i++;
@@ -437,7 +436,7 @@ failure:
 	siege_valid = 0;
 }
 
-static char QINLINE *CG_SiegeObjectiveBuffer(int team, int objective)
+static char CGAME_INLINE *CG_SiegeObjectiveBuffer(int team, int objective)
 {
 	static char buf[8192];
 	char teamstr[1024];
@@ -490,11 +489,11 @@ void CG_ParseSiegeObjectiveStatus(const char *str)
 			cvarName = va("team%i_objective%i", team, objectiveNum);
 			if (str[i] == '1')
 			{ //it's completed
-				trap->Cvar_Set(cvarName, "1");
+				trap_Cvar_Set(cvarName, "1");
 			}
 			else
 			{ //otherwise assume it is not
-				trap->Cvar_Set(cvarName, "0");
+				trap_Cvar_Set(cvarName, "0");
 			}
 
 			s = CG_SiegeObjectiveBuffer(team, objectiveNum);
@@ -505,61 +504,61 @@ void CG_ParseSiegeObjectiveStatus(const char *str)
 				cvarName = va("team%i_objective%i_longdesc", team, objectiveNum);
 				if (BG_SiegeGetPairedValue(s, "objdesc", buffer))
 				{
-					trap->Cvar_Set(cvarName, buffer);
+					trap_Cvar_Set(cvarName, buffer);
 				}
 				else
 				{
-					trap->Cvar_Set(cvarName, "UNSPECIFIED");
+					trap_Cvar_Set(cvarName, "UNSPECIFIED");
 				}
 
 				cvarName = va("team%i_objective%i_gfx", team, objectiveNum);
 				if (BG_SiegeGetPairedValue(s, "objgfx", buffer))
 				{
-					trap->Cvar_Set(cvarName, buffer);
+					trap_Cvar_Set(cvarName, buffer);
 				}
 				else
 				{
-					trap->Cvar_Set(cvarName, "UNSPECIFIED");
+					trap_Cvar_Set(cvarName, "UNSPECIFIED");
 				}
 
 				cvarName = va("team%i_objective%i_mapicon", team, objectiveNum);
 				if (BG_SiegeGetPairedValue(s, "mapicon", buffer))
 				{
-					trap->Cvar_Set(cvarName, buffer);
+					trap_Cvar_Set(cvarName, buffer);
 				}
 				else
 				{
-					trap->Cvar_Set(cvarName, "UNSPECIFIED");
+					trap_Cvar_Set(cvarName, "UNSPECIFIED");
 				}
 
 				cvarName = va("team%i_objective%i_litmapicon", team, objectiveNum);
 				if (BG_SiegeGetPairedValue(s, "litmapicon", buffer))
 				{
-					trap->Cvar_Set(cvarName, buffer);
+					trap_Cvar_Set(cvarName, buffer);
 				}
 				else
 				{
-					trap->Cvar_Set(cvarName, "UNSPECIFIED");
+					trap_Cvar_Set(cvarName, "UNSPECIFIED");
 				}
 
 				cvarName = va("team%i_objective%i_donemapicon", team, objectiveNum);
 				if (BG_SiegeGetPairedValue(s, "donemapicon", buffer))
 				{
-					trap->Cvar_Set(cvarName, buffer);
+					trap_Cvar_Set(cvarName, buffer);
 				}
 				else
 				{
-					trap->Cvar_Set(cvarName, "UNSPECIFIED");
+					trap_Cvar_Set(cvarName, "UNSPECIFIED");
 				}
 
 				cvarName = va("team%i_objective%i_mappos", team, objectiveNum);
 				if (BG_SiegeGetPairedValue(s, "mappos", buffer))
 				{
-					trap->Cvar_Set(cvarName, buffer);
+					trap_Cvar_Set(cvarName, buffer);
 				}
 				else
 				{
-					trap->Cvar_Set(cvarName, "0 0 32 32");
+					trap_Cvar_Set(cvarName, "0 0 32 32");
 				}
 			}
 		}
@@ -583,7 +582,7 @@ void CG_SiegeRoundOver(centity_t *ent, int won)
 
 	if (!siege_valid)
 	{
-		trap->Error( ERR_DROP, "ERROR: Siege data does not exist on client!\n");
+		CG_Error("ERROR: Siege data does not exist on client!\n");
 		return;
 	}
 
@@ -664,9 +663,9 @@ void CG_SiegeRoundOver(centity_t *ent, int won)
 		}
 		*/
 
-		if (soundstr[0])
+		if (!(mov_soundDisable.integer & SDISABLE_ANNOUNCER) && soundstr[0])
 		{
-			trap->S_StartLocalSound(trap->S_RegisterSound(soundstr), CHAN_ANNOUNCER);
+			trap_S_StartLocalSound(trap_S_RegisterSound(soundstr), CHAN_ANNOUNCER);
 		}
 	}
 }
@@ -758,73 +757,73 @@ void CG_SiegeBriefingDisplay(int team, int dontshow)
 		useTeam = SIEGETEAM_TEAM2;
 	}
 
-	trap->Cvar_Set(va("siege_primobj_inuse"), "0");
+	trap_Cvar_Set(va("siege_primobj_inuse"), "0");
 
 	while (i < 16)
 	{ //do up to 16 objectives I suppose
 		//Get the value for this objective on this team
 		//Now set the cvar for the menu to display.
-
+		
 		//primary = (CG_SiegeGetObjectiveFinal(useTeam, i)>-1)?qtrue:qfalse;
 		primary = (CG_SiegeGetObjectiveFinal(useTeam, i)>0)?qtrue:qfalse;
 
 		properValue[0] = 0;
-		trap->Cvar_VariableStringBuffer(va("team%i_objective%i", useTeam, i), properValue, 1024);
+		trap_Cvar_VariableStringBuffer(va("team%i_objective%i", useTeam, i), properValue, 1024);
 		if (primary)
 		{
-			trap->Cvar_Set(va("siege_primobj"), properValue);
+			trap_Cvar_Set(va("siege_primobj"), properValue);
 		}
 		else
 		{
-			trap->Cvar_Set(va("siege_objective%i", i), properValue);
+			trap_Cvar_Set(va("siege_objective%i", i), properValue);
 		}
 
 		//Now set the long desc cvar for the menu to display.
 		properValue[0] = 0;
-		trap->Cvar_VariableStringBuffer(va("team%i_objective%i_longdesc", useTeam, i), properValue, 1024);
+		trap_Cvar_VariableStringBuffer(va("team%i_objective%i_longdesc", useTeam, i), properValue, 1024);
 		if (primary)
 		{
-			trap->Cvar_Set(va("siege_primobj_longdesc"), properValue);
+			trap_Cvar_Set(va("siege_primobj_longdesc"), properValue);
 		}
 		else
 		{
-			trap->Cvar_Set(va("siege_objective%i_longdesc", i), properValue);
+			trap_Cvar_Set(va("siege_objective%i_longdesc", i), properValue);
 		}
 
 		//Now set the gfx cvar for the menu to display.
 		properValue[0] = 0;
-		trap->Cvar_VariableStringBuffer(va("team%i_objective%i_gfx", useTeam, i), properValue, 1024);
+		trap_Cvar_VariableStringBuffer(va("team%i_objective%i_gfx", useTeam, i), properValue, 1024);
 		if (primary)
 		{
-			trap->Cvar_Set(va("siege_primobj_gfx"), properValue);
+			trap_Cvar_Set(va("siege_primobj_gfx"), properValue);
 		}
 		else
 		{
-			trap->Cvar_Set(va("siege_objective%i_gfx", i), properValue);
+			trap_Cvar_Set(va("siege_objective%i_gfx", i), properValue);
 		}
 
 		//Now set the mapicon cvar for the menu to display.
 		properValue[0] = 0;
-		trap->Cvar_VariableStringBuffer(va("team%i_objective%i_mapicon", useTeam, i), properValue, 1024);
+		trap_Cvar_VariableStringBuffer(va("team%i_objective%i_mapicon", useTeam, i), properValue, 1024);
 		if (primary)
 		{
-			trap->Cvar_Set(va("siege_primobj_mapicon"), properValue);
+			trap_Cvar_Set(va("siege_primobj_mapicon"), properValue);
 		}
 		else
 		{
-			trap->Cvar_Set(va("siege_objective%i_mapicon", i), properValue);
+			trap_Cvar_Set(va("siege_objective%i_mapicon", i), properValue);
 		}
 
 		//Now set the mappos cvar for the menu to display.
 		properValue[0] = 0;
-		trap->Cvar_VariableStringBuffer(va("team%i_objective%i_mappos", useTeam, i), properValue, 1024);
+		trap_Cvar_VariableStringBuffer(va("team%i_objective%i_mappos", useTeam, i), properValue, 1024);
 		if (primary)
 		{
-			trap->Cvar_Set(va("siege_primobj_mappos"), properValue);
+			trap_Cvar_Set(va("siege_primobj_mappos"), properValue);
 		}
 		else
 		{
-			trap->Cvar_Set(va("siege_objective%i_mappos", i), properValue);
+			trap_Cvar_Set(va("siege_objective%i_mappos", i), properValue);
 		}
 
 		//Now set the description cvar for the objective
@@ -834,35 +833,35 @@ void CG_SiegeBriefingDisplay(int team, int dontshow)
 		{ //found a valid objective description
 			if ( primary )
 			{
-				trap->Cvar_Set(va("siege_primobj_desc"), objectiveDesc);
+				trap_Cvar_Set(va("siege_primobj_desc"), objectiveDesc);
 				//this one is marked not in use because it gets primobj
-				trap->Cvar_Set(va("siege_objective%i_inuse", i), "0");
-				trap->Cvar_Set(va("siege_primobj_inuse"), "1");
+				trap_Cvar_Set(va("siege_objective%i_inuse", i), "0");
+				trap_Cvar_Set(va("siege_primobj_inuse"), "1");
 
-				trap->Cvar_Set(va("team%i_objective%i_inuse", useTeam, i), "1");
+				trap_Cvar_Set(va("team%i_objective%i_inuse", useTeam, i), "1");
 
 			}
 			else
 			{
-				trap->Cvar_Set(va("siege_objective%i_desc", i), objectiveDesc);
-				trap->Cvar_Set(va("siege_objective%i_inuse", i), "2");
-				trap->Cvar_Set(va("team%i_objective%i_inuse", useTeam, i), "2");
+				trap_Cvar_Set(va("siege_objective%i_desc", i), objectiveDesc);
+				trap_Cvar_Set(va("siege_objective%i_inuse", i), "2");
+				trap_Cvar_Set(va("team%i_objective%i_inuse", useTeam, i), "2");
 
 			}
 		}
 		else
 		{ //didn't find one, so set the "inuse" cvar to 0 for the objective and mark it non-complete.
-			trap->Cvar_Set(va("siege_objective%i_inuse", i), "0");
-			trap->Cvar_Set(va("siege_objective%i", i), "0");
-			trap->Cvar_Set(va("team%i_objective%i_inuse", useTeam, i), "0");
-			trap->Cvar_Set(va("team%i_objective%i", useTeam, i), "0");
+			trap_Cvar_Set(va("siege_objective%i_inuse", i), "0");
+			trap_Cvar_Set(va("siege_objective%i", i), "0");
+			trap_Cvar_Set(va("team%i_objective%i_inuse", useTeam, i), "0");
+			trap_Cvar_Set(va("team%i_objective%i", useTeam, i), "0");
 
-			trap->Cvar_Set(va("siege_objective%i_mappos", i), "");
-			trap->Cvar_Set(va("team%i_objective%i_mappos", useTeam, i), "");
-			trap->Cvar_Set(va("siege_objective%i_gfx", i), "");
-			trap->Cvar_Set(va("team%i_objective%i_gfx", useTeam, i), "");
-			trap->Cvar_Set(va("siege_objective%i_mapicon", i), "");
-			trap->Cvar_Set(va("team%i_objective%i_mapicon", useTeam, i), "");
+			trap_Cvar_Set(va("siege_objective%i_mappos", i), "");
+			trap_Cvar_Set(va("team%i_objective%i_mappos", useTeam, i), "");
+			trap_Cvar_Set(va("siege_objective%i_gfx", i), "");
+			trap_Cvar_Set(va("team%i_objective%i_gfx", useTeam, i), "");
+			trap_Cvar_Set(va("siege_objective%i_mapicon", i), "");
+			trap_Cvar_Set(va("team%i_objective%i_mapicon", useTeam, i), "");
 		}
 
 		i++;
@@ -895,7 +894,7 @@ void CG_SiegeObjectiveCompleted(centity_t *ent, int won, int objectivenum)
 
 	if (!siege_valid)
 	{
-		trap->Error( ERR_DROP, "Siege data does not exist on client!\n");
+		CG_Error("Siege data does not exist on client!\n");
 		return;
 	}
 
@@ -980,9 +979,9 @@ void CG_SiegeObjectiveCompleted(centity_t *ent, int won, int objectivenum)
 			}
 			*/
 
-			if (soundstr[0])
+			if (!(mov_soundDisable.integer & SDISABLE_ANNOUNCER) && soundstr[0])
 			{
-				trap->S_StartLocalSound(trap->S_RegisterSound(soundstr), CHAN_ANNOUNCER);
+				trap_S_StartLocalSound(trap_S_RegisterSound(soundstr), CHAN_ANNOUNCER);
 			}
 		}
 	}
@@ -1012,7 +1011,7 @@ void CG_ParseSiegeExtendedDataEntry(const char *conStr)
 		{
 			s[i] = *str;
 			i++;
-			str++;
+			*str++;
 		}
 		s[i] = 0;
         switch (argParses)
@@ -1069,7 +1068,7 @@ void CG_ParseSiegeExtendedDataEntry(const char *conStr)
 //parse incoming siege data, see counterpart in g_saga.c
 void CG_ParseSiegeExtendedData(void)
 {
-	int numEntries = trap->Cmd_Argc();
+	int numEntries = trap_Argc();
 	int i = 0;
 
 	if (numEntries < 1)
@@ -1097,5 +1096,40 @@ void CG_SetSiegeTimerCvar ( int msec )
 	tens = seconds / 10;
 	seconds -= tens * 10;
 
-	trap->Cvar_Set("ui_siegeTimer", va( "%i:%i%i", mins, tens, seconds ) );
+	trap_Cvar_Set("ui_siegeTimer", va( "%i:%i%i", mins, tens, seconds ) );
+}
+
+//[TrueView]
+void CG_TrueViewInit( void )
+{
+	int				len = 0;
+	fileHandle_t	f;
+
+
+	len = trap_FS_FOpenFile("trueview.cfg", &f, FS_READ);
+
+	if (!f)
+	{
+	//	trap->Print("Error: File Not Found: trueview.cfg\n");
+		true_view_valid = 0;
+		return;
+	}
+
+	if( len >= MAX_TRUEVIEW_INFO_SIZE )
+	{
+		trap_Print("Error: trueview.cfg is over the filesize limit.\n");
+		trap_FS_FCloseFile( f );
+		true_view_valid = 0;
+		return;
+	}
+
+	
+	trap_FS_Read(true_view_info, len, f);
+
+	true_view_valid = 1;
+
+	trap_FS_FCloseFile( f );
+
+	return;
+
 }

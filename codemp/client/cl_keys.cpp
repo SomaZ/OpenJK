@@ -402,6 +402,7 @@ x, y, amd width are in pixels
 ===================
 */
 extern console_t con;
+extern vec4_t console_chat_color;
 void Field_VariableSizeDraw( field_t *edit, int x, int y, int size, qboolean showCursor, qboolean noColorEscape ) {
 	int		len;
 	int		drawLen;
@@ -449,7 +450,7 @@ void Field_VariableSizeDraw( field_t *edit, int x, int y, int size, qboolean sho
 		SCR_DrawSmallStringExt( x, y, str, color, qfalse, noColorEscape );
 	} else {
 		// draw big string with drop shadow
-		SCR_DrawBigString( x, y, str, 1.0, noColorEscape );
+		SCR_DrawStringExt2(x*cls.ratioFix, y, BIGCHAR_WIDTH*cls.ratioFix, BIGCHAR_HEIGHT, str, console_chat_color, qfalse, qfalse);
 	}
 
 	// draw the cursor
@@ -464,14 +465,14 @@ void Field_VariableSizeDraw( field_t *edit, int x, int y, int size, qboolean sho
 			cursorChar = 10;
 		}
 
-		i = drawLen - strlen( str );
+		i = drawLen - Q_PrintStrlen( str, cls.cTable );
 
 		if ( size == con.charWidth ) {
 			SCR_DrawSmallChar( x + ( edit->cursor - prestep - i ) * size, y, cursorChar );
 		} else {
 			str[0] = cursorChar;
 			str[1] = 0;
-			SCR_DrawBigString( x + ( edit->cursor - prestep - i ) * size, y, str, 1.0, qfalse );
+			SCR_DrawStringExt2((x+(edit->cursor-prestep-i)*size)*cls.ratioFix, y, BIGCHAR_WIDTH*cls.ratioFix, BIGCHAR_HEIGHT, str, console_chat_color, qfalse, qfalse);
 		}
 	}
 }
@@ -1210,6 +1211,8 @@ static qboolean CL_BindUICommand( const char *cmd ) {
 		return qtrue;
 	if ( !Q_stricmp( cmd, "togglemenu" ) )
 		return qtrue;
+	if ( !Q_stricmp( cmd, "hudToggle" ) )
+		return qtrue;
 
 	return qfalse;
 }
@@ -1345,13 +1348,13 @@ void CL_KeyDownEvent( int key, unsigned time )
 
 		// escape always gets out of CGAME stuff
 		if ( Key_GetCatcher() & KEYCATCH_CGAME ) {
-			Key_SetCatcher( Key_GetCatcher( ) & ~KEYCATCH_CGAME );
+			Key_SetCatcher( Key_GetCatcher( ) & ~KEYCATCH_CGAME|KEYCATCH_CGAMEEXEC );
 			CGVM_EventHandling( CGAME_EVENT_NONE );
 			return;
 		}
 
 		if ( !(Key_GetCatcher() & KEYCATCH_UI) ) {
-			if ( cls.state == CA_ACTIVE && !clc.demoplaying )
+			if ( cls.state == CA_ACTIVE && ( !clc.demoplaying || ( clc.demoplaying && !mme_demoEscapeQuit->integer ) ) )
 				UIVM_SetActiveMenu( UIMENU_INGAME );
 			else {
 				CL_Disconnect_f();
@@ -1382,8 +1385,15 @@ void CL_KeyDownEvent( int key, unsigned time )
 	}
 	// cgame
 	else if ( Key_GetCatcher() & KEYCATCH_CGAME ) {
-		if ( cls.cgameStarted && !cls.cursorActive )
-			CGVM_KeyEvent( key, qtrue );
+		if ( cls.cgameStarted && !cls.cursorActive ) {
+			qboolean ret = (qboolean)CGVM_KeyEvent( key, qtrue );
+			if ( Key_GetCatcher( ) & KEYCATCH_CGAMEEXEC )  {
+				if ( ret )
+					return;
+			} else {
+				return;
+			}
+		}
 	}
 	// chatbox
 	else if ( Key_GetCatcher() & KEYCATCH_MESSAGE )

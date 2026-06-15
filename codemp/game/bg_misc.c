@@ -1,40 +1,28 @@
-/*
-===========================================================================
-Copyright (C) 1999 - 2005, Id Software, Inc.
-Copyright (C) 2000 - 2013, Raven Software, Inc.
-Copyright (C) 2001 - 2013, Activision, Inc.
-Copyright (C) 2013 - 2015, OpenJK contributors
-
-This file is part of the OpenJK source code.
-
-OpenJK is free software; you can redistribute it and/or modify it
-under the terms of the GNU General Public License version 2 as
-published by the Free Software Foundation.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU General Public License for more details.
-
-You should have received a copy of the GNU General Public License
-along with this program; if not, see <http://www.gnu.org/licenses/>.
-===========================================================================
-*/
-
+// Copyright (C) 1999-2000 Id Software, Inc.
+//
 // bg_misc.c -- both games misc functions, all completely stateless
 
-#include "qcommon/q_shared.h"
+#include "../qcommon/q_shared.h"
 #include "bg_public.h"
+#include "bg_strap.h"
 
-#if defined(_GAME)
-	#include "g_local.h"
-#elif defined(_CGAME)
-	#include "cgame/cg_local.h"
-#elif defined(UI_BUILD)
-	#include "ui/ui_local.h"
+#ifdef QAGAME
+#include "g_local.h"
 #endif
 
-const char *bgToggleableSurfaces[BG_NUM_TOGGLEABLE_SURFACES] =
+#ifdef UI_EXPORTS
+#include "../ui/ui_local.h"
+#endif
+
+#ifndef UI_EXPORTS
+#ifndef QAGAME
+#include "../cgame/cg_local.h"
+qboolean rpmodDetected = qfalse;
+qboolean galaxyrpDetected = qfalse;
+#endif
+#endif
+
+const char *bgToggleableSurfaces[BG_NUM_TOGGLEABLE_SURFACES] = 
 {
 	"l_arm_key",					//0
 	"torso_canister1",
@@ -113,7 +101,7 @@ const int bgToggleableSurfaceDebris[BG_NUM_TOGGLEABLE_SURFACES] =
 	-1
 };
 
-const char	*bg_customSiegeSoundNames[MAX_CUSTOM_SIEGE_SOUNDS] =
+const char	*bg_customSiegeSoundNames[MAX_CUSTOM_SIEGE_SOUNDS] = 
 {
 	"*att_attack",
 	"*att_primary",
@@ -150,7 +138,7 @@ const char	*bg_customSiegeSoundNames[MAX_CUSTOM_SIEGE_SOUNDS] =
 //rww - not putting @ in front of these because
 //we don't need them in a cgame StringEd lookup.
 //Let me know if this causes problems, pat.
-char *forceMasteryLevels[NUM_FORCE_MASTERY_LEVELS] =
+char *forceMasteryLevels[NUM_FORCE_MASTERY_LEVELS] = 
 {
 	"MASTERY0",	//"Uninitiated",	// FORCE_MASTERY_UNINITIATED,
 	"MASTERY1",	//"Initiate",		// FORCE_MASTERY_INITIATE,
@@ -197,7 +185,7 @@ int bgForcePowerCost[NUM_FORCE_POWERS][NUM_FORCE_POWER_LEVELS] = //0 == neutral
 	//NUM_FORCE_POWERS
 };
 
-int forcePowerSorted[NUM_FORCE_POWERS] =
+int forcePowerSorted[NUM_FORCE_POWERS] = 
 { //rww - always use this order when drawing force powers for any reason
 	FP_TELEPATHY,
 	FP_HEAL,
@@ -312,7 +300,10 @@ int WeaponAttackAnim[WP_NUM_WEAPONS] =
 	BOTH_THERMAL_THROW,//WP_THERMAL,
 	BOTH_ATTACK3,//BOTH_ATTACK11,//WP_TRIP_MINE,
 	BOTH_ATTACK3,//BOTH_ATTACK12,//WP_DET_PACK,
-	BOTH_ATTACK3,//WP_CONCUSSION,
+//	#ifndef BASE_COMPAT
+		//JAC: Raven forgot the Concussion's firing animation
+		BOTH_ATTACK3,//WP_CONCUSSION,
+//	#endif // BASE_COMPAT
 	BOTH_ATTACK2,//WP_BRYAR_OLD,
 
 	//NOT VALID (e.g. should never really be used):
@@ -320,85 +311,20 @@ int WeaponAttackAnim[WP_NUM_WEAPONS] =
 	BOTH_ATTACK1//WP_TURRET,
 };
 
-void BG_FixWeaponAttackAnim(void) {
-#if defined(_GAME)
-	const qboolean doFix = !!g_fixWeaponAttackAnim.integer;
-#elif defined(_CGAME)
-	const char *cs = CG_ConfigString(CS_LEGACY_FIXES);
-	const uint32_t legacyFixes = strtoul(cs, NULL, 0);
-	const qboolean doFix = !!(legacyFixes & (1 << LEGACYFIX_WEAPONATTACKANIM));
-#elif defined(UI_BUILD)
-	const qboolean doFix = qtrue; // no chance of prediction error from UI code
-#endif
-	int *move;
-
-	for (move = WeaponAttackAnim; move - WeaponAttackAnim < ARRAY_LEN(WeaponAttackAnim); move++) {
-		const weapon_t wpIndex = (weapon_t)(move - WeaponAttackAnim);
-		if (wpIndex == WP_CONCUSSION) {
-			*move = doFix ? BOTH_ATTACK3 : BOTH_ATTACK2;
-		} else if (wpIndex == WP_BRYAR_OLD) {
-			*move = doFix ? BOTH_ATTACK2 : BOTH_STAND1;
-		} else if (wpIndex == WP_EMPLACED_GUN) {
-			*move = doFix ? BOTH_STAND1 : BOTH_ATTACK1;
-		} else if (wpIndex == WP_TURRET) {
-			*move = doFix ? BOTH_ATTACK1 : BOTH_ATTACK2; // better than UB?
-		}
-	}
-}
-
-qboolean BG_FileExists( const char *fileName ) {
-	if ( fileName && fileName[0] ) {
-		fileHandle_t f = NULL_FILE;
-		trap->FS_Open( fileName, &f, FS_READ );
-		if ( f > 0 ) {
-			trap->FS_Close( f );
+qboolean BG_FileExists(const char *fileName)
+{
+	if (fileName && fileName[0])
+	{
+		int fh = 0;
+		trap_FS_FOpenFile(fileName, &fh, FS_READ);
+		if (fh > 0)
+		{
+			trap_FS_FCloseFile(fh);
 			return qtrue;
 		}
 	}
-	return qfalse;
-}
 
-// given a boltmatrix, return in vec a normalised vector for the axis requested in flags
-void BG_GiveMeVectorFromMatrix(mdxaBone_t *boltMatrix, int flags, vec3_t vec)
-{
-	switch (flags)
-	{
-	case ORIGIN:
-		vec[0] = boltMatrix->matrix[0][3];
-		vec[1] = boltMatrix->matrix[1][3];
-		vec[2] = boltMatrix->matrix[2][3];
-		break;
-	case POSITIVE_Y:
-		vec[0] = boltMatrix->matrix[0][1];
-		vec[1] = boltMatrix->matrix[1][1];
-		vec[2] = boltMatrix->matrix[2][1];
- 		break;
-	case POSITIVE_X:
-		vec[0] = boltMatrix->matrix[0][0];
-		vec[1] = boltMatrix->matrix[1][0];
-		vec[2] = boltMatrix->matrix[2][0];
-		break;
-	case POSITIVE_Z:
-		vec[0] = boltMatrix->matrix[0][2];
-		vec[1] = boltMatrix->matrix[1][2];
-		vec[2] = boltMatrix->matrix[2][2];
-		break;
-	case NEGATIVE_Y:
-		vec[0] = -boltMatrix->matrix[0][1];
-		vec[1] = -boltMatrix->matrix[1][1];
-		vec[2] = -boltMatrix->matrix[2][1];
-		break;
-	case NEGATIVE_X:
-		vec[0] = -boltMatrix->matrix[0][0];
-		vec[1] = -boltMatrix->matrix[1][0];
-		vec[2] = -boltMatrix->matrix[2][0];
-		break;
-	case NEGATIVE_Z:
-		vec[0] = -boltMatrix->matrix[0][2];
-		vec[1] = -boltMatrix->matrix[1][2];
-		vec[2] = -boltMatrix->matrix[2][2];
-		break;
-	}
+	return qfalse;
 }
 
 /*
@@ -413,7 +339,7 @@ fpDisabled is actually only expected (needed) from the server, because the ui di
 force power selection anyway when force powers are disabled on the server.
 ================
 */
-qboolean BG_LegalizedForcePowers(char *powerOut, size_t powerOutSize, int maxRank, qboolean freeSaber, int teamForce, int gametype, int fpDisabled)
+qboolean BG_LegalizedForcePowers(char *powerOut, int maxRank, qboolean freeSaber, int teamForce, int gametype, int fpDisabled)
 {
 	char powerBuf[128];
 	char readBuf[128];
@@ -424,7 +350,7 @@ qboolean BG_LegalizedForcePowers(char *powerOut, size_t powerOutSize, int maxRan
 	int allowedPoints = 0;
 	int usedPoints = 0;
 	int countDown = 0;
-
+	
 	int final_Side;
 	int final_Powers[NUM_FORCE_POWERS] = {0};
 
@@ -438,7 +364,7 @@ qboolean BG_LegalizedForcePowers(char *powerOut, size_t powerOutSize, int maxRan
 		Q_strncpyz( powerBuf, powerOut, sizeof( powerBuf ) ); //copy it as the original
 
 	//first of all, print the max rank into the string as the rank
-	Q_strncpyz( powerOut, va( "%i-", maxRank ), powerOutSize );
+	Q_strncpyz( powerOut, va( "%i-", maxRank ), 128 );
 
 	while (i < sizeof( powerBuf ) && powerBuf[i] && powerBuf[i] != '-')
 	{
@@ -520,6 +446,8 @@ qboolean BG_LegalizedForcePowers(char *powerOut, size_t powerOutSize, int maxRan
 	i = 0;
 	while (i < NUM_FORCE_POWERS)
 	{
+		countDown = 0;
+
 		countDown = Com_Clampi( 0, NUM_FORCE_POWER_LEVELS, final_Powers[i] );
 
 		while (countDown > 0)
@@ -544,7 +472,7 @@ qboolean BG_LegalizedForcePowers(char *powerOut, size_t powerOutSize, int maxRan
 		int attemptedCycles = 0;
 		int powerCycle = 2;
 		int minPow = 0;
-
+		
 		if (freeSaber)
 		{
 			minPow = 1;
@@ -675,7 +603,7 @@ qboolean BG_LegalizedForcePowers(char *powerOut, size_t powerOutSize, int maxRan
 	//We finally have all the force powers legalized and stored locally.
 	//Put them all into the string and return the result. We already have
 	//the rank there, so print the side and the powers now.
-	Q_strcat(powerOut, powerOutSize, va("%i-", final_Side));
+	Q_strcat(powerOut, 128, va("%i-", final_Side));
 
 	i = strlen(powerOut);
 	c = 0;
@@ -689,6 +617,49 @@ qboolean BG_LegalizedForcePowers(char *powerOut, size_t powerOutSize, int maxRan
 	powerOut[i] = 0;
 
 	return maintainsValidity;
+}
+
+// given a boltmatrix, return in vec a normalised vector for the axis requested in flags
+void BG_GiveMeVectorFromMatrix(mdxaBone_t *boltMatrix, int flags, vec3_t vec)
+{
+	switch (flags)
+	{
+	case ORIGIN:
+		vec[0] = boltMatrix->matrix[0][3];
+		vec[1] = boltMatrix->matrix[1][3];
+		vec[2] = boltMatrix->matrix[2][3];
+		break;
+	case POSITIVE_Y:
+		vec[0] = boltMatrix->matrix[0][1];
+		vec[1] = boltMatrix->matrix[1][1];
+		vec[2] = boltMatrix->matrix[2][1];
+ 		break;
+	case POSITIVE_X:
+		vec[0] = boltMatrix->matrix[0][0];
+		vec[1] = boltMatrix->matrix[1][0];
+		vec[2] = boltMatrix->matrix[2][0];
+		break;
+	case POSITIVE_Z:
+		vec[0] = boltMatrix->matrix[0][2];
+		vec[1] = boltMatrix->matrix[1][2];
+		vec[2] = boltMatrix->matrix[2][2];
+		break;
+	case NEGATIVE_Y:
+		vec[0] = -boltMatrix->matrix[0][1];
+		vec[1] = -boltMatrix->matrix[1][1];
+		vec[2] = -boltMatrix->matrix[2][1];
+		break;
+	case NEGATIVE_X:
+		vec[0] = -boltMatrix->matrix[0][0];
+		vec[1] = -boltMatrix->matrix[1][0];
+		vec[2] = -boltMatrix->matrix[2][0];
+		break;
+	case NEGATIVE_Z:
+		vec[0] = -boltMatrix->matrix[0][2];
+		vec[1] = -boltMatrix->matrix[1][2];
+		vec[2] = -boltMatrix->matrix[2][2];
+		break;
+	}
 }
 
 /*QUAKED item_***** ( 0 0 0 ) (-16 -16 -16) (16 16 16) suspended
@@ -707,10 +678,10 @@ An item fires all of its targets when it is picked up.  If the toucher can't car
 "count" override quantity or duration on most items.
 */
 
-gitem_t	bg_itemlist[] =
+gitem_t	bg_itemlist[] = 
 {
 	{
-		NULL,				// classname
+		NULL,				// classname	
 		NULL,				// pickup_sound
 		{	NULL,			// world_model[0]
 			NULL,			// world_model[1]
@@ -719,7 +690,7 @@ gitem_t	bg_itemlist[] =
 /* icon */		NULL,		// icon
 /* pickup */	//NULL,		// pickup_name
 		0,					// quantity
-		IT_BAD,				// giType (IT_*)
+		0,					// giType (IT_*)
 		0,					// giTag
 /* precache */ "",			// precaches
 /* sounds */ "",			// sounds
@@ -734,11 +705,11 @@ gitem_t	bg_itemlist[] =
 Instant shield pickup, restores 25
 */
 	{
-		"item_shield_sm_instant",
+		"item_shield_sm_instant", 
 		"sound/player/pickupshield.wav",
         { "models/map_objects/mp/psd_sm.md3",
 		0, 0, 0},
-/* view */		NULL,
+/* view */		NULL,			
 /* icon */		"gfx/mp/small_shield",
 /* pickup *///	"Shield Small",
 		25,
@@ -753,11 +724,11 @@ Instant shield pickup, restores 25
 Instant shield pickup, restores 100
 */
 	{
-		"item_shield_lrg_instant",
+		"item_shield_lrg_instant", 
 		"sound/player/pickupshield.wav",
         { "models/map_objects/mp/psd.md3",
 		0, 0, 0},
-/* view */		NULL,
+/* view */		NULL,			
 /* icon */		"gfx/mp/large_shield",
 /* pickup *///	"Shield Large",
 		100,
@@ -774,9 +745,9 @@ Instant medpack pickup, heals 25
 	{
 		"item_medpak_instant",
 		"sound/player/pickuphealth.wav",
-        { "models/map_objects/mp/medpac.md3",
+        { "models/map_objects/mp/medpac.md3", 
 		0, 0, 0 },
-/* view */		NULL,
+/* view */		NULL,			
 /* icon */		"gfx/hud/i_icon_medkit",
 /* pickup *///	"Medpack",
 		25,
@@ -796,11 +767,11 @@ Instant medpack pickup, heals 25
 30 seconds of seeker drone
 */
 	{
-		"item_seeker",
+		"item_seeker", 
 		"sound/weapons/w_pkup.wav",
-		{ "models/items/remote.md3",
+		{ "models/items/remote.md3", 
 		0, 0, 0} ,
-/* view */		NULL,
+/* view */		NULL,			
 /* icon */		"gfx/hud/i_icon_seeker",
 /* pickup *///	"Seeker Drone",
 		120,
@@ -815,11 +786,11 @@ Instant medpack pickup, heals 25
 Portable shield
 */
 	{
-		"item_shield",
+		"item_shield", 
 		"sound/weapons/w_pkup.wav",
-		{ "models/map_objects/mp/shield.md3",
+		{ "models/map_objects/mp/shield.md3", 
 		0, 0, 0} ,
-/* view */		NULL,
+/* view */		NULL,			
 /* icon */		"gfx/hud/i_icon_shieldwall",
 /* pickup *///	"Forcefield",
 		120,
@@ -836,9 +807,9 @@ Bacta canister pickup, heals 25 on use
 	{
 		"item_medpac",	//should be item_bacta
 		"sound/weapons/w_pkup.wav",
-		{ "models/map_objects/mp/bacta.md3",
+		{ "models/map_objects/mp/bacta.md3", 
 		0, 0, 0} ,
-/* view */		NULL,
+/* view */		NULL,			
 /* icon */		"gfx/hud/i_icon_bacta",
 /* pickup *///	"Bacta Canister",
 		25,
@@ -855,9 +826,9 @@ Big bacta canister pickup, heals 50 on use
 	{
 		"item_medpac_big",	//should be item_bacta
 		"sound/weapons/w_pkup.wav",
-		{ "models/items/big_bacta.md3",
+		{ "models/items/big_bacta.md3", 
 		0, 0, 0} ,
-/* view */		NULL,
+/* view */		NULL,			
 /* icon */		"gfx/hud/i_icon_big_bacta",
 /* pickup *///	"Bacta Canister",
 		25,
@@ -872,11 +843,11 @@ Big bacta canister pickup, heals 50 on use
 These will be standard equipment on the player - DO NOT PLACE
 */
 	{
-		"item_binoculars",
+		"item_binoculars", 
 		"sound/weapons/w_pkup.wav",
-		{ "models/items/binoculars.md3",
+		{ "models/items/binoculars.md3", 
 		0, 0, 0} ,
-/* view */		NULL,
+/* view */		NULL,			
 /* icon */		"gfx/hud/i_icon_zoom",
 /* pickup *///	"Binoculars",
 		60,
@@ -891,11 +862,11 @@ These will be standard equipment on the player - DO NOT PLACE
 Sentry gun inventory pickup.
 */
 	{
-		"item_sentry_gun",
+		"item_sentry_gun", 
 		"sound/weapons/w_pkup.wav",
-		{ "models/items/psgun.glm",
+		{ "models/items/psgun.glm", 
 		0, 0, 0} ,
-/* view */		NULL,
+/* view */		NULL,			
 /* icon */		"gfx/hud/i_icon_sentrygun",
 /* pickup *///	"Sentry Gun",
 		120,
@@ -910,11 +881,11 @@ Sentry gun inventory pickup.
 Do not place.
 */
 	{
-		"item_jetpack",
+		"item_jetpack", 
 		"sound/weapons/w_pkup.wav",
 		{ "models/items/psgun.glm", //FIXME: no model
 		0, 0, 0} ,
-/* view */		NULL,
+/* view */		NULL,			
 /* icon */		"gfx/hud/i_icon_jetpack",
 /* pickup *///	"Sentry Gun",
 		120,
@@ -929,11 +900,11 @@ Do not place.
 Do not place. For siege classes ONLY.
 */
 	{
-		"item_healthdisp",
+		"item_healthdisp", 
 		"sound/weapons/w_pkup.wav",
 		{ "models/map_objects/mp/bacta.md3", //replace me
 		0, 0, 0} ,
-/* view */		NULL,
+/* view */		NULL,			
 /* icon */		"gfx/hud/i_icon_healthdisp",
 /* pickup *///	"Sentry Gun",
 		120,
@@ -948,11 +919,11 @@ Do not place. For siege classes ONLY.
 Do not place. For siege classes ONLY.
 */
 	{
-		"item_ammodisp",
+		"item_ammodisp", 
 		"sound/weapons/w_pkup.wav",
 		{ "models/map_objects/mp/bacta.md3", //replace me
 		0, 0, 0} ,
-/* view */		NULL,
+/* view */		NULL,			
 /* icon */		"gfx/hud/i_icon_ammodisp",
 /* pickup *///	"Sentry Gun",
 		120,
@@ -967,11 +938,11 @@ Do not place. For siege classes ONLY.
 Do not place. For siege classes ONLY.
 */
 	{
-		"item_eweb_holdable",
+		"item_eweb_holdable", 
 		"sound/interface/shieldcon_empty",
 		{ "models/map_objects/hoth/eweb_model.glm",
 		0, 0, 0} ,
-/* view */		NULL,
+/* view */		NULL,			
 /* icon */		"gfx/hud/i_icon_eweb",
 /* pickup *///	"Sentry Gun",
 		120,
@@ -986,11 +957,11 @@ Do not place. For siege classes ONLY.
 30 seconds of seeker drone
 */
 	{
-		"item_cloak",
+		"item_cloak", 
 		"sound/weapons/w_pkup.wav",
 		{ "models/items/psgun.glm", //FIXME: no model
 		0, 0, 0} ,
-/* view */		NULL,
+/* view */		NULL,			
 /* icon */		"gfx/hud/i_icon_cloak",
 /* pickup *///	"Seeker Drone",
 		120,
@@ -1007,9 +978,9 @@ Adds one rank to all Force powers temporarily. Only light jedi can use.
 	{
 		"item_force_enlighten_light",
 		"sound/player/enlightenment.wav",
-		{ "models/map_objects/mp/jedi_enlightenment.md3",
+		{ "models/map_objects/mp/jedi_enlightenment.md3", 
 		0, 0, 0} ,
-/* view */		NULL,
+/* view */		NULL,			
 /* icon */		"gfx/hud/mpi_jlight",
 /* pickup *///	"Light Force Enlightenment",
 		25,
@@ -1026,9 +997,9 @@ Adds one rank to all Force powers temporarily. Only dark jedi can use.
 	{
 		"item_force_enlighten_dark",
 		"sound/player/enlightenment.wav",
-		{ "models/map_objects/mp/dk_enlightenment.md3",
+		{ "models/map_objects/mp/dk_enlightenment.md3", 
 		0, 0, 0} ,
-/* view */		NULL,
+/* view */		NULL,			
 /* icon */		"gfx/hud/mpi_dklight",
 /* pickup *///	"Dark Force Enlightenment",
 		25,
@@ -1045,9 +1016,9 @@ Unlimited Force Pool for a short time.
 	{
 		"item_force_boon",
 		"sound/player/boon.wav",
-		{ "models/map_objects/mp/force_boon.md3",
+		{ "models/map_objects/mp/force_boon.md3", 
 		0, 0, 0} ,
-/* view */		NULL,
+/* view */		NULL,			
 /* icon */		"gfx/hud/mpi_fboon",
 /* pickup *///	"Force Boon",
 		25,
@@ -1064,9 +1035,9 @@ A small lizard carried on the player, which prevents the possessor from using an
 	{
 		"item_ysalimari",
 		"sound/player/ysalimari.wav",
-		{ "models/map_objects/mp/ysalimari.md3",
+		{ "models/map_objects/mp/ysalimari.md3", 
 		0, 0, 0} ,
-/* view */		NULL,
+/* view */		NULL,			
 /* icon */		"gfx/hud/mpi_ysamari",
 /* pickup *///	"Ysalamiri",
 		25,
@@ -1078,18 +1049,18 @@ A small lizard carried on the player, which prevents the possessor from using an
 	},
 
 	//
-	// WEAPONS
+	// WEAPONS 
 	//
 
 /*QUAKED weapon_stun_baton (.3 .3 1) (-16 -16 -16) (16 16 16) suspended
 Don't place this
 */
 	{
-		"weapon_stun_baton",
+		"weapon_stun_baton", 
 		"sound/weapons/w_pkup.wav",
-        { "models/weapons2/stun_baton/baton_w.glm",
+        { "models/weapons2/stun_baton/baton_w.glm", 
 		0, 0, 0},
-/* view */		"models/weapons2/stun_baton/baton.md3",
+/* view */		"models/weapons2/stun_baton/baton.md3", 
 /* icon */		"gfx/hud/w_icon_stunbaton",
 /* pickup *///	"Stun Baton",
 		100,
@@ -1104,11 +1075,11 @@ Don't place this
 Don't place this
 */
 	{
-		"weapon_melee",
+		"weapon_melee", 
 		"sound/weapons/w_pkup.wav",
-        { "models/weapons2/stun_baton/baton_w.glm",
+        { "models/weapons2/stun_baton/baton_w.glm", 
 		0, 0, 0},
-/* view */		"models/weapons2/stun_baton/baton.md3",
+/* view */		"models/weapons2/stun_baton/baton.md3", 
 /* icon */		"gfx/hud/w_icon_melee",
 /* pickup *///	"Stun Baton",
 		100,
@@ -1123,9 +1094,9 @@ Don't place this
 Don't place this
 */
 	{
-		"weapon_saber",
+		"weapon_saber", 
 		"sound/weapons/w_pkup.wav",
-        { DEFAULT_SABER_MODEL,
+        { "models/weapons2/saber/saber_w.glm",
 		0, 0, 0},
 /* view */		"models/weapons2/saber/saber_w.md3",
 /* icon */		"gfx/hud/w_icon_lightsaber",
@@ -1142,12 +1113,12 @@ Don't place this
 Don't place this
 */
 	{
-		//"weapon_bryar_pistol",
-		"weapon_blaster_pistol",
+		//"weapon_bryar_pistol", 
+		"weapon_blaster_pistol", 
 		"sound/weapons/w_pkup.wav",
-        { "models/weapons2/blaster_pistol/blaster_pistol_w.glm",//"models/weapons2/briar_pistol/briar_pistol_w.glm",
+        { "models/weapons2/blaster_pistol/blaster_pistol_w.glm",//"models/weapons2/briar_pistol/briar_pistol_w.glm", 
 		0, 0, 0},
-/* view */		"models/weapons2/blaster_pistol/blaster_pistol.md3",//"models/weapons2/briar_pistol/briar_pistol.md3",
+/* view */		"models/weapons2/blaster_pistol/blaster_pistol.md3",//"models/weapons2/briar_pistol/briar_pistol.md3", 
 /* icon */		"gfx/hud/w_icon_blaster_pistol",//"gfx/hud/w_icon_rifle",
 /* pickup *///	"Bryar Pistol",
 		100,
@@ -1161,11 +1132,11 @@ Don't place this
 /*QUAKED weapon_concussion_rifle (.3 .3 1) (-16 -16 -16) (16 16 16) suspended
 */
 	{
-		"weapon_concussion_rifle",
+		"weapon_concussion_rifle", 
 		"sound/weapons/w_pkup.wav",
-        { "models/weapons2/concussion/c_rifle_w.glm",
+        { "models/weapons2/concussion/c_rifle_w.glm", 
 		0, 0, 0},
-/* view */		"models/weapons2/concussion/c_rifle.md3",
+/* view */		"models/weapons2/concussion/c_rifle.md3", 
 /* icon */		"gfx/hud/w_icon_c_rifle",//"gfx/hud/w_icon_rifle",
 /* pickup *///	"Concussion Rifle",
 		50,
@@ -1180,11 +1151,11 @@ Don't place this
 Don't place this
 */
 	{
-		"weapon_bryar_pistol",
+		"weapon_bryar_pistol", 
 		"sound/weapons/w_pkup.wav",
-        { "models/weapons2/briar_pistol/briar_pistol_w.glm",
+        { "models/weapons2/briar_pistol/briar_pistol_w.glm", 
 		0, 0, 0},
-/* view */		"models/weapons2/briar_pistol/briar_pistol.md3",
+/* view */		"models/weapons2/briar_pistol/briar_pistol.md3", 
 /* icon */		"gfx/hud/w_icon_briar",//"gfx/hud/w_icon_rifle",
 /* pickup *///	"Bryar Pistol",
 		100,
@@ -1198,11 +1169,11 @@ Don't place this
 /*QUAKED weapon_blaster (.3 .3 1) (-16 -16 -16) (16 16 16) suspended
 */
 	{
-		"weapon_blaster",
+		"weapon_blaster", 
 		"sound/weapons/w_pkup.wav",
-        { "models/weapons2/blaster_r/blaster_w.glm",
+        { "models/weapons2/blaster_r/blaster_w.glm", 
 		0, 0, 0},
-/* view */		"models/weapons2/blaster_r/blaster.md3",
+/* view */		"models/weapons2/blaster_r/blaster.md3", 
 /* icon */		"gfx/hud/w_icon_blaster",
 /* pickup *///	"E11 Blaster Rifle",
 		100,
@@ -1218,9 +1189,9 @@ Don't place this
 	{
 		"weapon_disruptor",
 		"sound/weapons/w_pkup.wav",
-        { "models/weapons2/disruptor/disruptor_w.glm",
+        { "models/weapons2/disruptor/disruptor_w.glm", 
 		0, 0, 0},
-/* view */		"models/weapons2/disruptor/disruptor.md3",
+/* view */		"models/weapons2/disruptor/disruptor.md3", 
 /* icon */		"gfx/hud/w_icon_disruptor",
 /* pickup *///	"Tenloss Disruptor Rifle",
 		100,
@@ -1236,9 +1207,9 @@ Don't place this
 	{
 		"weapon_bowcaster",
 		"sound/weapons/w_pkup.wav",
-        { "models/weapons2/bowcaster/bowcaster_w.glm",
+        { "models/weapons2/bowcaster/bowcaster_w.glm", 
 		0, 0, 0},
-/* view */		"models/weapons2/bowcaster/bowcaster.md3",
+/* view */		"models/weapons2/bowcaster/bowcaster.md3", 
 /* icon */		"gfx/hud/w_icon_bowcaster",
 /* pickup *///	"Wookiee Bowcaster",
 		100,
@@ -1252,11 +1223,11 @@ Don't place this
 /*QUAKED weapon_repeater (.3 .3 1) (-16 -16 -16) (16 16 16) suspended
 */
 	{
-		"weapon_repeater",
+		"weapon_repeater", 
 		"sound/weapons/w_pkup.wav",
-        { "models/weapons2/heavy_repeater/heavy_repeater_w.glm",
+        { "models/weapons2/heavy_repeater/heavy_repeater_w.glm", 
 		0, 0, 0},
-/* view */		"models/weapons2/heavy_repeater/heavy_repeater.md3",
+/* view */		"models/weapons2/heavy_repeater/heavy_repeater.md3", 
 /* icon */		"gfx/hud/w_icon_repeater",
 /* pickup *///	"Imperial Heavy Repeater",
 		100,
@@ -1271,11 +1242,11 @@ Don't place this
 NOTENOTE This weapon is not yet complete.  Don't place it.
 */
 	{
-		"weapon_demp2",
+		"weapon_demp2", 
 		"sound/weapons/w_pkup.wav",
-        { "models/weapons2/demp2/demp2_w.glm",
+        { "models/weapons2/demp2/demp2_w.glm", 
 		0, 0, 0},
-/* view */		"models/weapons2/demp2/demp2.md3",
+/* view */		"models/weapons2/demp2/demp2.md3", 
 /* icon */		"gfx/hud/w_icon_demp2",
 /* pickup *///	"DEMP2",
 		100,
@@ -1289,11 +1260,11 @@ NOTENOTE This weapon is not yet complete.  Don't place it.
 /*QUAKED weapon_flechette (.3 .3 1) (-16 -16 -16) (16 16 16) suspended
 */
 	{
-		"weapon_flechette",
+		"weapon_flechette", 
 		"sound/weapons/w_pkup.wav",
-        { "models/weapons2/golan_arms/golan_arms_w.glm",
+        { "models/weapons2/golan_arms/golan_arms_w.glm", 
 		0, 0, 0},
-/* view */		"models/weapons2/golan_arms/golan_arms.md3",
+/* view */		"models/weapons2/golan_arms/golan_arms.md3", 
 /* icon */		"gfx/hud/w_icon_flechette",
 /* pickup *///	"Golan Arms Flechette",
 		100,
@@ -1309,9 +1280,9 @@ NOTENOTE This weapon is not yet complete.  Don't place it.
 	{
 		"weapon_rocket_launcher",
 		"sound/weapons/w_pkup.wav",
-        { "models/weapons2/merr_sonn/merr_sonn_w.glm",
+        { "models/weapons2/merr_sonn/merr_sonn_w.glm", 
 		0, 0, 0},
-/* view */		"models/weapons2/merr_sonn/merr_sonn.md3",
+/* view */		"models/weapons2/merr_sonn/merr_sonn.md3", 
 /* icon */		"gfx/hud/w_icon_merrsonn",
 /* pickup *///	"Merr-Sonn Missile System",
 		3,
@@ -1327,9 +1298,9 @@ NOTENOTE This weapon is not yet complete.  Don't place it.
 	{
 		"ammo_thermal",
 		"sound/weapons/w_pkup.wav",
-        { "models/weapons2/thermal/thermal_pu.md3",
+        { "models/weapons2/thermal/thermal_pu.md3", 
 		"models/weapons2/thermal/thermal_w.glm", 0, 0},
-/* view */		"models/weapons2/thermal/thermal.md3",
+/* view */		"models/weapons2/thermal/thermal.md3", 
 /* icon */		"gfx/hud/w_icon_thermal",
 /* pickup *///	"Thermal Detonators",
 		4,
@@ -1343,11 +1314,11 @@ NOTENOTE This weapon is not yet complete.  Don't place it.
 /*QUAKED ammo_tripmine (.3 .3 1) (-16 -16 -16) (16 16 16) suspended
 */
 	{
-		"ammo_tripmine",
+		"ammo_tripmine", 
 		"sound/weapons/w_pkup.wav",
-        { "models/weapons2/laser_trap/laser_trap_pu.md3",
+        { "models/weapons2/laser_trap/laser_trap_pu.md3", 
 		"models/weapons2/laser_trap/laser_trap_w.glm", 0, 0},
-/* view */		"models/weapons2/laser_trap/laser_trap.md3",
+/* view */		"models/weapons2/laser_trap/laser_trap.md3", 
 /* icon */		"gfx/hud/w_icon_tripmine",
 /* pickup *///	"Trip Mines",
 		3,
@@ -1361,10 +1332,10 @@ NOTENOTE This weapon is not yet complete.  Don't place it.
 /*QUAKED ammo_detpack (.3 .3 1) (-16 -16 -16) (16 16 16) suspended
 */
 	{
-		"ammo_detpack",
+		"ammo_detpack", 
 		"sound/weapons/w_pkup.wav",
         { "models/weapons2/detpack/det_pack_pu.md3", "models/weapons2/detpack/det_pack_proj.glm", "models/weapons2/detpack/det_pack_w.glm", 0},
-/* view */		"models/weapons2/detpack/det_pack.md3",
+/* view */		"models/weapons2/detpack/det_pack.md3", 
 /* icon */		"gfx/hud/w_icon_detpack",
 /* pickup *///	"Det Packs",
 		3,
@@ -1382,7 +1353,7 @@ NOTENOTE This weapon is not yet complete.  Don't place it.
 		"sound/weapons/w_pkup.wav",
         { "models/weapons2/thermal/thermal_w.glm", "models/weapons2/thermal/thermal_pu.md3",
 		0, 0 },
-/* view */		"models/weapons2/thermal/thermal.md3",
+/* view */		"models/weapons2/thermal/thermal.md3", 
 /* icon */		"gfx/hud/w_icon_thermal",
 /* pickup *///	"Thermal Detonator",
 		4,
@@ -1396,11 +1367,11 @@ NOTENOTE This weapon is not yet complete.  Don't place it.
 /*QUAKED weapon_trip_mine (.3 .3 1) (-16 -16 -16) (16 16 16) suspended
 */
 	{
-		"weapon_trip_mine",
+		"weapon_trip_mine", 
 		"sound/weapons/w_pkup.wav",
         { "models/weapons2/laser_trap/laser_trap_w.glm", "models/weapons2/laser_trap/laser_trap_pu.md3",
 		0, 0},
-/* view */		"models/weapons2/laser_trap/laser_trap.md3",
+/* view */		"models/weapons2/laser_trap/laser_trap.md3", 
 /* icon */		"gfx/hud/w_icon_tripmine",
 /* pickup *///	"Trip Mine",
 		3,
@@ -1414,10 +1385,10 @@ NOTENOTE This weapon is not yet complete.  Don't place it.
 /*QUAKED weapon_det_pack (.3 .3 1) (-16 -16 -16) (16 16 16) suspended
 */
 	{
-		"weapon_det_pack",
+		"weapon_det_pack", 
 		"sound/weapons/w_pkup.wav",
         { "models/weapons2/detpack/det_pack_proj.glm", "models/weapons2/detpack/det_pack_pu.md3", "models/weapons2/detpack/det_pack_w.glm", 0},
-/* view */		"models/weapons2/detpack/det_pack.md3",
+/* view */		"models/weapons2/detpack/det_pack.md3", 
 /* icon */		"gfx/hud/w_icon_detpack",
 /* pickup *///	"Det Pack",
 		3,
@@ -1431,11 +1402,11 @@ NOTENOTE This weapon is not yet complete.  Don't place it.
 /*QUAKED weapon_emplaced (.3 .3 1) (-16 -16 -16) (16 16 16) suspended
 */
 	{
-		"weapon_emplaced",
+		"weapon_emplaced", 
 		"sound/weapons/w_pkup.wav",
-        { "models/weapons2/blaster_r/blaster_w.glm",
+        { "models/weapons2/blaster_r/blaster_w.glm", 
 		0, 0, 0},
-/* view */		"models/weapons2/blaster_r/blaster.md3",
+/* view */		"models/weapons2/blaster_r/blaster.md3", 
 /* icon */		"gfx/hud/w_icon_blaster",
 /* pickup *///	"Emplaced Gun",
 		50,
@@ -1449,11 +1420,11 @@ NOTENOTE This weapon is not yet complete.  Don't place it.
 
 //NOTE: This is to keep things from messing up because the turret weapon type isn't real
 	{
-		"weapon_turretwp",
+		"weapon_turretwp", 
 		"sound/weapons/w_pkup.wav",
-        { "models/weapons2/blaster_r/blaster_w.glm",
+        { "models/weapons2/blaster_r/blaster_w.glm", 
 		0, 0, 0},
-/* view */		"models/weapons2/blaster_r/blaster.md3",
+/* view */		"models/weapons2/blaster_r/blaster.md3", 
 /* icon */		"gfx/hud/w_icon_blaster",
 /* pickup *///	"Turret Gun",
 		50,
@@ -1474,9 +1445,9 @@ Don't place this
 	{
 		"ammo_force",
 		"sound/player/pickupenergy.wav",
-        { "models/items/energy_cell.md3",
+        { "models/items/energy_cell.md3", 
 		0, 0, 0},
-/* view */		NULL,
+/* view */		NULL,			
 /* icon */		"gfx/hud/w_icon_blaster",
 /* pickup *///	"Force??",
 		100,
@@ -1493,9 +1464,9 @@ Ammo for the Bryar and Blaster pistols.
 	{
 		"ammo_blaster",
 		"sound/player/pickupenergy.wav",
-        { "models/items/energy_cell.md3",
+        { "models/items/energy_cell.md3", 
 		0, 0, 0},
-/* view */		NULL,
+/* view */		NULL,			
 /* icon */		"gfx/hud/i_icon_battery",
 /* pickup *///	"Blaster Pack",
 		100,
@@ -1512,9 +1483,9 @@ Ammo for Tenloss Disruptor, Wookie Bowcaster, and the Destructive Electro Magnet
 	{
 		"ammo_powercell",
 		"sound/player/pickupenergy.wav",
-        { "models/items/power_cell.md3",
+        { "models/items/power_cell.md3", 
 		0, 0, 0},
-/* view */		NULL,
+/* view */		NULL,			
 /* icon */		"gfx/mp/ammo_power_cell",
 /* pickup *///	"Power Cell",
 		100,
@@ -1531,9 +1502,9 @@ Ammo for Imperial Heavy Repeater and the Golan Arms Flechette
 	{
 		"ammo_metallic_bolts",
 		"sound/player/pickupenergy.wav",
-        { "models/items/metallic_bolts.md3",
+        { "models/items/metallic_bolts.md3", 
 		0, 0, 0},
-/* view */		NULL,
+/* view */		NULL,			
 /* icon */		"gfx/mp/ammo_metallic_bolts",
 /* pickup *///	"Metallic Bolts",
 		100,
@@ -1550,9 +1521,9 @@ Ammo for Merr-Sonn portable missile launcher
 	{
 		"ammo_rockets",
 		"sound/player/pickupenergy.wav",
-        { "models/items/rockets.md3",
+        { "models/items/rockets.md3", 
 		0, 0, 0},
-/* view */		NULL,
+/* view */		NULL,			
 /* icon */		"gfx/mp/ammo_rockets",
 /* pickup *///	"Rockets",
 		3,
@@ -1572,7 +1543,7 @@ dispensing ability
 		"sound/player/pickupenergy.wav",
         { "models/items/battery.md3",  //replace me
 		0, 0, 0},
-/* view */		NULL,
+/* view */		NULL,			
 /* icon */		"gfx/mp/ammo_rockets", //replace me
 /* pickup *///	"Rockets",
 		0,
@@ -1594,7 +1565,7 @@ Only in CTF games
 		NULL,
         { "models/flags/r_flag.md3",
 		"models/flags/r_flag_ysal.md3", 0, 0 },
-/* view */		NULL,
+/* view */		NULL,			
 /* icon */		"gfx/hud/mpi_rflag",
 /* pickup *///	"Red Flag",
 		0,
@@ -1613,7 +1584,7 @@ Only in CTF games
 		NULL,
         { "models/flags/b_flag.md3",
 		"models/flags/b_flag_ysal.md3", 0, 0 },
-/* view */		NULL,
+/* view */		NULL,			
 /* icon */		"gfx/hud/mpi_bflag",
 /* pickup *///	"Blue Flag",
 		0,
@@ -1636,7 +1607,7 @@ Only in One Flag CTF games
 		NULL,
         { "models/flags/n_flag.md3",
 		0, 0, 0 },
-/* view */		NULL,
+/* view */		NULL,			
 /* icon */		"icons/iconf_neutral1",
 /* pickup *///	"Neutral Flag",
 		0,
@@ -1652,7 +1623,7 @@ Only in One Flag CTF games
 		"sound/player/pickupenergy.wav",
         { "models/powerups/orb/r_orb.md3",
 		0, 0, 0 },
-/* view */		NULL,
+/* view */		NULL,			
 /* icon */		"icons/iconh_rorb",
 /* pickup *///	"Red Cube",
 		0,
@@ -1668,7 +1639,7 @@ Only in One Flag CTF games
 		"sound/player/pickupenergy.wav",
         { "models/powerups/orb/b_orb.md3",
 		0, 0, 0 },
-/* view */		NULL,
+/* view */		NULL,			
 /* icon */		"icons/iconh_borb",
 /* pickup *///	"Blue Cube",
 		0,
@@ -1687,7 +1658,7 @@ int		bg_numItems = sizeof(bg_itemlist) / sizeof(bg_itemlist[0]) - 1;
 
 float vectoyaw( const vec3_t vec ) {
 	float	yaw;
-
+	
 	if (vec[YAW] == 0 && vec[PITCH] == 0) {
 		yaw = 0;
 	} else {
@@ -1797,8 +1768,8 @@ gitem_t	*BG_FindItemForPowerup( powerup_t pw ) {
 	int		i;
 
 	for ( i = 0 ; i < bg_numItems ; i++ ) {
-		if ( (bg_itemlist[i].giType == IT_POWERUP ||
-					bg_itemlist[i].giType == IT_TEAM) &&
+		if ( (bg_itemlist[i].giType == IT_POWERUP || 
+					bg_itemlist[i].giType == IT_TEAM) && 
 			bg_itemlist[i].giTag == pw ) {
 			return &bg_itemlist[i];
 		}
@@ -1836,7 +1807,7 @@ BG_FindItemForWeapon
 */
 gitem_t	*BG_FindItemForWeapon( weapon_t weapon ) {
 	gitem_t	*it;
-
+	
 	for ( it = bg_itemlist + 1 ; it->classname ; it++) {
 		if ( it->giType == IT_WEAPON && it->giTag == weapon ) {
 			return it;
@@ -1855,7 +1826,7 @@ BG_FindItemForAmmo
 */
 gitem_t	*BG_FindItemForAmmo( ammo_t ammo ) {
 	gitem_t	*it;
-
+	
 	for ( it = bg_itemlist + 1 ; it->classname ; it++) {
 		if ( it->giType == IT_AMMO && it->giTag == ammo ) {
 			return it;
@@ -1874,7 +1845,7 @@ BG_FindItem
 */
 gitem_t	*BG_FindItem( const char *classname ) {
 	gitem_t	*it;
-
+	
 	for ( it = bg_itemlist + 1 ; it->classname ; it++ ) {
 		if ( !Q_stricmp( it->classname, classname) )
 			return it;
@@ -1909,60 +1880,99 @@ qboolean	BG_PlayerTouchesItem( playerState_t *ps, entityState_t *item, int atTim
 	return qtrue;
 }
 
-int BG_ProperForceIndex( int power ) {
-	int i;
+int BG_ProperForceIndex(int power)
+{
+	int i = 0;
 
-	for ( i=0; i<NUM_FORCE_POWERS; i++ ) {
-		if ( forcePowerSorted[i] == power )
+	while (i < NUM_FORCE_POWERS)
+	{
+		if (forcePowerSorted[i] == power)
+		{
 			return i;
+		}
+
+		i++;
 	}
 
 	return -1;
 }
 
-void BG_CycleForce( playerState_t *ps, int direction ) {
-	int i, x, presel;
+void BG_CycleForce(playerState_t *ps, int direction)
+{
+	int i = ps->fd.forcePowerSelected;
+	int x = i;
+	int presel = i;
 	int foundnext = -1;
 
-	presel = x = i = ps->fd.forcePowerSelected;
-
-	// no valid force powers
-	if ( x >= NUM_FORCE_POWERS || x == -1 )
+	if (!ps->fd.forcePowersKnown & (1 << x) ||
+		x >= NUM_FORCE_POWERS ||
+		x == -1)
+	{ //apparently we have no valid force powers
 		return;
+	}
 
-	presel = x = BG_ProperForceIndex( x );
+	x = BG_ProperForceIndex(x);
+	presel = x;
 
-	// get the next/prev power and handle overflow
-	if ( direction == 1 )	x++;
-	else					x--;
-	if ( x >= NUM_FORCE_POWERS )	x = 0;
-	if ( x < 0 )					x = NUM_FORCE_POWERS-1;
+	if (direction == 1)
+	{ //get the next power
+		x++;
+	}
+	else
+	{ //get the previous power
+		x--;
+	}
+
+	if (x >= NUM_FORCE_POWERS)
+	{ //cycled off the end.. cycle around to the first
+		x = 0;
+	}
+	if (x < 0)
+	{ //cycled off the beginning.. cycle around to the last
+		x = NUM_FORCE_POWERS-1;
+	}
 
 	i = forcePowerSorted[x]; //the "sorted" value of this power
 
-	while ( x != presel ) {
-		// loop around to the current force power
-		if ( ps->fd.forcePowersKnown & (1 << i) && i != (signed)ps->fd.forcePowerSelected ) {
-			// we have this power
-			if ( i != FP_LEVITATION && i != FP_SABER_OFFENSE && i != FP_SABER_DEFENSE && i != FP_SABERTHROW ) {
-				// it's selectable
+	while (x != presel)
+	{ //loop around to the current force power
+		if (ps->fd.forcePowersKnown & (1 << i) && i != ps->fd.forcePowerSelected)
+		{ //we have the force power
+			if (i != FP_LEVITATION &&
+				i != FP_SABER_OFFENSE &&
+				i != FP_SABER_DEFENSE &&
+				i != FP_SABERTHROW)
+			{ //it's selectable
 				foundnext = i;
 				break;
 			}
 		}
 
-		// get the next/prev power and handle overflow
-		if ( direction == 1 )	x++;
-		else					x--;
-		if ( x >= NUM_FORCE_POWERS )	x = 0;
-		if ( x < 0 )					x = NUM_FORCE_POWERS-1;
+		if (direction == 1)
+		{ //next
+			x++;
+		}
+		else
+		{ //previous
+			x--;
+		}
+	
+		if (x >= NUM_FORCE_POWERS)
+		{ //loop around
+			x = 0;
+		}
+		if (x < 0)
+		{ //loop around
+			x = NUM_FORCE_POWERS-1;
+		}
 
 		i = forcePowerSorted[x]; //set to the sorted value again
 	}
 
-	// if we found one, select it
-	if ( foundnext != -1 )
+	if (foundnext != -1)
+	{ //found one, select it
 		ps->fd.forcePowerSelected = foundnext;
+	}
 }
 
 int BG_GetItemIndexByTag(int tag, int type)
@@ -2080,7 +2090,8 @@ qboolean BG_CanItemBeGrabbed( int gametype, const entityState_t *ent, const play
 		{//force powers and saber only
 			if ( item->giType != IT_TEAM //not a flag
 				&& item->giType != IT_ARMOR//not shields
-				&& (item->giType != IT_WEAPON || item->giTag != WP_SABER)//not a saber
+				&& (item->giType != IT_WEAPON 
+									|| item->giTag != WP_SABER)//not a saber
 				&& (item->giType != IT_HOLDABLE || item->giTag != HI_SEEKER)//not a seeker
 				&& (item->giType != IT_POWERUP || item->giTag == PW_YSALAMIRI) )//not a force pick-up
 			{
@@ -2090,7 +2101,7 @@ qboolean BG_CanItemBeGrabbed( int gametype, const entityState_t *ent, const play
 		else if ( ps->trueNonJedi )
 		{//can't pick up force powerups
 			if ( (item->giType == IT_POWERUP && item->giTag != PW_YSALAMIRI) //if a powerup, can only can pick up ysalamiri
-				|| (item->giType == IT_HOLDABLE && item->giTag == HI_SEEKER)//if holdable, cannot pick up seeker
+				|| (item->giType == IT_HOLDABLE && item->giTag == HI_SEEKER)//if holdable, cannot pick up seeker 
 				|| (item->giType == IT_WEAPON && item->giTag == WP_SABER ) )//or if it's a saber
 			{
 				return qfalse;
@@ -2124,7 +2135,8 @@ qboolean BG_CanItemBeGrabbed( int gametype, const entityState_t *ent, const play
 		if (item->giTag == WP_THERMAL || item->giTag == WP_TRIP_MINE || item->giTag == WP_DET_PACK)
 		{ //check to see if full on ammo for this, if so, then..
 			int ammoIndex = weaponData[item->giTag].ammoIndex;
-			if (ps->ammo[ammoIndex] >= ammoData[ammoIndex].max)
+			//JAC: Only restrict pickups on full ammo if the player already has this weapon.
+			if (ps->ammo[ammoIndex] >= ammoData[ammoIndex].max && ps->stats[STAT_WEAPONS] & ( 1 << item->giTag ) )
 			{ //don't need it
 				return qfalse;
 			}
@@ -2253,7 +2265,7 @@ void BG_EvaluateTrajectory( const trajectory_t *tr, int atTime, vec3_t result ) 
 		VectorMA( tr->trBase, deltaTime, tr->trDelta, result );
 		break;
 	case TR_NONLINEAR_STOP:
-		if ( atTime > tr->trTime + tr->trDuration )
+		if ( atTime > tr->trTime + tr->trDuration ) 
 		{
 			atTime = tr->trTime + tr->trDuration;
 		}
@@ -2274,10 +2286,10 @@ void BG_EvaluateTrajectory( const trajectory_t *tr, int atTime, vec3_t result ) 
 		result[2] -= 0.5 * DEFAULT_GRAVITY * deltaTime * deltaTime;		// FIXME: local gravity...
 		break;
 	default:
-#ifdef _GAME
-		Com_Error( ERR_DROP, "BG_EvaluateTrajectory: [ GAME] unknown trType: %i", tr->trType );
+#ifdef QAGAME
+		Com_Error( ERR_DROP, "BG_EvaluateTrajectory: [GAME SIDE] unknown trType: %i", tr->trType );
 #else
-		Com_Error( ERR_DROP, "BG_EvaluateTrajectory: [CGAME] unknown trType: %i", tr->trType );
+		Com_Error( ERR_DROP, "BG_EvaluateTrajectory: [CLIENTGAME SIDE] unknown trType: %i", tr->trType );
 #endif
 		break;
 	}
@@ -2330,16 +2342,16 @@ void BG_EvaluateTrajectoryDelta( const trajectory_t *tr, int atTime, vec3_t resu
 		result[2] -= DEFAULT_GRAVITY * deltaTime;		// FIXME: local gravity...
 		break;
 	default:
-#ifdef _GAME
-		Com_Error( ERR_DROP, "BG_EvaluateTrajectoryDelta: [ GAME] unknown trType: %i", tr->trType );
+#ifdef QAGAME
+		Com_Error( ERR_DROP, "BG_EvaluateTrajectoryDelta: [GAME SIDE] unknown trType: %i", tr->trType );
 #else
-		Com_Error( ERR_DROP, "BG_EvaluateTrajectoryDelta: [CGAME] unknown trType: %i", tr->trType );
+		Com_Error( ERR_DROP, "BG_EvaluateTrajectoryDelta: [CLIENTGAME SIDE] unknown trType: %i", tr->trType );
 #endif
 		break;
 	}
 }
 
-const char *eventnames[EV_NUM_ENTITY_EVENTS] = {
+char *eventnames[] = {
 	"EV_NONE",
 
 	"EV_CLIENTJOIN",
@@ -2397,7 +2409,7 @@ const char *eventnames[EV_NUM_ENTITY_EVENTS] = {
 	"EV_TEAM_POWER",
 
 	"EV_SCREENSHAKE",
-
+	
 	"EV_LOCALTIMER",
 
 	"EV_USE",			// +Use key
@@ -2463,8 +2475,10 @@ const char *eventnames[EV_NUM_ENTITY_EVENTS] = {
 	"EV_DEATH3",
 	"EV_OBITUARY",
 
-	"EV_POWERUP_QUAD",
-	"EV_POWERUP_BATTLESUIT",
+	#ifdef BASE_COMPAT
+		"EV_POWERUP_QUAD",
+		"EV_POWERUP_BATTLESUIT",
+	#endif // BASE_COMPAT
 	//"EV_POWERUP_REGEN",
 
 	"EV_FORCE_DRAINED",
@@ -2508,6 +2522,8 @@ Handles the sequence numbers
 ===============
 */
 
+//void	trap_Cvar_VariableStringBuffer( const char *var_name, char *buffer, int bufsize );
+
 void BG_AddPredictableEventToPlayerstate( int newEvent, int eventParm, playerState_t *ps ) {
 
 #ifdef _DEBUG
@@ -2517,12 +2533,12 @@ void BG_AddPredictableEventToPlayerstate( int newEvent, int eventParm, playerSta
 
 		if (!isRegistered)
 		{
-			trap->Cvar_Register(&showEvents, "showevents", "0", 0);
+			trap_Cvar_Register(&showEvents, "showevents", "0", 0);
 			isRegistered = qtrue;
 		}
 
 		if ( showEvents.integer != 0 ) {
-#ifdef _GAME
+#ifdef QAGAME
 			Com_Printf(" game event svt %5d -> %5d: num = %20s parm %d\n", ps->pmove_framecount/*ps->commandTime*/, ps->eventSequence, eventnames[newEvent], eventParm);
 #else
 			Com_Printf("Cgame event svt %5d -> %5d: num = %20s parm %d\n", ps->pmove_framecount/*ps->commandTime*/, ps->eventSequence, eventnames[newEvent], eventParm);
@@ -2541,6 +2557,10 @@ BG_TouchJumpPad
 ========================
 */
 void BG_TouchJumpPad( playerState_t *ps, entityState_t *jumppad ) {
+	vec3_t	angles;
+	float p;
+	int effectNum;
+
 	// spectators don't use jump pads
 	if ( ps->pm_type != PM_NORMAL && ps->pm_type != PM_JETPACK && ps->pm_type != PM_FLOAT ) {
 		return;
@@ -2548,17 +2568,16 @@ void BG_TouchJumpPad( playerState_t *ps, entityState_t *jumppad ) {
 
 	// if we didn't hit this same jumppad the previous frame
 	// then don't play the event sound again if we are in a fat trigger
-	/*
 	if ( ps->jumppad_ent != jumppad->number ) {
-		vec3_t angles;
-		float p;
 
 		vectoangles( jumppad->origin2, angles);
 		p = fabs( AngleNormalize180( angles[PITCH] ) );
-		effectNum =  (p<45) ? 0 : 1;
+		if( p < 45 ) {
+			effectNum = 0;
+		} else {
+			effectNum = 1;
+		}
 	}
-	*/
-
 	// remember hitting this jumppad this frame
 	ps->jumppad_ent = jumppad->number;
 	ps->jumppad_frame = ps->pmove_framecount;
@@ -2642,7 +2661,7 @@ qboolean BG_IsValidCharacterModel(const char *modelName, const char *skinName)
 
 qboolean BG_ValidateSkinForTeam( const char *modelName, char *skinName, int team, float *colors )
 {
-	if (strlen (modelName) > 5 && Q_stricmpn (modelName, "jedi_", 5) == 0)
+	if (!Q_stricmpn(modelName, "jedi_",5))
 	{ //argh, it's a custom player skin!
 		if (team == TEAM_RED && colors)
 		{
@@ -2723,7 +2742,7 @@ qboolean BG_ValidateSkinForTeam( const char *modelName, char *skinName, int team
 				{//too short to be "blue"
 					Q_strcat(skinName, MAX_QPATH, "_blue");
 				}
-				else
+				else 
 				{
 					char	*start = &skinName[len-4];
 					if ( Q_strncmp( "blue", start, 4 ) != 0 )
@@ -3061,44 +3080,49 @@ PLAYER ANGLES
 =============================================================================
 */
 
+//perform the appropriate model precache routine
+#ifdef QAGAME //game
+extern int trap_G2API_InitGhoul2Model(void **ghoul2Ptr, const char *fileName, int modelIndex, qhandle_t customSkin,
+						  qhandle_t customShader, int modelFlags, int lodBias); //exists on game/cgame/ui, only used on game
+extern void trap_G2API_CleanGhoul2Models(void **ghoul2Ptr); //exists on game/cgame/ui, only used on game
+#else //cgame/ui
+extern qhandle_t trap_R_RegisterModel( const char *name ); //exists on cgame/ui
+#endif
+//game/cgame/ui
+extern qhandle_t trap_R_RegisterSkin( const char *name ); //exists on game/cgame/ui
+
 int BG_ModelCache(const char *modelName, const char *skinName)
 {
-	#ifdef _GAME
-		void *g2 = NULL;
+#ifdef QAGAME
+	void *g2 = NULL;
 
-		if ( VALIDSTRING( skinName ) )
-			trap->R_RegisterSkin( skinName );
+	if (skinName && skinName[0])
+	{
+		trap_R_RegisterSkin(skinName);
+	}
 
-		//I could hook up a precache ghoul2 function, but oh well, this works
-		trap->G2API_InitGhoul2Model( &g2, modelName, 0, 0, 0, 0, 0 );
-		//now get rid of it
-		if ( g2 )
-			trap->G2API_CleanGhoul2Models( &g2 );
-
-		return 0;
-	#else // !_GAME
-		if ( VALIDSTRING( skinName ) )
-		{
-			#ifdef _CGAME
-				trap->R_RegisterSkin( skinName );
-			#else // !_CGAME
-				trap->R_RegisterSkin( skinName );
-			#endif // _CGAME
-		}
-		#ifdef _CGAME
-			return trap->R_RegisterModel( modelName );
-		#else // !_CGAME
-			return trap->R_RegisterModel( modelName );
-		#endif // _CGAME
-	#endif // _GAME
+	//I could hook up a precache ghoul2 function, but oh well, this works
+	trap_G2API_InitGhoul2Model(&g2, modelName, 0, 0, 0, 0, 0);
+	if (g2)
+	{ //now get rid of it
+		trap_G2API_CleanGhoul2Models(&g2);
+	}
+	return 0;
+#else
+	if (skinName && skinName[0])
+	{
+		trap_R_RegisterSkin(skinName);
+	}
+	return trap_R_RegisterModel(modelName);
+#endif
 }
 
-#if defined(_GAME)
-	#define MAX_POOL_SIZE	3000000 //1024000
-#elif defined(_CGAME) //don't need as much for cgame stuff. 2mb will be fine.
-	#define MAX_POOL_SIZE	2048000
-#elif defined(UI_BUILD) //And for the ui the only thing we'll be using this for anyway is allocating anim data for g2 menu models
-	#define MAX_POOL_SIZE	512000
+#ifdef QAGAME
+#define MAX_POOL_SIZE	3000000 //1024000
+#elif defined CGAME //don't need as much for cgame stuff. 2mb will be fine.
+#define MAX_POOL_SIZE	2048000
+#else //And for the ui the only thing we'll be using this for anyway is allocating anim data for g2 menu models
+#define MAX_POOL_SIZE	512000
 #endif
 
 //I am using this for all the stuff like NPC client structures on server/client and

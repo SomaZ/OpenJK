@@ -2590,10 +2590,10 @@ static void FixRenderCommandList( int newShader ) {
 					int i;
 					drawSurf_t	*drawSurf;
 					shader_t	*shader;
-					int			fogNum;
-					int			entityNum;
-					int			dlightMap;
-					int			sortedIndex;
+					int64_t		fogNum;
+					int64_t		entityNum;
+					int64_t		dlightMap;
+					int64_t		sortedIndex;
 					const drawSurfsCommand_t *ds_cmd =  (const drawSurfsCommand_t *)curCmd;
 
 					for( i = 0, drawSurf = ds_cmd->drawSurfs; i < ds_cmd->numDrawSurfs; i++, drawSurf++ ) {
@@ -3217,7 +3217,7 @@ return NULL if not found
 If found, it will return a valid shader
 =====================
 */
-static const char *FindShaderInShaderText( const char *shadername ) {
+static /*const*/ char *FindShaderInShaderText( const char *shadername ) {
 	char *token;
 	const char *p;
 
@@ -3230,7 +3230,7 @@ static const char *FindShaderInShaderText( const char *shadername ) {
 			p = shaderTextHashTable[hash][i];
 			token = COM_ParseExt(&p, qtrue);
 			if ( !Q_stricmp( token, shadername ) )
-				return p;
+				return (char *)p;
 		}
 	}
 
@@ -3248,7 +3248,7 @@ static const char *FindShaderInShaderText( const char *shadername ) {
 		}
 
 		if ( !Q_stricmp( token, shadername ) ) {
-			return p;
+			return (char *)p;
 		}
 		else {
 			// skip the definition
@@ -3259,6 +3259,9 @@ static const char *FindShaderInShaderText( const char *shadername ) {
 	return NULL;
 }
 
+char *R_FindShaderText( const char *shadername ) {
+	return FindShaderInShaderText( shadername );
+}
 
 /*
 ==================

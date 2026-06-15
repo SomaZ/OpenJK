@@ -335,9 +335,13 @@ Encodes JPEG from image in image_buffer and writes to buffer.
 Expects RGB input data
 =================
 */
-size_t RE_SaveJPGToBuffer(byte *buffer, size_t bufSize, int quality,
-	int image_width, int image_height, byte *image_buffer, int padding)
-{
+size_t RE_SaveJPGToBuffer( byte *buffer, size_t bufSize, int quality, int image_width, int image_height, byte *image_buffer, int padding ) {
+	return SaveJPG(quality, image_width, image_height, mmeShotTypeRGB, image_buffer, buffer, bufSize, padding);
+}
+size_t SaveJPG( int quality, int image_width, int image_height, mmeShotType_t image_type, byte *image_buffer, byte *buffer, size_t bufSize ) {
+	return SaveJPG(quality, image_width, image_height, mmeShotTypeRGB, image_buffer, buffer, bufSize, 0);
+}
+size_t SaveJPG( int quality, int image_width, int image_height, mmeShotType_t image_type, byte *image_buffer, byte *buffer, size_t bufSize, int padding ) {
 	struct jpeg_compress_struct cinfo;
 	struct jpeg_error_mgr jerr;
 	JSAMPROW row_pointer[1];	/* pointer to JSAMPLE row[s] */
@@ -362,8 +366,13 @@ size_t RE_SaveJPGToBuffer(byte *buffer, size_t bufSize, int quality,
 	/* Step 3: set parameters for compression */
 	cinfo.image_width = image_width; 	/* image width and height, in pixels */
 	cinfo.image_height = image_height;
-	cinfo.input_components = 3;		/* # of color components per pixel */
-	cinfo.in_color_space = JCS_RGB; 	/* colorspace of input image */
+	if ( image_type == mmeShotTypeRGB)	{
+		cinfo.input_components = 3;		/* # of color components per pixel */
+		cinfo.in_color_space = JCS_RGB; 	/* colorspace of input image */
+	} else {
+		cinfo.input_components = 1;
+		cinfo.in_color_space = JCS_GRAYSCALE;
+	}
 	jpeg_set_defaults(&cinfo);
 	jpeg_set_quality(&cinfo, quality, TRUE /* limit to baseline-JPEG values */);
 

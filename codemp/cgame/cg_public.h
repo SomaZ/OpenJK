@@ -471,6 +471,33 @@ typedef enum cgameExportLegacy_e {
 	CG_MISC_ENT,
 	CG_GET_SORTED_FORCE_POWER,
 	CG_FX_CAMERASHAKE,
+
+	//New mme calls
+	CG_MME_CAPTURE = 400,
+	CG_MME_BLURINFO,
+	CG_MME_SEEKTIME,
+	CG_MME_DEMOINFO,
+	CG_MME_MUSIC,
+	CG_MME_TIMEFRACTION,
+
+	CG_MME_EXTENDEDCOLORS,
+	CG_MME_FONTRATIOFIX,
+
+	CG_R_RANDOMSEED,
+	CG_FX_RANDOMSEED,
+
+	CG_KEY_GETOVERSTRIKEMODE,
+	CG_KEY_SETOVERSTRIKEMODE,
+	CG_S_UPDATE_SCALE,
+	CG_CIN_ADJUST_TIME,
+	CG_R_ROTATEPIC2_RATIOFIX,
+
+	CG_G2_SETTIMEFRACTION,
+	CG_MME_VIBRATEFEEDBACK,
+	CG_MME_PROGRESSTIME,
+	CG_MME_DEMOLENGTH,
+	CG_MME_REQUESTFEATURES,
+	CG_MME_NOTIFICATION,
 } cgameExportLegacy_t;
 
 typedef struct cgameImport_s {
@@ -726,7 +753,7 @@ typedef struct cgameExport_s {
 	void			(*DrawActiveFrame)			( int serverTime, stereoFrame_t stereoView, qboolean demoPlayback );
 	int				(*CrosshairPlayer)			( void );
 	int				(*LastAttacker)				( void );
-	void			(*KeyEvent)					( int key, qboolean down );
+	int				(*KeyEvent)					( int key, qboolean down );
 	void			(*MouseEvent)				( int x, int y );
 	void			(*EventHandling)			( int type );
 	int				(*PointContents)			( void );

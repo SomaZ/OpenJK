@@ -33,7 +33,7 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 
 #define FX_FILE_PATH	"effects"
 
-#define FX_MAX_TRACE_DIST		16384	// SOF2 uses a larger scale
+#define FX_MAX_TRACE_DIST		32768	// SOF2 uses a larger scale
 #define FX_MAX_EFFECTS				256		// how many effects the system can store
 #define FX_MAX_2DEFFECTS			64		// how many 2d effects the system can store
 #define FX_MAX_EFFECT_COMPONENTS	24		// how many primitives an effect can hold, this should be plenty
@@ -115,10 +115,10 @@ public:
 	inline float	GetMax(void) const				{ return mMax; }
 	inline float	GetMin(void) const				{ return mMin; }
 	inline float	GetVal(float fraction) const	{ if(mMin != mMax) { return mMin + fraction * (mMax - mMin); } else { return mMin; } }
-	inline float	GetVal(void) const	 			{ if(mMin != mMax) { return flrand(mMin,mMax); } else { return mMin; } }
+	inline float	GetVal(void) const	 			{ if(mMin != mMax) { return random() * (mMax - mMin) + mMin; } else { return mMin; } }
 
 	inline int		GetRoundedVal() const			{if(mMin == mMax){return (int)mMin;}
-														return (int)(flrand(mMin, mMax) + 0.5f);}
+														return (int)(random() * (mMax - mMin) + mMin + 0.5f);}
 
 	bool operator==(const CFxRange &rhs) const		{ return ((mMin == rhs.mMin) &&	(mMax == rhs.mMax)); }
 };

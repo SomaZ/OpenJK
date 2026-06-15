@@ -1,25 +1,3 @@
-/*
-===========================================================================
-Copyright (C) 2000 - 2013, Raven Software, Inc.
-Copyright (C) 2001 - 2013, Activision, Inc.
-Copyright (C) 2013 - 2015, OpenJK contributors
-
-This file is part of the OpenJK source code.
-
-OpenJK is free software; you can redistribute it and/or modify it
-under the terms of the GNU General Public License version 2 as
-published by the Free Software Foundation.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU General Public License for more details.
-
-You should have received a copy of the GNU General Public License
-along with this program; if not, see <http://www.gnu.org/licenses/>.
-===========================================================================
-*/
-
 //b_spawn.cpp
 //added by MCG
 #include "b_local.h"
@@ -36,9 +14,15 @@ extern qboolean ClientUserinfoChanged( int clientNum );
 extern qboolean SpotWouldTelefrag2( gentity_t *mover, vec3_t dest );
 extern void Jedi_Cloak( gentity_t *self );
 
+//extern void FX_BorgTeleport( vec3_t org );
+
 extern void Q3_SetParm (int entID, int parmNum, const char *parmValue);
 extern team_t TranslateTeamName( const char *name );
 extern char	*TeamNames[TEAM_NUM_TEAMS];
+
+//extern void CG_ShimmeryThing_Spawner( vec3_t start, vec3_t end, float radius, qboolean taper, int duration );
+
+//extern void NPC_StasisSpawnEffect( gentity_t *ent );
 
 extern void PM_SetTorsoAnimTimer( gentity_t *ent, int *torsoAnimTimer, int time );
 extern void PM_SetLegsAnimTimer( gentity_t *ent, int *legsAnimTimer, int time );
@@ -99,6 +83,9 @@ extern void CrystalCratePain			(gentity_t *self, gentity_t *attacker, int damage
 extern void TurretPain					(gentity_t *self, gentity_t *attacker, int damage);
 extern void NPC_Wampa_Pain				(gentity_t *self, gentity_t *attacker, int damage);
 extern void NPC_Rancor_Pain				(gentity_t *self, gentity_t *attacker, int damage);
+
+
+//void HirogenAlpha_Precache( void );
 
 int WP_SetSaberModel( gclient_t *client, class_t npcClass )
 {
@@ -178,7 +165,7 @@ PAIN_FUNC *NPC_PainFunc( gentity_t *ent )
 		case CLASS_MARK2:
 			func = NPC_Mark2_Pain;
 			break;
-		case CLASS_ATST:
+		case CLASS_ATST:  
 			func = NPC_ATST_Pain;
 			break;
 		case CLASS_GALAKMECH:
@@ -251,7 +238,7 @@ void NPC_SetMiscDefaultData( gentity_t *ent )
 			ent->pain = NPC_ATST_Pain;
 		}
 		//turn the damn hatch cover on and LEAVE it on
-		trap->G2API_SetSurfaceOnOff( ent->ghoul2, "head_hatchcover", 0/*TURN_ON*/ );
+		trap_G2API_SetSurfaceOnOff( ent->ghoul2, "head_hatchcover", 0/*TURN_ON*/ );
 	}
 	if ( !Q_stricmp( "wampa", ent->NPC_type ) )
 	{//FIXME: extern this into NPC.cfg?
@@ -274,7 +261,7 @@ void NPC_SetMiscDefaultData( gentity_t *ent )
 	{//FIXME: extern this into NPC.cfg?
 		ent->NPC->scriptFlags |= SCF_NO_FORCE;//force powers don't work on him
 	}
-	if ( !Q_stricmp( "emperor", ent->NPC_type )
+	if ( !Q_stricmp( "emperor", ent->NPC_type ) 
 		|| !Q_stricmp( "cultist_grip", ent->NPC_type )
 		|| !Q_stricmp( "cultist_drain", ent->NPC_type )
 		|| !Q_stricmp( "cultist_lightning", ent->NPC_type ))
@@ -302,7 +289,7 @@ void NPC_SetMiscDefaultData( gentity_t *ent )
 		WP_SpawnInitForcePowers(ent); //rww
 	}
 	if ( ent->client->NPC_class == CLASS_SEEKER )
-	{
+	{		
 		ent->NPC->defaultBehavior = BS_DEFAULT;
 		ent->client->ps.gravity = 0;
 		ent->NPC->aiFlags |= NPCAI_CUSTOM_GRAVITY;
@@ -370,9 +357,9 @@ void NPC_SetMiscDefaultData( gentity_t *ent )
 		}
 		break;
 
-	case NPCTEAM_NEUTRAL:
+	case NPCTEAM_NEUTRAL: 
 
-		if ( Q_stricmp( ent->NPC_type, "gonk" ) == 0 )
+		if ( Q_stricmp( ent->NPC_type, "gonk" ) == 0 ) 
 		{
 			// I guess we generically make them player usable
 			ent->r.svFlags |= SVF_PLAYER_USABLE;
@@ -382,14 +369,14 @@ void NPC_SetMiscDefaultData( gentity_t *ent )
 			switch ( g_npcspskill.integer )
 			{
 			case 0:	//	EASY
-				ent->client->ps.batteryCharge = MAX_BATTERIES * 0.8f;
+				ent->client->ps.batteryCharge = MAX_BATTERIES * 0.8f; 
 				break;
 			case 1:	//	MEDIUM
-				ent->client->ps.batteryCharge = MAX_BATTERIES * 0.75f;
+				ent->client->ps.batteryCharge = MAX_BATTERIES * 0.75f; 
 				break;
 			default :
 			case 2:	//	HARD
-				ent->client->ps.batteryCharge = MAX_BATTERIES * 0.5f;
+				ent->client->ps.batteryCharge = MAX_BATTERIES * 0.5f; 
 				break;
 			}*/
 			//rwwFIXMEFIXME: Make use of this.
@@ -417,13 +404,13 @@ void NPC_SetMiscDefaultData( gentity_t *ent )
 			}
 			else if( ent->client->NPC_class == CLASS_PROBE || ent->client->NPC_class == CLASS_REMOTE ||
 						ent->client->NPC_class == CLASS_INTERROGATOR || ent->client->NPC_class == CLASS_SENTRY)
-			{
+			{		
 				ent->NPC->defaultBehavior = BS_DEFAULT;
 				ent->client->ps.gravity = 0;
 				ent->NPC->aiFlags |= NPCAI_CUSTOM_GRAVITY;
 				ent->client->ps.eFlags2 |= EF2_FLYING;
 			}
-			else
+			else 
 			{
 		//		G_CreateG2AttachedWeaponModel( ent, weaponData[ent->client->ps.weapon].weaponMdl, ent->handRBolt, 0 );
 				switch ( ent->client->ps.weapon )
@@ -527,11 +514,24 @@ int NPC_WeaponsForTeam( team_t team, int spawnflags, const char *NPC_type )
 	//*** not sure how to handle this, should I pass in class instead of team and go from there? - dmv
 	switch(team)
 	{
+	// no longer exists
+//	case TEAM_BORG:
+//		break;
+
+//	case TEAM_HIROGEN:
+//		if( Q_stricmp( "hirogenalpha", NPC_type ) == 0 )
+//			return ( 1 << WP_BLASTER);
+		//Falls through
+
+//	case TEAM_KLINGON:
+
+		//NOTENOTE: Falls through
+
 //	case TEAM_IMPERIAL:
 	case NPCTEAM_ENEMY:
-		if ( Q_stricmp( "tavion", NPC_type ) == 0 ||
-			Q_strncmp( "reborn", NPC_type, 6 ) == 0 ||
-			Q_stricmp( "desann", NPC_type ) == 0 ||
+		if ( Q_stricmp( "tavion", NPC_type ) == 0 || 
+			Q_strncmp( "reborn", NPC_type, 6 ) == 0 || 
+			Q_stricmp( "desann", NPC_type ) == 0 || 
 			Q_strncmp( "shadowtrooper", NPC_type, 13 ) == 0 )
 			return ( 1 << WP_SABER);
 //			return ( 1 << WP_IMPERIAL_BLADE);
@@ -633,12 +633,12 @@ int NPC_WeaponsForTeam( team_t team, int spawnflags, const char *NPC_type )
 		{
 			//return ( 1 << WP_BOT_LASER);
 			return 0;
-		}
+		}	
 		if ( Q_stricmp( "remote", NPC_type ) == 0 )
 		{
 			//return ( 1 << WP_BOT_LASER );
 			return 0;
-		}
+		}	
 		if ( Q_stricmp( "trandoshan", NPC_type ) == 0 )
 		{
 			return (1<<WP_REPEATER);
@@ -671,10 +671,13 @@ int NPC_WeaponsForTeam( team_t team, int spawnflags, const char *NPC_type )
 		break;
 
 	case NPCTEAM_PLAYER:
-
+		
+//		if(spawnflags & SFB_TRICORDER)
+//			return ( 1 << WP_TRICORDER);
+		
 		if(spawnflags & SFB_RIFLEMAN)
 			return ( 1 << WP_REPEATER);
-
+		
 		if(spawnflags & SFB_PHASER)
 			//return ( 1 << WP_BLASTER_PISTOL);
 			return ( 1 << WP_BLASTER);
@@ -706,15 +709,15 @@ int NPC_WeaponsForTeam( team_t team, int spawnflags, const char *NPC_type )
 		if ( Q_stricmp( "mark1", NPC_type ) == 0 )
 		{
 			return WP_NONE;
-		}
+		}	
 		if ( Q_stricmp( "mark2", NPC_type ) == 0 )
 		{
 			return WP_NONE;
-		}
+		}	
 		if ( Q_strncmp( "ugnaught", NPC_type, 8 ) == 0 )
 		{
 			return WP_NONE;
-		}
+		}	
 		if ( Q_stricmp( "bartender", NPC_type ) == 0 )
 		{
 			return WP_NONE;
@@ -723,7 +726,7 @@ int NPC_WeaponsForTeam( team_t team, int spawnflags, const char *NPC_type )
 		{
 			return WP_NONE;
 		}
-
+	
 		break;
 
 	// these no longer exist
@@ -760,7 +763,7 @@ void NPC_SetWeapons( gentity_t *ent )
 {
 	int			bestWeap = WP_NONE;
 	int			curWeap;
-	int			weapons = NPC_WeaponsForTeam( (team_t)ent->client->playerTeam, ent->spawnflags, ent->NPC_type );
+	int			weapons = NPC_WeaponsForTeam( ent->client->playerTeam, ent->spawnflags, ent->NPC_type );
 
 	ent->client->ps.stats[STAT_WEAPONS] = 0;
 	for ( curWeap = WP_SABER; curWeap < WP_NUM_WEAPONS; curWeap++ )
@@ -837,15 +840,15 @@ qboolean NPC_SpotWouldTelefrag( gentity_t *npc )
 
 	VectorAdd( npc->r.currentOrigin, npc->r.mins, mins );
 	VectorAdd( npc->r.currentOrigin, npc->r.maxs, maxs );
-	num = trap->EntitiesInBox( mins, maxs, touch, MAX_GENTITIES );
+	num = trap_EntitiesInBox( mins, maxs, touch, MAX_GENTITIES );
 
 	for (i=0 ; i<num ; i++)
 	{
 		hit = &g_entities[touch[i]];
 		//if ( hit->client && hit->client->ps.stats[STAT_HEALTH] > 0 ) {
-		if (hit->inuse
-			&& hit->client
-			&& hit->s.number != npc->s.number
+		if (hit->inuse 
+			&& hit->client 
+			&& hit->s.number != npc->s.number 
 			&& (hit->r.contents&MASK_NPCSOLID)
 			&& hit->s.number != npc->r.ownerNum
 			&& hit->r.ownerNum != npc->s.number)
@@ -914,16 +917,16 @@ void NPC_Begin (gentity_t *ent)
 	}
 	else if ( ent->NPC->stats.health )	// Was health supplied in NPC.cfg?
 	{
-
+		
 		if ( ent->client->NPC_class != CLASS_REBORN
-			&& ent->client->NPC_class != CLASS_SHADOWTROOPER
+			&& ent->client->NPC_class != CLASS_SHADOWTROOPER 
 			//&& ent->client->NPC_class != CLASS_TAVION
-			//&& ent->client->NPC_class != CLASS_DESANN
+			//&& ent->client->NPC_class != CLASS_DESANN 
 			&& ent->client->NPC_class != CLASS_JEDI )
 		{// up everyone except jedi
 			ent->NPC->stats.health += ent->NPC->stats.health/4 * g_npcspskill.integer; // 100% on easy, 125% on medium, 150% on hard
 		}
-
+		
 		client->pers.maxHealth = client->ps.stats[STAT_MAX_HEALTH] = ent->NPC->stats.health;
 	}
 	else
@@ -1024,7 +1027,7 @@ void NPC_Begin (gentity_t *ent)
 	ent->watertype = 0;
 	ent->client->ps.rocketLockIndex = ENTITYNUM_NONE;
 	ent->client->ps.rocketLockTime = 0;
-
+	
 	//visible to player and NPCs
 	if ( ent->client->NPC_class != CLASS_R2D2 &&
 		ent->client->NPC_class != CLASS_R5D2 &&
@@ -1037,7 +1040,7 @@ void NPC_Begin (gentity_t *ent)
 	ent->s.eFlags &= ~EF_NODRAW;
 
 	NPC_SetFX_SpawnStates( ent );
-
+	
 	//client->ps.friction = 6;
 	//rwwFIXMEFIXME: per ent friction?
 
@@ -1069,7 +1072,7 @@ void NPC_Begin (gentity_t *ent)
 	if(!(ent->spawnflags & 64))
 	{
 		G_KillBox( ent );
-		trap->LinkEntity ((sharedEntity_t *)ent);
+		trap_LinkEntity (ent);
 	}
 
 	// don't allow full run speed for a bit
@@ -1104,7 +1107,7 @@ void NPC_Begin (gentity_t *ent)
 	}
 
 	//ICARUS include
-	trap->ICARUS_InitEnt( (sharedEntity_t *)ent );
+	trap_ICARUS_InitEnt( ent );
 
 //==NPC initialization
 	SetNPCGlobals( ent );
@@ -1161,7 +1164,7 @@ void NPC_Begin (gentity_t *ent)
 	//Run a script if you have one assigned to you
 	if ( G_ActivateBehavior( ent, BSET_SPAWN ) )
 	{
-		trap->ICARUS_MaintainTaskManager(ent->s.number);
+		trap_ICARUS_MaintainTaskManager(ent->s.number);
 	}
 
 	VectorCopy( ent->r.currentOrigin, ent->client->renderInfo.eyePoint );
@@ -1171,7 +1174,7 @@ void NPC_Begin (gentity_t *ent)
 	memset( &ucmd, 0, sizeof( ucmd ) );
 	//_VectorCopy( client->pers.cmd_angles, ucmd.angles );
 	VectorCopyM(client->pers.cmd.angles, ucmd.angles);
-
+	
 	ent->client->ps.groundEntityNum = ENTITYNUM_NONE;
 
 	if ( ent->NPC->aiFlags & NPCAI_MATCHPLAYERWEAPON )
@@ -1182,7 +1185,7 @@ void NPC_Begin (gentity_t *ent)
 
 	ClientThink( ent->s.number, &ucmd );
 
-	trap->LinkEntity( (sharedEntity_t *)ent );
+	trap_LinkEntity( ent );
 
 	if ( ent->client->playerTeam == NPCTEAM_ENEMY )
 	{//valid enemy spawned
@@ -1205,7 +1208,7 @@ void NPC_Begin (gentity_t *ent)
 		{
 			char	*droidNPCType = NULL;
 			gentity_t *droidEnt = NULL;
-			if ( ent->model2
+			if ( ent->model2 
 				&& ent->model2[0] )
 			{//specified on the NPC_Vehicle spawner ent
 				droidNPCType = ent->model2;
@@ -1237,8 +1240,8 @@ void NPC_Begin (gentity_t *ent)
 					{
 						droidEnt->client->ps.m_iVehicleNum =
 							droidEnt->s.m_iVehicleNum =
-							//droidEnt->s.otherEntityNum2 =
-							droidEnt->s.owner =
+							//droidEnt->s.otherEntityNum2 = 
+							droidEnt->s.owner = 
 							droidEnt->r.ownerNum = ent->s.number;
 						ent->m_pVehicle->m_pDroidUnit = (bgEntity_t *)droidEnt;
 						//SP way:
@@ -1247,7 +1250,7 @@ void NPC_Begin (gentity_t *ent)
 						VectorCopy( ent->r.currentOrigin, droidEnt->s.origin );
 						VectorCopy( ent->r.currentOrigin, droidEnt->client->ps.origin );
 						G_SetOrigin( droidEnt, droidEnt->s.origin );
-						trap->LinkEntity( (sharedEntity_t *)droidEnt );
+						trap_LinkEntity( droidEnt );
 						VectorCopy( ent->r.currentAngles, droidEnt->s.angles );
 						G_SetAngles( droidEnt, droidEnt->s.angles );
 						if ( droidEnt->NPC )
@@ -1277,7 +1280,7 @@ gNPC_t *New_NPC_t(int entNum)
 	{
 		gNPCPtrs[entNum] = (gNPC_t *)BG_Alloc (sizeof(gNPC_t));
 	}
-
+		
 	ptr = gNPCPtrs[entNum];
 
 	if (ptr)
@@ -1295,14 +1298,14 @@ gNPC_t *New_NPC_t(int entNum)
 NPC_StasisSpawn_Go
 -------------------------
 */
-/*
+/*	
 qboolean NPC_StasisSpawn_Go( gentity_t *ent )
 {
 	//Setup an owner pointer if we need it
 	if VALIDSTRING( ent->ownername )
 	{
 		ent->parent = G_Find( NULL, FOFS( targetname ), ent->ownername );
-
+		
 		if ( ( ent->parent ) && ( ent->parent->health <= 0 ) )
 		{//our spawner thing is broken
 			if ( ent->target2 && ent->target2[0] )
@@ -1326,7 +1329,7 @@ qboolean NPC_StasisSpawn_Go( gentity_t *ent )
 
 	//Test for an entity blocking the spawn
 	trace_t	tr;
-	trap->Trace( &tr, ent->r.currentOrigin, ent->r.mins, ent->r.maxs, ent->r.currentOrigin, ent->s.number, MASK_NPCSOLID );
+	trap_Trace( &tr, ent->r.currentOrigin, ent->r.mins, ent->r.maxs, ent->r.currentOrigin, ent->s.number, MASK_NPCSOLID );
 
 	//Can't have anything in the way
 	if ( tr.allsolid || tr.startsolid )
@@ -1380,7 +1383,7 @@ gentity_t *NPC_Spawn_Do( gentity_t *ent )
 		VectorCopy( ent->r.currentOrigin, saveOrg );
 		VectorCopy( ent->r.currentOrigin, bottom );
 		bottom[2] = MIN_WORLD_COORD;
-		trap->Trace( &tr, ent->r.currentOrigin, ent->r.mins, ent->r.maxs, bottom, ent->s.number, MASK_NPCSOLID, qfalse, 0, 0 );
+		trap_Trace( &tr, ent->r.currentOrigin, ent->r.mins, ent->r.maxs, bottom, ent->s.number, MASK_NPCSOLID );
 		if ( !tr.allsolid && !tr.startsolid && tr.fraction < 1.0 )
 		{
 			G_SetOrigin( ent, tr.endpos );
@@ -1391,7 +1394,7 @@ gentity_t *NPC_Spawn_Do( gentity_t *ent )
 	if( ent->count != -1 )
 	{
 		ent->count--;
-
+		
 		if( ent->count <= 0 )
 		{
 			ent->use = 0;//never again
@@ -1401,28 +1404,28 @@ gentity_t *NPC_Spawn_Do( gentity_t *ent )
 
 	newent = G_Spawn();
 
-	if ( newent == NULL )
+	if ( newent == NULL ) 
 	{
-		Com_Printf ( S_COLOR_RED "ERROR: NPC G_Spawn failed\n" );
+		Com_Printf ( S_COLOR_RED"ERROR: NPC G_Spawn failed\n" );
 		return NULL;
 	}
-
+	
 	newent->fullName = ent->fullName;
 
-	newent->NPC = New_NPC_t(newent->s.number);
-	if ( newent->NPC == NULL )
-	{
-		Com_Printf ( S_COLOR_RED "ERROR: NPC G_Alloc NPC failed\n" );
+	newent->NPC = New_NPC_t(newent->s.number);	
+	if ( newent->NPC == NULL ) 
+	{		
+		Com_Printf ( S_COLOR_RED"ERROR: NPC G_Alloc NPC failed\n" );		
 		goto finish;
 	//	return NULL;
-	}
+	}	
 
 	//newent->client = (gclient_s *)G_Alloc (sizeof(gclient_s));
 	G_CreateFakeClient(newent->s.number, &newent->client);
 
 	newent->NPC->tempGoal = G_Spawn();
-
-	if ( newent->NPC->tempGoal == NULL )
+	
+	if ( newent->NPC->tempGoal == NULL ) 
 	{
 		newent->NPC = NULL;
 		goto finish;
@@ -1433,13 +1436,13 @@ gentity_t *NPC_Spawn_Do( gentity_t *ent )
 	newent->NPC->tempGoal->parent = newent;
 	newent->NPC->tempGoal->r.svFlags |= SVF_NOCLIENT;
 
-	if ( newent->client == NULL )
+	if ( newent->client == NULL ) 
 	{
-		Com_Printf ( S_COLOR_RED "ERROR: NPC BG_Alloc client failed\n" );
+		Com_Printf ( S_COLOR_RED"ERROR: NPC BG_Alloc client failed\n" );
 		goto finish;
 	//	return NULL;
 	}
-
+	
 	memset ( newent->client, 0, sizeof(*newent->client) );
 
 	//Assign the pointer for bg entity access
@@ -1447,7 +1450,7 @@ gentity_t *NPC_Spawn_Do( gentity_t *ent )
 
 //==NPC_Connect( newent, net_name );===================================
 
-	if ( ent->NPC_type == NULL )
+	if ( ent->NPC_type == NULL ) 
 	{
 		ent->NPC_type = "random";
 	}
@@ -1468,7 +1471,7 @@ gentity_t *NPC_Spawn_Do( gentity_t *ent )
 	{
 		newent->r.svFlags |= SVF_NO_EXTRA_SOUNDS;
 	}
-
+	
 	if ( ent->message )
 	{//has a key
 		newent->message = ent->message;//transfer the key name
@@ -1548,7 +1551,7 @@ gentity_t *NPC_Spawn_Do( gentity_t *ent )
 		//newent->m_pVehicle->m_ulFlags |= VEH_GEARSOPEN;
 		//why? this would just make it so the initial anim never got played... -rww
 		//There was no initial anim, it would just open the gear even though it's already on the ground (fixed now, made an initial anim)
-
+		
 		//For SUSPEND spawnflag, the amount of time to drop like a rock after SUSPEND turns off
 		newent->fly_sound_debounce_time = ent->fly_sound_debounce_time;
 
@@ -1568,7 +1571,7 @@ gentity_t *NPC_Spawn_Do( gentity_t *ent )
 	{
 		newent->client->ps.weapon = WP_NONE;//init for later check in NPC_Begin
 	}
-
+    
 	VectorCopy(ent->s.origin, newent->s.origin);
 	VectorCopy(ent->s.origin, newent->client->ps.origin);
 	VectorCopy(ent->s.origin, newent->r.currentOrigin);
@@ -1592,9 +1595,9 @@ gentity_t *NPC_Spawn_Do( gentity_t *ent )
 		else if ( !Q_stricmp( ent->NPC_type, "test" ) )
 		{
 			int	n;
-			for ( n = 0; n < 1 ; n++)
+			for ( n = 0; n < 1 ; n++) 
 			{
-				if ( g_entities[n].s.eType != ET_NPC && g_entities[n].client)
+				if ( g_entities[n].s.eType != ET_NPC && g_entities[n].client) 
 				{
 					VectorCopy(g_entities[n].s.origin, newent->s.origin);
 					newent->client->playerTeam = newent->s.teamowner = g_entities[n].client->playerTeam;
@@ -1619,7 +1622,7 @@ gentity_t *NPC_Spawn_Do( gentity_t *ent )
 	newent->target3 = ent->target3;//???
 	newent->target4 = ent->target4;//ffire death
 	newent->wait = ent->wait;
-
+	
 	for( index = BSET_FIRST; index < NUM_BSETS; index++)
 	{
 		if ( ent->behaviorSet[index] )
@@ -1630,14 +1633,14 @@ gentity_t *NPC_Spawn_Do( gentity_t *ent )
 
 	newent->classname = "NPC";
 	newent->NPC_type = ent->NPC_type;
-	trap->UnlinkEntity((sharedEntity_t *)newent);
-
+	trap_UnlinkEntity(newent);
+	
 	VectorCopy(ent->s.angles, newent->s.angles);
 	VectorCopy(ent->s.angles, newent->r.currentAngles);
 	VectorCopy(ent->s.angles, newent->client->ps.viewangles);
 	newent->NPC->desiredYaw =ent->s.angles[YAW];
-
-	trap->LinkEntity((sharedEntity_t *)newent);
+	
+	trap_LinkEntity(newent);
 	newent->spawnflags = ent->spawnflags;
 
 	if(ent->paintarget)
@@ -1651,7 +1654,7 @@ gentity_t *NPC_Spawn_Do( gentity_t *ent )
 
 //==New stuff=====================================================================
 	newent->s.eType	= ET_NPC;//ET_PLAYER;
-
+	
 	//FIXME: Call CopyParms
 	if ( ent->parms )
 	{
@@ -1659,7 +1662,7 @@ gentity_t *NPC_Spawn_Do( gentity_t *ent )
 
 		for ( parmNum = 0; parmNum < MAX_PARMS; parmNum++ )
 		{
-			if ( ent->parms->parm[parmNum][0] )
+			if ( ent->parms->parm[parmNum] && ent->parms->parm[parmNum][0] )
 			{
 				Q3_SetParm( newent->s.number, parmNum, ent->parms->parm[parmNum] );
 			}
@@ -1682,7 +1685,7 @@ gentity_t *NPC_Spawn_Do( gentity_t *ent )
 
 	VectorClear( newent->s.apos.trDelta );
 	newent->s.apos.trDuration = 0;
-
+	
 	newent->NPC->combatPoint = -1;
 
 	newent->flags |= FL_NOTARGET;//So he's ignored until he's fully spawned
@@ -1719,7 +1722,7 @@ gentity_t *NPC_Spawn_Do( gentity_t *ent )
 	}
 	newent->client->ps.persistant[PERS_TEAM] = newent->client->sess.sessionTeam;
 
-	trap->LinkEntity ((sharedEntity_t *)newent);
+	trap_LinkEntity (newent);
 
 	if(!ent->use)
 	{
@@ -1767,9 +1770,9 @@ void NPC_StasisSpawnEffect( gentity_t *ent )
 		AngleVectors( ent->s.angles, forward, NULL, NULL );
 		VectorMA( ent->r.currentOrigin,  24, forward, end );
 		VectorMA( ent->r.currentOrigin, -20, forward, start );
-
+		
 		start[2] += 64;
-
+		
 		taper = qtrue;
 	}
 	else
@@ -1938,6 +1941,7 @@ teamnodmg - team that NPC does not take damage from (turrets and other auto-defe
 "noCombatSounds" - set to 1 to prevent loading and usage of combat sounds (anger, victory, etc.)
 "noExtraSounds" - set to 1 to prevent loading and usage of "extra" sounds (chasing the enemy - detecting them, flanking them... also jedi combat sounds)
 */
+//void NPC_PrecacheModels ( char *NPCName );
 extern void NPC_PrecacheAnimationCFG( const char *NPC_type );
 void NPC_Precache ( gentity_t *spawner );
 void NPC_PrecacheType( char *NPC_type )
@@ -2102,15 +2106,15 @@ qboolean NPC_VehiclePrecache( gentity_t *spawner )
 		int skin = 0;
 		if (pVehInfo->skin && pVehInfo->skin[0])
 		{
-			skin = trap->R_RegisterSkin(va("models/players/%s/model_%s.skin", pVehInfo->model, pVehInfo->skin));
+			skin = trap_R_RegisterSkin(va("models/players/%s/model_%s.skin", pVehInfo->model, pVehInfo->skin));
 		}
-		trap->G2API_InitGhoul2Model(&tempG2, va("models/players/%s/model.glm", pVehInfo->model), 0, skin, 0, 0, 0);
+		trap_G2API_InitGhoul2Model(&tempG2, va("models/players/%s/model.glm", pVehInfo->model), 0, skin, 0, 0, 0);
 		if (tempG2)
 		{ //now, cache the anim config.
 			char GLAName[1024];
 
 			GLAName[0] = 0;
-			trap->G2API_GetGLAName(tempG2, 0, GLAName);
+			trap_G2API_GetGLAName(tempG2, 0, GLAName);
 
 			if (GLAName[0])
 			{
@@ -2122,12 +2126,12 @@ qboolean NPC_VehiclePrecache( gentity_t *spawner )
 					BG_ParseAnimationFile(GLAName, NULL, qfalse);
 				}
 			}
-			trap->G2API_CleanGhoul2Models(&tempG2);
+			trap_G2API_CleanGhoul2Models(&tempG2);
 		}
 	}
 
 	//also precache the droid NPC if there is one
-	if ( spawner->model2
+	if ( spawner->model2 
 		&& spawner->model2[0] )
 	{
 		droidNPCType = spawner->model2;
@@ -2198,7 +2202,7 @@ void SP_NPC_Vehicle( gentity_t *self)
 	{
 		self->fly_sound_debounce_time = ceil(dropTime*1000.0);
 	}
-
+	
 	G_SpawnInt( "showhealth", "0", &t );
 	if (t)
 	{
@@ -2501,7 +2505,7 @@ void SP_NPC_Reborn_New( gentity_t *self)
 			}
 		}
 	}
-
+	
 	SP_NPC_spawner( self );
 }
 
@@ -2547,7 +2551,7 @@ void SP_NPC_Cultist_Saber( gentity_t *self)
 				self->NPC_type = "cultist_saber_strong";
 			}
 		}
-		else if ( (self->spawnflags&4) )
+		else if ( (self->spawnflags&2) )
 		{
 			if ( (self->spawnflags&8) )
 			{
@@ -2570,7 +2574,7 @@ void SP_NPC_Cultist_Saber( gentity_t *self)
 			}
 		}
 	}
-
+	
 	SP_NPC_spawner( self );
 }
 
@@ -2616,7 +2620,7 @@ void SP_NPC_Cultist_Saber_Powers( gentity_t *self)
 				self->NPC_type = "cultist_saber_strong2";
 			}
 		}
-		else if ( (self->spawnflags&4) )
+		else if ( (self->spawnflags&2) )
 		{
 			if ( (self->spawnflags&8) )
 			{
@@ -2639,7 +2643,7 @@ void SP_NPC_Cultist_Saber_Powers( gentity_t *self)
 			}
 		}
 	}
-
+	
 	SP_NPC_spawner( self );
 }
 
@@ -2702,7 +2706,7 @@ void SP_NPC_Cultist( gentity_t *self)
 			self->NPC_type = "cultist";
 		}
 	}
-
+	
 	SP_NPC_spawner( self );
 }
 
@@ -2826,10 +2830,8 @@ void SP_NPC_MorganKatarn( gentity_t *self)
 //ALLIES
 //=============================================================================================
 
-/*QUAKED NPC_Jedi(1 0 0) (-16 -16 -24) (16 16 40) TRAINER MASTER RANDOM x CEILING CINEMATIC NOTSOLID STARTINSOLID SHY
+/*QUAKED NPC_Jedi(1 0 0) (-16 -16 -24) (16 16 40) TRAINER x x x CEILING CINEMATIC NOTSOLID STARTINSOLID SHY
 TRAINER - Special Jedi- instructor
-MASTER - Special Jedi- master
-RANDOM - creates a random Jedi student using the available player models/skins
 CEILING - Sticks to the ceiling until he sees an enemy or takes pain
 CINEMATIC - Will spawn with no default AI (BS_CINEMATIC)
 NOTSOLID - Starts not solid
@@ -2842,65 +2844,18 @@ void SP_NPC_Jedi( gentity_t *self)
 {
 	if(!self->NPC_type)
 	{
-		if ( self->spawnflags & 4 )
-		{//random!
-			switch ( Q_irand( 0, 11 ) )
-			{
-			case 0:
-				self->NPC_type = "jedi_hf1";
-				break;
-			case 1:
-				self->NPC_type = "jedi_hf2";
-				break;
-			case 2:
-				self->NPC_type = "jedi_hm1";
-				break;
-			case 3:
-				self->NPC_type = "jedi_hm2";
-				break;
-			case 4:
-				self->NPC_type = "jedi_kdm1";
-				break;
-			case 5:
-				self->NPC_type = "jedi_kdm2";
-				break;
-			case 6:
-				self->NPC_type = "jedi_rm1";
-				break;
-			case 7:
-				self->NPC_type = "jedi_rm2";
-				break;
-			case 8:
-				self->NPC_type = "jedi_tf1";
-				break;
-			case 9:
-				self->NPC_type = "jedi_tf2";
-				break;
-			case 10:
-				self->NPC_type = "jedi_zf1";
-				break;
-			case 11:
-			default://just in case
-				self->NPC_type = "jedi_zf2";
-				break;
-			}
-		}
-		else if ( self->spawnflags & 2 )
-		{
-			self->NPC_type = "jedimaster";
-		}
-		else if ( self->spawnflags & 1 )
+		if ( self->spawnflags & 1 )
 		{
 			self->NPC_type = "jeditrainer";
 		}
-		else
+		else 
 		{
 			/*
 			if ( !Q_irand( 0, 2 ) )
 			{
 				self->NPC_type = "JediF";
 			}
-			else
+			else 
 			*/if ( Q_irand( 0, 1 ) )
 			{
 				self->NPC_type = "Jedi";
@@ -2968,56 +2923,6 @@ void SP_NPC_Rebel( gentity_t *self)
 //=============================================================================================
 //ENEMIES
 //=============================================================================================
-
-/*QUAKED NPC_Human_Merc(1 0 0) (-16 -16 -24) (16 16 40) BOWCASTER REPEATER FLECHETTE CONCUSSION DROPTOFLOOR CINEMATIC NOTSOLID STARTINSOLID SHY
-100 health, blaster rifle
-
-BOWCASTER - Starts with a Bowcaster
-REPEATER - Starts with a Repeater
-FLECHETTE - Starts with a Flechette gun
-CONCUSSION - Starts with a Concussion Rifle
-
-If you want them to start with any other kind of weapon, make a spawnscript for them that sets their weapon.
-
-"message" - turns on his key surface.  This is the name of the key you get when you walk over his body.  This must match the "message" field of the func_security_panel you want this key to open.  Set to "goodie" to have him carrying a goodie key that player can use to operate doors with "GOODIE" spawnflag.  NOTE: this overrides all the weapon spawnflags
-
-DROPTOFLOOR - NPC can be in air, but will spawn on the closest floor surface below it
-CINEMATIC - Will spawn with no default AI (BS_CINEMATIC)
-NOTSOLID - Starts not solid
-STARTINSOLID - Don't try to fix if spawn in solid
-SHY - Spawner is shy
-*/
-void SP_NPC_Human_Merc( gentity_t *self )
-{
-	if ( !self->NPC_type )
-	{
-		/*if ( self->message )
-		{
-			self->NPC_type = "human_merc_key";
-		}
-		else */if ( (self->spawnflags & 1) )
-		{
-			self->NPC_type = "human_merc_bow";
-		}
-		else if ( (self->spawnflags & 2) )
-		{
-			self->NPC_type = "human_merc_rep";
-		}
-		else if ( (self->spawnflags & 4) )
-		{
-			self->NPC_type = "human_merc_flc";
-		}
-		else if ( (self->spawnflags & 8) )
-		{
-			self->NPC_type = "human_merc_cnc";
-		}
-		else
-		{
-			self->NPC_type = "human_merc";
-		}
-	}
-	SP_NPC_spawner( self );
-}
 
 /*QUAKED NPC_Stormtrooper(1 0 0) (-16 -16 -24) (16 16 40) OFFICER COMMANDER ALTOFFICER ROCKET DROPTOFLOOR CINEMATIC NOTSOLID STARTINSOLID SHY
 30 health, blaster
@@ -3154,7 +3059,7 @@ void SP_NPC_Jawa( gentity_t *self)
 /*QUAKED NPC_Gran(1 0 0) (-16 -16 -24) (16 16 40) SHOOTER BOXER x x DROPTOFLOOR CINEMATIC NOTSOLID STARTINSOLID SHY
 Uses grenade
 
-SHOOTER - uses blaster instead of
+SHOOTER - uses blaster instead of 
 BOXER - uses fists only
 DROPTOFLOOR - NPC can be in air, but will spawn on the closest floor surface below it
 CINEMATIC - Will spawn with no default AI (BS_CINEMATIC)
@@ -3475,7 +3380,7 @@ void SP_NPC_Reborn( gentity_t *self)
 			self->NPC_type = "reborn";
 		}
 	}
-
+	
 	WP_SetSaberModel( NULL, CLASS_REBORN );
 	SP_NPC_spawner( self );
 }
@@ -3500,7 +3405,7 @@ void SP_NPC_ShadowTrooper( gentity_t *self)
 			self->NPC_type = "ShadowTrooper2";
 		}
 	}
-
+	
 	NPC_ShadowTrooper_Precache();
 	WP_SetSaberModel( NULL, CLASS_SHADOWTROOPER );
 
@@ -3872,7 +3777,7 @@ NOTSOLID - Starts not solid
 STARTINSOLID - Don't try to fix if spawn in solid
 SHY - Spawner is shy
 
-R2D2 Droid - you probably know this one already.
+R2D2 Droid - you probably know this one already. 
 
 NOTARGET by default
 */
@@ -3950,7 +3855,7 @@ void SP_NPC_Droid_Protocol( gentity_t *self)
 NPC_Spawn_f
 */
 
-gentity_t *NPC_SpawnType( gentity_t *ent, char *npc_type, char *targetname, qboolean isVehicle )
+gentity_t *NPC_SpawnType( gentity_t *ent, char *npc_type, char *targetname, qboolean isVehicle ) 
 {
 	gentity_t		*NPCspawner = G_Spawn();
 	vec3_t			forward, end;
@@ -3964,7 +3869,7 @@ gentity_t *NPC_SpawnType( gentity_t *ent, char *npc_type, char *targetname, qboo
 
 	NPCspawner->think = G_FreeEntity;
 	NPCspawner->nextthink = level.time + FRAMETIME;
-
+	
 	if ( !npc_type )
 	{
 		return NULL;
@@ -3987,10 +3892,10 @@ gentity_t *NPC_SpawnType( gentity_t *ent, char *npc_type, char *targetname, qboo
 	AngleVectors(ent->client->ps.viewangles, forward, NULL, NULL);
 	VectorNormalize(forward);
 	VectorMA(ent->r.currentOrigin, 64, forward, end);
-	trap->Trace(&trace, ent->r.currentOrigin, NULL, NULL, end, 0, MASK_SOLID, qfalse, 0, 0);
+	trap_Trace(&trace, ent->r.currentOrigin, NULL, NULL, end, 0, MASK_SOLID);
 	VectorCopy(trace.endpos, end);
 	end[2] -= 24;
-	trap->Trace(&trace, trace.endpos, NULL, NULL, end, 0, MASK_SOLID, qfalse, 0, 0);
+	trap_Trace(&trace, trace.endpos, NULL, NULL, end, 0, MASK_SOLID);
 	VectorCopy(trace.endpos, end);
 	end[2] += 24;
 	G_SetOrigin(NPCspawner, end);
@@ -3998,7 +3903,7 @@ gentity_t *NPC_SpawnType( gentity_t *ent, char *npc_type, char *targetname, qboo
 	//set the yaw so that they face away from player
 	NPCspawner->s.angles[1] = ent->client->ps.viewangles[1];
 
-	trap->LinkEntity((sharedEntity_t *)NPCspawner);
+	trap_LinkEntity(NPCspawner);
 
 	NPCspawner->NPC_type = G_NewString( npc_type );
 
@@ -4015,7 +3920,7 @@ gentity_t *NPC_SpawnType( gentity_t *ent, char *npc_type, char *targetname, qboo
 
 	//NPCspawner->playerTeam = TEAM_FREE;
 	//NPCspawner->behaviorSet[BSET_SPAWN] = "common/guard";
-
+	
 	if ( isVehicle )
 	{
 		NPCspawner->classname = "NPC_Vehicle";
@@ -4098,22 +4003,22 @@ gentity_t *NPC_SpawnType( gentity_t *ent, char *npc_type, char *targetname, qboo
 	return (NPC_Spawn_Do( NPCspawner ));
 }
 
-void NPC_Spawn_f( gentity_t *ent )
+void NPC_Spawn_f( gentity_t *ent ) 
 {
 	char	npc_type[1024];
 	char	targetname[1024];
 	qboolean	isVehicle = qfalse;
 
-	trap->Argv(2, npc_type, 1024);
+	trap_Argv(2, npc_type, 1024);
 	if ( Q_stricmp( "vehicle", npc_type ) == 0 )
 	{
 		isVehicle = qtrue;
-		trap->Argv(3, npc_type, 1024);
-		trap->Argv(4, targetname, 1024);
+		trap_Argv(3, npc_type, 1024);
+		trap_Argv(4, targetname, 1024);
 	}
 	else
 	{
-		trap->Argv(3, targetname, 1024);
+		trap_Argv(3, targetname, 1024);
 	}
 
 	NPC_SpawnType( ent, npc_type, targetname, isVehicle );
@@ -4123,15 +4028,15 @@ void NPC_Spawn_f( gentity_t *ent )
 NPC_Kill_f
 */
 extern stringID_table_t TeamTable[];
-void NPC_Kill_f( void )
+void NPC_Kill_f( void ) 
 {
 	int			n;
 	gentity_t	*player;
 	char		name[1024];
-	npcteam_t	killTeam = NPCTEAM_FREE;
+	team_t		killTeam = TEAM_FREE;
 	qboolean	killNonSF = qfalse;
 
-	trap->Argv(2, name, 1024);
+	trap_Argv(2, name, 1024);
 
 	if ( !name[0] )
 	{
@@ -4146,7 +4051,7 @@ void NPC_Kill_f( void )
 
 	if ( Q_stricmp( "team", name ) == 0 )
 	{
-		trap->Argv(3, name, 1024);
+		trap_Argv(3, name, 1024);
 
 		if ( !name[0] )
 		{
@@ -4166,9 +4071,9 @@ void NPC_Kill_f( void )
 		}
 		else
 		{
-			killTeam = GetIDForString( TeamTable, name );
+			killTeam = (team_t)GetIDForString( TeamTable, name );
 
-			if ( killTeam == NPCTEAM_FREE )
+			if ( killTeam == TEAM_FREE )
 			{
 				Com_Printf( S_COLOR_RED"NPC_Kill Error: team '%s' not recognized\n", name );
 				Com_Printf( S_COLOR_RED"Valid team names are:\n");
@@ -4182,7 +4087,7 @@ void NPC_Kill_f( void )
 		}
 	}
 
-	for ( n = 1; n < ENTITYNUM_MAX_NORMAL; n++)
+	for ( n = 1; n < ENTITYNUM_MAX_NORMAL; n++) 
 	{
 		player = &g_entities[n];
 		if (!player->inuse) {
@@ -4215,7 +4120,7 @@ void NPC_Kill_f( void )
 		}
 		else if ( player && player->NPC && player->client )
 		{
-			if ( killTeam != NPCTEAM_FREE )
+			if ( killTeam != TEAM_FREE )
 			{
 				if ( player->client->playerTeam == killTeam )
 				{
@@ -4261,16 +4166,16 @@ Svcmd_NPC_f
 parse and dispatch bot commands
 */
 qboolean	showBBoxes = qfalse;
-void Cmd_NPC_f( gentity_t *ent )
+void Cmd_NPC_f( gentity_t *ent ) 
 {
 	char	cmd[1024];
 
-	trap->Argv( 1, cmd, 1024 );
+	trap_Argv( 1, cmd, 1024 );
 
-	if ( !cmd[0] )
+	if ( !cmd[0] ) 
 	{
 		Com_Printf( "Valid NPC commands are:\n" );
-		Com_Printf( " spawn [NPC type (from NPCs.cfg)]\n" );
+		Com_Printf( " spawn [NPC type (from NCPCs.cfg)]\n" );
 		Com_Printf( " kill [NPC targetname] or [all(kills all NPCs)] or 'team [teamname]'\n" );
 		Com_Printf( " showbounds (draws exact bounding boxes of NPCs)\n" );
 		Com_Printf( " score [NPC targetname] (prints number of kills per NPC)\n" );
@@ -4279,7 +4184,7 @@ void Cmd_NPC_f( gentity_t *ent )
 	{
 		NPC_Spawn_f( ent );
 	}
-	else if ( Q_stricmp( cmd, "kill" ) == 0 )
+	else if ( Q_stricmp( cmd, "kill" ) == 0 ) 
 	{
 		NPC_Kill_f();
 	}
@@ -4292,7 +4197,7 @@ void Cmd_NPC_f( gentity_t *ent )
 		char		cmd2[1024];
 		gentity_t *thisent = NULL;
 
-		trap->Argv( 2, cmd2, sizeof( cmd2 ) );
+		trap_Argv( 2, cmd2, sizeof( cmd2 ) );
 
 		if ( !cmd2[0] )
 		{//Show the score for all NPCs

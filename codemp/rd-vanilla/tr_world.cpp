@@ -121,7 +121,7 @@ static qboolean	R_CullSurface( surfaceType_t *surface, shader_t *shader ) {
 	srfSurfaceFace_t *sface;
 	float			d;
 
-	if ( r_nocull->integer ) {
+	if ( r_nocull->integer || mme_saveCubemap->integer ) {
 		return qfalse;
 	}
 
@@ -378,6 +378,8 @@ R_AddWorldSurface
 */
 static void R_AddWorldSurface( msurface_t *surf, int dlightBits, qboolean noViewCount = qfalse )
 {
+	shader_t *shader;
+
 	if (!noViewCount)
 	{
 		if ( surf->viewCount == tr.viewCount )
@@ -426,6 +428,11 @@ static void R_AddWorldSurface( msurface_t *surf, int dlightBits, qboolean noView
 		dlightBits = R_DlightSurface( surf, dlightBits );
 		dlightBits = ( dlightBits != 0 );
 	}
+	//mme
+	if ( tr.mmeWorldShader ) 
+		shader = tr.mmeWorldShader;
+	else
+		shader = surf->shader;
 
 #ifdef _ALT_AUTOMAP_METHOD
 	if (tr_drawingAutoMap)
@@ -516,7 +523,7 @@ static void R_AddWorldSurface( msurface_t *surf, int dlightBits, qboolean noView
 	else
 #endif
 	{
-		R_AddDrawSurf( surf->data, surf->shader, surf->fogIndex, dlightBits );
+		R_AddDrawSurf( surf->data, /*surf->shader*/ shader, surf->fogIndex, dlightBits );
 	}
 }
 
@@ -1178,6 +1185,9 @@ const void *R_DrawWireframeAutomap(const void *data)
 	qglColor4f(0.0f, 0.0f, 0.0f, alpha);
 
 	//draw a black backdrop
+#ifdef HAVE_GLES
+	//TODO MAP
+#else
 	qglPushMatrix();
 	qglLoadIdentity(); //get the ident matrix
 
@@ -1190,7 +1200,7 @@ const void *R_DrawWireframeAutomap(const void *data)
 
 	//pop back the viewmatrix
 	qglPopMatrix();
-
+#endif
 
 	//set the mode to line draw
 	if (r_autoMap->integer == 2)
@@ -1289,6 +1299,9 @@ const void *R_DrawWireframeAutomap(const void *data)
 		}
 
 		i = 0;
+#ifdef HAVE_GLES
+		//TODO
+#else
 		qglBegin(GL_TRIANGLES);
 		while (i < s->numPoints)
 		{
@@ -1323,6 +1336,7 @@ const void *R_DrawWireframeAutomap(const void *data)
 			i++;
 		}
 		qglEnd();
+#endif
 		s = s->next;
 	}
 #else
@@ -1379,7 +1393,7 @@ static void R_RecursiveWorldNode( mnode_t *node, int planeBits, int dlightBits )
 #ifdef _ALT_AUTOMAP_METHOD
 		if ( r_nocull->integer!=1 && !tr_drawingAutoMap )
 #else
-		if (r_nocull->integer!=1)
+		if (r_nocull->integer!=1 && !mme_saveCubemap->integer)
 #endif
 		{
 			int		r;
@@ -1434,7 +1448,7 @@ static void R_RecursiveWorldNode( mnode_t *node, int planeBits, int dlightBits )
 		// since we don't care about sort orders, just go positive to negative
 
 		// determine which dlights are needed
-		if ( r_nocull->integer!=2 )
+		if ( r_nocull->integer!=2 || mme_saveCubemap->integer )
 		{
 			newDlights[0] = 0;
 			newDlights[1] = 0;
@@ -1649,8 +1663,10 @@ static void R_MarkLeaves (void) {
 		}
 
 		// check for door connection
-		if ( (tr.refdef.areamask[leaf->area>>3] & (1<<(leaf->area&7)) ) ) {
-			continue;		// not visible
+		if (!r_drawAllAreas->integer) {
+			if ( (tr.refdef.areamask[leaf->area>>3] & (1<<(leaf->area&7)) ) ) {
+				continue;		// not visible
+			}
 		}
 
 		parent = leaf;

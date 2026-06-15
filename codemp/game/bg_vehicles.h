@@ -1,28 +1,6 @@
-/*
-===========================================================================
-Copyright (C) 2000 - 2013, Raven Software, Inc.
-Copyright (C) 2001 - 2013, Activision, Inc.
-Copyright (C) 2013 - 2015, OpenJK contributors
-
-This file is part of the OpenJK source code.
-
-OpenJK is free software; you can redistribute it and/or modify it
-under the terms of the GNU General Public License version 2 as
-published by the Free Software Foundation.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU General Public License for more details.
-
-You should have received a copy of the GNU General Public License
-along with this program; if not, see <http://www.gnu.org/licenses/>.
-===========================================================================
-*/
-
 #pragma once
 
-#include "qcommon/q_shared.h"
+#include "../qcommon/q_shared.h"
 
 typedef struct Vehicle_s Vehicle_t;
 typedef struct bgEntity_s bgEntity_t;
@@ -38,7 +16,7 @@ typedef enum
 	VH_NUM_VEHICLES
 } vehicleType_t;
 
-typedef enum
+typedef enum	
 {
 	WPOSE_NONE	= 0,
 	WPOSE_BLASTER,
@@ -51,7 +29,9 @@ extern stringID_table_t VehicleTable[VH_NUM_VEHICLES+1];
 //===========================================================================================================
 //START VEHICLE WEAPONS
 //===========================================================================================================
-typedef struct vehWeaponInfo_s {
+typedef struct
+{
+//*** IMPORTANT!!! *** the number of variables in the vehWeaponStats_t struct (including all elements of arrays) must be reflected by NUM_VWEAP_PARMS!!!
 //*** IMPORTANT!!! *** vWeapFields table correponds to this structure!
 	char	*name;
 	qboolean	bIsProjectile;	//traceline or entity?
@@ -79,8 +59,10 @@ typedef struct vehWeaponInfo_s {
 	int		iLifeTime;	//removes itself after this amount of time
 	qboolean	bExplodeOnExpire;	//when iLifeTime is up, explodes rather than simply removing itself
 } vehWeaponInfo_t;
+//NOTE: this MUST stay up to date with the number of variables in the vehFields table!!!
+#define NUM_VWEAP_PARMS	25
 
-#define	VWFOFS(x) offsetof(vehWeaponInfo_t, x)
+#define	VWFOFS(x) ((size_t)&(((vehWeaponInfo_t *)0)->x))
 
 #define MAX_VEH_WEAPONS	16	//sigh... no more than 16 different vehicle weapons
 #define VEH_WEAPON_BASE	0
@@ -99,7 +81,8 @@ extern int	numVehicleWeapons;
 #define		MAX_VEHICLE_TURRETS			2
 #define		MAX_VEHICLE_TURRET_MUZZLES	2
 
-typedef struct turretStats_s {
+typedef struct
+{
 	int			iWeapon;	//what vehWeaponInfo index to use
 	int			iDelay;		//delay between turret muzzle shots
 	int			iAmmoMax;	//how much ammo it has
@@ -121,7 +104,8 @@ typedef struct turretStats_s {
 	int			passengerNum;//which passenger, if any, has control of this turret (overrides AI)
 } turretStats_t;
 
-typedef struct vehWeaponStats_s {
+typedef struct
+{
 //*** IMPORTANT!!! *** See note at top of next structure!!! ***
 	// Weapon stuff.
 	int			ID;//index into the weapon data
@@ -139,7 +123,8 @@ typedef struct vehWeaponStats_s {
 	int			soundNoAmmo;
 } vehWeaponStats_t;
 
-typedef struct vehicleInfo_s {
+typedef struct
+{
 //*** IMPORTANT!!! *** vehFields table correponds to this structure!
 	char		*name;	//unique name of the vehicle
 
@@ -245,7 +230,7 @@ typedef struct vehicleInfo_s {
 	// Which weapon a muzzle fires (has to match one of the weapons this vehicle has). So 1 would be weapon 1,
 	// 2 would be weapon 2 and so on.
 	int			weapMuzzle[MAX_VEHICLE_MUZZLES];
-
+	
 	//turrets (if any) on the vehicle
 	turretStats_t	turret[MAX_VEHICLE_TURRETS];
 
@@ -325,17 +310,17 @@ typedef struct vehicleInfo_s {
 	qboolean (*Eject)( Vehicle_t *pVeh, bgEntity_t *pEnt, qboolean forceEject );
 
 	// Eject all the inhabitants of this vehicle.
-	qboolean (*EjectAll)( Vehicle_t *pVeh );
+	qboolean (*EjectAll)( Vehicle_t *pVeh );	
 
 	// Start a delay until the vehicle dies.
 	void (*StartDeathDelay)( Vehicle_t *pVeh, int iDelayTime );
 
 	// Update death sequence.
 	void (*DeathUpdate)( Vehicle_t *pVeh );
-
+	
 	// Register all the assets used by this vehicle.
 	void (*RegisterAssets)( Vehicle_t *pVeh );
-
+	
 	// Initialize the vehicle (should be called by Spawn?).
 	qboolean (*Initialize)( Vehicle_t *pVeh );
 
@@ -352,7 +337,7 @@ typedef struct vehicleInfo_s {
 
 	// ProcessOrientCommands the Vehicle.
 	void (*ProcessOrientCommands)( Vehicle_t *pVeh );
-
+	
 	// Attachs all the riders of this vehicle to their appropriate position/tag (*driver, *pass1, *pass2, whatever...).
 	void (*AttachRiders)( Vehicle_t *pVeh );
 
@@ -370,7 +355,7 @@ typedef struct vehicleInfo_s {
 } vehicleInfo_t;
 
 
-#define	VFOFS(x) offsetof(vehicleInfo_t, x)
+#define	VFOFS(x) ((size_t)&(((vehicleInfo_t *)0)->x))
 
 #define MAX_VEHICLES	16	//sigh... no more than 64 individual vehicles
 #define VEHICLE_BASE	0
@@ -413,11 +398,11 @@ extern int	numVehicles;
 
 typedef enum vehEject_e
 {
-	VEH_EJECT_LEFT,
-	VEH_EJECT_RIGHT,
-	VEH_EJECT_FRONT,
-	VEH_EJECT_REAR,
-	VEH_EJECT_TOP,
+	VEH_EJECT_LEFT, 
+	VEH_EJECT_RIGHT, 
+	VEH_EJECT_FRONT, 
+	VEH_EJECT_REAR, 
+	VEH_EJECT_TOP, 
 	VEH_EJECT_BOTTOM
 } vehEject_t;
 
@@ -455,7 +440,8 @@ typedef enum
 #define SHIPSURF_BROKEN_F	(1<<5) //wing 4
 #define SHIPSURF_BROKEN_G	(1<<6) //front
 
-typedef struct vehWeaponStatus_s {
+typedef struct
+{
 	//linked firing mode
 	qboolean	linked;//weapon 1's muzzles are in linked firing mode
 	//current weapon ammo
@@ -466,7 +452,8 @@ typedef struct vehWeaponStatus_s {
 	int			nextMuzzle;
 } vehWeaponStatus_t;
 
-typedef struct vehTurretStatus_s {
+typedef struct
+{
 	//current weapon ammo
 	int			ammo;
 	//debouncer for ammo recharge
@@ -540,7 +527,7 @@ typedef struct Vehicle_s
 	vec3_t m_vMuzzlePos[MAX_VEHICLE_MUZZLES], m_vMuzzleDir[MAX_VEHICLE_MUZZLES];
 
 	// This is how long to wait before being able to fire a specific muzzle again. This is based on the firing rate
-	// so that a firing rate of 10 rounds/sec would make this value initially 100 miliseconds.
+	// so that a firing rate of 10 rounds/sec would make this value initially 100 miliseconds. 
 	int m_iMuzzleWait[MAX_VEHICLE_MUZZLES];
 
 	// The user commands structure.
@@ -564,7 +551,7 @@ typedef struct Vehicle_s
 	//to make it a pointer to a vec3_t in the playerstate for prediction's sake. -rww
 
 	// How long you have strafed left or right (increments every frame that you strafe to right, decrements every frame you strafe left)
-	int			m_fStrafeTime;
+	int			m_fStrafeTime;	
 
 	// Previous angles of this vehicle.
 	vec3_t		m_vPrevOrientation;
@@ -585,7 +572,7 @@ typedef struct Vehicle_s
 	int			m_iHitDebounce;
 
 	// Timer for all cgame-FX...? ex: exhaust?
-	int			m_iLastFXTime;
+	int			m_iLastFXTime; 
 
 	// When to die.
 	int			m_iDieTime;
@@ -606,7 +593,7 @@ typedef struct Vehicle_s
 
 	//bitflag of surfaces that have broken off
 	int			m_iRemovedSurfaces;
-
+	
 	int			m_iDmgEffectTime;
 
 	// the last time this vehicle fired a turbo burst

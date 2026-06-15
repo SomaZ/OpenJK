@@ -15,11 +15,12 @@
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, see <http://www.gnu.org/licenses/>.
 #============================================================================
+cmake_minimum_required(VERSION 3.1)
 
 # Make sure the user is not executing this script directly
-if(NOT InOpenJK)
+if(NOT InjaMME)
 	message(FATAL_ERROR "Use the top-level cmake script!")
-endif(NOT InOpenJK)
+endif(NOT InjaMME)
 
 set(MPCGameIncludeDirectories
 	"${MPDir}"
@@ -30,7 +31,7 @@ set(MPCGameIncludeDirectories
 if(WIN32)
 	set(MPCGameLibraries "odbc32" "odbccp32") # what are these even?
 endif(WIN32)
-set(MPCGameDefines ${MPSharedDefines} "_CGAME" )
+set(MPCGameDefines ${MPSharedDefines} "_CGAME" "CGAME" "MISSIONPACK" )# "SODIUM_STATIC" )
 set(MPCGameGameFiles
 	"${MPDir}/game/AnimalNPC.c"
 	"${MPDir}/game/bg_g2_utils.c"
@@ -50,6 +51,7 @@ set(MPCGameGameFiles
 	"${MPDir}/game/bg_local.h"
 	"${MPDir}/game/bg_public.h"
 	"${MPDir}/game/bg_saga.h"
+	"${MPDir}/game/bg_strap.h"
 	"${MPDir}/game/bg_weapons.h"
 	"${MPDir}/game/surfaceflags.h"
 	)
@@ -58,7 +60,6 @@ set(MPCGameFiles ${MPCGameFiles} ${MPCGameGameFiles})
 
 set(MPCGameCgameFiles
 	"${MPDir}/cgame/cg_consolecmds.c"
-	"${MPDir}/cgame/cg_cvar.c"
 	"${MPDir}/cgame/cg_draw.c"
 	"${MPDir}/cgame/cg_drawtools.c"
 	"${MPDir}/cgame/cg_effects.c"
@@ -69,6 +70,7 @@ set(MPCGameCgameFiles
 	"${MPDir}/cgame/cg_localents.c"
 	"${MPDir}/cgame/cg_main.c"
 	"${MPDir}/cgame/cg_marks.c"
+	"${MPDir}/cgame/cg_multispec.c"
 	"${MPDir}/cgame/cg_newDraw.c"
 	"${MPDir}/cgame/cg_players.c"
 	"${MPDir}/cgame/cg_playerstate.c"
@@ -78,6 +80,7 @@ set(MPCGameCgameFiles
 	"${MPDir}/cgame/cg_servercmds.c"
 	"${MPDir}/cgame/cg_snapshot.c"
 	"${MPDir}/cgame/cg_spawn.c"
+	"${MPDir}/cgame/cg_strap.c"
 	"${MPDir}/cgame/cg_syscalls.c"
 	"${MPDir}/cgame/cg_turret.c"
 	"${MPDir}/cgame/cg_view.c"
@@ -93,10 +96,30 @@ set(MPCGameCgameFiles
 	"${MPDir}/cgame/fx_heavyrepeater.c"
 	"${MPDir}/cgame/fx_rocketlauncher.c"
 	"${MPDir}/cgame/animtable.h"
+	"${MPDir}/cgame/cg_lights.h"
 	"${MPDir}/cgame/cg_local.h"
+	"${MPDir}/cgame/cg_multispec.h"
 	"${MPDir}/cgame/cg_public.h"
 	"${MPDir}/cgame/cg_xcvar.h"
 	"${MPDir}/cgame/fx_local.h"
+	"${MPDir}/cgame/holocronicons.h"
+	"${MPDir}/cgame/cg_demos.c"
+	"${MPDir}/cgame/cg_demos_book.c"
+	"${MPDir}/cgame/cg_demos_camera.c"
+	"${MPDir}/cgame/cg_demos_capture.c"
+	"${MPDir}/cgame/cg_demos_cut.c"
+	"${MPDir}/cgame/cg_demos_dof.c"
+	"${MPDir}/cgame/cg_demos_anim.c"
+	"${MPDir}/cgame/cg_demos_hud.c"
+	"${MPDir}/cgame/cg_demos_line.c"
+	"${MPDir}/cgame/cg_demos_math.c"
+	"${MPDir}/cgame/cg_demos_move.c"
+	"${MPDir}/cgame/cg_demos_script.c"
+	"${MPDir}/cgame/cg_demos_weather.c"
+	"${MPDir}/cgame/bg_demos.c"
+	"${MPDir}/cgame/bg_demos.h"
+	"${MPDir}/cgame/cg_demos.h"
+	"${MPDir}/cgame/cg_demos_math.h"
 	)
 source_group("cgame" FILES ${MPCGameCgameFiles})
 set(MPCGameFiles ${MPCGameFiles} ${MPCGameCgameFiles})
@@ -107,17 +130,12 @@ set(MPCGameCommonFiles
 	"${MPDir}/qcommon/q_shared.h"
 	"${MPDir}/qcommon/qfiles.h"
 	"${MPDir}/qcommon/tags.h"
+	"${SharedDir}/qcommon/q_string.c"
 
 	${SharedCommonFiles}
 	)
 source_group("common" FILES ${MPCGameCommonFiles})
 set(MPCGameFiles ${MPCGameFiles} ${MPCGameCommonFiles})
-
-set(MPCGameCommonSafeFiles
-	${SharedCommonSafeFiles}
-	)
-source_group("common/safe" FILES ${MPCGameCommonSafeFiles})
-set(MPCGameFiles ${MPCGameFiles} ${MPCGameCommonSafeFiles})
 
 set(MPCGameUiFiles
 	"${MPDir}/ui/ui_shared.c"
@@ -145,46 +163,21 @@ add_library(${MPCGame} SHARED ${MPCGameFiles})
 if(NOT MSVC)
 	# remove "lib" prefix for .so/.dylib files
 	set_target_properties(${MPCGame} PROPERTIES PREFIX "")
-endif()
+endif(NOT MSVC)
 
-if(MakeApplicationBundles AND BuildMPEngine)
-	install(TARGETS ${MPCGame}
-		LIBRARY
-		DESTINATION "${JKAInstallDir}/${MPEngine}.app/Contents/MacOS/OpenJK"
-		COMPONENT ${JKAMPCoreComponent})
-	install(TARGETS ${MPCGame}
-		LIBRARY
-		DESTINATION "${JKAInstallDir}/${MPEngine}.app/Contents/MacOS/base"
-		COMPONENT ${JKAMPCoreComponent})
-elseif(WIN32)
-	install(TARGETS ${MPCGame}
-		RUNTIME
-		DESTINATION "${JKAInstallDir}/OpenJK"
-		COMPONENT ${JKAMPCoreComponent})
-
-	# Use OpenJK modules as default
-	install(TARGETS ${MPCGame}
-		RUNTIME
-		DESTINATION "${JKAInstallDir}/base"
-		COMPONENT ${JKAMPCoreComponent})
-else()
-	install(TARGETS ${MPCGame}
-		LIBRARY
-		DESTINATION "${JKAInstallDir}/OpenJK"
-		COMPONENT ${JKAMPCoreComponent})
-	install(TARGETS ${MPCGame}
-		LIBRARY
-		DESTINATION "${JKAInstallDir}/base"
-		COMPONENT ${JKAMPCoreComponent})
-endif()
-
+if(MSVC)
+	install(TARGETS ${MPCGame} RUNTIME DESTINATION "${JKAInstallDir}/mme")
+else(MSVC)
+	install(TARGETS ${MPCGame} LIBRARY DESTINATION "${JKAInstallDir}/mme")
+endif(MSVC)
 set_target_properties(${MPCGame} PROPERTIES COMPILE_DEFINITIONS "${MPCGameDefines}")
+set_target_properties(${MPCGame} PROPERTIES INCLUDE_DIRECTORIES "${MPCGameIncludeDirectories}")
 
 # Hide symbols not explicitly marked public.
 set_property(TARGET ${MPCGame} APPEND PROPERTY COMPILE_OPTIONS ${OPENJK_VISIBILITY_FLAGS})
 
 set_target_properties(${MPCGame} PROPERTIES INCLUDE_DIRECTORIES "${MPCGameIncludeDirectories}")
-set_target_properties(${MPCGame} PROPERTIES PROJECT_LABEL "MP Client Game Library")
+set_target_properties(${MPCGame} PROPERTIES PROJECT_LABEL "cgame")
 # no libraries used
 if(MPCGameLibraries)
 	target_link_libraries(${MPCGame} ${MPCGameLibraries})

@@ -392,6 +392,22 @@ void RE_RotatePic ( float x, float y, float w, float h,
 RE_RotatePic2
 =============
 */
+void RE_RotatePic2RatioFix ( float ratio ) {
+	rotatePicRatioFixCommand_t	*cmd;
+
+	cmd = (rotatePicRatioFixCommand_t *) R_GetCommandBuffer( sizeof( *cmd ) );
+	if ( !cmd ) {
+		return;
+	}
+	cmd->commandId = RC_ROTATE_PIC2_RATIOFIX;
+	cmd->ratio = ratio;
+}
+
+/*
+=============
+RE_RotatePic2
+=============
+*/
 void RE_RotatePic2 ( float x, float y, float w, float h,
 					  float s1, float t1, float s2, float t2,float a, qhandle_t hShader ) {
 	rotatePicCommand_t	*cmd;
@@ -578,8 +594,8 @@ void RE_BeginFrame( stereoFrame_t stereoFrame ) {
 		thisFrame->sync = NULL;
 
 		// Perform readback operations
-		if (thisFrame->screenshotReadback.pbo > 0)
-			R_SaveScreenshot(&thisFrame->screenshotReadback);
+//		if (thisFrame->screenshotReadback.pbo > 0)
+//			R_SaveScreenshot(&thisFrame->screenshotReadback);
 
 		// Resets resources
 		for (byte i = 0; i < MAX_SCENES; i++)
@@ -614,6 +630,10 @@ void RE_BeginFrame( stereoFrame_t stereoFrame ) {
 	tr.fogsUboOffset = -1;
 	tr.lightsUboOffset = -1;
 	tr.sceneUboOffset = -1;
+//entTODO: find out
+//	backEnd.doneBloom = qfalse;
+//	backEnd.doneSurfaces = qfalse;
+//	backEnd.sceneZfar = 2048;
 
 	//
 	// do overdraw measurement
@@ -681,6 +701,15 @@ void RE_BeginFrame( stereoFrame_t stereoFrame ) {
 		GLenum err = qglGetError();
 		if ( err != GL_NO_ERROR )
 			Com_Error( ERR_FATAL, "RE_BeginFrame() - glGetError() failed (0x%x)!\n", err );
+	}
+
+	if ( mme_worldShader->modified) {
+		if (R_FindShaderText( mme_worldShader->string )) {
+			tr.mmeWorldShader = R_FindShader( mme_worldShader->string, lightmapsNone, stylesDefault, qtrue );
+		} else {
+			tr.mmeWorldShader = 0;
+		}
+		mme_worldShader->modified = qfalse;
 	}
 
 	if (glConfig.stereoEnabled) {
@@ -838,32 +867,4 @@ void RE_EndFrame( int *frontEndMsec, int *backEndMsec ) {
 		*backEndMsec = backEnd.pc.msec;
 	}
 	backEnd.pc.msec = 0;
-}
-
-/*
-=============
-RE_TakeVideoFrame
-=============
-*/
-void RE_TakeVideoFrame( int width, int height,
-		byte *captureBuffer, byte *encodeBuffer, qboolean motionJpeg )
-{
-	videoFrameCommand_t	*cmd;
-
-	if( !tr.registered ) {
-		return;
-	}
-
-	cmd = (videoFrameCommand_t *)R_GetCommandBuffer( sizeof( *cmd ) );
-	if( !cmd ) {
-		return;
-	}
-
-	cmd->commandId = RC_VIDEOFRAME;
-
-	cmd->width = width;
-	cmd->height = height;
-	cmd->captureBuffer = captureBuffer;
-	cmd->encodeBuffer = encodeBuffer;
-	cmd->motionJpeg = motionJpeg;
 }

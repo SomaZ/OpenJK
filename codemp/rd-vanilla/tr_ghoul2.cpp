@@ -734,7 +734,7 @@ public:
 	int				surfaceNum;
 	surfaceInfo_v	&rootSList;
 	shader_t		*cust_shader;
-	int				fogNum;
+	int64_t			fogNum;
 	qboolean		personalModel;
 	CBoneCache		*boneCache;
 	int				renderfx;
@@ -1101,7 +1101,7 @@ void G2_TimingModel(boneInfo_t &bone,int currentTime,int numFramesInFile,int &cu
 	}
 	else
 	{
-		time = (currentTime - bone.startTime) / 50.0f;
+		time = ((currentTime - bone.startTime) + G2API_GetTimeFraction()) / 50.0f;
 	}
 	if (time<0.0f)
 	{
@@ -1472,6 +1472,12 @@ void G2_TransformBone (int child,CBoneCache &BC)
 	boneInfo_v		&boneList = *BC.rootBoneList;
 	static int				j, boneListIndex;
 	int				angleOverride = 0;
+	int				incomingTime = BC.incomingTime;
+	float			incomingTimeFraction = G2API_GetTimeFraction();
+
+	// this should never happen
+	if (incomingTime != G2API_GetTime(0))
+		incomingTimeFraction = 0;
 
 #if DEBUG_G2_TIMING
 	bool printTiming=false;
@@ -1491,7 +1497,7 @@ void G2_TransformBone (int child,CBoneCache &BC)
 		// set blending stuff if we need to
 		if (boneList[boneListIndex].flags & BONE_ANIM_BLEND)
 		{
-			float blendTime = BC.incomingTime - boneList[boneListIndex].blendStart;
+			float blendTime = (incomingTime - boneList[boneListIndex].blendStart) + incomingTimeFraction;
 			// only set up the blend anim if we actually have some blend time left on this bone anim - otherwise we might corrupt some blend higher up the hiearchy
 			if (blendTime>=0.0f&&blendTime < boneList[boneListIndex].blendTime)
 			{
@@ -1514,7 +1520,7 @@ void G2_TransformBone (int child,CBoneCache &BC)
 		// should this animation be overridden by an animation in the bone list?
 		if ((boneList[boneListIndex].flags) & (BONE_ANIM_OVERRIDE_LOOP | BONE_ANIM_OVERRIDE))
 		{
-			G2_TimingModel(boneList[boneListIndex],BC.incomingTime,BC.header->numFrames,TB.currentFrame,TB.newFrame,TB.backlerp);
+			G2_TimingModel(boneList[boneListIndex],incomingTime,BC.header->numFrames,TB.currentFrame,TB.newFrame,TB.backlerp);
 		}
 #if DEBUG_G2_TIMING
 		printTiming=true;
@@ -1566,11 +1572,11 @@ void G2_TransformBone (int child,CBoneCache &BC)
 		char mess[1000];
 		if (TB.blendMode)
 		{
-			sprintf(mess,"b %2d %5d   %4d %4d %4d %4d  %f %f\n",boneListIndex,BC.incomingTime,(int)TB.newFrame,(int)TB.currentFrame,(int)TB.blendFrame,(int)TB.blendOldFrame,TB.backlerp,TB.blendLerp);
+			sprintf(mess,"b %2d %5d (%5d)   %4d %4d %4d %4d  %f %f\n",boneListIndex,BC.incomingTime,incomingTime,(int)TB.newFrame,(int)TB.currentFrame,(int)TB.blendFrame,(int)TB.blendOldFrame,TB.backlerp,TB.blendLerp);
 		}
 		else
 		{
-			sprintf(mess,"a %2d %5d   %4d %4d            %f\n",boneListIndex,BC.incomingTime,TB.newFrame,TB.currentFrame,TB.backlerp);
+			sprintf(mess,"a %2d %5d (%5d)   %4d %4d            %f\n",boneListIndex,BC.incomingTime,incomingTime,TB.newFrame,TB.currentFrame,TB.backlerp);
 		}
 		Com_OPrintf("%s",mess);
 		const boneInfo_t &bone=boneList[boneListIndex];
@@ -1621,7 +1627,7 @@ void G2_TransformBone (int child,CBoneCache &BC)
 	if (TB.blendMode)
 	{
 		float backlerp = TB.blendFrame - (int)TB.blendFrame;
-		float frontlerp = 1.0 - backlerp;
+		float frontlerp = 1.0f - backlerp;
 
 // 		MC_UnCompress(tbone[3].matrix,compBonePointer[bFrame->boneIndexes[child]].Comp);
 // 		MC_UnCompress(tbone[4].matrix,compBonePointer[boldFrame->boneIndexes[child]].Comp);
@@ -1735,7 +1741,7 @@ void G2_TransformBone (int child,CBoneCache &BC)
 
  			Multiply_3x4Matrix(&temp, &toMatrix,&skel->BasePoseMatInv); //dest first arg
 
-			float blendTime = BC.incomingTime - boneList[boneListIndex].boneBlendStart;
+			float blendTime = (incomingTime - boneList[boneListIndex].boneBlendStart) + incomingTimeFraction;
 			float blendLerp = (blendTime / boneList[boneListIndex].boneBlendTime);
 			if (blendLerp>0.0f)
 			{
@@ -1750,7 +1756,7 @@ void G2_TransformBone (int child,CBoneCache &BC)
 				{
 //					mdxaBone_t lerp;
 					// now do the blend into the destination
-					float blendFrontlerp = 1.0 - blendLerp;
+					float blendFrontlerp = 1.0f - blendLerp;
 	  				for ( j = 0 ; j < 12 ; j++ )
 					{
   						((float *)&bone)[j] = (blendLerp * ((float *)&temp)[j])
@@ -1768,10 +1774,10 @@ void G2_TransformBone (int child,CBoneCache &BC)
 			Multiply_3x4Matrix(&firstPass, &BC.mFinalBones[parent].boneMatrix, &tbone[2]);
 
 			// are we attempting to blend with the base animation? and still within blend time?
-			if (boneOverride.boneBlendTime && (((boneOverride.boneBlendTime + boneOverride.boneBlendStart) < BC.incomingTime)))
+			if (boneOverride.boneBlendTime && (((boneOverride.boneBlendTime + boneOverride.boneBlendStart) < incomingTime)))
 			{
 				// ok, we are supposed to be blending. Work out lerp
-				float blendTime = BC.incomingTime - boneList[boneListIndex].boneBlendStart;
+				float blendTime = (incomingTime - boneList[boneListIndex].boneBlendStart) + incomingTimeFraction;
 				float blendLerp = (blendTime / boneList[boneListIndex].boneBlendTime);
 
 				if (blendLerp <= 1)
@@ -1820,7 +1826,7 @@ void G2_TransformBone (int child,CBoneCache &BC)
  					Multiply_3x4Matrix(&temp, &newMatrixTemp,&skel->BasePoseMatInv);
 
 					// now do the blend into the destination
-					float blendFrontlerp = 1.0 - blendLerp;
+					float blendFrontlerp = 1.0f - blendLerp;
 	  				for ( j = 0 ; j < 12 ; j++ )
 					{
   						((float *)&bone)[j] = (blendLerp * ((float *)&temp)[j])
@@ -1873,6 +1879,36 @@ void G2_TransformBone (int child,CBoneCache &BC)
  				Multiply_3x4Matrix(&bone, &newMatrixTemp,&skel->BasePoseMatInv);
 			}
 		}
+	}
+	else if (angleOverride & BONE_ANGLES_MME_DELTA)
+	{
+		mdxaBone_t &bone = BC.mFinalBones[child].boneMatrix;
+		boneInfo_t &boneOverride = boneList[boneListIndex];
+
+		mdxaBone_t temp, firstPass;
+
+		// give us the matrix the animation thinks we should have, so we can get the correct X&Y coors
+		Multiply_3x4Matrix(&firstPass, &BC.mFinalBones[parent].boneMatrix, &tbone[2]);
+
+		Multiply_3x4Matrix(&temp,&firstPass, &skel->BasePoseMat);
+		float	matrixScale = VectorLength((float*)&temp);
+
+		mdxaBone_t	newMatrixTemp;
+		
+		Multiply_3x4Matrix(&newMatrixTemp, &temp, &boneOverride.matrix);
+		//for (int i=0; i<3;i++)
+		//{
+		//	for(int x=0;x<3; x++)
+		//	{
+		//		newMatrixTemp.matrix[i][x] = boneOverride.matrix.matrix[i][x]*matrixScale;
+		//	}
+		//}
+
+		//newMatrixTemp.matrix[0][3] = temp.matrix[0][3];
+		//newMatrixTemp.matrix[1][3] = temp.matrix[1][3]; 
+		//newMatrixTemp.matrix[2][3] = temp.matrix[2][3];
+
+		Multiply_3x4Matrix(&bone, &newMatrixTemp,&skel->BasePoseMatInv);
 	}
 	else if (angleOverride & BONE_ANGLES_PREMULT)
 	{
@@ -3811,8 +3847,8 @@ void RB_SurfaceGhoul( CRenderableSurface *surf )
 	// the glow is rendered _second_!!! If that changes, change this!
 	extern bool g_bRenderGlowingObjects;
 	extern bool g_bDynamicGlowSupported;
-	if ( !tess.shader->hasGlow || g_bRenderGlowingObjects || !g_bDynamicGlowSupported || !r_DynamicGlow->integer )
-	{
+	if ((!tess.shader->hasGlow || g_bRenderGlowingObjects || !g_bDynamicGlowSupported || !r_DynamicGlow->integer)
+	&& (!tr.capturingMultiPass || (tr.capturingMultiPass && tr.latestMultiPassFrame))) {
 		delete storeSurf;
 	}
 #endif

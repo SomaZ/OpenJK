@@ -429,12 +429,32 @@ static void RB_SurfaceBeam( void )
 
 	qglColor3f( 1, 0, 0 );
 
+#ifdef HAVE_GLES
+	GLboolean text = qglIsEnabled(GL_TEXTURE_COORD_ARRAY);
+	GLboolean glcol = qglIsEnabled(GL_COLOR_ARRAY);
+	if (glcol)
+		qglDisableClientState(GL_COLOR_ARRAY);
+	if (text)
+		qglDisableClientState(GL_TEXTURE_COORD_ARRAY);
+	GLfloat vtx[NUM_BEAM_SEGS * 6 + 6];
+	for (i = 0; i <= NUM_BEAM_SEGS; i++) {
+		memcpy(vtx + i * 6, start_points[i % NUM_BEAM_SEGS], sizeof(GLfloat) * 3);
+		memcpy(vtx + i * 6 + 3, end_points[i % NUM_BEAM_SEGS], sizeof(GLfloat) * 3);
+	}
+	qglVertexPointer(3, GL_FLOAT, 0, vtx);
+	qglDrawArrays(GL_TRIANGLE_STRIP, 0, NUM_BEAM_SEGS * 2 + 2);
+	if (glcol)
+		qglEnableClientState(GL_COLOR_ARRAY);
+	if (text)
+		qglEnableClientState(GL_TEXTURE_COORD_ARRAY);
+#else
 	qglBegin( GL_TRIANGLE_STRIP );
 	for ( i = 0; i <= NUM_BEAM_SEGS; i++ ) {
 		qglVertex3fv( start_points[ i % NUM_BEAM_SEGS] );
 		qglVertex3fv( end_points[ i % NUM_BEAM_SEGS] );
 	}
 	qglEnd();
+#endif
 }
 
 //------------------
@@ -479,7 +499,7 @@ static void RB_SurfaceSaberGlow()
 	{
 		VectorMA( e->origin, i, e->axis[0], end );
 
-		DoSprite( end, e->radius, 0.0f );//Q_flrand(0.0f, 1.0f) * 360.0f );
+		DoSprite( end, e->radius, 0.0f );//random() * 360.0f );
 		e->radius += 0.017f;
 	}
 
@@ -886,14 +906,14 @@ static float Q_crandom( int *seed ) {
 static void CreateShape()
 //----------------------------------------------------------------------------
 {
-	VectorSet( sh1, 0.66f + Q_flrand(-1.0f, 1.0f) * 0.1f,	// fwd
-				0.07f + Q_flrand(-1.0f, 1.0f) * 0.025f,
-				0.07f + Q_flrand(-1.0f, 1.0f) * 0.025f );
+	VectorSet( sh1, 0.66f + crandom() * 0.1f,	// fwd
+				0.07f + crandom() * 0.025f,
+				0.07f + crandom() * 0.025f );
 
 	// it seems to look best to have a point on one side of the ideal line, then the other point on the other side.
-	VectorSet( sh2, 0.33f + Q_flrand(-1.0f, 1.0f) * 0.1f,	// fwd
-					-sh1[1] + Q_flrand(-1.0f, 1.0f) * 0.02f,	// forcing point to be on the opposite side of the line -- right
-					-sh1[2] + Q_flrand(-1.0f, 1.0f) * 0.02f );// up
+	VectorSet( sh2, 0.33f + crandom() * 0.1f,	// fwd
+					-sh1[1] + crandom() * 0.02f,	// forcing point to be on the opposite side of the line -- right
+					-sh1[2] + crandom() * 0.02f );// up
 }
 
 //----------------------------------------------------------------------------
@@ -1054,7 +1074,7 @@ static void RB_SurfaceElectricity()
 	// see if we should grow from start to end
 	if ( e->renderfx & RF_GROW )
 	{
-		perc = 1.0f - ( e->axis[0][2]/*endTime*/ - tr.refdef.time ) / e->axis[0][1]/*duration*/;
+		perc = 1.0f - ( ( e->axis[0][2]/*endTime*/ - tr.refdef.time ) - tr.refdef.timeFraction/*or e->axis[1][0]; timeFraction*/ ) / e->axis[0][1]/*duration*/;
 
 		if ( perc > 1.0f )
 		{
@@ -1149,7 +1169,7 @@ static void LerpMeshVertexes (md3Surface_t *surf, float backlerp)
 	float	oldXyzScale, newXyzScale;
 	float	oldNormalScale, newNormalScale;
 	int		vertNum;
-	unsigned lat, lng;
+	double	lat, lng;
 	int		numVerts;
 
 	outXyz = tess.xyz[tess.numVertexes];
@@ -1179,15 +1199,20 @@ static void LerpMeshVertexes (md3Surface_t *surf, float backlerp)
 
 			lat = ( newNormals[0] >> 8 ) & 0xff;
 			lng = ( newNormals[0] & 0xff );
-			lat *= (FUNCTABLE_SIZE/256);
-			lng *= (FUNCTABLE_SIZE/256);
+//			lat *= (FUNCTABLE_SIZE/256);
+//			lng *= (FUNCTABLE_SIZE/256);
+			lat /= 256;
+			lng /= 256;
 
 			// decode X as cos( lat ) * sin( long )
 			// decode Y as sin( lat ) * sin( long )
 			// decode Z as cos( long )
-			outNormal[0] = tr.sinTable[(lat+(FUNCTABLE_SIZE/4))&FUNCTABLE_MASK] * tr.sinTable[lng];
+/*			outNormal[0] = tr.sinTable[(lat+(FUNCTABLE_SIZE/4))&FUNCTABLE_MASK] * tr.sinTable[lng];
 			outNormal[1] = tr.sinTable[lat] * tr.sinTable[lng];
-			outNormal[2] = tr.sinTable[(lng+(FUNCTABLE_SIZE/4))&FUNCTABLE_MASK];
+			outNormal[2] = tr.sinTable[(lng+(FUNCTABLE_SIZE/4))&FUNCTABLE_MASK];*/
+			outNormal[0] = NewCosTable(lat) * NewSinTable(lng);
+			outNormal[1] = NewSinTable(lat) * NewSinTable(lng);
+			outNormal[2] = NewCosTable(lng);
 		}
 	} else {
 		//
@@ -1214,20 +1239,31 @@ static void LerpMeshVertexes (md3Surface_t *surf, float backlerp)
 			// FIXME: interpolate lat/long instead?
 			lat = ( newNormals[0] >> 8 ) & 0xff;
 			lng = ( newNormals[0] & 0xff );
-			lat *= 4;
-			lng *= 4;
-			uncompressedNewNormal[0] = tr.sinTable[(lat+(FUNCTABLE_SIZE/4))&FUNCTABLE_MASK] * tr.sinTable[lng];
+//			lat *= 4;
+//			lng *= 4;
+			lat /= 256;
+			lng /= 256;
+
+/*			uncompressedNewNormal[0] = tr.sinTable[(lat+(FUNCTABLE_SIZE/4))&FUNCTABLE_MASK] * tr.sinTable[lng];
 			uncompressedNewNormal[1] = tr.sinTable[lat] * tr.sinTable[lng];
-			uncompressedNewNormal[2] = tr.sinTable[(lng+(FUNCTABLE_SIZE/4))&FUNCTABLE_MASK];
+			uncompressedNewNormal[2] = tr.sinTable[(lng+(FUNCTABLE_SIZE/4))&FUNCTABLE_MASK];*/
+			uncompressedNewNormal[0] = NewCosTable(lat) * NewSinTable(lng);
+			uncompressedNewNormal[1] = NewSinTable(lat) * NewSinTable(lng);
+			uncompressedNewNormal[2] = NewCosTable(lng);
 
 			lat = ( oldNormals[0] >> 8 ) & 0xff;
 			lng = ( oldNormals[0] & 0xff );
-			lat *= 4;
-			lng *= 4;
+//			lat *= 4;
+//			lng *= 4;
+			lat /= 256;
+			lng /= 256;
 
-			uncompressedOldNormal[0] = tr.sinTable[(lat+(FUNCTABLE_SIZE/4))&FUNCTABLE_MASK] * tr.sinTable[lng];
+/*			uncompressedOldNormal[0] = tr.sinTable[(lat+(FUNCTABLE_SIZE/4))&FUNCTABLE_MASK] * tr.sinTable[lng];
 			uncompressedOldNormal[1] = tr.sinTable[lat] * tr.sinTable[lng];
-			uncompressedOldNormal[2] = tr.sinTable[(lng+(FUNCTABLE_SIZE/4))&FUNCTABLE_MASK];
+			uncompressedOldNormal[2] = tr.sinTable[(lng+(FUNCTABLE_SIZE/4))&FUNCTABLE_MASK];*/
+			uncompressedOldNormal[0] = NewCosTable(lat) * NewSinTable(lng);
+			uncompressedOldNormal[1] = NewSinTable(lat) * NewSinTable(lng);
+			uncompressedOldNormal[2] = NewCosTable(lng);
 
 			outNormal[0] = uncompressedOldNormal[0] * oldNormalScale + uncompressedNewNormal[0] * newNormalScale;
 			outNormal[1] = uncompressedOldNormal[1] * oldNormalScale + uncompressedNewNormal[1] * newNormalScale;
@@ -1571,6 +1607,37 @@ static void RB_SurfaceAxis( void ) {
 	GL_Bind( tr.whiteImage );
 	GL_State( GLS_DEFAULT );
 	qglLineWidth( 3 );
+#ifdef HAVE_GLES
+	static GLfloat col[] = {
+		1.0f,0.0f,0.0f, 1.0f,
+		1.0f,0.0f,0.0f, 1.0f,
+		0.0f,1.0f,0.0f, 1.0f,
+		0.0f,1.0f,0.0f, 1.0f,
+		0.0f,0.0f,1.0f, 1.0f,
+		0.0f,0.0f,1.0f, 1.0f
+	};
+	static GLfloat vtx[] = {
+		0.0f,0.0f,0.0f,
+		16.0f,0.0f,0.0f,
+		0.0f,0.0f,0.0f,
+		0.0f,16.0f,0.0f,
+		0.0f,0.0f,0.0f,
+		0.0f,0.0f,16.0f
+	};
+	GLboolean text = qglIsEnabled(GL_TEXTURE_COORD_ARRAY);
+	GLboolean glcol = qglIsEnabled(GL_COLOR_ARRAY);
+	if (text)
+		qglDisableClientState(GL_TEXTURE_COORD_ARRAY);
+	if (!glcol)
+		qglEnableClientState(GL_COLOR_ARRAY);
+	qglColorPointer(4, GL_UNSIGNED_BYTE, 0, col);
+	qglVertexPointer(3, GL_FLOAT, 0, vtx);
+	qglDrawArrays(GL_LINES, 0, 6);
+	if (text)
+		qglEnableClientState(GL_TEXTURE_COORD_ARRAY);
+	if (!glcol)
+		qglDisableClientState(GL_COLOR_ARRAY);
+#else
 	qglBegin( GL_LINES );
 	qglColor3f( 1,0,0 );
 	qglVertex3f( 0,0,0 );
@@ -1582,6 +1649,7 @@ static void RB_SurfaceAxis( void ) {
 	qglVertex3f( 0,0,0 );
 	qglVertex3f( 0,0,16 );
 	qglEnd();
+#endif
 	qglLineWidth( 1 );
 }
 
@@ -1692,6 +1760,9 @@ static bool RB_TestZFlare( vec3_t point) {
 	float			screenZ;
 
 	// read back the z buffer contents
+#if defined(HAVE_GLES)
+	depth = 0.0f;
+#else
 	if ( r_flares->integer !=1 ) {	//skipping the the z-test
 		return true;
 	}
@@ -1699,6 +1770,7 @@ static bool RB_TestZFlare( vec3_t point) {
 	// don't bother with another sync
 	glState.finishCalled = qfalse;
 	qglReadPixels( backEnd.viewParms.viewportX + window[0],backEnd.viewParms.viewportY + window[1], 1, 1, GL_DEPTH_COMPONENT, GL_FLOAT, &depth );
+#endif
 
 	screenZ = backEnd.viewParms.projectionMatrix[14] /
 		( ( 2*depth - 1 ) * backEnd.viewParms.projectionMatrix[11] - backEnd.viewParms.projectionMatrix[10] );
@@ -1764,7 +1836,11 @@ void RB_SurfaceFlare( srfFlare_t *surf ) {
 void RB_SurfaceDisplayList( srfDisplayList_t *surf ) {
 	// all appropriate state must be set in RB_BeginSurface
 	// this isn't implemented yet...
+#ifdef HAVE_GLES
+	assert(0);
+#else
 	qglCallList( surf->listNum );
+#endif
 }
 
 void RB_SurfaceSkip( void *surf ) {

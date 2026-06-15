@@ -30,7 +30,7 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 #include "../qcommon/qcommon.h"
 #include "../ghoul2/ghoul2_shared.h"
 
-#define	REF_API_VERSION 9
+#define	REF_API_VERSION 400
 
 //
 // these are the functions exported by the refresh module
@@ -108,7 +108,7 @@ typedef struct refexport_s {
 	int					(*Font_StrLenPixels)					( const char *text, const int iFontIndex, const float scale );
 	int					(*Font_StrLenChars)						( const char *text );
 	int					(*Font_HeightPixels)					( const int iFontIndex, const float scale );
-	void				(*Font_DrawString)						( int ox, int oy, const char *text, const float *rgba, const int setIndex, int iCharLimit, const float scale );
+	void				(*Font_DrawString)						( float ox, float oy, const char *text, const float *rgba, const int setIndex, int iCharLimit, const float scale );
 	qboolean			(*Language_IsAsian)						( void );
 	qboolean			(*Language_UsesSpaces)					( void );
 	unsigned int		(*AnyLanguage_ReadCharFromString)		( const char *psText, int *piAdvanceCount, qboolean *pbIsTrailingPunctuation/* = NULL*/ );
@@ -136,9 +136,6 @@ typedef struct refexport_s {
 	int					(*RegisterMedia_GetLevel)				( void );
 	qboolean			(*RegisterImages_LevelLoadEnd)			( void );
 	qboolean			(*RegisterModels_LevelLoadEnd)			( qboolean bDeleteEverythingNotUsedThisLevel );
-
-	// AVI recording
-	void				(*TakeVideoFrame)						( int h, int w, byte* captureBuffer, byte *encodeBuffer, qboolean motionJpeg );
 
 	// G2 stuff
 	void				(*InitSkins)							( void );
@@ -229,6 +226,7 @@ typedef struct refexport_s {
 	qboolean			(*G2API_SetSkin)						( CGhoul2Info_v& ghoul2, int modelIndex, qhandle_t customSkin, qhandle_t renderSkin );
 	qboolean			(*G2API_SetSurfaceOnOff)				( CGhoul2Info_v &ghoul2, const char *surfaceName, const int flags );
 	void				(*G2API_SetTime)						( int currentTime, int clock );
+	void				(*G2API_SetTimeFraction)				( float timeFraction );
 	qboolean			(*G2API_SkinlessModel)					( CGhoul2Info_v& ghoul2, int modelIndex );
 	qboolean			(*G2API_StopBoneAngles)					( CGhoul2Info *ghlInfo, const char *boneName );
 	qboolean			(*G2API_StopBoneAnglesIndex)			( CGhoul2Info *ghlInfo, const int index );
@@ -240,6 +238,14 @@ typedef struct refexport_s {
 	void				(*G2API_AddSkinGore)					( CGhoul2Info_v &ghoul2, SSkinGoreData &gore );
 	void				(*G2API_ClearSkinGore)					( CGhoul2Info_v &ghoul2 );
 	#endif // _G2_GORE
+	//mme
+	void				(*Capture)								( const char *baseName, float fps, float focus, float radius );
+	void				(*BlurInfo)								( int* total, int* index );
+	void				(*TimeFraction)							( float timeFraction );
+	void				(*DemoRandomSeed)						( int time, float timeFraction );
+	void				(*ExtendedColors)						( colorTable_t cTable );
+	void				(*FontRatioFix)							( float ratio );
+	void				(*RotatePic2RatioFix)					( float ratio );
 
 	struct {
 		float				(*Font_StrLenPixels)					( const char *text, const int iFontIndex, const float scale );
@@ -292,13 +298,24 @@ typedef struct refimport_s {
 	long			(*FS_ReadFile)						( const char *qpath, void **buffer );
 	void			(*FS_FCloseFile)					( fileHandle_t f );
 	long			(*FS_FOpenFileRead)					( const char *qpath, fileHandle_t *file, qboolean uniqueFILE );
-	fileHandle_t	(*FS_FOpenFileWrite)				( const char *qpath, qboolean safe );
+#ifdef USE_AIO
+	fileHandle_t	(*FS_FOpenFileWriteAsync)			( const char *qpath );
+#endif
+	fileHandle_t	(*FS_FOpenFileWrite)				( const char *qpat, qboolean safeh );
+	fileHandle_t	(*FS_FDirectOpenFileWrite)			( const char *filename, const char *mode );
 	int				(*FS_FOpenFileByMode)				( const char *qpath, fileHandle_t *f, fsMode_t mode );
 	qboolean		(*FS_FileExists)					( const char *file );
+	FILE *			(*FS_DirectOpen)					( const char *name, const char *mode );
+	qboolean		(*FS_FileErase)						( const char *file );
 	int				(*FS_FileIsInPAK)					( const char *filename, int *pChecksum );
 	char **			(*FS_ListFiles)						( const char *directory, const char *extension, int *numfiles );
+	int				(*FS_Seek)							( fileHandle_t f, long offset, int origin );
 	int				(*FS_Write)							( const void *buffer, int len, fileHandle_t f );
 	void			(*FS_WriteFile)						( const char *qpath, const void *buffer, int size );
+    fileHandle_t    (*FS_PipeOpen)                      (const char *qcmd, const char *qpath, const char *mode);
+    void			(*FS_PipeClose)                     (fileHandle_t f);
+    int				(*FS_PipeWrite)						(const void *buffer, int len, fileHandle_t f);
+
 	void			(*CM_BoxTrace)						( trace_t *results, const vec3_t start, const vec3_t end, const vec3_t mins, const vec3_t maxs, clipHandle_t model, int brushmask, int capsule );
 	void			(*CM_DrawDebugSurface)				( void (*drawPoly)(int color, int numPoints, float *points) );
 	bool			(*CM_CullWorldBox)					( const cplane_t *frustum, const vec3pair_t bounds );
@@ -308,12 +325,9 @@ typedef struct refimport_s {
 	int				(*CM_PointLeafnum)					( const vec3_t p );
 	int				(*CM_PointContents)					( const vec3_t p, clipHandle_t model );
 	qboolean		(*Com_TheHunkMarkHasBeenMade)		( void );
-	void			(*S_RestartMusic)					( void );
-	qboolean		(*SND_RegisterAudio_LevelLoadEnd)	( qboolean bDeleteEverythingNotUsedThisLevel );
 	e_status		(*CIN_RunCinematic)					( int handle );
 	int				(*CIN_PlayCinematic)				( const char *arg0, int xpos, int ypos, int width, int height, int bits );
 	void			(*CIN_UploadCinematic)				( int handle );
-	void			(*CL_WriteAVIVideoFrame)			( const byte *imageBuffer, int size );
 
 	// g2 data access
 	char *			(*GetSharedMemory)					( void ); // cl.mSharedMemory
@@ -346,6 +360,7 @@ typedef struct refimport_s {
 	// Persistent data store
 	bool			(*PD_Store)							( const char *name, const void *data, size_t size );
 	const void *	(*PD_Load)							( const char *name, size_t *size );
+	qboolean		(*S_MMEAviImport)					(byte *out, int *size);
 } refimport_t;
 
 // this is the only function actually exported at the linker level

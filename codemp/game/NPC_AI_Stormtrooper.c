@@ -1,25 +1,3 @@
-/*
-===========================================================================
-Copyright (C) 2000 - 2013, Raven Software, Inc.
-Copyright (C) 2001 - 2013, Activision, Inc.
-Copyright (C) 2013 - 2015, OpenJK contributors
-
-This file is part of the OpenJK source code.
-
-OpenJK is free software; you can redistribute it and/or modify it
-under the terms of the GNU General Public License version 2 as
-published by the Free Software Foundation.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU General Public License for more details.
-
-You should have received a copy of the GNU General Public License
-along with this program; if not, see <http://www.gnu.org/licenses/>.
-===========================================================================
-*/
-
 #include "b_local.h"
 #include "g_nav.h"
 #include "anims.h"
@@ -82,7 +60,7 @@ void ST_AggressionAdjust( gentity_t *self, int change )
 	int	upper_threshold, lower_threshold;
 
 	self->NPC->stats.aggression += change;
-
+	
 	//FIXME: base this on initial NPC stats
 	if ( self->client->playerTeam == NPCTEAM_PLAYER )
 	{//good guys are less aggressive
@@ -143,7 +121,7 @@ enum
 
 static void ST_Speech( gentity_t *self, int speechType, float failChance )
 {
-	if ( Q_flrand(0.0f, 1.0f) < failChance )
+	if ( random() < failChance )
 	{
 		return;
 	}
@@ -309,12 +287,12 @@ static void ST_HoldPosition( void )
 	TIMER_Set( NPCS.NPC, "verifyCP", Q_irand( 1000, 3000 ) );//don't look for another one for a few seconds
 	NPC_FreeCombatPoint( NPCS.NPCInfo->combatPoint, qtrue );
 	//NPCInfo->combatPoint = -1;//???
-	if ( !trap->ICARUS_TaskIDPending( (sharedEntity_t *)NPCS.NPC, TID_MOVE_NAV ) )
+	if ( !trap_ICARUS_TaskIDPending( NPCS.NPC, TID_MOVE_NAV ) )
 	{//don't have a script waiting for me to get to my point, okay to stop trying and stand
 		AI_GroupUpdateSquadstates( NPCS.NPCInfo->group, NPCS.NPC, SQUAD_STAND_AND_SHOOT );
 		NPCS.NPCInfo->goalEntity = NULL;
 	}
-
+	
 	/*if ( TIMER_Done( NPC, "stand" ) )
 	{//FIXME: what if can't shoot from this pos?
 		TIMER_Set( NPC, "duck", Q_irand( 2000, 4000 ) );
@@ -329,10 +307,10 @@ void NPC_ST_SayMovementSpeech( void )
 	{
 		return;
 	}
-	if ( NPCS.NPCInfo->group &&
-		NPCS.NPCInfo->group->commander &&
-		NPCS.NPCInfo->group->commander->client &&
-		NPCS.NPCInfo->group->commander->client->NPC_class == CLASS_IMPERIAL &&
+	if ( NPCS.NPCInfo->group && 
+		NPCS.NPCInfo->group->commander && 
+		NPCS.NPCInfo->group->commander->client && 
+		NPCS.NPCInfo->group->commander->client->NPC_class == CLASS_IMPERIAL && 
 		!Q_irand( 0, 3 ) )
 	{//imperial (commander) gives the order
 		ST_Speech( NPCS.NPCInfo->group->commander, NPCS.NPCInfo->movementSpeech, NPCS.NPCInfo->movementSpeechChance );
@@ -365,13 +343,13 @@ static qboolean ST_Move( void )
 	NPCS.NPCInfo->combatMove = qtrue;//always move straight toward our goal
 
 	moved = NPC_MoveToGoal( qtrue );
-
+	
 	//Get the move info
 	NAV_GetLastMove( &info );
 
 	//FIXME: if we bump into another one of our guys and can't get around him, just stop!
 	//If we hit our target, then stop and fire!
-	if ( info.flags & NIF_COLLISION )
+	if ( info.flags & NIF_COLLISION ) 
 	{
 		if ( info.blocker == NPCS.NPC->enemy )
 		{
@@ -382,7 +360,7 @@ static qboolean ST_Move( void )
 	//If our move failed, then reset
 	if ( moved == qfalse )
 	{//FIXME: if we're going to a combat point, need to pick a different one
-		if ( !trap->ICARUS_TaskIDPending( (sharedEntity_t *)NPCS.NPC, TID_MOVE_NAV ) )
+		if ( !trap_ICARUS_TaskIDPending( NPCS.NPC, TID_MOVE_NAV ) )
 		{//can't transfer movegoal or stop when a script we're running is waiting to complete
 			if ( info.blocker && info.blocker->NPC && NPCS.NPCInfo->group != NULL && info.blocker->NPC->group == NPCS.NPCInfo->group )//(NPCInfo->aiFlags&NPCAI_BLOCKED) && NPCInfo->group != NULL )
 			{//dammit, something is in our way
@@ -398,7 +376,7 @@ static qboolean ST_Move( void )
 					}
 				}
 			}
-
+			
 			ST_HoldPosition();
 		}
 	}
@@ -429,7 +407,7 @@ static void NPC_ST_SleepShuffle( void )
 	//Automate some movement and noise
 	if ( TIMER_Done( NPCS.NPC, "shuffleTime" ) )
 	{
-
+		
 		//TODO: Play sleeping shuffle animation
 
 		//int	soundIndex = Q_irand( 0, 1 );
@@ -482,7 +460,8 @@ void NPC_BSST_Sleep( void )
 			gentity_t	*bestCl		= NULL;
 			gentity_t	*ent		= NULL;
 
-			for ( i=0; i<MAX_CLIENTS; i++ ) {
+			for ( i=0; i<MAX_CLIENTS; i++ )
+			{//Raz: Now we care about all clients >_>
 				ent = &g_entities[i];
 				if ( ent->inuse && ent->health > 0 && !(ent->client->ps.eFlags & EF_DEAD) &&
 					G_ClearLOS( NPCS.NPC, NPCS.NPC->s.origin, ent->s.origin ) )
@@ -613,7 +592,7 @@ qboolean NPC_CheckEnemyStealth( gentity_t *target )
 		light_level			= (255/MAX_LIGHT_INTENSITY); //( target->lightLevel / MAX_LIGHT_INTENSITY );
 		FOV_perc			= 1.0f - ( hAngle_perc + vAngle_perc ) * 0.5f;	//FIXME: Dunno about the average...
 		vis_rating			= 0.0f;
-
+		
 		//Too dark
 		if ( light_level < MIN_LIGHT_THRESHOLD )
 			return qfalse;
@@ -629,11 +608,11 @@ qboolean NPC_CheckEnemyStealth( gentity_t *target )
 		//Out of range
 		if ( dist_rating > 1.0f )
 			return qfalse;
-
+		
 		//Cap our speed checks
 		if ( speed_rating > 1.0f )
 			speed_rating = 1.0f;
-
+		
 
 		//Calculate the distance, fov and light influences
 		//...Visibilty linearly wanes over distance
@@ -642,15 +621,15 @@ qboolean NPC_CheckEnemyStealth( gentity_t *target )
 		fov_influence		= FOV_SCALE * ( 1.0f - FOV_perc );
 		//...Lack of light hides, abundance of light exposes
 		light_influence	= ( light_level - 0.5f ) * LIGHT_SCALE;
-
+		
 		//Calculate our base rating
 		target_rating		= dist_influence + fov_influence + light_influence;
-
+		
 		//Now award any final bonuses to this number
-		contents = trap->PointContents( targ_org, target->s.number );
+		contents = trap_PointContents( targ_org, target->s.number );
 		if ( contents&CONTENTS_WATER )
 		{
-			int myContents = trap->PointContents( NPCS.NPC->client->renderInfo.eyePoint, NPCS.NPC->s.number );
+			int myContents = trap_PointContents( NPCS.NPC->client->renderInfo.eyePoint, NPCS.NPC->s.number );
 			if ( !(myContents&CONTENTS_WATER) )
 			{//I'm not in water
 				if ( NPCS.NPC->client->NPC_class == CLASS_SWAMPTROOPER )
@@ -673,7 +652,7 @@ qboolean NPC_CheckEnemyStealth( gentity_t *target )
 				}
 			}
 		}
-		else
+		else 
 		{//not in water
 			if ( contents&CONTENTS_FOG )
 			{
@@ -692,8 +671,8 @@ qboolean NPC_CheckEnemyStealth( gentity_t *target )
 		if ( target_crouching )
 		{
 			target_rating *= 0.9f;	//10% bonus
-		}
-
+		}	
+	
 		//If he's violated the threshold, then realize him
 		//float difficulty_scale = 1.0f + (2.0f-g_npcspskill.value);//if playing on easy, 20% harder to be seen...?
 		if ( NPCS.NPC->client->NPC_class == CLASS_SWAMPTROOPER )
@@ -805,8 +784,8 @@ static qboolean NPC_ST_InvestigateEvent( int eventID, qboolean extraSuspicious )
 		if ( level.alertEvents[eventID].level == AEL_DISCOVERED && (NPCS.NPCInfo->scriptFlags&SCF_LOOK_FOR_ENEMIES) )
 		{
 			NPCS.NPCInfo->lastAlertID = level.alertEvents[eventID].ID;
-			if ( !level.alertEvents[eventID].owner ||
-				!level.alertEvents[eventID].owner->client ||
+			if ( !level.alertEvents[eventID].owner || 
+				!level.alertEvents[eventID].owner->client || 
 				level.alertEvents[eventID].owner->health <= 0 ||
 				level.alertEvents[eventID].owner->client->playerTeam != NPCS.NPC->client->enemyTeam )
 			{//not an enemy
@@ -869,7 +848,7 @@ static qboolean NPC_ST_InvestigateEvent( int eventID, qboolean extraSuspicious )
 			trace_t	trace;
 			VectorCopy( NPCS.NPCInfo->investigateGoal, end );
 			end[2] -= 512;//FIXME: not always right?  What if it's even higher, somehow?
-			trap->Trace( &trace, NPCS.NPCInfo->investigateGoal, NPCS.NPC->r.mins, NPCS.NPC->r.maxs, end, ENTITYNUM_NONE, ((NPCS.NPC->clipmask&~CONTENTS_BODY)|CONTENTS_BOTCLIP), qfalse, 0, 0 );
+			trap_Trace( &trace, NPCS.NPCInfo->investigateGoal, NPCS.NPC->r.mins, NPCS.NPC->r.maxs, end, ENTITYNUM_NONE, ((NPCS.NPC->clipmask&~CONTENTS_BODY)|CONTENTS_BOTCLIP) );
 			if ( trace.fraction >= 1.0f )
 			{//too high to even bother
 				//FIXME: look at them???
@@ -895,10 +874,10 @@ static qboolean NPC_ST_InvestigateEvent( int eventID, qboolean extraSuspicious )
 		//FIXME: only if have others in group... these should be responses?
 		if ( NPCS.NPCInfo->investigateDebounceTime+NPCS.NPCInfo->pauseTime > level.time )
 		{//was already investigating
-			if ( NPCS.NPCInfo->group &&
-				NPCS.NPCInfo->group->commander &&
-				NPCS.NPCInfo->group->commander->client &&
-				NPCS.NPCInfo->group->commander->client->NPC_class == CLASS_IMPERIAL &&
+			if ( NPCS.NPCInfo->group && 
+				NPCS.NPCInfo->group->commander && 
+				NPCS.NPCInfo->group->commander->client && 
+				NPCS.NPCInfo->group->commander->client->NPC_class == CLASS_IMPERIAL && 
 				!Q_irand( 0, 3 ) )
 			{
 				ST_Speech( NPCS.NPCInfo->group->commander, SPEECH_LOOK, 0 );//FIXME: "I'll go check it out" type sounds
@@ -966,7 +945,7 @@ static void ST_OffsetLook( float offset, vec3_t out )
 	angles[YAW] += offset;
 	AngleVectors( angles, forward, NULL, NULL );
 	VectorMA( NPCS.NPC->r.currentOrigin, 64, forward, out );
-
+	
 	CalcEntitySpot( NPCS.NPC, SPOT_HEAD, temp );
 	out[2] = temp[2];
 }
@@ -1063,7 +1042,7 @@ void NPC_BSST_Investigate( void )
 	{
 		NPCS.NPCInfo->tempBehavior = BS_DEFAULT;
 		NPCS.NPCInfo->goalEntity = UpdateGoal();
-
+		
 		NPC_UpdateAngles( qtrue, qtrue );
 		//Say something
 		ST_Speech( NPCS.NPC, SPEECH_GIVEUP, 0 );
@@ -1175,8 +1154,8 @@ void NPC_BSST_Patrol( void )
 	{//hack
 		if ( NPCS.ucmd.forwardmove || NPCS.ucmd.rightmove || NPCS.ucmd.upmove )
 		{//moving
-
-			if( (NPCS.NPC->client->ps.torsoTimer <= 0) || (NPCS.NPC->client->ps.torsoAnim == BOTH_STAND4) )
+	
+			if( (NPCS.NPC->client->ps.torsoTimer <= 0) || (NPCS.NPC->client->ps.torsoAnim == BOTH_STAND4) ) 			
 			{
 				if ( (NPCS.ucmd.buttons&BUTTON_WALKING) && !(NPCS.NPCInfo->scriptFlags&SCF_RUNNING) )
 				{//not running, only set upper anim
@@ -1205,7 +1184,7 @@ void NPC_BSST_Patrol( void )
 			/*
 			if ( NPC->weaponModel[0] > 0 )
 			{
-				trap->G2API_RemoveGhoul2Model( NPC->ghoul2, NPC->weaponModel[0] );
+				gi.G2API_RemoveGhoul2Model( NPC->ghoul2, NPC->weaponModel[0] );
 				NPC->weaponModel[0] = -1;
 			}
 			*/
@@ -1246,7 +1225,7 @@ ST_CheckMoveState
 static void ST_CheckMoveState( void )
 {
 
-	if ( trap->ICARUS_TaskIDPending( (sharedEntity_t *)NPCS.NPC, TID_MOVE_NAV ) )
+	if ( trap_ICARUS_TaskIDPending( NPCS.NPC, TID_MOVE_NAV ) )
 	{//moving toward a goal that a script is waiting on, so don't stop for anything!
 		move = qtrue;
 	}
@@ -1356,8 +1335,8 @@ static void ST_CheckMoveState( void )
 	if ( ( NPCS.NPCInfo->goalEntity != NPCS.NPC->enemy ) && ( NPCS.NPCInfo->goalEntity != NULL ) )
 	{
 		//Did we make it?
-		if ( NAV_HitNavGoal( NPCS.NPC->r.currentOrigin, NPCS.NPC->r.mins, NPCS.NPC->r.maxs, NPCS.NPCInfo->goalEntity->r.currentOrigin, 16, FlyingCreature( NPCS.NPC ) ) ||
-			( !trap->ICARUS_TaskIDPending( (sharedEntity_t *)NPCS.NPC, TID_MOVE_NAV ) && NPCS.NPCInfo->squadState == SQUAD_SCOUT && enemyLOS && enemyDist <= 10000 ) )
+		if ( NAV_HitNavGoal( NPCS.NPC->r.currentOrigin, NPCS.NPC->r.mins, NPCS.NPC->r.maxs, NPCS.NPCInfo->goalEntity->r.currentOrigin, 16, FlyingCreature( NPCS.NPC ) ) || 
+			( !trap_ICARUS_TaskIDPending( NPCS.NPC, TID_MOVE_NAV ) && NPCS.NPCInfo->squadState == SQUAD_SCOUT && enemyLOS && enemyDist <= 10000 ) )
 		{//either hit our navgoal or our navgoal was not a crucial (scripted) one (maybe a combat point) and we're scouting and found our enemy
 			int	newSquadState = SQUAD_STAND_AND_SHOOT;
 			//we got where we wanted to go, set timers based on why we were running
@@ -1462,7 +1441,7 @@ static void ST_CheckFireState( void )
 	}
 
 	//See if we should continue to fire on their last position
-	//!TIMER_Done( NPC, "stick" ) ||
+	//!TIMER_Done( NPC, "stick" ) || 
 	if ( !hitAlly //we're not going to hit an ally
 		&& enemyInFOV //enemy is in our FOV //FIXME: or we don't have a clear LOS?
 		&& NPCS.NPCInfo->enemyLastSeenTime > 0 //we've seen the enemy
@@ -1489,7 +1468,7 @@ static void ST_CheckFireState( void )
 					vec3_t	forward, end;
 					AngleVectors( NPCS.NPC->client->ps.viewangles, forward, NULL, NULL );
 					VectorMA( muzzle, 8192, forward, end );
-					trap->Trace( &tr, muzzle, vec3_origin, vec3_origin, end, NPCS.NPC->s.number, MASK_SHOT, qfalse, 0, 0 );
+					trap_Trace( &tr, muzzle, vec3_origin, vec3_origin, end, NPCS.NPC->s.number, MASK_SHOT );
 					VectorCopy( tr.endpos, impactPos );
 				}
 
@@ -1630,7 +1609,7 @@ void ST_TransferTimers( gentity_t *self, gentity_t *other )
 
 void ST_TransferMoveGoal( gentity_t *self, gentity_t *other )
 {
-	if ( trap->ICARUS_TaskIDPending( (sharedEntity_t *)self, TID_MOVE_NAV ) )
+	if ( trap_ICARUS_TaskIDPending( self, TID_MOVE_NAV ) )
 	{//can't transfer movegoal when a script we're running is waiting to complete
 		return;
 	}
@@ -1766,7 +1745,7 @@ void ST_Commander( void )
 	qboolean	runner = qfalse;
 	qboolean	enemyLost = qfalse;
 	qboolean	enemyProtected = qfalse;
-//	qboolean	scouting = qfalse;
+	qboolean	scouting = qfalse;
 	int			squadState;
 	int			curMemberNum, lastMemberNum;
 	float		avoidDist;
@@ -1778,7 +1757,7 @@ void ST_Commander( void )
 		return;
 	}
 
-	//FIXME: have this group commander check the enemy group (if any) and see if they have
+	//FIXME: have this group commander check the enemy group (if any) and see if they have 
 	//		superior numbers.  If they do, fall back rather than advance.  If you have
 	//		superior numbers, advance on them.
 	//FIXME: find the group commander and have him occasionally give orders when there is speech
@@ -1794,7 +1773,7 @@ void ST_Commander( void )
 		{
 			member = &g_entities[group->member[i].number];
 			SetNPCGlobals( member );
-			if ( trap->ICARUS_TaskIDPending( (sharedEntity_t *)NPCS.NPC, TID_MOVE_NAV ) )
+			if ( trap_ICARUS_TaskIDPending( NPCS.NPC, TID_MOVE_NAV ) )
 			{//running somewhere that a script requires us to go, don't break from that
 				continue;
 			}
@@ -1809,7 +1788,7 @@ void ST_Commander( void )
 			{
 				NPCS.NPCInfo->behaviorState = BS_DEFAULT;//BS_PATROL;
 			}
-			else if ( group->enemy->waypoint == WAYPOINT_NONE || (trap->Nav_GetPathCost( NPCS.NPC->waypoint, group->enemy->waypoint ) >= Q3_INFINITE) )
+			else if ( group->enemy->waypoint == WAYPOINT_NONE || (trap_Nav_GetPathCost( NPCS.NPC->waypoint, group->enemy->waypoint ) >= Q3_INFINITE) )
 			{
 				NPC_BSSearchStart( NPCS.NPC->waypoint, BS_SEARCH );
 			}
@@ -1849,8 +1828,8 @@ void ST_Commander( void )
 	//Okay, everyone is mad
 
 	//see if anyone is running
-	if ( group->numState[SQUAD_SCOUT] > 0 ||
-		group->numState[SQUAD_TRANSITION] > 0 ||
+	if ( group->numState[SQUAD_SCOUT] > 0 || 
+		group->numState[SQUAD_TRANSITION] > 0 || 
 		group->numState[SQUAD_RETREAT] > 0 )
 	{//someone is running
 		runner = qtrue;
@@ -1905,7 +1884,7 @@ void ST_Commander( void )
 		cpFlags = 0;
 		squadState = SQUAD_IDLE;
 		avoidDist = 0;
-	//	scouting = qfalse;
+		scouting = qfalse;
 
 		//get the next guy
 		member = &g_entities[group->member[i].number];
@@ -1920,13 +1899,13 @@ void ST_Commander( void )
 			continue;
 		}
 
-		if ( trap->ICARUS_TaskIDPending( (sharedEntity_t *)NPCS.NPC, TID_MOVE_NAV ) )
+		if ( trap_ICARUS_TaskIDPending( NPCS.NPC, TID_MOVE_NAV ) )
 		{//running somewhere that a script requires us to go
 			continue;
 		}
 
-		if ( NPCS.NPC->s.weapon == WP_NONE
-			&& NPCS.NPCInfo->goalEntity
+		if ( NPCS.NPC->s.weapon == WP_NONE 
+			&& NPCS.NPCInfo->goalEntity 
 			&& NPCS.NPCInfo->goalEntity == NPCS.NPCInfo->tempGoal
 			&& NPCS.NPCInfo->goalEntity->enemy
 			&& NPCS.NPCInfo->goalEntity->enemy->s.eType == ET_ITEM )
@@ -1943,7 +1922,7 @@ void ST_Commander( void )
 				continue;
 			}
 		}
-
+		
 		if ( !(NPCS.NPCInfo->scriptFlags&SCF_CHASE_ENEMIES) )
 		{//not allowed to do combat-movement
 			continue;
@@ -1964,7 +1943,7 @@ void ST_Commander( void )
 				}
 				continue;
 			}
-			if ( TIMER_Done( NPCS.NPC, "roamTime" ) && TIMER_Done( NPCS.NPC, "hideTime" ) && NPCS.NPC->health > 10 && !trap->InPVS( group->enemy->r.currentOrigin, NPCS.NPC->r.currentOrigin ) )
+			if ( TIMER_Done( NPCS.NPC, "roamTime" ) && TIMER_Done( NPCS.NPC, "hideTime" ) && NPCS.NPC->health > 10 && !trap_InPVS( group->enemy->r.currentOrigin, NPCS.NPC->r.currentOrigin ) )
 			{//cant even see enemy
 				//better go after him
 				cpFlags |= (CP_CLEAR|CP_COVER);
@@ -2000,7 +1979,7 @@ void ST_Commander( void )
 			}
 			else
 			{//not hit, see if there are other reasons we should run
-				if ( trap->InPVS( NPCS.NPC->r.currentOrigin, group->enemy->r.currentOrigin ) )
+				if ( trap_InPVS( NPCS.NPC->r.currentOrigin, group->enemy->r.currentOrigin ) )
 				{//in the same room as enemy
 					if ( NPCS.NPC->client->ps.weapon == WP_ROCKET_LAUNCHER &&
 						DistanceSquared( group->enemy->r.currentOrigin, NPCS.NPC->r.currentOrigin ) < MIN_ROCKET_DIST_SQUARED &&
@@ -2104,7 +2083,7 @@ void ST_Commander( void )
 					//ask where he went
 					if ( group->numState[SQUAD_SCOUT] <= 0 )
 					{
-					//	scouting = qtrue;
+						scouting = qtrue;
 						NPC_ST_StoreMovementSpeech( SPEECH_CHASE, 0.0f );
 					}
 					//Since no-one else has done this, I should be the closest one, so go after him...
@@ -2129,7 +2108,7 @@ void ST_Commander( void )
 				else
 				{//group can see and has been shooting at the enemy
 					//see if we should do something fancy?
-
+					
 					{//we're ready to move
 						if ( NPCS.NPCInfo->combatPoint == -1 )
 						{//we're not on a combat point
@@ -2330,7 +2309,7 @@ void ST_Commander( void )
 				}
 				//now try again
 				cp = NPC_FindCombatPoint( NPCS.NPC->r.currentOrigin, NPCS.NPC->r.currentOrigin, group->enemy->r.currentOrigin, cpFlags|CP_HAS_ROUTE, avoidDist, -1 );
-			}
+			} 
 			//see if we got a valid one
 			if ( cp != -1 )
 			{//found a combat point
@@ -2361,7 +2340,7 @@ void ST_Commander( void )
 					{//any other kind of transition between combat points
 						AI_GroupUpdateSquadstates( group, NPCS.NPC, SQUAD_TRANSITION );
 					}
-
+					
 					//unless we're trying to flee, walk slowly
 					if ( !(cpFlags_org&CP_FLEE) )
 					{
@@ -2383,7 +2362,7 @@ void ST_Commander( void )
 							NPC_ST_StoreMovementSpeech( SPEECH_OUTFLANK, -1 );
 						}
 					}
-					else
+					else 
 					{//okay, let's cheat
 						if ( group->numGroup > 1 )
 						{
@@ -2391,7 +2370,7 @@ void ST_Commander( void )
 							if ( !Q_irand( 0, 3 ) )
 							{//25% of the time, see if we're flanking the enemy
 								vec3_t	eDir2Me, eDir2CP;
-
+								
 								VectorSubtract( NPCS.NPC->r.currentOrigin, group->enemy->r.currentOrigin, eDir2Me );
 								VectorNormalize( eDir2Me );
 
@@ -2400,7 +2379,7 @@ void ST_Commander( void )
 
 								dot = DotProduct( eDir2Me, eDir2CP );
 							}
-
+							
 							if ( dot < 0.4 )
 							{//flanking!
 								NPC_ST_StoreMovementSpeech( SPEECH_OUTFLANK, -1 );
@@ -2494,15 +2473,15 @@ void NPC_BSST_Attack( void )
 			int commTime = GetTime ( startTime );
 			if ( commTime > 20 )
 			{
-				trap->Printf( S_COLOR_RED"ERROR: Commander time: %d\n", commTime );
+				gi.Printf( S_COLOR_RED"ERROR: Commander time: %d\n", commTime );
 			}
 			else if ( commTime > 10 )
 			{
-				trap->Printf( S_COLOR_YELLOW"WARNING: Commander time: %d\n", commTime );
+				gi.Printf( S_COLOR_YELLOW"WARNING: Commander time: %d\n", commTime );
 			}
 			else if ( commTime > 2 )
 			{
-				trap->Printf( S_COLOR_GREEN"Commander time: %d\n", commTime );
+				gi.Printf( S_COLOR_GREEN"Commander time: %d\n", commTime );
 			}
 #endif//	AI_TIMERS
 		}
@@ -2539,7 +2518,7 @@ void NPC_BSST_Attack( void )
 
 	if ( enemyDist < MIN_ROCKET_DIST_SQUARED )//128
 	{//enemy within 128
-		if ( (NPCS.NPC->client->ps.weapon == WP_FLECHETTE || NPCS.NPC->client->ps.weapon == WP_REPEATER) &&
+		if ( (NPCS.NPC->client->ps.weapon == WP_FLECHETTE || NPCS.NPC->client->ps.weapon == WP_REPEATER) && 
 			(NPCS.NPCInfo->scriptFlags & SCF_ALT_FIRE) )
 		{//shooting an explosive, but enemy too close, switch to primary fire
 			NPCS.NPCInfo->scriptFlags &= ~SCF_ALT_FIRE;
@@ -2586,7 +2565,7 @@ void NPC_BSST_Attack( void )
 				int hit = NPC_ShotEntity( NPCS.NPC->enemy, impactPos );
 				gentity_t *hitEnt = &g_entities[hit];
 
-				if ( hit == NPCS.NPC->enemy->s.number
+				if ( hit == NPCS.NPC->enemy->s.number 
 					|| ( hitEnt && hitEnt->client && hitEnt->client->playerTeam == NPCS.NPC->client->enemyTeam )
 					|| ( hitEnt && hitEnt->takedamage && ((hitEnt->r.svFlags&SVF_GLASS_BRUSH)||hitEnt->health < 40||NPCS.NPC->s.weapon == WP_EMPLACED_GUN) ) )
 				{//can hit enemy or enemy ally or will hit glass or other minor breakable (or in emplaced gun), so shoot anyway
@@ -2614,7 +2593,7 @@ void NPC_BSST_Attack( void )
 			}
 		}
 	}
-	else if ( trap->InPVS( NPCS.NPC->enemy->r.currentOrigin, NPCS.NPC->r.currentOrigin ) )
+	else if ( trap_InPVS( NPCS.NPC->enemy->r.currentOrigin, NPCS.NPC->r.currentOrigin ) )
 	{
 		NPCS.NPCInfo->enemyLastSeenTime = level.time;
 		faceEnemy = qtrue;
@@ -2745,10 +2724,10 @@ void NPC_BSST_Attack( void )
 				WeaponThink( qtrue );
 			}
 			//NASTY
-			if ( NPCS.NPC->s.weapon == WP_ROCKET_LAUNCHER
-				&& (NPCS.ucmd.buttons&BUTTON_ATTACK)
+			if ( NPCS.NPC->s.weapon == WP_ROCKET_LAUNCHER 
+				&& (NPCS.ucmd.buttons&BUTTON_ATTACK) 
 				&& !move
-				&& g_npcspskill.integer > 1
+				&& g_npcspskill.integer > 1 
 				&& !Q_irand( 0, 3 ) )
 			{//every now and then, shoot a homing rocket
 				NPCS.ucmd.buttons &= ~BUTTON_ATTACK;
@@ -2766,7 +2745,7 @@ void NPC_BSST_Default( void )
 	{
 		WeaponThink( qtrue );
 	}
-
+	
 	if( !NPCS.NPC->enemy )
 	{//don't have an enemy, look for one
 		NPC_BSST_Patrol();

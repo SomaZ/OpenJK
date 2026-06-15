@@ -1116,23 +1116,23 @@ static void CreateShape()
 //----------------------------------------------------------------------------
 {
 #ifndef REND2_SP
-	VectorSet( sh1, 0.66f + Q_flrand(-1.0f, 1.0f) * 0.1f,	// fwd
-				0.07f + Q_flrand(-1.0f, 1.0f) * 0.025f,
-				0.07f + Q_flrand(-1.0f, 1.0f) * 0.025f );
+	VectorSet( sh1, 0.66f + crandom() * 0.1f,	// fwd
+				0.07f + crandom() * 0.025f,
+				0.07f + crandom() * 0.025f );
 
 	// it seems to look best to have a point on one side of the ideal line, then the other point on the other side.
-	VectorSet( sh2, 0.33f + Q_flrand(-1.0f, 1.0f) * 0.1f,	// fwd
-					-sh1[1] + Q_flrand(-1.0f, 1.0f) * 0.02f,	// forcing point to be on the opposite side of the line -- right
-					-sh1[2] + Q_flrand(-1.0f, 1.0f) * 0.02f );// up
+	VectorSet( sh2, 0.33f + crandom() * 0.1f,	// fwd
+					-sh1[1] + crandom() * 0.02f,	// forcing point to be on the opposite side of the line -- right
+					-sh1[2] + crandom() * 0.02f );// up
 #else
-	VectorSet(sh1, 0.66f,// + Q_flrand(-1.0f, 1.0f) * 0.1f,	// fwd
-		0.08f + Q_flrand(-1.0f, 1.0f) * 0.02f,
-		0.08f + Q_flrand(-1.0f, 1.0f) * 0.02f);
+	VectorSet(sh1, 0.66f,// + crandom() * 0.1f,	// fwd
+		0.08f + crandom() * 0.02f,
+		0.08f + crandom() * 0.02f);
 
 	// it seems to look best to have a point on one side of the ideal line, then the other point on the other side.
-	VectorSet(sh2, 0.33f,// + Q_flrand(-1.0f, 1.0f) * 0.1f,	// fwd
-		-sh1[1] + Q_flrand(-1.0f, 1.0f) * 0.02f,	// forcing point to be on the opposite side of the line -- right
-		-sh1[2] + Q_flrand(-1.0f, 1.0f) * 0.02f);// up
+	VectorSet(sh2, 0.33f,// + crandom() * 0.1f,	// fwd
+		-sh1[1] + crandom() * 0.02f,	// forcing point to be on the opposite side of the line -- right
+		-sh1[2] + crandom() * 0.02f);// up
 #endif
 }
 
@@ -1328,9 +1328,9 @@ static void RB_SurfaceElectricity()
 	if ( e->renderfx & RF_GROW )
 	{
 #ifndef REND2_SP
-		perc = 1.0f - ( e->axis[0][2]/*endTime*/ - tr.refdef.time ) / e->axis[0][1]/*duration*/;
+		perc = 1.0f - ( ( e->axis[0][2]/*endTime*/ - tr.refdef.time ) - tr.refdef.timeFraction/*or e->axis[1][0]; timeFraction*/ ) / e->axis[0][1]/*duration*/;
 #else
-		perc = 1.0f - (e->endTime - tr.refdef.time) / e->angles[1]/*duration*/;
+		perc = 1.0f - ( e->endTime - tr.refdef.time ) / e->angles[1]/*duration*/;
 #endif
 		if ( perc > 1.0f )
 		{
@@ -2720,8 +2720,8 @@ static void RB_SurfaceSprites( srfSprites_t *surf )
 
 		tess.externalIBO = surf->ibo;
 
-		uint32_t RB_CreateSortKey(const DrawItem& item, int stage, int layer);
-		uint32_t key = RB_CreateSortKey(item, 0, surf->shader->sort);
+		uint64_t RB_CreateSortKey(const DrawItem& item, int stage, int layer);
+		uint64_t key = RB_CreateSortKey(item, 0, surf->shader->sort);
 		RB_AddDrawItem(backEndData->currentPass, key, item);
 
 		numDrawIndicesUndrawn -= drawIndices;

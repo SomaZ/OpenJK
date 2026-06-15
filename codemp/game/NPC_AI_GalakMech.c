@@ -1,25 +1,3 @@
-/*
-===========================================================================
-Copyright (C) 2000 - 2013, Raven Software, Inc.
-Copyright (C) 2001 - 2013, Activision, Inc.
-Copyright (C) 2013 - 2015, OpenJK contributors
-
-This file is part of the OpenJK source code.
-
-OpenJK is free software; you can redistribute it and/or modify it
-under the terms of the GNU General Public License version 2 as
-published by the Free Software Foundation.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU General Public License for more details.
-
-You should have received a copy of the GNU General Public License
-along with this program; if not, see <http://www.gnu.org/licenses/>.
-===========================================================================
-*/
-
 #include "b_local.h"
 #include "g_nav.h"
 #include "anims.h"
@@ -27,12 +5,14 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 
 extern void G_AddVoiceEvent( gentity_t *self, int event, int speakDebounceTime );
 extern void NPC_AimAdjust( int change );
-extern qboolean WP_LobFire( gentity_t *self, vec3_t start, vec3_t target, vec3_t mins, vec3_t maxs, int clipmask,
+extern qboolean WP_LobFire( gentity_t *self, vec3_t start, vec3_t target, vec3_t mins, vec3_t maxs, int clipmask, 
 				vec3_t velocity, qboolean tracePath, int ignoreEntNum, int enemyNum,
 				float minSpeed, float maxSpeed, float idealSpeed, qboolean mustHit );
 extern void G_SoundOnEnt (gentity_t *ent, soundChannel_t channel, const char *soundPath);
 
 extern qboolean BG_CrouchAnim( int anim );
+
+//extern void NPC_Mark1_Part_Explode(gentity_t *self,int bolt);
 
 #define MELEE_DIST_SQUARED 6400//80*80
 #define MIN_LOB_DIST_SQUARED 65536//256*256
@@ -123,7 +103,7 @@ static void GM_CreateExplosion( gentity_t *self, const int boltID, qboolean doSm
 		mdxaBone_t	boltMatrix;
 		vec3_t		org, dir;
 
-		trap->G2API_GetBoltMatrix( self->ghoul2, 0,
+		trap_G2API_GetBoltMatrix( self->ghoul2, 0, 
 					boltID,
 					&boltMatrix, self->r.currentAngles, self->r.currentOrigin, level.time,
 					NULL, self->modelScale );
@@ -162,53 +142,53 @@ void GM_Dying( gentity_t *self )
 			{
 			// Find place to generate explosion
 			case 1:
-				if (!trap->G2API_GetSurfaceRenderStatus( self->ghoul2, 0, "r_hand" ))
+				if (!trap_G2API_GetSurfaceRenderStatus( self->ghoul2, 0, "r_hand" ))
 				{//r_hand still there
-					GM_CreateExplosion( self, trap->G2API_AddBolt(self->ghoul2, 0, "*flasha"), qtrue );
+					GM_CreateExplosion( self, trap_G2API_AddBolt(self->ghoul2, 0, "*flasha"), qtrue );
 					NPC_SetSurfaceOnOff( self, "r_hand", TURN_OFF );
 				}
-				else if (!trap->G2API_GetSurfaceRenderStatus( self->ghoul2, 0, "r_arm_middle" ))
+				else if (!trap_G2API_GetSurfaceRenderStatus( self->ghoul2, 0, "r_arm_middle" ))
 				{//r_arm_middle still there
-					newBolt = trap->G2API_AddBolt( self->ghoul2, 0, "*r_arm_elbow" );
+					newBolt = trap_G2API_AddBolt( self->ghoul2, 0, "*r_arm_elbow" );
 					NPC_SetSurfaceOnOff( self, "r_arm_middle", TURN_OFF );
 				}
 				break;
 			case 2:
 				//FIXME: do only once?
-				if (!trap->G2API_GetSurfaceRenderStatus( self->ghoul2, 0, "l_hand" ))
+				if (!trap_G2API_GetSurfaceRenderStatus( self->ghoul2, 0, "l_hand" ))
 				{//l_hand still there
-					GM_CreateExplosion( self, trap->G2API_AddBolt(self->ghoul2, 0, "*flashc"), qfalse );
+					GM_CreateExplosion( self, trap_G2API_AddBolt(self->ghoul2, 0, "*flashc"), qfalse );
 					NPC_SetSurfaceOnOff( self, "l_hand", TURN_OFF );
 				}
-				else if (!trap->G2API_GetSurfaceRenderStatus( self->ghoul2, 0, "l_arm_wrist" ))
+				else if (!trap_G2API_GetSurfaceRenderStatus( self->ghoul2, 0, "l_arm_wrist" ))
 				{//l_arm_wrist still there
-					newBolt = trap->G2API_AddBolt( self->ghoul2, 0, "*l_arm_cap_l_hand" );
+					newBolt = trap_G2API_AddBolt( self->ghoul2, 0, "*l_arm_cap_l_hand" );
 					NPC_SetSurfaceOnOff( self, "l_arm_wrist", TURN_OFF );
 				}
-				else if (!trap->G2API_GetSurfaceRenderStatus( self->ghoul2, 0, "l_arm_middle" ))
+				else if (!trap_G2API_GetSurfaceRenderStatus( self->ghoul2, 0, "l_arm_middle" ))
 				{//l_arm_middle still there
-					newBolt = trap->G2API_AddBolt( self->ghoul2, 0, "*l_arm_cap_l_hand" );
+					newBolt = trap_G2API_AddBolt( self->ghoul2, 0, "*l_arm_cap_l_hand" );
 					NPC_SetSurfaceOnOff( self, "l_arm_middle", TURN_OFF );
 				}
-				else if (!trap->G2API_GetSurfaceRenderStatus( self->ghoul2, 0, "l_arm_augment" ))
+				else if (!trap_G2API_GetSurfaceRenderStatus( self->ghoul2, 0, "l_arm_augment" ))
 				{//l_arm_augment still there
-					newBolt = trap->G2API_AddBolt( self->ghoul2, 0, "*l_arm_elbow" );
+					newBolt = trap_G2API_AddBolt( self->ghoul2, 0, "*l_arm_elbow" );
 					NPC_SetSurfaceOnOff( self, "l_arm_augment", TURN_OFF );
 				}
 				break;
 			case 3:
 			case 4:
-				newBolt = trap->G2API_AddBolt( self->ghoul2, 0, "*hip_fr" );
+				newBolt = trap_G2API_AddBolt( self->ghoul2, 0, "*hip_fr" );
 				GM_CreateExplosion( self, newBolt, qfalse );
 				break;
 			case 5:
 			case 6:
-				newBolt = trap->G2API_AddBolt( self->ghoul2, 0, "*shldr_l" );
+				newBolt = trap_G2API_AddBolt( self->ghoul2, 0, "*shldr_l" );
 				GM_CreateExplosion( self, newBolt, qfalse );
 				break;
 			case 7:
 			case 8:
-				newBolt = trap->G2API_AddBolt( self->ghoul2, 0, "*uchest_r" );
+				newBolt = trap_G2API_AddBolt( self->ghoul2, 0, "*uchest_r" );
 				GM_CreateExplosion( self, newBolt, qfalse );
 				break;
 			case 9:
@@ -216,19 +196,19 @@ void GM_Dying( gentity_t *self )
 				GM_CreateExplosion( self, self->client->renderInfo.headBolt, qfalse );
 				break;
 			case 11:
-				newBolt = trap->G2API_AddBolt( self->ghoul2, 0, "*l_leg_knee" );
+				newBolt = trap_G2API_AddBolt( self->ghoul2, 0, "*l_leg_knee" );
 				GM_CreateExplosion( self, newBolt, qtrue );
 				break;
 			case 12:
-				newBolt = trap->G2API_AddBolt( self->ghoul2, 0, "*r_leg_knee" );
+				newBolt = trap_G2API_AddBolt( self->ghoul2, 0, "*r_leg_knee" );
 				GM_CreateExplosion( self, newBolt, qtrue );
 				break;
 			case 13:
-				newBolt = trap->G2API_AddBolt( self->ghoul2, 0, "*l_leg_foot" );
+				newBolt = trap_G2API_AddBolt( self->ghoul2, 0, "*l_leg_foot" );
 				GM_CreateExplosion( self, newBolt, qtrue );
 				break;
 			case 14:
-				newBolt = trap->G2API_AddBolt( self->ghoul2, 0, "*r_leg_foot" );
+				newBolt = trap_G2API_AddBolt( self->ghoul2, 0, "*r_leg_foot" );
 				GM_CreateExplosion( self, newBolt, qtrue );
 				break;
 			}
@@ -269,7 +249,7 @@ void NPC_GM_Pain(gentity_t *self, gentity_t *attacker, int damage)
 		/*
 		if ( (hitLoc==HL_GENERIC1) && (self->locationDamage[HL_GENERIC1] > GENERATOR_HEALTH) )
 		{
-			int newBolt = trap->G2API_AddBolt( &self->ghoul2[self->playerModel], "*antenna_base" );
+			int newBolt = gi.G2API_AddBolt( &self->ghoul2[self->playerModel], "*antenna_base" );
 			if ( newBolt != -1 )
 			{
 				GM_CreateExplosion( self, newBolt, qfalse );
@@ -382,7 +362,7 @@ GM_HoldPosition
 static void GM_HoldPosition( void )
 {
 	NPC_FreeCombatPoint( NPCS.NPCInfo->combatPoint, qtrue );
-	if ( !trap->ICARUS_TaskIDPending( (sharedEntity_t *)NPCS.NPC, TID_MOVE_NAV ) )
+	if ( !trap_ICARUS_TaskIDPending( NPCS.NPC, TID_MOVE_NAV ) )
 	{//don't have a script waiting for me to get to my point, okay to stop trying and stand
 		NPCS.NPCInfo->goalEntity = NULL;
 	}
@@ -401,13 +381,13 @@ static qboolean GM_Move( void )
 	NPCS.NPCInfo->combatMove = qtrue;//always move straight toward our goal
 
 	moved = NPC_MoveToGoal( qtrue );
-
+	
 	//Get the move info
 	NAV_GetLastMove( &info );
 
 	//FIXME: if we bump into another one of our guys and can't get around him, just stop!
 	//If we hit our target, then stop and fire!
-	if ( info.flags & NIF_COLLISION )
+	if ( info.flags & NIF_COLLISION ) 
 	{
 		if ( info.blocker == NPCS.NPC->enemy )
 		{
@@ -418,7 +398,7 @@ static qboolean GM_Move( void )
 	//If our move failed, then reset
 	if ( moved == qfalse )
 	{//FIXME: if we're going to a combat point, need to pick a different one
-		if ( !trap->ICARUS_TaskIDPending( (sharedEntity_t *)NPCS.NPC, TID_MOVE_NAV ) )
+		if ( !trap_ICARUS_TaskIDPending( NPCS.NPC, TID_MOVE_NAV ) )
 		{//can't transfer movegoal or stop when a script we're running is waiting to complete
 			GM_HoldPosition();
 		}
@@ -459,7 +439,7 @@ GM_CheckMoveState
 
 static void GM_CheckMoveState( void )
 {
-	if ( trap->ICARUS_TaskIDPending( (sharedEntity_t *)NPCS.NPC, TID_MOVE_NAV ) )
+	if ( trap_ICARUS_TaskIDPending( NPCS.NPC, TID_MOVE_NAV ) )
 	{//moving toward a goal that a script is waiting on, so don't stop for anything!
 		move4 = qtrue;
 	}
@@ -468,8 +448,8 @@ static void GM_CheckMoveState( void )
 	if ( ( NPCS.NPCInfo->goalEntity != NPCS.NPC->enemy ) && ( NPCS.NPCInfo->goalEntity != NULL ) )
 	{
 		//Did we make it?
-		if ( NAV_HitNavGoal( NPCS.NPC->r.currentOrigin, NPCS.NPC->r.mins, NPCS.NPC->r.maxs, NPCS.NPCInfo->goalEntity->r.currentOrigin, 16, qfalse ) ||
-			( !trap->ICARUS_TaskIDPending( (sharedEntity_t *)NPCS.NPC, TID_MOVE_NAV ) && enemyLOS4 && enemyDist4 <= 10000 ) )
+		if ( NAV_HitNavGoal( NPCS.NPC->r.currentOrigin, NPCS.NPC->r.mins, NPCS.NPC->r.maxs, NPCS.NPCInfo->goalEntity->r.currentOrigin, 16, qfalse ) || 
+			( !trap_ICARUS_TaskIDPending( NPCS.NPC, TID_MOVE_NAV ) && enemyLOS4 && enemyDist4 <= 10000 ) )
 		{//either hit our navgoal or our navgoal was not a crucial (scripted) one (maybe a combat point) and we're scouting and found our enemy
 			NPC_ReachedGoal();
 			//don't attack right away
@@ -519,7 +499,7 @@ static void GM_CheckFireState( void )
 					vec3_t	forward, end;
 					AngleVectors( NPCS.NPC->client->ps.viewangles, forward, NULL, NULL );
 					VectorMA( muzzle, 8192, forward, end );
-					trap->Trace( &tr, muzzle, vec3_origin, vec3_origin, end, NPCS.NPC->s.number, MASK_SHOT, qfalse, 0, 0 );
+					trap_Trace( &tr, muzzle, vec3_origin, vec3_origin, end, NPCS.NPC->s.number, MASK_SHOT );
 					VectorCopy( tr.endpos, impactPos4 );
 				}
 
@@ -622,7 +602,7 @@ void NPC_BSGM_Attack( void )
 
 #if 0
 	//FIXME: if killed enemy, use victory anim
-	if ( NPC->enemy && NPC->enemy->health <= 0
+	if ( NPC->enemy && NPC->enemy->health <= 0 
 		&& !NPC->enemy->s.number )
 	{//my enemy is dead
 		if ( NPC->client->ps.torsoAnim == BOTH_STAND2TO1 )
@@ -716,7 +696,7 @@ void NPC_BSGM_Attack( void )
 				VectorNormalize( smackDir );
 				//hurt them
 				G_Sound( NPCS.NPC->enemy, CHAN_AUTO, G_SoundIndex( "sound/weapons/galak/skewerhit.wav" ) );
-				G_Damage( NPCS.NPC->enemy, NPCS.NPC, NPCS.NPC, smackDir, NPCS.NPC->r.currentOrigin, (g_npcspskill.integer+1)*Q_irand( 5, 10), DAMAGE_NO_ARMOR|DAMAGE_NO_KNOCKBACK, MOD_CRUSH );
+				G_Damage( NPCS.NPC->enemy, NPCS.NPC, NPCS.NPC, smackDir, NPCS.NPC->r.currentOrigin, (g_npcspskill.integer+1)*Q_irand( 5, 10), DAMAGE_NO_ARMOR|DAMAGE_NO_KNOCKBACK, MOD_CRUSH ); 
 				if ( NPCS.NPC->client->ps.torsoAnim == BOTH_ATTACK4 )
 				{//smackdown
 					int knockAnim = BOTH_KNOCKDOWN1;
@@ -797,7 +777,7 @@ void NPC_BSGM_Attack( void )
 				trace_t	trace;
 				vec3_t	end, mins={-3,-3,-3}, maxs={3,3,3};
 				VectorMA( NPCS.NPC->client->renderInfo.muzzlePoint, 1024, NPCS.NPC->client->renderInfo.muzzleDir, end );
-				trap->Trace( &trace, NPCS.NPC->client->renderInfo.muzzlePoint, mins, maxs, end, NPCS.NPC->s.number, MASK_SHOT, qfalse, 0, 0 );
+				trap_Trace( &trace, NPCS.NPC->client->renderInfo.muzzlePoint, mins, maxs, end, NPCS.NPC->s.number, MASK_SHOT );
 				if ( trace.allsolid || trace.startsolid )
 				{//oops, in a wall
 					if ( NPCS.NPCInfo->coverTarg )
@@ -828,10 +808,10 @@ void NPC_BSGM_Attack( void )
 			}
 		}
 	}
-	else
+	else 
 	{//Okay, we're not in a special attack, see if we should switch weapons or start a special attack
 		/*
-		if ( NPC->s.weapon == WP_REPEATER
+		if ( NPC->s.weapon == WP_REPEATER 
 			&& !(NPCInfo->scriptFlags & SCF_ALT_FIRE)//using rapid-fire
 			&& NPC->enemy->s.weapon == WP_SABER //enemy using saber
 			&& NPC->client && (NPC->client->ps.saberEventFlags&SEF_DEFLECTED)
@@ -846,10 +826,10 @@ void NPC_BSGM_Attack( void )
 			}
 		}
 		else*/
-		if (// !NPC->client->ps.powerups[PW_GALAK_SHIELD]
+		if (// !NPC->client->ps.powerups[PW_GALAK_SHIELD] 
 			1 //rwwFIXMEFIXME: just act like the shield is down til the effects and stuff are done
-			&& enemyDist4 < MELEE_DIST_SQUARED
-			&& InFront( NPCS.NPC->enemy->r.currentOrigin, NPCS.NPC->r.currentOrigin, NPCS.NPC->client->ps.viewangles, 0.3f )
+			&& enemyDist4 < MELEE_DIST_SQUARED 
+			&& InFront( NPCS.NPC->enemy->r.currentOrigin, NPCS.NPC->r.currentOrigin, NPCS.NPC->client->ps.viewangles, 0.3f ) 
 			&& NPCS.NPC->enemy->localAnimIndex <= 1 )//within 80 and in front
 		{//our shield is down, and enemy within 80, if very close, use melee attack to slap away
 			if ( TIMER_Done( NPCS.NPC, "attackDelay" ) )
@@ -879,13 +859,13 @@ void NPC_BSGM_Attack( void )
 			&& TIMER_Done( NPCS.NPC, "attackDelay" )
 			&& InFront( NPCS.NPC->enemy->r.currentOrigin, NPCS.NPC->r.currentOrigin, NPCS.NPC->client->ps.viewangles, 0.3f )
 			&& ((!Q_irand( 0, 10*(2-g_npcspskill.integer))&& enemyDist4 > MIN_LOB_DIST_SQUARED&& enemyDist4 < MAX_LOB_DIST_SQUARED)
-				||(!TIMER_Done( NPCS.NPC, "noLob" )&&!TIMER_Done( NPCS.NPC, "noRapid" )))
+				||(!TIMER_Done( NPCS.NPC, "noLob" )&&!TIMER_Done( NPCS.NPC, "noRapid" ))) 
 			&& NPCS.NPC->enemy->s.weapon != WP_TURRET )
 		{//sometimes use the laser beam attack, but only after he's taken down our generator
 			shoot4 = qfalse;
 			NPC_GM_StartLaser();
 		}
-		else if ( enemyDist4 < MIN_LOB_DIST_SQUARED
+		else if ( enemyDist4 < MIN_LOB_DIST_SQUARED 
 			&& (NPCS.NPC->enemy->s.weapon != WP_TURRET || Q_stricmp( "PAS", NPCS.NPC->enemy->classname ))
 			&& TIMER_Done( NPCS.NPC, "noRapid" ) )//256
 		{//enemy within 256
@@ -933,7 +913,7 @@ void NPC_BSGM_Attack( void )
 			{
 				int hit = NPC_ShotEntity( NPCS.NPC->enemy, impactPos4 );
 				gentity_t *hitEnt = &g_entities[hit];
-				if ( hit == NPCS.NPC->enemy->s.number
+				if ( hit == NPCS.NPC->enemy->s.number 
 					|| ( hitEnt && hitEnt->client && hitEnt->client->playerTeam == NPCS.NPC->client->enemyTeam )
 					|| ( hitEnt && hitEnt->takedamage ) )
 				{//can hit enemy or will hit glass or other breakable, so shoot anyway
@@ -955,7 +935,7 @@ void NPC_BSGM_Attack( void )
 			}
 		}
 	}
-	else if ( trap->InPVS( NPCS.NPC->enemy->r.currentOrigin, NPCS.NPC->r.currentOrigin ) )
+	else if ( trap_InPVS( NPCS.NPC->enemy->r.currentOrigin, NPCS.NPC->r.currentOrigin ) )
 	{
 		int hit;
 		gentity_t *hitEnt;
@@ -995,7 +975,7 @@ void NPC_BSGM_Attack( void )
 
 		hit = NPC_ShotEntity( NPCS.NPC->enemy, impactPos4 );
 		hitEnt = &g_entities[hit];
-		if ( hit == NPCS.NPC->enemy->s.number
+		if ( hit == NPCS.NPC->enemy->s.number 
 			|| ( hitEnt && hitEnt->client && hitEnt->client->playerTeam == NPCS.NPC->client->enemyTeam )
 			|| ( hitEnt && hitEnt->takedamage ) )
 		{//can hit enemy or will hit glass or other breakable, so shoot anyway
@@ -1056,15 +1036,15 @@ void NPC_BSGM_Attack( void )
 		qboolean clearshot;
 
 		CalcEntitySpot( NPCS.NPC, SPOT_WEAPON, muzzle );
-
+		
 		VectorCopy( NPCS.NPC->enemy->r.currentOrigin, target );
 
-		target[0] += flrand( -5, 5 )+(Q_flrand(-1.0f, 1.0f)*(6-NPCS.NPCInfo->currentAim)*2);
-		target[1] += flrand( -5, 5 )+(Q_flrand(-1.0f, 1.0f)*(6-NPCS.NPCInfo->currentAim)*2);
-		target[2] += flrand( -5, 5 )+(Q_flrand(-1.0f, 1.0f)*(6-NPCS.NPCInfo->currentAim)*2);
+		target[0] += flrand( -5, 5 )+(crandom()*(6-NPCS.NPCInfo->currentAim)*2);
+		target[1] += flrand( -5, 5 )+(crandom()*(6-NPCS.NPCInfo->currentAim)*2);
+		target[2] += flrand( -5, 5 )+(crandom()*(6-NPCS.NPCInfo->currentAim)*2);
 
 		//Find the desired angles
-		clearshot = WP_LobFire( NPCS.NPC, muzzle, target, mins, maxs, MASK_SHOT|CONTENTS_LIGHTSABER,
+		clearshot = WP_LobFire( NPCS.NPC, muzzle, target, mins, maxs, MASK_SHOT|CONTENTS_LIGHTSABER, 
 			velocity, qtrue, NPCS.NPC->s.number, NPCS.NPC->enemy->s.number,
 			300, 1100, 1500, qtrue );
 		if ( VectorCompare( vec3_origin, velocity ) || (!clearshot&&enemyLOS4&&enemyCS4)  )
@@ -1112,11 +1092,11 @@ void NPC_BSGM_Attack( void )
 
 	if ( move4 && !NPCS.NPC->lockCount )
 	{//move toward goal
-		if ( NPCS.NPCInfo->goalEntity
+		if ( NPCS.NPCInfo->goalEntity 
 			/*&& NPC->client->ps.legsAnim != BOTH_ALERT1
-			&& NPC->client->ps.legsAnim != BOTH_ATTACK2
+			&& NPC->client->ps.legsAnim != BOTH_ATTACK2 
 			&& NPC->client->ps.legsAnim != BOTH_ATTACK4
-			&& NPC->client->ps.legsAnim != BOTH_ATTACK5
+			&& NPC->client->ps.legsAnim != BOTH_ATTACK5 
 			&& NPC->client->ps.legsAnim != BOTH_ATTACK7*/ )
 		{
 			move4 = GM_Move();
@@ -1181,12 +1161,14 @@ void NPC_BSGM_Attack( void )
 			//if ( NPC->client->ps.powerups[PW_GALAK_SHIELD] > 0 )
 			if (0)
 			{
-				NPCS.NPC->client->ps.powerups[PW_BATTLESUIT] = level.time + ARMOR_EFFECT_TIME;
-				G_Damage( NPCS.NPC->enemy, NPCS.NPC, NPCS.NPC, NULL, NPCS.NPC->r.currentOrigin, 100, DAMAGE_NO_KNOCKBACK, MOD_UNKNOWN );
+				#ifdef BASE_COMPAT
+					NPCS.NPC->client->ps.powerups[PW_BATTLESUIT] = level.time + ARMOR_EFFECT_TIME;
+				#endif
+				G_Damage( NPCS.NPC->enemy, NPCS.NPC, NPCS.NPC, NULL, NPCS.NPC->r.currentOrigin, 100, DAMAGE_NO_KNOCKBACK, MOD_UNKNOWN ); 
 			}
 			else
 			{
-				G_Damage( NPCS.NPC->enemy, NPCS.NPC, NPCS.NPC, NULL, NPCS.NPC->r.currentOrigin, 100, DAMAGE_NO_KNOCKBACK, MOD_CRUSH );
+				G_Damage( NPCS.NPC->enemy, NPCS.NPC, NPCS.NPC, NULL, NPCS.NPC->r.currentOrigin, 100, DAMAGE_NO_KNOCKBACK, MOD_CRUSH ); 
 			}
 		}
 	}
@@ -1206,12 +1188,14 @@ void NPC_BSGM_Attack( void )
 			//FIXME: debounce this?
 			NPCS.NPCInfo->touchedByPlayer = NULL;
 			//FIXME: some shield effect?
-			NPCS.NPC->client->ps.powerups[PW_BATTLESUIT] = level.time + ARMOR_EFFECT_TIME;
+			#ifdef BASE_COMPAT
+				NPCS.NPC->client->ps.powerups[PW_BATTLESUIT] = level.time + ARMOR_EFFECT_TIME;
+			#endif
 
 			VectorSubtract( NPCS.NPC->enemy->r.currentOrigin, NPCS.NPC->r.currentOrigin, smackDir );
 			smackDir[2] += 30;
 			VectorNormalize( smackDir );
-			G_Damage( NPCS.NPC->enemy, NPCS.NPC, NPCS.NPC, smackDir, NPCS.NPC->r.currentOrigin, (g_npcspskill.integer+1)*Q_irand( 5, 10), DAMAGE_NO_KNOCKBACK, MOD_UNKNOWN );
+			G_Damage( NPCS.NPC->enemy, NPCS.NPC, NPCS.NPC, smackDir, NPCS.NPC->r.currentOrigin, (g_npcspskill.integer+1)*Q_irand( 5, 10), DAMAGE_NO_KNOCKBACK, MOD_UNKNOWN ); 
 			//throw them
 			G_Throw( NPCS.NPC->enemy, smackDir, 100 );
 			//NPC->enemy->s.powerups |= ( 1 << PW_SHOCKED );
@@ -1254,7 +1238,7 @@ void NPC_BSGM_Default( void )
 	{
 		WeaponThink( qtrue );
 	}
-
+	
 	if ( NPCS.NPC->client->ps.stats[STAT_ARMOR] <= 0 )
 	{//armor gone
 	//	if ( !NPCInfo->investigateDebounceTime )
@@ -1278,7 +1262,7 @@ void NPC_BSGM_Default( void )
 		{//armor regenerated, turn shield back on
 			//do a trace and make sure we can turn this back on?
 			trace_t	tr;
-			trap->Trace( &tr, NPCS.NPC->r.currentOrigin, shieldMins, shieldMaxs, NPCS.NPC->r.currentOrigin, NPCS.NPC->s.number, NPCS.NPC->clipmask, qfalse, 0, 0 );
+			trap_Trace( &tr, NPCS.NPC->r.currentOrigin, shieldMins, shieldMaxs, NPCS.NPC->r.currentOrigin, NPCS.NPC->s.number, NPCS.NPC->clipmask );
 			if ( !tr.startsolid )
 			{
 				VectorCopy( shieldMins, NPCS.NPC->r.mins );

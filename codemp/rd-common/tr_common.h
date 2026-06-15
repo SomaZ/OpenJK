@@ -38,7 +38,7 @@ extern refimport_t ri;
 void R_NoiseInit( void );
 
 // Get random 4-component vector.
-float R_NoiseGet4f( float x, float y, float z, float t );
+float R_NoiseGet4f( float x, float y, float z, double t );
 
 // Get the noise time.
 float GetNoiseTime( int t );
@@ -83,5 +83,11 @@ void RE_SaveJPG( const char * filename, int quality, int image_width, int image_
 
 // Save raw image data as PNG image file.
 int RE_SavePNG( const char *filename, byte *buf, size_t width, size_t height, int byteDepth );
+
+//mme
+size_t SaveJPG( int quality, int image_width, int image_height, mmeShotType_t image_type, byte *image_buffer, byte *buffer, size_t bufSize, int padding );
+size_t SaveJPG( int quality, int image_width, int image_height, mmeShotType_t image_type, byte *image_buffer, byte *buffer, size_t bufSize );
+int SaveTGA( int image_compressed, int image_width, int image_height, mmeShotType_t image_type, byte *image_buffer, byte *out_buffer, int out_size );
+int SavePNG( int compresslevel, int image_width, int image_height, mmeShotType_t image_type, byte *image_buffer, byte *out_buffer, int out_size );
 
 #endif

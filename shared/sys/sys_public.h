@@ -156,6 +156,8 @@ qboolean Sys_LowPhysicalMemory();
 
 void Sys_SetProcessorAffinity( void );
 
+void Sys_ShowNotification( const char *message, const int flags );
+
 typedef enum graphicsApi_e
 {
 	GRAPHICS_API_GENERIC,
@@ -168,6 +170,7 @@ typedef enum graphicsApi_e
 typedef struct window_s
 {
 	void *handle; // OS-dependent window handle
+	void *instance; // OS-dependent instance handle
 	graphicsApi_t api;
 } window_t;
 
@@ -204,5 +207,6 @@ void		WIN_SetGamma( glconfig_t *glConfig, byte red[256], byte green[256], byte b
 void		WIN_Shutdown( void );
 void *		WIN_GL_GetProcAddress( const char *proc );
 qboolean	WIN_GL_ExtensionSupported( const char *extension );
+window_t *	WIN_GetCurrent( void );
 
 uint8_t ConvertUTF32ToExpectedCharset( uint32_t utf32 );

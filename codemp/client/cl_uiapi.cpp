@@ -734,6 +734,10 @@ static void UIVM_Cmd_RemoveCommand( const char *cmd_name ) {
 	Cmd_VM_RemoveCommand( cmd_name, VM_UI );
 }
 
+static void CL_R_Font_DrawString( int ox, int oy, const char *text, const float *rgba, const int setIndex, int iCharLimit, const float scale ) {
+	re->Font_DrawString(ox, oy, text, rgba, setIndex, iCharLimit, scale);
+}
+
 // legacy syscall
 
 intptr_t CL_UISystemCalls( intptr_t *args ) {
@@ -856,7 +860,7 @@ intptr_t CL_UISystemCalls( intptr_t *args ) {
 		return FS_FOpenFileByMode( (const char *)VMA(1), (int *)VMA(2), (fsMode_t)args[3] );
 
 	case UI_FS_READ:
-		FS_Read( VMA(1), args[2], args[3] );
+		FS_Read2( VMA(1), args[2], args[3] );
 		return 0;
 
 	case UI_FS_WRITE:
@@ -960,7 +964,8 @@ intptr_t CL_UISystemCalls( intptr_t *args ) {
 		return Key_GetCatcher();
 
 	case UI_KEY_SETCATCHER:
-		CL_Key_SetCatcher( args[1] );
+		// Don't allow the ui module to close the console
+		CL_Key_SetCatcher( args[1] | ( Key_GetCatcher( ) & KEYCATCH_CONSOLE ) );
 		return 0;
 
 	case UI_GETCLIPBOARDDATA:
@@ -1058,9 +1063,18 @@ intptr_t CL_UISystemCalls( intptr_t *args ) {
 		return re->Font_HeightPixels( args[1], VMF(2) );
 
 	case UI_R_FONT_DRAWSTRING:
-		re->Font_DrawString( args[1], args[2], (const char *)VMA(3), (const float *) VMA(4), args[5], args[6], VMF(7) );
+#ifdef __ANDROID__
+		re->Font_DrawString( VMF(1), VMF(2), (const char *)VMA(3), (const float *) VMA(4), args[5], args[6], VMF(7) );
+#else
+		{float ox, oy;
+		if (cls.mmeStateUI >= MME_STATE_DEFAULT) {
+			ox = VMF(1); oy = VMF(2);
+		} else {
+			ox = args[1]; oy = args[2];
+		}
+		re->Font_DrawString( ox, oy, (const char *)VMA(3), (const float *) VMA(4), args[5], args[6], VMF(7) );}
 		return 0;
-
+#endif
 	case UI_LANGUAGE_ISASIAN:
 		return re->Language_IsAsian();
 
@@ -1262,6 +1276,15 @@ intptr_t CL_UISystemCalls( intptr_t *args ) {
 	case UI_G2_ATTACHG2MODEL:
 		return CL_G2API_AttachG2Model(VMA(1), args[2], VMA(3), args[4], args[5]);
 
+	case UI_MME_FONTRATIOFIX:
+		re->FontRatioFix(VMF(1));
+        return 0; 
+	case UI_MME_EDITINGFIELD:
+		cls.uiEditingField = (qboolean)args[1];
+        return 0;	
+	case UI_MME_REQUESTFEATURES:
+		cls.mmeStateUI = MME_STATE_DEFAULT;
+		return 0;
 	default:
 		Com_Error( ERR_DROP, "Bad UI system trap: %ld", (long int) args[0] );
 
@@ -1373,7 +1396,7 @@ void CL_BindUI( void ) {
 		uii.R_AddRefEntityToScene				= re->AddRefEntityToScene;
 		uii.R_ClearScene						= re->ClearScene;
 		uii.R_DrawStretchPic					= re->DrawStretchPic;
-		uii.R_Font_DrawString					= re->Font_DrawString;
+		uii.R_Font_DrawString					= CL_R_Font_DrawString;
 		uii.R_Font_HeightPixels					= re->Font_HeightPixels;
 		uii.R_Font_StrLenChars					= re->Font_StrLenChars;
 		uii.R_Font_StrLenPixels					= re->Font_StrLenPixels;

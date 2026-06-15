@@ -1324,7 +1324,9 @@ void CL_FinishMove( usercmd_t *cmd ) {
 	//always needed in for the cl_crazyShipControls
 	VectorCopy( cl.viewangles, cl_lastViewAngles );
 }
-
+#ifdef __ANDROID__
+extern void CL_AndroidMove(usercmd_t *cmd);
+#endif
 /*
 =================
 CL_CreateCmd
@@ -1351,7 +1353,9 @@ usercmd_t CL_CreateCmd( void ) {
 
 	// get basic movement from joystick
 	CL_JoystickMove( &cmd );
-
+#ifdef __ANDROID__
+	CL_AndroidMove(&cmd);
+#endif
 	// check to make sure the angles haven't wrapped
 	if ( cl.viewangles[PITCH] - oldAngles[PITCH] > 90 ) {
 		cl.viewangles[PITCH] = oldAngles[PITCH] + 90;

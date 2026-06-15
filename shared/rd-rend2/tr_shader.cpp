@@ -3675,10 +3675,10 @@ static void FixRenderCommandList( int newShader ) {
 					int i;
 					drawSurf_t	*drawSurf;
 					shader_t	*shader;
-					int         postRender;
-					int			sortedIndex;
-					int			cubemap;
-					int			entityNum;
+					int64_t		postRender;
+					int64_t		sortedIndex;
+					int64_t		cubemap;
+					int64_t		entityNum;
 					const drawSurfsCommand_t *ds_cmd =  (const drawSurfsCommand_t *)curCmd;
 
 					for( i = 0, drawSurf = ds_cmd->drawSurfs; i < ds_cmd->numDrawSurfs; i++, drawSurf++ ) {
@@ -3981,7 +3981,7 @@ from the current global working shader
 */
 static shader_t *FinishShader( void ) {
 	int stage;
-	uint32_t shaderStateBits = 0;
+	uint64_t shaderStateBits = 0;
 	qboolean hasLightmapStage = qfalse;
 
 	//
@@ -4315,7 +4315,7 @@ return NULL if not found
 If found, it will return a valid shader
 =====================
 */
-static const char *FindShaderInShaderText( const char *shadername ) {
+static /*const*/ char *FindShaderInShaderText( const char *shadername ) {
 
 	char *token;
 	const char *p;
@@ -4332,7 +4332,7 @@ static const char *FindShaderInShaderText( const char *shadername ) {
 			token = COM_ParseExt(&p, qtrue);
 
 			if(!Q_stricmp(token, shadername))
-				return p;
+				return (char *)p;
 		}
 	}
 
@@ -4350,7 +4350,7 @@ static const char *FindShaderInShaderText( const char *shadername ) {
 		}
 
 		if ( !Q_stricmp( token, shadername ) ) {
-			return p;
+			return (char *)p;
 		}
 		else {
 			// skip the definition
@@ -4361,6 +4361,9 @@ static const char *FindShaderInShaderText( const char *shadername ) {
 	return NULL;
 }
 
+char *R_FindShaderText( const char *shadername ) {
+	return FindShaderInShaderText( shadername );
+}
 
 /*
 ==================

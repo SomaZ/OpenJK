@@ -58,9 +58,9 @@ cvar_t	*r_ignore;
 
 cvar_t	*r_detailTextures;
 
-cvar_t	*r_znear;
-cvar_t	*r_zproj;
-cvar_t	*r_stereoSeparation;
+cvar_t	*r_znear;				// near Z clip plane
+cvar_t	*r_zproj;				// z distance of projection plane
+cvar_t	*r_stereoSeparation;	// separation of cameras for stereo capture
 
 cvar_t	*r_skipBackEnd;
 
@@ -262,12 +262,15 @@ cvar_t	*r_surfaceSprites;
 
 // the limits apply to the sum of all scenes in a frame --
 // the main view, all the 3D icons, etc
-#define	DEFAULT_MAX_POLYS		600
-#define	DEFAULT_MAX_POLYVERTS	3000
+#define	POLYS_FACTOR	4
+#define	MAX_POLYS		600*POLYS_FACTOR
+#define	MAX_POLYVERTS	3000*POLYS_FACTOR
 cvar_t	*r_maxpolys;
 cvar_t	*r_maxpolyverts;
 int		max_polys;
 int		max_polyverts;
+
+cvar_t	*r_drawAllAreas;
 
 cvar_t	*r_dynamicGlow;
 cvar_t	*r_dynamicGlowPasses;
@@ -738,7 +741,7 @@ static void R_SaveTGA(
 R_SaveScreenshotTGA
 ==================
 */
-static void R_SaveScreenshotTGA(
+/*static void R_SaveScreenshotTGA(
 	const screenshotReadback_t *screenshotReadback, byte *pixels)
 {
 	R_SaveTGA(
@@ -747,14 +750,14 @@ static void R_SaveScreenshotTGA(
 		screenshotReadback->width,
 		screenshotReadback->height,
 		screenshotReadback->strideInBytes);
-}
+}*/
 
 /*
 ==================
 R_SaveScreenshotPNG
 ==================
 */
-static void R_SaveScreenshotPNG(
+/*static void R_SaveScreenshotPNG(
 	const screenshotReadback_t *screenshotReadback, byte *pixels)
 {
 	RE_SavePNG(
@@ -763,14 +766,14 @@ static void R_SaveScreenshotPNG(
 		screenshotReadback->width,
 		screenshotReadback->height,
 		3);
-}
+}*/
 
 /*
 ==================
 R_SaveScreenshotJPG
 ==================
 */
-static void R_SaveScreenshotJPG(
+/*static void R_SaveScreenshotJPG(
 	const screenshotReadback_t *screenshotReadback, byte *pixels)
 {
 	RE_SaveJPG(
@@ -828,14 +831,14 @@ void R_SaveScreenshot(screenshotReadback_t *screenshotReadback)
 
 	qglDeleteBuffers(1, &screenshotReadback->pbo);
 	screenshotReadback->pbo = 0;
-}
+}*/
 
 /*
 ==================
 R_TakeScreenshotCmd
 ==================
 */
-const void *RB_TakeScreenshotCmd( const void *data ) {
+/*const void *RB_TakeScreenshotCmd( const void *data ) {
 	const screenshotCommand_t *cmd;
 
 	cmd = (const screenshotCommand_t *)data;
@@ -873,14 +876,14 @@ const void *RB_TakeScreenshotCmd( const void *data ) {
 		screenshot->filename, cmd->fileName, sizeof(screenshot->filename));
 
 	return (const void *)(cmd + 1);
-}
+}*/
 
 /*
 ==================
 R_TakeScreenshot
 ==================
 */
-void R_TakeScreenshot( int x, int y, int width, int height, char *name, screenshotFormat_t format ) {
+/*void R_TakeScreenshot( int x, int y, int width, int height, char *name, screenshotFormat_t format ) {
 	static char	fileName[MAX_OSPATH]; // bad things if two screenshots per frame?
 	screenshotCommand_t	*cmd;
 
@@ -897,6 +900,89 @@ void R_TakeScreenshot( int x, int y, int width, int height, char *name, screensh
 	Q_strncpyz( fileName, name, sizeof(fileName) );
 	cmd->fileName = fileName;
 	cmd->format = format;
+}*/
+//entTODO: find out how things above work
+/*
+==================
+RB_TakeScreenshotCmd
+==================
+*/
+const void *RB_ScreenShotCmd( const void *data ) {
+	const screenShotCommand_t *cmd = (const screenShotCommand_t *)data;
+	byte *inBuf, *outBuf;
+	int w, h, outSize, i, j, k, res;
+
+	w = glConfig.vidWidth;
+	h = glConfig.vidHeight;
+	res = w * h;
+	outSize = res * 4;
+	inBuf = (byte *)ri.Hunk_AllocateTempMemory( outSize * 2 );
+	outBuf = inBuf + outSize;
+//entTODO: reaplce with RB_ReadPixels (only JPEG requires that)
+#ifdef HAVE_GLES
+	qglReadPixels(0, 0, w, h, GL_RGBA, GL_UNSIGNED_BYTE, inBuf);
+	for (i = 0, j = 0, k = 0; k < res; i += 4, j += 3, k++) {
+		inBuf[j + 0] = inBuf[i + 0];
+		inBuf[j + 1] = inBuf[i + 1];
+		inBuf[j + 2] = inBuf[i + 2];
+	}
+#else
+	qglReadPixels(0, 0, w, h, GL_RGB, GL_UNSIGNED_BYTE, inBuf);
+#endif
+	if ( ( mme_screenShotGamma->integer || (tr.overbrightBits > 0) ) && (glConfig.deviceSupportsGamma ) ) {
+		R_GammaCorrect( inBuf, outSize );
+	}
+	switch ( cmd->format ) {
+	case mmeShotFormatJPG:
+		outSize = SaveJPG( mme_jpegQuality->integer, w, h, mmeShotTypeRGB, inBuf, outBuf, outSize );
+		break;
+	case mmeShotFormatTGA:
+		outSize = SaveTGA( mme_tgaCompression->integer, w, h, mmeShotTypeRGB, inBuf, outBuf, outSize );
+		break;
+	case mmeShotFormatPNG:
+		outSize = SavePNG( mme_pngCompression->integer, w, h, mmeShotTypeRGB, inBuf, outBuf, outSize );
+		break;
+	default:
+		outSize = 0;
+	}
+	if (outSize)
+		ri.FS_WriteFile( cmd->name, outBuf, outSize );
+	ri.Hunk_FreeTempMemory( inBuf );
+	return (const void *)(cmd + 1);	
+}
+
+
+void R_ScreenShot(const char *shotName, mmeShotFormat_t shotFormat) {
+	screenShotCommand_t *cmd;
+	if (!tr.registered) {
+		return;
+	}
+	cmd = (screenShotCommand_t *)R_GetCommandBuffer(sizeof(*cmd));
+	if (!cmd) {
+		return;
+	}
+	cmd->commandId = RC_SCREENSHOT;
+	Q_strncpyz(cmd->name, shotName, sizeof(cmd->name));
+	cmd->format = shotFormat;
+}
+extern cvar_t *mme_dofFrames;
+void R_ScreenShotDOF(const char *shotName, float focus, float radius) {
+	captureCommand_t *cmd;
+
+	if (!tr.registered) {
+		return;
+	}
+	cmd = (captureCommand_t *)R_GetCommandBuffer(sizeof(*cmd));
+	if (!cmd) {
+		return;
+	}
+	if (mme_dofFrames->integer > 0)
+		tr.capturingMultiPass = qtrue;
+	cmd->commandId = RC_CAPTURE;
+	cmd->fps = -1;
+	cmd->focus = focus;
+	cmd->radius = radius;
+	Q_strncpyz(cmd->name, shotName, sizeof(cmd->name));
 }
 
 /*
@@ -971,7 +1057,7 @@ static void R_LevelShot( void ) {
 	}
 
 	// gamma correct
-	if ( ( tr.overbrightBits > 0 ) && glConfig.deviceSupportsGamma ) {
+	if ( ( mme_screenShotGamma->integer || tr.overbrightBits > 0 ) && glConfig.deviceSupportsGamma ) {
 		R_GammaCorrect( buffer + 18, LEVELSHOTSIZE * LEVELSHOTSIZE * 3 );
 	}
 
@@ -983,19 +1069,7 @@ static void R_LevelShot( void ) {
 	ri.Printf( PRINT_ALL, "Wrote %s\n", checkname );
 }
 
-/*
-==================
-R_ScreenShotTGA_f
-
-screenshot
-screenshot [silent]
-screenshot [levelshot]
-screenshot [filename]
-
-Doesn't print the pacifier message if there is a second arg
-==================
-*/
-void R_ScreenShotTGA_f (void) {
+void R_ScreenShot_f(const char *ext, mmeShotFormat_t shotFormat) {
 	char checkname[MAX_OSPATH] = {0};
 	qboolean silent = qfalse;
 
@@ -1003,71 +1077,6 @@ void R_ScreenShotTGA_f (void) {
 		R_LevelShot();
 		return;
 	}
-
-	if ( !strcmp( ri.Cmd_Argv(1), "silent" ) )
-		silent = qtrue;
-
-	if ( ri.Cmd_Argc() == 2 && !silent ) {
-		// explicit filename
-		Com_sprintf( checkname, sizeof( checkname ), "screenshots/%s.tga", ri.Cmd_Argv( 1 ) );
-	}
-	else {
-		// timestamp the file
-		R_ScreenshotFilename( checkname, sizeof( checkname ), ".tga" );
-
-		if ( ri.FS_FileExists( checkname ) ) {
-			Com_Printf( "ScreenShot: Couldn't create a file\n");
-			return;
- 		}
-	}
-
-	R_TakeScreenshot( 0, 0, glConfig.vidWidth, glConfig.vidHeight, checkname, SSF_TGA );
-
-	if ( !silent )
-		ri.Printf (PRINT_ALL, "Wrote %s\n", checkname);
-}
-
-void R_ScreenShotPNG_f (void) {
-	char checkname[MAX_OSPATH] = {0};
-	qboolean silent = qfalse;
-
-	if ( !strcmp( ri.Cmd_Argv(1), "levelshot" ) ) {
-		R_LevelShot();
-		return;
-	}
-
-	if ( !strcmp( ri.Cmd_Argv(1), "silent" ) )
-		silent = qtrue;
-
-	if ( ri.Cmd_Argc() == 2 && !silent ) {
-		// explicit filename
-		Com_sprintf( checkname, sizeof( checkname ), "screenshots/%s.png", ri.Cmd_Argv( 1 ) );
-	}
-	else {
-		// timestamp the file
-		R_ScreenshotFilename( checkname, sizeof( checkname ), ".png" );
-
-		if ( ri.FS_FileExists( checkname ) ) {
-			Com_Printf( "ScreenShot: Couldn't create a file\n");
-			return;
- 		}
-	}
-
-	R_TakeScreenshot( 0, 0, glConfig.vidWidth, glConfig.vidHeight, checkname, SSF_PNG );
-
-	if ( !silent )
-		ri.Printf (PRINT_ALL, "Wrote %s\n", checkname);
-}
-
-void R_ScreenShotJPEG_f (void) {
-	char checkname[MAX_OSPATH] = {0};
-	qboolean silent = qfalse;
-
-	if ( !strcmp( ri.Cmd_Argv(1), "levelshot" ) ) {
-		R_LevelShot();
-		return;
-	}
-
 	if ( !strcmp( ri.Cmd_Argv(1), "silent" ) )
 		silent = qtrue;
 
@@ -1077,101 +1086,45 @@ void R_ScreenShotJPEG_f (void) {
 	}
 	else {
 		// timestamp the file
-		R_ScreenshotFilename( checkname, sizeof( checkname ), ".jpg" );
-
-		if ( ri.FS_FileExists( checkname ) ) {
-			Com_Printf( "ScreenShot: Couldn't create a file\n");
-			return;
- 		}
+		R_ScreenshotFilename( checkname, sizeof( checkname ), ext );
+		if (!silent)
+			ri.Printf(PRINT_ALL, "Saving shot %s\n", checkname);
+		R_ScreenShot(checkname, shotFormat);
 	}
-
-	R_TakeScreenshot( 0, 0, glConfig.vidWidth, glConfig.vidHeight, checkname, SSF_JPEG );
-
-	if ( !silent )
-		ri.Printf (PRINT_ALL, "Wrote %s\n", checkname);
 }
-
-//============================================================================
-
-/*
-==================
-RB_TakeVideoFrameCmd
-==================
-*/
-const void *RB_TakeVideoFrameCmd( const void *data )
-{
-	const videoFrameCommand_t	*cmd;
-	byte				*cBuf;
-	size_t				memcount, linelen;
-	int				padwidth, avipadwidth, padlen, avipadlen;
-	GLint packAlign;
-
-	// finish any 2D drawing if needed
-	if(tess.numIndexes)
-		RB_EndSurface();
-
-	cmd = (const videoFrameCommand_t *)data;
-
-	qglGetIntegerv(GL_PACK_ALIGNMENT, &packAlign);
-
-	linelen = cmd->width * 3;
-
-	// Alignment stuff for glReadPixels
-	padwidth = PAD(linelen, packAlign);
-	padlen = padwidth - linelen;
-	// AVI line padding
-	avipadwidth = PAD(linelen, AVI_LINE_PADDING);
-	avipadlen = avipadwidth - linelen;
-
-	cBuf = (byte*)(PADP(cmd->captureBuffer, packAlign));
-
-	qglReadPixels(0, 0, cmd->width, cmd->height, GL_RGB,
-		GL_UNSIGNED_BYTE, cBuf);
-
-	memcount = padwidth * cmd->height;
-
-	// gamma correct
-	if(glConfig.deviceSupportsGamma)
-		R_GammaCorrect(cBuf, memcount);
-
-	if(cmd->motionJpeg)
-	{
-		memcount = RE_SaveJPGToBuffer(cmd->encodeBuffer, linelen * cmd->height,
-			r_aviMotionJpegQuality->integer,
-			cmd->width, cmd->height, cBuf, padlen);
-		ri.CL_WriteAVIVideoFrame(cmd->encodeBuffer, memcount);
+static void R_ScreenShotTGA_f(void) {
+	R_ScreenShot_f("tga", mmeShotFormatTGA);
+} 
+static void R_ScreenShotJPEG_f(void) {
+	R_ScreenShot_f("jpg", mmeShotFormatJPG);
+} 
+static void R_ScreenShotPNG_f(void) {
+	R_ScreenShot_f("png", mmeShotFormatPNG);
+} 
+static void R_ScreenShotDOF_f(void) {
+	char fileName[MAX_OSPATH];
+	const char *cmd = ri.Cmd_Argv(1);
+	char *ext = mme_screenShotFormat->string;
+	if (mme_dofFrames->integer <= 0) {
+		ri.Printf(PRINT_ALL, "Failed to take a DOF screenshot: mme_dofFrames <= 0 (%d)\n", mme_dofFrames->integer);
+		return;
 	}
-	else
-	{
-		byte *lineend, *memend;
-		byte *srcptr, *destptr;
-
-		srcptr = cBuf;
-		destptr = cmd->encodeBuffer;
-		memend = srcptr + memcount;
-
-		// swap R and B and remove line paddings
-		while(srcptr < memend)
-		{
-			lineend = srcptr + linelen;
-			while(srcptr < lineend)
-			{
-				*destptr++ = srcptr[2];
-				*destptr++ = srcptr[1];
-				*destptr++ = srcptr[0];
-				srcptr += 3;
-			}
-
-			Com_Memset(destptr, '\0', avipadlen);
-			destptr += avipadlen;
-
-			srcptr += padlen;
-		}
-
-		ri.CL_WriteAVIVideoFrame(cmd->encodeBuffer, avipadwidth * cmd->height);
+	if (!cmd[0])
+		cmd = "shot";	
+	if ((Q_stricmp(ext, "png")
+        && Q_stricmp(ext, "tga")
+        && Q_stricmp(ext, "jpg"))
+        || !ext[0]) {
+		ext = "png";
 	}
-
-	return (const void *)(cmd + 1);
+	R_ScreenshotFilename(fileName, sizeof(fileName), ext);
+	float focus = atof(ri.Cmd_Argv(2));
+	float radius = atof(ri.Cmd_Argv(3));
+	if (!focus)
+		focus = 133.7f;
+	if (!radius)
+		radius = 1.337f;
+	R_ScreenShotDOF(fileName, focus, radius);
 }
 
 //============================================================================
@@ -1403,7 +1356,7 @@ static void R_CaptureFrameData_f()
 	else if ( Q_stricmp(cmd, "multi") == 0 )
 		tr.numFramesToCapture = atoi(ri.Cmd_Argv(1));
 
-	int len = ri.FS_FOpenFileByMode("rend2.log", &tr.debugFile, FS_APPEND);
+	int len = ri.FS_FOpenFileByMode("rd-jamme2.log", &tr.debugFile, FS_APPEND);
 	if ( len == -1 || !tr.debugFile )
 	{
 		ri.Printf( PRINT_ERROR, "Failed to open rend2 log file\n" );
@@ -1421,9 +1374,11 @@ static consoleCommand_t	commands[] = {
 	{ "shaderlist",			R_ShaderList_f },
 	{ "skinlist",			R_SkinList_f },
 	{ "fontlist",			R_FontList_f },
-	{ "screenshot",			R_ScreenShotJPEG_f },
-	{ "screenshot_png",		R_ScreenShotPNG_f },
-	{ "screenshot_tga",		R_ScreenShotTGA_f },
+	{ "screenshot",			R_ScreenShotTGA_f },
+	{ "screenshotTGA",		R_ScreenShotTGA_f },
+	{ "screenshotJPEG",		R_ScreenShotJPEG_f },
+	{ "screenshotPNG",		R_ScreenShotPNG_f },
+	{ "screenshotDOF",		R_ScreenShotDOF_f },
 	{ "gfxinfo",			GfxInfo_f },
 	{ "gfxmeminfo",			GfxMemInfo_f },
 	{ "r_we",				R_WorldEffect_f },
@@ -1432,6 +1387,7 @@ static consoleCommand_t	commands[] = {
 	//{ "modelcacheinfo",		RE_RegisterModels_Info_f },
 	{ "vbolist",			R_VBOList_f },
 	{ "capframes",			R_CaptureFrameData_f },
+	{ "capturestop",		R_MME_Shutdown },
 };
 
 static const size_t numCommands = ARRAY_LEN( commands );
@@ -1575,8 +1531,8 @@ void R_Register( void )
 	r_znear = ri.Cvar_Get( "r_znear", "4", CVAR_CHEAT, "" );
 	ri.Cvar_CheckRange( r_znear, 0.001f, 200, qfalse );
 	r_autolodscalevalue	= ri.Cvar_Get( "r_autolodscalevalue", "0", CVAR_ROM, "" );
-	r_zproj = ri.Cvar_Get( "r_zproj", "64", CVAR_ARCHIVE, "" );
-	r_stereoSeparation = ri.Cvar_Get( "r_stereoSeparation", "64", CVAR_ARCHIVE, "" );
+	r_zproj = ri.Cvar_Get( "r_zproj", "107", CVAR_ARCHIVE, "" );
+	r_stereoSeparation = ri.Cvar_Get( "r_stereoSeparation", "0", CVAR_ARCHIVE, "" );
 	r_ignoreGLErrors = ri.Cvar_Get( "r_ignoreGLErrors", "1", CVAR_ARCHIVE, "" );
 	r_fastsky = ri.Cvar_Get( "r_fastsky", "0", CVAR_ARCHIVE, "" );
 	r_inGameVideo = ri.Cvar_Get( "r_inGameVideo", "1", CVAR_ARCHIVE, "" );
@@ -1653,8 +1609,8 @@ void R_Register( void )
 	r_surfaceSprites = ri.Cvar_Get("r_surfaceSprites", "1", CVAR_ARCHIVE, "");
 
 	r_aspectCorrectFonts = ri.Cvar_Get( "r_aspectCorrectFonts", "0", CVAR_ARCHIVE, "" );
-	r_maxpolys = ri.Cvar_Get( "r_maxpolys", XSTRING( DEFAULT_MAX_POLYS ), 0, "");
-	r_maxpolyverts = ri.Cvar_Get( "r_maxpolyverts", XSTRING( DEFAULT_MAX_POLYVERTS ), 0, "" );
+	r_maxpolys = ri.Cvar_Get( "r_maxpolys", XSTRING( MAX_POLYS ), 0, "");
+	r_maxpolyverts = ri.Cvar_Get( "r_maxpolyverts", XSTRING( MAX_POLYVERTS ), 0, "" );
 
 /*
 Ghoul2 Insert Start
@@ -1682,6 +1638,8 @@ Ghoul2 Insert End
 */
 
 	r_patchStitching = ri.Cvar_Get("r_patchStitching", "1", CVAR_ARCHIVE, "Enable stitching of neighbouring patch surfaces" );
+
+	r_drawAllAreas = ri.Cvar_Get("r_drawAllAreas", "0", CVAR_TEMP | CVAR_CHEAT, "" );
 
 	se_language = ri.Cvar_Get ( "se_language", "english", CVAR_ARCHIVE | CVAR_NORESTART, "" );
 
@@ -2041,8 +1999,10 @@ void R_Init( void ) {
 	R_NoiseInit();
 	R_Register();
 
-	max_polys = Q_min( r_maxpolys->integer, DEFAULT_MAX_POLYS );
-	max_polyverts = Q_min( r_maxpolyverts->integer, DEFAULT_MAX_POLYVERTS );
+	R_MME_Init();
+
+	max_polys = Q_min( r_maxpolys->integer, MAX_POLYS );
+	max_polyverts = Q_min( r_maxpolyverts->integer, MAX_POLYVERTS );
 
 	ptr = (byte*)ri.Hunk_Alloc(
 		sizeof( *backEndData ) +
@@ -2134,6 +2094,8 @@ void RE_Shutdown( qboolean destroyWindow, qboolean restarting ) {
 	R_ShutdownWeatherSystem();
 
 	R_ShutdownFonts();
+
+	R_MME_Shutdown();
 	
 	if (r_inited)
 	{
@@ -2159,6 +2121,7 @@ void RE_Shutdown( qboolean destroyWindow, qboolean restarting ) {
 	}
 
 	tr.registered = qfalse;
+	tr.cTable = CT_DEFAULT;
 	r_inited = false;
 	backEndData = NULL;
 }
@@ -2221,6 +2184,14 @@ void RE_SetLightStyle(int style, int color)
 	}
 }
 
+static void R_DemoRandomSeed(int time, float timeFraction) {
+	srand(time + timeFraction);
+}
+
+static void R_ExtendedColors(colorTable_t cTable) {
+	tr.cTable = cTable;
+}
+
 void RE_GetBModelVerts(int bmodelIndex, vec3_t *verts, vec3_t normal);
 void RE_WorldEffectCommand(const char *cmd);
 
@@ -2255,8 +2226,6 @@ int C_GetLevel( void )
 void C_LevelLoadEnd( void )
 {
 	CModelCache->LevelLoadEnd( qfalse );
-	ri.SND_RegisterAudio_LevelLoadEnd( qfalse );
-	ri.S_RestartMusic();
 }
 
 /*
@@ -2352,8 +2321,6 @@ Q_EXPORT refexport_t* QDECL GetRefAPI ( int apiVersion, refimport_t *rimp ) {
 	re.RegisterImages_LevelLoadEnd = C_Images_LevelLoadEnd;
 	re.RegisterModels_LevelLoadEnd = C_Models_LevelLoadEnd;
 
-	re.TakeVideoFrame = RE_TakeVideoFrame;
-
 	re.InitSkins							= R_InitSkins;
 	re.InitShaders							= R_InitShaders;
 	re.SVModelInit							= R_SVModelInit;
@@ -2441,6 +2408,7 @@ Q_EXPORT refexport_t* QDECL GetRefAPI ( int apiVersion, refimport_t *rimp ) {
 	re.G2API_SetSkin						= G2API_SetSkin;
 	re.G2API_SetSurfaceOnOff				= G2API_SetSurfaceOnOff;
 	re.G2API_SetTime						= G2API_SetTime;
+	re.G2API_SetTimeFraction				= G2API_SetTimeFraction;
 	re.G2API_SkinlessModel					= G2API_SkinlessModel;
 	re.G2API_StopBoneAngles					= G2API_StopBoneAngles;
 	re.G2API_StopBoneAnglesIndex			= G2API_StopBoneAnglesIndex;
@@ -2458,6 +2426,18 @@ Q_EXPORT refexport_t* QDECL GetRefAPI ( int apiVersion, refimport_t *rimp ) {
 	*/
 
 	re.ext.Font_StrLenPixels = RE_Font_StrLenPixelsNew;
+
+	//mme
+	re.Capture = R_MME_Capture;
+	re.BlurInfo = R_MME_BlurInfo;
+
+	re.TimeFraction = R_MME_TimeFraction;
+	
+	re.DemoRandomSeed = R_DemoRandomSeed;
+	re.ExtendedColors = R_ExtendedColors;
+
+	re.FontRatioFix = RE_FontRatioFix;
+	re.RotatePic2RatioFix = RE_RotatePic2RatioFix;
 
 	return &re;
 }

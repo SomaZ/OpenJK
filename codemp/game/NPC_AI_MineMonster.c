@@ -1,25 +1,3 @@
-/*
-===========================================================================
-Copyright (C) 2000 - 2013, Raven Software, Inc.
-Copyright (C) 2001 - 2013, Activision, Inc.
-Copyright (C) 2013 - 2015, OpenJK contributors
-
-This file is part of the OpenJK source code.
-
-OpenJK is free software; you can redistribute it and/or modify it
-under the terms of the GNU General Public License version 2 as
-published by the Free Software Foundation.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU General Public License for more details.
-
-You should have received a copy of the GNU General Public License
-along with this program; if not, see <http://www.gnu.org/licenses/>.
-===========================================================================
-*/
-
 #include "b_local.h"
 
 // These define the working combat range for these suckers
@@ -85,12 +63,12 @@ void MineMonster_Patrol( void )
 	{
 		if ( TIMER_Done( NPCS.NPC, "patrolTime" ))
 		{
-			TIMER_Set( NPCS.NPC, "patrolTime", Q_flrand(-1.0f, 1.0f) * 5000 + 5000 );
+			TIMER_Set( NPCS.NPC, "patrolTime", crandom() * 5000 + 5000 );
 		}
 	}
 
 	//rwwFIXMEFIXME: Care about all clients, not just client 0
-	//OJKFIXME: clientnum 0
+	//OJKFIXME: clietnum 0
 	VectorSubtract( g_entities[0].r.currentOrigin, NPCS.NPC->r.currentOrigin, dif );
 
 	if ( VectorLengthSquared( dif ) < 256 * 256 )
@@ -104,7 +82,7 @@ void MineMonster_Patrol( void )
 		return;
 	}
 }
-
+ 
 /*
 -------------------------
 MineMonster_Move
@@ -135,7 +113,7 @@ void MineMonster_TryDamage( gentity_t *enemy, int damage )
 	VectorMA( NPCS.NPC->r.currentOrigin, MIN_DISTANCE, dir, end );
 
 	// Should probably trace from the mouth, but, ah well.
-	trap->Trace( &tr, NPCS.NPC->r.currentOrigin, vec3_origin, vec3_origin, end, NPCS.NPC->s.number, MASK_SHOT, qfalse, 0, 0 );
+	trap_Trace( &tr, NPCS.NPC->r.currentOrigin, vec3_origin, vec3_origin, end, NPCS.NPC->s.number, MASK_SHOT );
 
 	if ( tr.entityNum >= 0 && tr.entityNum < ENTITYNUM_NONE )
 	{
@@ -154,18 +132,18 @@ void MineMonster_Attack( void )
 	if ( !TIMER_Exists( NPCS.NPC, "attacking" ))
 	{
 		// usually try and play a jump attack if the player somehow got above them....or just really rarely
-		if ( NPCS.NPC->enemy && ((NPCS.NPC->enemy->r.currentOrigin[2] - NPCS.NPC->r.currentOrigin[2] > 10 && Q_flrand(0.0f, 1.0f) > 0.1f )
-						|| Q_flrand(0.0f, 1.0f) > 0.8f ))
+		if ( NPCS.NPC->enemy && ((NPCS.NPC->enemy->r.currentOrigin[2] - NPCS.NPC->r.currentOrigin[2] > 10 && random() > 0.1f ) 
+						|| random() > 0.8f ))
 		{
 			// Going to do ATTACK4
-			TIMER_Set( NPCS.NPC, "attacking", 1750 + Q_flrand(0.0f, 1.0f) * 200 );
+			TIMER_Set( NPCS.NPC, "attacking", 1750 + random() * 200 );
 			NPC_SetAnim( NPCS.NPC, SETANIM_BOTH, BOTH_ATTACK4, SETANIM_FLAG_OVERRIDE | SETANIM_FLAG_HOLD );
 
 			TIMER_Set( NPCS.NPC, "attack2_dmg", 950 ); // level two damage
 		}
-		else if ( Q_flrand(0.0f, 1.0f) > 0.5f )
+		else if ( random() > 0.5f )
 		{
-			if ( Q_flrand(0.0f, 1.0f) > 0.8f )
+			if ( random() > 0.8f )
 			{
 				// Going to do ATTACK3, (rare)
 				TIMER_Set( NPCS.NPC, "attacking", 850 );
@@ -228,7 +206,7 @@ void MineMonster_Combat( void )
 	// Sometimes I have problems with facing the enemy I'm attacking, so force the issue so I don't look dumb
 	NPC_FaceEnemy( qtrue );
 
-	distance	= DistanceHorizontalSquared( NPCS.NPC->r.currentOrigin, NPCS.NPC->enemy->r.currentOrigin );
+	distance	= DistanceHorizontalSquared( NPCS.NPC->r.currentOrigin, NPCS.NPC->enemy->r.currentOrigin );	
 
 	advance = (qboolean)( distance > MIN_DISTANCE_SQR ? qtrue : qfalse  );
 

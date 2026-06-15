@@ -126,6 +126,12 @@ typedef enum ct_table_e
 	CT_MAX
 } ct_table_t;
 
+typedef enum {
+	CT_DEFAULT,
+	CT_UAG,
+	CT_RPMOD
+} colorTable_t;
+
 extern vec4_t colorBlack;
 extern vec4_t colorRed;
 extern vec4_t colorGreen;
@@ -147,6 +153,10 @@ extern vec4_t colorTable[CT_MAX];
 unsigned ColorBytes3 (float r, float g, float b);
 unsigned ColorBytes4 (float r, float g, float b, float a);
 float NormalizeColor( const vec3_t in, vec3_t out );
+
+extern vec3_t defaultColors[10];
+extern int Q_parseColorString( const char *p, float *color, colorTable_t ctable );
+extern int Q_parseColor( const char *p, const vec3_t *numberColors, float *color );
 
 #if defined(__cplusplus)
 } // extern "C"

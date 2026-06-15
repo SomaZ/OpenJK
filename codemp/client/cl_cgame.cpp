@@ -42,6 +42,8 @@ Ghoul2 Insert End
 
 extern	botlib_export_t	*botlib_export;
 
+extern void demoRenderFrame( stereoFrame_t stereo );
+
 extern qboolean loadCamera(const char *name);
 extern void startCamera(int time);
 extern qboolean getCameraInfo(int time, vec3_t *origin, vec3_t *angles);
@@ -364,6 +366,125 @@ void CL_CheckSVStringEdRef(char *buf, const char *str)
 
 	buf[b] = 0;
 }
+
+void CL_ServerCommandNotification( const char *s ) {
+	const char	*cmd;
+	int			i;
+	int			flags = 0;
+	static qboolean intermission = qfalse;
+	flags = cls.notification.flags & ~NOTIFICATION_FULL;
+	if ( !flags )
+		return;
+	Cmd_TokenizeString( s );
+	cmd = Cmd_Argv(0);
+	if ( cl.snap.ps.pm_type != PM_INTERMISSION && intermission ) {
+		intermission = qfalse;
+	}
+	if ( !strcmp( cmd, "scores" ) && cl.snap.ps.pm_type == PM_INTERMISSION && !intermission && ( flags & NOTIFICATION_ROUND ) ) {
+		CL_ShowNotification( "Round ended" );
+		intermission = qtrue;
+	} else if ( !strcmp( cmd, "map_restart" ) && ( flags & NOTIFICATION_RESTART ) ) {
+		CL_ShowNotification( "Map restarted" );
+	} else if (!Q_stricmp(cmd, "print")) {
+		char strEd[MAX_STRINGED_SV_STRING];
+		cmd = Cmd_Argv(1);
+		if (Q_stristr(cmd, "@@@PLCONNECT")) {
+			int players = 0;
+			for (i = 0; i < MAX_CLIENTS; i++) {
+				const char *configString;
+
+				configString = cl.gameState.stringData + cl.gameState.stringOffsets[ i + CS_PLAYERS ];
+				if (!configString[0])
+					continue;
+
+				players++;
+			}
+			if (players == cls.notification.playersCount && (flags & NOTIFICATION_PLAYERS)) {
+//				CL_ShowNotification(players == 1 ? "1 player connected" : va("%d players connected", players));
+				CL_CheckSVStringEdRef(strEd, "@@@PLCONNECT");
+				CL_ShowNotification(players == 1 ? va("1 player %s", strEd) : va("%d players %s", players, strEd));
+			} else if (flags & NOTIFICATION_CONNECT) {
+/*				char *ss = strstr(cmd, " @@@");
+				if (ss) {
+					ptrdiff_t offset = ss - cmd;
+					char name[64];
+					cmd[offset] = 0;
+					Q_strncpyz(name, cmd, sizeof(name));
+					Q_StripColor(name);
+					CL_ShowNotification(va("%s connected", name));
+				} else
+					CL_ShowNotification("Player connected");*/
+				CL_CheckSVStringEdRef(strEd, cmd);
+				Q_StripColor(strEd);
+				CL_ShowNotification(strEd);
+			}
+		} else if (Q_stristr(cmd, "@@@PLCALLEDVOTE") && ( flags & NOTIFICATION_VOTE )) {
+//			CL_ShowNotification("Vote is called");
+			CL_CheckSVStringEdRef(strEd, cmd);
+			Q_StripColor(strEd);
+			CL_ShowNotification(strEd);
+		}
+	} else if (!strcmp(cmd, "chat") || !strcmp(cmd, "tchat") || !strcmp(cmd, "lchat") || !strcmp(cmd, "ltchat")) {
+		char text[MAX_SAY_TEXT], textCopy[MAX_SAY_TEXT], *chatText;
+		int i, l;
+		qboolean pm, word = qfalse;
+#define EC "\x19"
+		if (!strcmp(cmd, "chat") || !strcmp(cmd, "tchat")) {
+			Q_strncpyz(text, Cmd_Argv(1), MAX_SAY_TEXT);
+		} else {
+			char name[MAX_STRING_CHARS];
+			char loc[MAX_STRING_CHARS];
+			char color[8];
+			char message[MAX_STRING_CHARS];
+
+			if (Cmd_Argc() < 4)
+			{
+				return;
+			}
+
+			Q_strncpyz( name, Cmd_Argv( 1 ), sizeof( name ) );
+			Q_strncpyz( loc, Cmd_Argv( 2 ), sizeof( loc ) );
+			Q_strncpyz( color, Cmd_Argv( 3 ), sizeof( color ) );
+			Q_strncpyz( message, Cmd_Argv( 4 ), sizeof( message ) );
+
+			if (loc[0] == '@')
+			{ //get localized text
+				Q_strncpyz( loc, SE_GetString( loc+1 ), sizeof( loc ) );
+			}
+			Com_sprintf(text, sizeof( text ), "%s^7<%s> ^%s%s", name, loc, color, message);
+		}
+		pm = (qboolean)(strstr(text, EC"]" EC": ") != NULL);
+		Q_StripColor(text);
+		Q_strncpyz(textCopy, text, sizeof(textCopy));
+		chatText = strstr(textCopy, EC": ");
+		if (chatText && chatText[3] != 0 && (flags & NOTIFICATION_WORD)) {
+			chatText = strtok(chatText + 3, " ,.;:()[]{}!?+-=");
+			while (chatText) {
+				for (i = 0; i < cls.notification.wordsCount; i++) {
+					if (!Q_stricmp(chatText, cls.notification.words[i])) {
+						word = qtrue;
+						break;
+					}
+				}
+				if (word)
+					break;
+				chatText = strtok(NULL, " ,.;:()[]{}!?+-=");
+			}
+		}
+		l = 0;
+		for (i = 0; text[i]; i++) {
+			if (text[i] == '\x19')
+				continue;
+			text[l++] = text[i];
+		}
+		text[l] = '\0';
+		if ((!strcmp(cmd, "chat") || !strcmp(cmd, "lchat")) && pm && (flags & NOTIFICATION_PM)) {
+			CL_ShowNotification(va("PM: %s", text));
+		} else if (word) {
+			CL_ShowNotification(text);
+		}
+	}
+}
 /*
 ===================
 CL_GetServerCommand
@@ -409,6 +530,8 @@ qboolean CL_GetServerCommand( int serverCommandNumber ) {
 	Com_DPrintf( "serverCommand: %i : %s\n", serverCommandNumber, s );
 
 rescan:
+	Cmd_TokenizeString( s );
+	CL_ServerCommandNotification( s );
 	Cmd_TokenizeString( s );
 	cmd = Cmd_Argv(0);
 
@@ -457,6 +580,11 @@ rescan:
 		// reparse the string, because Con_ClearNotify() may have done another Cmd_TokenizeString()
 		Cmd_TokenizeString( s );
 		Com_Memset( cl.cmds, 0, sizeof( cl.cmds ) );
+	
+		if (cl_autoDemo->integer && !clc.demoplaying ) {
+			demoAutoComplete();
+			demoAutoRecord();
+		}
 		return qtrue;
 	}
 
@@ -500,6 +628,10 @@ void CL_ShutdownCGame( void ) {
 	cls.cgameStarted = qfalse;
 
 	CL_UnbindCGame();
+
+	if (cl_autoDemo->integer && !clc.demoplaying) {
+		demoAutoComplete();
+	}
 }
 
 /*
@@ -539,6 +671,8 @@ void CL_InitCGame( void ) {
 	if ( clRate == 4000 ) {
 		Com_Printf( S_COLOR_YELLOW "WARNING: Old default /rate value detected (4000). Suggest typing /rate 25000 into console for a smoother connection!\n" );
 	}
+
+	demoAutoInit();
 
 	// reset any CVAR_CHEAT cvars registered by cgame
 	if ( !clc.demoplaying && !cl_connectedToCheatServer )
@@ -597,7 +731,11 @@ void CL_CGameRendering( stereoFrame_t stereo ) {
 	re->G2API_SetTime(cl.serverTime, 1);
 	//rww - RAGDOLL_END
 
-	CGVM_DrawActiveFrame( cl.serverTime, stereo, clc.demoplaying );
+	if (clc.newDemoPlayer) {
+		demoRenderFrame( stereo );
+	} else {
+		CGVM_DrawActiveFrame( cl.serverTime, stereo, clc.demoplaying );
+	}
 }
 
 
@@ -709,6 +847,7 @@ void CL_FirstSnapshot( void ) {
 CL_SetCGameTime
 ==================
 */
+extern qboolean demoCommandSmoothingState(void);
 void CL_SetCGameTime( void ) {
 	// getting a valid frame message ends the connection process
 	if ( cls.state != CA_ACTIVE ) {
@@ -749,7 +888,7 @@ void CL_SetCGameTime( void ) {
 	}
 	cl.oldFrameServerTime = cl.snap.serverTime;
 
-
+	cl.serverTimeLast = cl.serverTime;
 	// get our current view of time
 
 	if ( clc.demoplaying && cl_freezeDemo->integer ) {
@@ -819,7 +958,7 @@ void CL_SetCGameTime( void ) {
 		cl.serverTime = clc.timeDemoBaseTime + clc.timeDemoFrames * 50;
 	}
 
-	while ( cl.serverTime >= cl.snap.serverTime ) {
+	while ( cl.serverTime >=  ( demoCommandSmoothingState() ? ( cl.snapshots[( cl.snap.messageNum - 1 ) & PACKET_MASK].serverTime ) : cl.snap.serverTime ) ) {
 		// feed another messag, which should change
 		// the contents of cl.snap
 		CL_ReadDemoMessage();

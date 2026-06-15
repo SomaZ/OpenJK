@@ -1,32 +1,12 @@
-/*
-===========================================================================
-Copyright (C) 1999 - 2005, Id Software, Inc.
-Copyright (C) 2000 - 2013, Raven Software, Inc.
-Copyright (C) 2001 - 2013, Activision, Inc.
-Copyright (C) 2013 - 2015, OpenJK contributors
-
-This file is part of the OpenJK source code.
-
-OpenJK is free software; you can redistribute it and/or modify it
-under the terms of the GNU General Public License version 2 as
-published by the Free Software Foundation.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU General Public License for more details.
-
-You should have received a copy of the GNU General Public License
-along with this program; if not, see <http://www.gnu.org/licenses/>.
-===========================================================================
-*/
+// Copyright (C) 1999-2000 Id Software, Inc.
+//
 
 // cg_localents.c -- every frame, generate renderer commands for locally
 // processed entities, like smoke puffs, gibs, shells, etc.
 
 #include "cg_local.h"
 
-#define	MAX_LOCAL_ENTITIES	2048 // 512
+#define	MAX_LOCAL_ENTITIES	2048 //Raz: was 512
 localEntity_t	cg_localEntities[MAX_LOCAL_ENTITIES];
 localEntity_t	cg_activeLocalEntities;		// double linked list
 localEntity_t	*cg_freeLocalEntities;		// single linked list
@@ -35,7 +15,7 @@ localEntity_t	*cg_freeLocalEntities;		// single linked list
 ===================
 CG_InitLocalEntities
 
-This is called at startup and for tournament restarts
+This is called at startup and for tournement restarts
 ===================
 */
 void	CG_InitLocalEntities( void ) {
@@ -58,7 +38,7 @@ CG_FreeLocalEntity
 */
 void CG_FreeLocalEntity( localEntity_t *le ) {
 	if ( !le->prev ) {
-		trap->Error( ERR_DROP, "CG_FreeLocalEntity: not active" );
+		CG_Error( "CG_FreeLocalEntity: not active" );
 		return;
 	}
 
@@ -133,7 +113,7 @@ void CG_BloodTrail( localEntity_t *le ) {
 	for ( ; t <= t2; t += step ) {
 		BG_EvaluateTrajectory( &le->pos, t, newOrigin );
 
-		blood = CG_SmokePuff( newOrigin, vec3_origin,
+		blood = CG_SmokePuff( newOrigin, vec3_origin, 
 					  20,		// radius
 					  1, 1, 1, 1,	// color
 					  2000,		// trailTime
@@ -155,17 +135,23 @@ CG_FragmentBounceMark
 ================
 */
 void CG_FragmentBounceMark( localEntity_t *le, trace_t *trace ) {
-//	int radius;
+	int			radius;
 
 	if ( le->leMarkType == LEMT_BLOOD ) {
-	//	radius = 16 + (rand()&31);
-	//	CG_ImpactMark( cgs.media.bloodMarkShader, trace->endpos, trace->plane.normal, Q_flrand(0.0f, 1.0f)*360, 1,1,1,1, qtrue, radius, qfalse );
+
+		radius = 16 + (rand()&31);
+//		CG_ImpactMark( cgs.media.bloodMarkShader, trace->endpos, trace->plane.normal, random()*360,
+//			1,1,1,1, qtrue, radius, qfalse );
 	} else if ( le->leMarkType == LEMT_BURN ) {
-	//	radius = 8 + (rand()&15);
-	//	CG_ImpactMark( cgs.media.burnMarkShader, trace->endpos, trace->plane.normal, Q_flrand(0.0f, 1.0f)*360, 1,1,1,1, qtrue, radius, qfalse );
+
+		radius = 8 + (rand()&15);
+//		CG_ImpactMark( cgs.media.burnMarkShader, trace->endpos, trace->plane.normal, random()*360,
+//			1,1,1,1, qtrue, radius, qfalse );
 	}
 
-	// don't allow a fragment to make multiple marks, or they pile up while settling
+
+	// don't allow a fragment to make multiple marks, or they
+	// pile up while settling
 	le->leMarkType = LEMT_NONE;
 }
 
@@ -176,7 +162,7 @@ CG_FragmentBounceSound
 */
 void CG_FragmentBounceSound( localEntity_t *le, trace_t *trace ) {
 	// half the fragments will make a bounce sounds
-	if ( rand() & 1 )
+	if ( rand() & 1 ) 
 	{
 		sfxHandle_t	s = 0;
 
@@ -194,13 +180,13 @@ void CG_FragmentBounceSound( localEntity_t *le, trace_t *trace ) {
 
 		if ( s )
 		{
-			trap->S_StartSound( trace->endpos, ENTITYNUM_WORLD, CHAN_AUTO, s );
+			trap_S_StartSound( trace->endpos, ENTITYNUM_WORLD, CHAN_AUTO, s );
 		}
 
 		// bouncers only make the sound once...
 		// FIXME: arbitrary...change if it bugs you
 		le->leBounceSoundType = LEBS_NONE;
-	}
+	} 
 	else if ( rand() & 1 )
 	{
 		// we may end up bouncing again, but each bounce reduces the chance of playing the sound again or they may make a lot of noise when they settle
@@ -232,8 +218,8 @@ void CG_ReflectVelocity( localEntity_t *le, trace_t *trace ) {
 	le->pos.trTime = cg.time;
 
 	// check for stop, making sure that even on low FPS systems it doesn't bobble
-	if ( trace->allsolid ||
-		( trace->plane.normal[2] > 0 &&
+	if ( trace->allsolid || 
+		( trace->plane.normal[2] > 0 && 
 		( le->pos.trDelta[2] < 40 || le->pos.trDelta[2] < -cg.frametime * le->pos.trDelta[2] ) ) ) {
 		le->pos.trType = TR_STATIONARY;
 	} else {
@@ -258,13 +244,12 @@ void CG_AddFragment( localEntity_t *le ) {
 
 	if ( le->pos.trType == TR_STATIONARY ) {
 		// sink into the ground if near the removal time
-		int		t;
-		float	t_e;
-
-		t = le->endTime - cg.time;
+		float t, t_e;
+		
+		t = (le->endTime - cg.time) - cg.timeFraction;
 		if ( t < (SINK_TIME*2) ) {
 			le->refEntity.renderfx |= RF_FORCE_ENT_ALPHA;
-			t_e = (float)((float)(le->endTime - cg.time)/(SINK_TIME*2));
+			t_e = (float)(t/(SINK_TIME*2));
 			t_e = (int)((t_e)*255);
 
 			if (t_e > 255)
@@ -283,16 +268,16 @@ void CG_AddFragment( localEntity_t *le ) {
 
 			le->refEntity.shaderRGBA[3] = t_e;
 
-			trap->R_AddRefEntityToScene( &le->refEntity );
+			trap_R_AddRefEntityToScene( &le->refEntity );
 		} else {
-			trap->R_AddRefEntityToScene( &le->refEntity );
+			trap_R_AddRefEntityToScene( &le->refEntity );
 		}
 
 		return;
 	}
 
 	// calculate new position
-	BG_EvaluateTrajectory( &le->pos, cg.time, newOrigin );
+	demoNowTrajectory( &le->pos, newOrigin );
 
 	// trace a line from previous position to new position
 	CG_Trace( &trace, le->refEntity.origin, NULL, NULL, newOrigin, -1, CONTENTS_SOLID );
@@ -303,12 +288,12 @@ void CG_AddFragment( localEntity_t *le ) {
 		if ( le->leFlags & LEF_TUMBLE ) {
 			vec3_t angles;
 
-			BG_EvaluateTrajectory( &le->angles, cg.time, angles );
+			demoNowTrajectory( &le->angles, angles );
 			AnglesToAxis( angles, le->refEntity.axis );
 			ScaleModelAxis(&le->refEntity);
 		}
 
-		trap->R_AddRefEntityToScene( &le->refEntity );
+		trap_R_AddRefEntityToScene( &le->refEntity );
 
 		// add a blood trail
 		if ( le->leBounceSoundType == LEBS_BLOOD ) {
@@ -321,7 +306,7 @@ void CG_AddFragment( localEntity_t *le ) {
 	// if it is in a nodrop zone, remove it
 	// this keeps gibs from waiting at the bottom of pits of death
 	// and floating levels
-	if ( CG_PointContents( trace.endpos, 0 ) & CONTENTS_NODROP ) {
+	if ( trap_CM_PointContents( trace.endpos, 0 ) & CONTENTS_NODROP ) {
 		CG_FreeLocalEntity( le );
 		return;
 	}
@@ -336,13 +321,13 @@ void CG_AddFragment( localEntity_t *le ) {
 
 		if (le->bounceSound)
 		{ //specified bounce sound (debris)
-			trap->S_StartSound(le->pos.trBase, ENTITYNUM_WORLD, CHAN_AUTO, le->bounceSound);
+			trap_S_StartSound(le->pos.trBase, ENTITYNUM_WORLD, CHAN_AUTO, le->bounceSound);
 		}
 
 		// reflect the velocity on the trace plane
 		CG_ReflectVelocity( le, &trace );
 
-		trap->R_AddRefEntityToScene( &le->refEntity );
+		trap_R_AddRefEntityToScene( &le->refEntity );
 	}
 }
 
@@ -366,7 +351,7 @@ void CG_AddFadeRGB( localEntity_t *le ) {
 
 	re = &le->refEntity;
 
-	c = ( le->endTime - cg.time ) * le->lifeRate;
+	c = ((le->endTime - cg.time) - cg.timeFraction) * le->lifeRate;
 	c *= 0xff;
 
 	re->shaderRGBA[0] = le->color[0] * c;
@@ -374,14 +359,14 @@ void CG_AddFadeRGB( localEntity_t *le ) {
 	re->shaderRGBA[2] = le->color[2] * c;
 	re->shaderRGBA[3] = le->color[3] * c;
 
-	trap->R_AddRefEntityToScene( re );
+	trap_R_AddRefEntityToScene( re );
 }
 
 static void CG_AddFadeScaleModel( localEntity_t *le )
 {
 	refEntity_t	*ent = &le->refEntity;
 
-	float frac = ( cg.time - le->startTime )/((float)( le->endTime - le->startTime ));
+	float frac = ((cg.time - le->startTime) + cg.timeFraction)/((float)(le->endTime - le->startTime));
 
 	frac *= frac * frac; // yes, this is completely ridiculous...but it causes the shell to grow slowly then "explode" at the end
 
@@ -401,7 +386,7 @@ static void CG_AddFadeScaleModel( localEntity_t *le )
 	ent->shaderRGBA[3] = le->color[3] * frac;
 
 	// add the entity
-	trap->R_AddRefEntityToScene( ent );
+	trap_R_AddRefEntityToScene( ent );
 }
 
 /*
@@ -419,11 +404,11 @@ static void CG_AddMoveScaleFade( localEntity_t *le ) {
 
 	if ( le->fadeInTime > le->startTime && cg.time < le->fadeInTime ) {
 		// fade / grow time
-		c = 1.0 - (float) ( le->fadeInTime - cg.time ) / ( le->fadeInTime - le->startTime );
+		c = 1.0 - (( le->fadeInTime - cg.time) - cg.timeFraction) / ( le->fadeInTime - le->startTime );
 	}
 	else {
 		// fade / grow time
-		c = ( le->endTime - cg.time ) * le->lifeRate;
+		c = (( le->endTime - cg.time) - cg.timeFraction) * le->lifeRate;
 	}
 
 	re->shaderRGBA[3] = 0xff * c * le->color[3];
@@ -432,7 +417,7 @@ static void CG_AddMoveScaleFade( localEntity_t *le ) {
 		re->radius = le->radius * ( 1.0 - c ) + 8;
 	}
 
-	BG_EvaluateTrajectory( &le->pos, cg.time, re->origin );
+	demoNowTrajectory( &le->pos, re->origin );
 
 	// if the view would be "inside" the sprite, kill the sprite
 	// so it doesn't add too much overdraw
@@ -443,7 +428,7 @@ static void CG_AddMoveScaleFade( localEntity_t *le ) {
 		return;
 	}
 
-	trap->R_AddRefEntityToScene( re );
+	trap_R_AddRefEntityToScene( re );
 }
 
 /*
@@ -460,7 +445,7 @@ static void CG_AddPuff( localEntity_t *le ) {
 	re = &le->refEntity;
 
 	// fade / grow time
-	c = ( le->endTime - cg.time ) / (float)( le->endTime - le->startTime );
+	c = ((le->endTime - cg.time) - cg.timeFraction) / (le->endTime - le->startTime);
 
 	re->shaderRGBA[0] = le->color[0] * c;
 	re->shaderRGBA[1] = le->color[1] * c;
@@ -470,7 +455,7 @@ static void CG_AddPuff( localEntity_t *le ) {
 		re->radius = le->radius * ( 1.0 - c ) + 8;
 	}
 
-	BG_EvaluateTrajectory( &le->pos, cg.time, re->origin );
+	demoNowTrajectory(&le->pos, re->origin);
 
 	// if the view would be "inside" the sprite, kill the sprite
 	// so it doesn't add too much overdraw
@@ -481,7 +466,7 @@ static void CG_AddPuff( localEntity_t *le ) {
 		return;
 	}
 
-	trap->R_AddRefEntityToScene( re );
+	trap_R_AddRefEntityToScene( re );
 }
 
 /*
@@ -502,7 +487,7 @@ static void CG_AddScaleFade( localEntity_t *le ) {
 	re = &le->refEntity;
 
 	// fade / grow time
-	c = ( le->endTime - cg.time ) * le->lifeRate;
+	c = ((le->endTime - cg.time) - cg.timeFraction) * le->lifeRate;
 
 	re->shaderRGBA[3] = 0xff * c * le->color[3];
 	re->radius = le->radius * ( 1.0 - c ) + 8;
@@ -516,7 +501,7 @@ static void CG_AddScaleFade( localEntity_t *le ) {
 		return;
 	}
 
-	trap->R_AddRefEntityToScene( re );
+	trap_R_AddRefEntityToScene( re );
 }
 
 
@@ -539,7 +524,7 @@ static void CG_AddFallScaleFade( localEntity_t *le ) {
 	re = &le->refEntity;
 
 	// fade time
-	c = ( le->endTime - cg.time ) * le->lifeRate;
+	c = ((le->endTime - cg.time) - cg.timeFraction) * le->lifeRate;
 
 	re->shaderRGBA[3] = 0xff * c * le->color[3];
 
@@ -556,7 +541,7 @@ static void CG_AddFallScaleFade( localEntity_t *le ) {
 		return;
 	}
 
-	trap->R_AddRefEntityToScene( re );
+	trap_R_AddRefEntityToScene( re );
 }
 
 
@@ -572,20 +557,20 @@ static void CG_AddExplosion( localEntity_t *ex ) {
 	ent = &ex->refEntity;
 
 	// add the entity
-	trap->R_AddRefEntityToScene(ent);
+	trap_R_AddRefEntityToScene(ent);
 
 	// add the dlight
 	if ( ex->light ) {
 		float		light;
 
-		light = (float)( cg.time - ex->startTime ) / ( ex->endTime - ex->startTime );
+		light = (float)((cg.time - ex->startTime) + cg.timeFraction) / (ex->endTime - ex->startTime);
 		if ( light < 0.5 ) {
 			light = 1.0;
 		} else {
 			light = 1.0 - ( light - 0.5 ) * 2;
 		}
 		light = ex->light * light;
-		trap->R_AddLightToScene(ent->origin, light, ex->lightColor[0], ex->lightColor[1], ex->lightColor[2] );
+		trap_R_AddLightToScene(ent->origin, light, ex->lightColor[0], ex->lightColor[1], ex->lightColor[2] );
 	}
 }
 
@@ -600,7 +585,7 @@ static void CG_AddSpriteExplosion( localEntity_t *le ) {
 
 	re = le->refEntity;
 
-	c = ( le->endTime - cg.time ) / ( float ) ( le->endTime - le->startTime );
+	c = ((le->endTime - cg.time) - cg.timeFraction) / (float)(le->endTime - le->startTime);
 	if ( c > 1 ) {
 		c = 1.0;	// can happen during connection problems
 	}
@@ -613,20 +598,20 @@ static void CG_AddSpriteExplosion( localEntity_t *le ) {
 	re.reType = RT_SPRITE;
 	re.radius = 42 * ( 1.0 - c ) + 30;
 
-	trap->R_AddRefEntityToScene( &re );
+	trap_R_AddRefEntityToScene( &re );
 
 	// add the dlight
 	if ( le->light ) {
 		float		light;
 
-		light = (float)( cg.time - le->startTime ) / ( le->endTime - le->startTime );
+		light = (( cg.time - le->startTime ) + cg.timeFraction) / ( le->endTime - le->startTime );
 		if ( light < 0.5 ) {
 			light = 1.0;
 		} else {
 			light = 1.0 - ( light - 0.5 ) * 2;
 		}
 		light = le->light * light;
-		trap->R_AddLightToScene(re.origin, light, le->lightColor[0], le->lightColor[1], le->lightColor[2] );
+		trap_R_AddLightToScene(re.origin, light, le->lightColor[0], le->lightColor[1], le->lightColor[2] );
 	}
 }
 
@@ -641,7 +626,7 @@ void CG_AddRefEntity( localEntity_t *le ) {
 		CG_FreeLocalEntity( le );
 		return;
 	}
-	trap->R_AddRefEntityToScene( &le->refEntity );
+	trap_R_AddRefEntityToScene( &le->refEntity );
 }
 
 /*
@@ -659,7 +644,7 @@ void CG_AddScorePlum( localEntity_t *le ) {
 
 	re = &le->refEntity;
 
-	c = ( le->endTime - cg.time ) * le->lifeRate;
+	c = ((le->endTime - cg.time) - cg.timeFraction ) * le->lifeRate;
 
 	score = le->radius;
 	if (score < 0) {
@@ -702,8 +687,8 @@ void CG_AddScorePlum( localEntity_t *le ) {
 	// so it doesn't add too much overdraw
 	VectorSubtract( origin, cg.refdef.vieworg, delta );
 	len = VectorLength( delta );
-	if ( len < 20 ) {
-		CG_FreeLocalEntity( le );
+	if ( len < 7*7 ) {
+//		CG_FreeLocalEntity( le );
 		return;
 	}
 
@@ -726,7 +711,7 @@ void CG_AddScorePlum( localEntity_t *le ) {
 	for (i = 0; i < numdigits; i++) {
 		VectorMA(origin, (float) (((float) numdigits / 2) - i) * NUMBER_SIZE, vec, re->origin);
 		re->customShader = cgs.media.numberShaders[digits[numdigits-1-i]];
-		trap->R_AddRefEntityToScene( re );
+		trap_R_AddRefEntityToScene( re );
 	}
 }
 
@@ -744,8 +729,8 @@ void CG_AddOLine( localEntity_t *le )
 
 	re = &le->refEntity;
 
-	frac = (cg.time - le->startTime) / ( float ) ( le->endTime - le->startTime );
-	if ( frac > 1 )
+	frac = ((cg.time - le->startTime) + cg.timeFraction) / (float) (le->endTime - le->startTime);
+	if ( frac > 1 ) 
 		frac = 1.0;	// can happen during connection problems
 	else if (frac < 0)
 		frac = 0.0;
@@ -772,7 +757,7 @@ void CG_AddOLine( localEntity_t *le )
 
 	re->reType = RT_ORIENTEDLINE;
 
-	trap->R_AddRefEntityToScene( re );
+	trap_R_AddRefEntityToScene( re );
 }
 
 /*
@@ -790,7 +775,7 @@ void CG_AddLine( localEntity_t *le )
 
 	re->reType = RT_LINE;
 
-	trap->R_AddRefEntityToScene( re );
+	trap_R_AddRefEntityToScene( re );
 }
 
 //==============================================================================
@@ -807,7 +792,7 @@ void CG_AddLocalEntities( void ) {
 	// walk the list backwards, so any new local entities generated
 	// (trails, marks, etc) will be present this frame
 	le = cg_activeLocalEntities.prev;
-	for ( ; le != &cg_activeLocalEntities ; le = next ) {
+	for ( ;le && le != &cg_activeLocalEntities ; le = next ) {
 		// grab next now, so if the local entity is freed we
 		// still have it
 		next = le->prev;
@@ -818,7 +803,7 @@ void CG_AddLocalEntities( void ) {
 		}
 		switch ( le->leType ) {
 		default:
-			trap->Error( ERR_DROP, "Bad leType: %i", le->leType );
+			CG_Error( "Bad leType: %i", le->leType );
 			break;
 
 		case LE_MARK:

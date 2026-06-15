@@ -156,7 +156,10 @@ typedef struct image_s {
 	bool		allowPicmip;
 
 	short		iLastLevelUsedOn;
-
+#ifdef __ANDROID__
+	bool		recreate;
+	qboolean	allowTC;
+#endif
 } image_t;
 
 //===============================================================================
@@ -465,7 +468,7 @@ typedef struct shader_s {
 	byte		styles[MAXLIGHTMAPS];
 
 	int			index;					// this shader == tr.shaders[index]
-	int			sortedIndex;			// this shader == tr.sortedShaders[sortedIndex]
+	int64_t		sortedIndex;			// this shader == tr.sortedShaders[sortedIndex]
 
 	float		sort;					// lower numbered shaders draw before higher numbered
 
@@ -501,8 +504,8 @@ typedef struct shader_s {
 	short		numUnfoggedPasses;
 	shaderStage_t	*stages;
 
-  float clampTime;                                  // time this shader is clamped to
-  float timeOffset;                                 // current time offset for this shader
+  double clampTime;                                  // time this shader is clamped to
+  double timeOffset;                                 // current time offset for this shader
 
 	// True if this shader has a stage with glow in it (just an optimization).
 	bool hasGlow;
@@ -542,17 +545,18 @@ typedef struct trRefdef_s {
 	int			time;				// time in milliseconds for shader effects and other time dependent rendering issues
 	int			frametime;
 	int			rdflags;			// RDF_NOWORLDMODEL, etc
+	float		timeFraction;
 
 	// 1 bits will prevent the associated area from rendering at all
 	byte		areamask[MAX_MAP_AREA_BYTES];
 	qboolean	areamaskModified;	// qtrue if areamask changed since last scene
 
-	float		floatTime;			// tr.refdef.time / 1000.0
+	double		floatTime;			// tr.refdef.time / 1000.0
 
 	// text messages for deform text shaders
 	char		text[MAX_RENDER_STRINGS][MAX_RENDER_STRING_LENGTH];
 
-	int			num_entities;
+	int64_t		num_entities;
 	trRefEntity_t	*entities;
 
 	int			num_dlights;
@@ -595,7 +599,7 @@ typedef struct fog_s {
 } fog_t;
 
 typedef struct viewParms_s {
-	orientationr_t	ori;				// Can't use "or" as it is a reserved word with gcc DREWS 2/2/2002
+	orientationr_t	ori, oldOri;				// Can't use "or" as it is a reserved word with gcc DREWS 2/2/2002
 	orientationr_t	world;
 	vec3_t		pvsOrigin;			// may be different than or.origin for portals
 	qboolean	isPortal;			// true if this view is through a portal
@@ -645,7 +649,7 @@ Ghoul2 Insert End
 } surfaceType_t;
 
 typedef struct drawSurf_s {
-	unsigned			sort;			// bit combination for fast compares
+	uint64_t			sort;			// bit combination for fast compares
 	surfaceType_t		*surface;		// any of surface*_t
 } drawSurf_t;
 
@@ -659,7 +663,7 @@ typedef struct drawSurf_s {
 typedef struct srfPoly_s {
 	surfaceType_t	surfaceType;
 	qhandle_t		hShader;
-	int				fogIndex;
+	int64_t			fogIndex;
 	int				numVerts;
 	polyVert_t		*verts;
 } srfPoly_t;
@@ -767,7 +771,7 @@ BRUSH MODELS
 typedef struct msurface_s {
 	int					viewCount;		// if == tr.viewCount, already added
 	struct shader_s		*shader;
-	int					fogIndex;
+	int64_t				fogIndex;
 
 	surfaceType_t		*data;			// any of srf*_t
 } msurface_t;
@@ -903,7 +907,7 @@ the bits are allocated as follows:
 #define	QSORT_FOGNUM_SHIFT		2
 #define	QSORT_REFENTITYNUM_SHIFT	7
 #define	QSORT_SHADERNUM_SHIFT	(QSORT_REFENTITYNUM_SHIFT+REFENTITYNUM_BITS)
-#if (QSORT_SHADERNUM_SHIFT+SHADERNUM_BITS) > 32
+#if (QSORT_SHADERNUM_SHIFT+SHADERNUM_BITS) > 64
 	#error "Need to update sorting, too many bits."
 #endif
 
@@ -928,6 +932,9 @@ typedef struct frontEndCounters_s {
 #define FUNCTABLE_SIZE2		10
 #define FUNCTABLE_MASK		(FUNCTABLE_SIZE-1)
 
+float NewSinTable (double jediAcademy);
+float NewCosTable (double jediAcademy);
+
 
 // the renderer front end should never modify glstate_t
 typedef struct glstate_s {
@@ -936,7 +943,7 @@ typedef struct glstate_s {
 	qboolean	finishCalled;
 	int			texEnv[2];
 	int			faceCulling;
-	uint32_t	glStateBits;
+	uint64_t	glStateBits;
 } glstate_t;
 
 
@@ -969,6 +976,9 @@ typedef struct backEndState_s {
 	byte		color2D[4];
 	qboolean	vertexes2D;		// shader needs to be finished
 	trRefEntity_t	entity2D;	// currentEntity will point at this when doing 2D rendering
+	//mme
+	float			sceneZfar;
+	qboolean		doneBloom, doneSurfaces;
 } backEndState_t;
 
 /*
@@ -1043,8 +1053,8 @@ typedef struct trGlobals_s {
 
 	trRefEntity_t			*currentEntity;
 	trRefEntity_t			worldEntity;		// point currentEntity at this when rendering world
-	int						currentEntityNum;
-	int						shiftedEntityNum;	// currentEntityNum << QSORT_REFENTITYNUM_SHIFT
+	int64_t					currentEntityNum;
+	int64_t					shiftedEntityNum;	// currentEntityNum << QSORT_REFENTITYNUM_SHIFT
 	model_t					*currentModel;
 
 	viewParms_t				viewParms;
@@ -1084,6 +1094,9 @@ typedef struct trGlobals_s {
 	shader_t				*shaders[MAX_SHADERS];
 	shader_t				*sortedShaders[MAX_SHADERS];
 
+	//mme
+	shader_t				*mmeWorldShader;
+
 	int						numSkins;
 	skin_t					*skins[MAX_SKINS];
 
@@ -1096,6 +1109,12 @@ typedef struct trGlobals_s {
 
 	float					rangedFog;
 	float					distanceCull;
+
+	qboolean finishStereo;
+	qboolean capturingMultiPass;
+	qboolean latestMultiPassFrame, firstMultiPassFrame;
+
+	colorTable_t cTable;
 } trGlobals_t;
 
 struct glconfigExt_t
@@ -1130,6 +1149,8 @@ extern cvar_t	*r_ignore;				// used for debugging anything
 extern cvar_t	*r_verbose;				// used for verbose debug spew
 
 extern cvar_t	*r_znear;				// near Z clip plane
+extern cvar_t	*r_zproj;				// z distance of projection plane
+extern cvar_t	*r_stereoSeparation;	// separation of cameras for stereo capture
 
 extern cvar_t	*r_stencilbits;			// number of desired stencil bits
 extern cvar_t	*r_depthbits;			// number of desired depth bits
@@ -1283,6 +1304,39 @@ Ghoul2 Insert End
 
 extern	cvar_t	*r_patchStitching;
 
+extern	cvar_t	*r_drawAllAreas;
+
+//extern	cvar_t	*mme_aviFormat;
+//extern	cvar_t	*mme_screenshotName;
+
+extern cvar_t	*mme_screenShotFormat;
+extern cvar_t	*mme_screenShotGamma;
+extern cvar_t	*mme_screenShotAlpha;
+extern cvar_t	*mme_jpegQuality;
+extern cvar_t	*mme_jpegDownsampleChroma;
+extern cvar_t	*mme_jpegOptimizeHuffman;
+extern cvar_t	*mme_tgaCompression;
+extern cvar_t	*mme_pngCompression;
+extern cvar_t	*mme_skykey;
+extern cvar_t	*mme_worldShader;
+extern cvar_t	*mme_pip;
+extern cvar_t	*mme_renderWidth;
+extern cvar_t	*mme_renderHeight;
+extern cvar_t	*mme_blurFrames;
+extern cvar_t	*mme_blurType;
+extern cvar_t	*mme_blurOverlap;
+extern cvar_t	*mme_blurGamma;
+extern cvar_t	*mme_cpuSSE2;
+extern cvar_t	*mme_pbo;
+extern cvar_t	*mme_workMegs;
+extern cvar_t	*mme_depthRange;
+extern cvar_t	*mme_depthFocus;
+extern cvar_t	*mme_saveOverwrite;
+extern cvar_t	*mme_saveStencil;
+extern cvar_t	*mme_saveShot;
+extern cvar_t	*mme_saveDepth;
+extern cvar_t	*mme_saveCubemap;
+
 //====================================================================
 
 void R_SwapBuffers( int );
@@ -1297,9 +1351,9 @@ void R_AddLightningBoltSurfaces( trRefEntity_t *e );
 
 void R_AddPolygonSurfaces( void );
 
-void R_DecomposeSort( unsigned sort, int *entityNum, shader_t **shader, int *fogNum, int *dlightMap );
+void R_DecomposeSort( const uint64_t sort, int64_t *entityNum, shader_t **shader, int64_t *fogNum, int64_t *dlightMap );
 
-void R_AddDrawSurf( surfaceType_t *surface, shader_t *shader, int fogIndex, int dlightMap );
+void R_AddDrawSurf( surfaceType_t *surface, shader_t *shader, int64_t fogIndex, int64_t dlightMap );
 
 
 #define	CULL_IN		0		// completely unclipped
@@ -1313,6 +1367,7 @@ int R_CullPointAndRadius( const vec3_t origin, float radius );
 int R_CullLocalPointAndRadius( const vec3_t origin, float radius );
 
 void R_RotateForEntity( const trRefEntity_t *ent, const viewParms_t *viewParms, orientationr_t *ori );
+void R_RotateForWorld ( const orientationr_t* input, orientationr_t* world );
 
 /*
 ** GL wrapper/helper functions
@@ -1408,6 +1463,7 @@ void		R_GammaCorrect( byte *buffer, int bufSize );
 void	R_ImageList_f( void );
 void	R_SkinList_f( void );
 void	R_FontList_f( void );
+const void *RB_ScreenShotCmd( const void *data );
 
 void	R_InitFogTable( void );
 float	R_FogFactor( float s, float t );
@@ -1416,7 +1472,6 @@ void	R_DeleteTextures( void );
 float	R_SumOfUsedImages( qboolean bUseFormat );
 void	R_InitSkins( void );
 skin_t	*R_GetSkinByHandle( qhandle_t hSkin );
-const void *RB_TakeVideoFrameCmd( const void *data );
 void RE_HunkClearCrap(void);
 
 
@@ -1439,6 +1494,9 @@ shader_t	*R_FindShader( const char *name, const int *lightmapIndex, const byte *
 shader_t	*R_GetShaderByHandle( qhandle_t hShader );
 shader_t	*R_GetShaderByState( int index, long *cycleTime );
 shader_t *R_FindShaderByName( const char *name );
+//mme
+char	*R_FindShaderText( const char *shadername );
+
 void		R_InitShaders(qboolean server);
 void		R_ShaderList_f( void );
 void    R_RemapShader(const char *oldShader, const char *newShader, const char *timeOffset);
@@ -1489,10 +1547,10 @@ struct shaderCommands_s
 	stageVars_t	svars QALIGN(16);
 
 	shader_t	*shader;
-  float   shaderTime;
-	int			fogNum;
+	double		shaderTime;
+	int64_t		fogNum;
 
-	int			dlightBits;	// or together of all vertexDlightBits
+	int64_t		dlightBits;	// or together of all vertexDlightBits
 
 	int			numIndexes;
 	int			numVertexes;
@@ -1519,7 +1577,7 @@ extern	shaderCommands_t	tess;
 
 extern	color4ub_t	styleColors[MAX_LIGHT_STYLES];
 
-void RB_BeginSurface(shader_t *shader, int fogNum );
+void RB_BeginSurface( shader_t *shader, int64_t fogNum );
 void RB_EndSurface(void);
 void RB_CheckOverflow( int verts, int indexes );
 #define RB_CHECKOVERFLOW(v,i) if (tess.numVertexes + (v) >= SHADER_MAX_VERTEXES || tess.numIndexes + (i) >= SHADER_MAX_INDEXES ) {RB_CheckOverflow(v,i);}
@@ -1825,6 +1883,11 @@ typedef struct rotatePicCommand_s {
 	float	a;
 } rotatePicCommand_t;
 
+typedef struct {
+	int		commandId;
+	float	ratio;
+} rotatePicRatioFixCommand_t;
+
 typedef struct drawSurfsCommand_s {
 	int		commandId;
 	trRefdef_t	refdef;
@@ -1833,14 +1896,19 @@ typedef struct drawSurfsCommand_s {
 	int		numDrawSurfs;
 } drawSurfsCommand_t;
 
-typedef struct videoFrameCommand_s {
-	int            commandId;
-	int            width;
-	int            height;
-	byte          *captureBuffer;
-	byte          *encodeBuffer;
-	qboolean      motionJpeg;
-} videoFrameCommand_t;
+typedef struct {
+	int		commandId;
+	char	name[MAX_OSPATH];
+	mmeShotFormat_t format;
+} screenShotCommand_t;
+
+typedef struct {
+	int		commandId;
+	char	name[MAX_OSPATH];
+	float	fps;
+	float	focus;
+	float	radius;
+} captureCommand_t;
 
 typedef enum {
 	RC_END_OF_LIST=0,
@@ -1853,7 +1921,9 @@ typedef enum {
 	RC_SWAP_BUFFERS,
 	RC_WORLD_EFFECTS,
 	RC_AUTO_MAP,
-	RC_VIDEOFRAME
+	RC_SCREENSHOT,
+	RC_CAPTURE,
+	RC_ROTATE_PIC2_RATIOFIX,
 } renderCommand_t;
 
 
@@ -1875,6 +1945,7 @@ extern	int		max_polyverts;
 extern	backEndData_t	*backEndData;
 
 
+void *R_GetCommandBuffer( int bytes );
 void RB_ExecuteRenderCommands( const void *data );
 
 void R_IssuePendingRenderCommands( void );
@@ -1888,9 +1959,11 @@ void RE_RotatePic ( float x, float y, float w, float h,
 					  float s1, float t1, float s2, float t2,float a, qhandle_t hShader );
 void RE_RotatePic2 ( float x, float y, float w, float h,
 					  float s1, float t1, float s2, float t2,float a, qhandle_t hShader );
+void RE_RotatePic2RatioFix ( float ratio );
 void RE_BeginFrame( stereoFrame_t stereoFrame );
 void RE_EndFrame( int *frontEndMsec, int *backEndMsec );
-void RE_TakeVideoFrame( int width, int height, byte *captureBuffer, byte *encodeBuffer, qboolean motionJpeg );
+
+int RE_SavePNG(const char *filename, byte *buf, size_t width, size_t height, int byteDepth );
 
 /*
 Ghoul2 Insert Start
@@ -1913,3 +1986,29 @@ void R_AddDecals( void );
 void RB_DrawSurfaceSprites( shaderStage_t *stage, shaderCommands_t *input);
 
 qboolean ShaderHashTableExists(void);
+
+
+//mme
+//int SaveJPG( int quality, int image_width, int image_height, mmeShotType_t image_type, byte *image_buffer, byte *out_buffer, int out_size );
+int SaveTGA( int image_compressed, int image_width, int image_height, mmeShotType_t image_type, byte *image_buffer, byte *out_buffer, int out_size );
+int SavePNG( int compresslevel, int image_width, int image_height, mmeShotType_t image_type, byte *image_buffer, byte *out_buffer, int out_size );
+
+//void R_Screenshot_PNG(int x, int y, int width, int height, char *fileName);
+void R_MME_Init(void);
+void R_MME_Shutdown(void);
+qboolean R_MME_TakeShot( qboolean stereo );
+const void *R_MME_CaptureShotCmd( const void *data );
+void R_MME_Capture( const char *shotName, float fps, float focus, float radius );
+void R_MME_BlurInfo( int* total, int* index );
+void R_MME_PrepareMultiCapture( const void *data );
+void R_MME_JitterView( float *pixels, float* eyes, qboolean stereo );
+qboolean R_MME_JitterOrigin( float *x, float *y, qboolean stereo );
+qboolean R_MME_CubemapIndex( int *index, qboolean stereo );
+
+int R_MME_MultiPassNext( qboolean stereo );
+int R_MME_CubemapNext( qboolean stereo );
+
+void R_MME_DoNotTake( );
+qboolean R_MME_CubemapActive( qboolean stereo );
+
+void R_MME_TimeFraction(float timeFraction);

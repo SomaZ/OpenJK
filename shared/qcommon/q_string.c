@@ -244,7 +244,16 @@ const char *Q_stristr( const char *s, const char *find )
 	return s;
 }
 
-int Q_PrintStrlen( const char *string ) {
+#if defined (UI_EXPORTS) || (QAGAME)
+static const colorTable_t cTable = qfalse;
+#else
+#endif
+int Q_PrintStrlen( const char *string
+#if defined (UI_EXPORTS) || (QAGAME)
+#else
+	, colorTable_t cTable
+#endif
+	) {
 	int			len;
 	const char	*p;
 
@@ -255,8 +264,9 @@ int Q_PrintStrlen( const char *string ) {
 	len = 0;
 	p = string;
 	while( *p ) {
-		if( Q_IsColorString( p ) ) {
-			p += 2;
+		int colorLen = Q_parseColorString( p, 0, cTable);
+		if( colorLen ) {
+			p += colorLen;
 			continue;
 		}
 		p++;
@@ -266,29 +276,34 @@ int Q_PrintStrlen( const char *string ) {
 	return len;
 }
 
-int Q_PrintStrLenTo(const char *str, int chars, char *color) {
+int Q_PrintStrLenTo(const char *str, int chars, vec4_t color
+#if defined (UI_EXPORTS) || (QAGAME)
+#else
+	, colorTable_t cTable
+#endif
+	) {
 	int		offset = 0;
-	char	lastColor = 0;
 	int		i;
 
 	for (i = 0; i < chars && str[i]; i++) {
-		if (Q_IsColorString(&str[i])) {
-			i++;
-			lastColor = str[i];
+		int colorLen = Q_parseColorString(&str[i], color, cTable);
+		if (colorLen) {
+			i+=colorLen;
 		} else {
 			offset++;
 		}
-	}
-
-	if (color) {
-		*color = lastColor;
 	}
 
 	return offset;
 }
 
 
-char *Q_CleanStr( char *string ) {
+char *Q_CleanStr( char *string
+#if defined (UI_EXPORTS) || (QAGAME)
+#else
+	, colorTable_t cTable
+#endif
+	) {
 	char*	d;
 	char*	s;
 	int		c;
@@ -296,10 +311,12 @@ char *Q_CleanStr( char *string ) {
 	s = string;
 	d = string;
 	while ((c = *s) != 0 ) {
-		if ( Q_IsColorString( s ) ) {
-			s++;
-		}
-		else if ( c >= 0x20 && c <= 0x7E ) {
+		int colorLen = Q_parseColorString( s, 0, cTable);
+		if ( colorLen ) {
+			s += colorLen;
+			continue;
+		}		
+		if ( c >= 0x20 && c <= 0x7E ) {
 			*d++ = c;
 		}
 		s++;
@@ -320,8 +337,12 @@ This function modifies INPUT (is mutable)
 (Also strips ^8 and ^9)
 ==================
 */
-void Q_StripColor(char *text)
-{
+void Q_StripColor(char *text
+#if defined (UI_EXPORTS) || (QAGAME)
+#else
+	, colorTable_t cTable
+#endif
+	) {
 	qboolean doPass = qtrue;
 	char *read;
 	char *write;
@@ -332,10 +353,10 @@ void Q_StripColor(char *text)
 		read = write = text;
 		while ( *read )
 		{
-			if ( Q_IsColorStringExt(read) )
-			{
+			int colorLen = Q_parseColorString( read, 0, cTable);
+			if( colorLen ) {
 				doPass = qtrue;
-				read += 2;
+				read += colorLen;
 			}
 			else
 			{
@@ -353,6 +374,42 @@ void Q_StripColor(char *text)
 			// Add trailing NUL byte if string has shortened
 			*write = '\0';
 		}
+	}
+}
+
+/*
+==================
+Q_StripColorNew
+ 
+Strips coloured strings in-place: "fgs^^^223fds" -> "fgs^^23fds"
+==================
+*/
+void Q_StripColorNew(char *text
+#if defined (UI_EXPORTS) || (QAGAME)
+#else
+	, colorTable_t cTable
+#endif
+	) {
+	char *read;
+	char *write;
+
+	read = write = text;
+	while ( *read ) {
+		int colorLen = Q_parseColorString( read, 0, cTable);
+		if( colorLen ) {
+			read += colorLen;
+		} else {
+			// Avoid writing the same data over itself
+			if (write != read) {
+				*write = *read;
+			}
+			write++;
+			read++;
+		}
+	}
+	if ( write < read ) {
+		// Add trailing NUL byte if string has shortened
+		*write = '\0';
 	}
 }
 

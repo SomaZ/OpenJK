@@ -20,6 +20,7 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 */
 
 #include <SDL.h>
+#include <SDL_syswm.h>
 #include "qcommon/qcommon.h"
 #include "qcommon/q_shared.h"
 #include "client/client.h"
@@ -807,6 +808,70 @@ uint8_t ConvertUTF32ToExpectedCharset( uint32_t utf32 )
 	}
 }
 
+void switchMod(void) {
+	cvar_t *fs_game = Cvar_FindVar("fs_game");
+	if (!(fs_game && !Q_stricmp(fs_game->string, "mme"))) {
+		Com_Printf("Switching mod\n");
+		Cvar_Set("fs_game", "mme");
+		Cbuf_ExecuteText(EXEC_APPEND, "vid_restart\n");
+	}
+}
+
+static bool fileHasExt(const char *filename, const char *ext) {
+	const char *fileExt = filename + strlen(filename) - strlen(ext);
+	if (!Q_stricmp(fileExt, ext))
+		return true;
+	return false;
+}
+
+const char *demoExt[] = {
+	".dm_26",
+	".dm_25",
+	".mme",
+	NULL,
+};
+static bool isDemo(const char *filename) {
+	if (!filename)
+		return false;
+	int i = 0;
+	while (demoExt[i]) {
+		if (fileHasExt(filename, demoExt[i]))
+			return true;
+		i++;
+	}
+	return false;
+}
+
+const char *configExt = ".cfg";
+static bool isConfig(const char *filename) {
+	if (fileHasExt(filename, configExt))
+		return true;
+	return false;
+}
+
+typedef struct dropLogic_s {
+	bool (*isSupported)(const char *filename);
+	char *cmd;
+	char *args;
+} dropLogic_t;
+//entTODO: implement config and other files support
+static dropLogic_t dropList[] = {
+	{isDemo, "demo", "del"},
+//	{isConfig, "exec", NULL},
+};
+
+static bool isSupported(const char *filename, dropLogic_t *out) {
+	size_t len = ARRAY_LEN(dropList);
+	for (size_t i = 0; i < len; i++) {
+		if (dropList[i].isSupported(filename)) {
+			*out = dropList[i];
+			return true;
+		}
+	}
+	out = NULL;
+	return false;
+}
+
 /*
 ===============
 IN_ProcessEvents
@@ -937,6 +1002,44 @@ static void IN_ProcessEvents( void )
 						break;
 					}
 				}
+				break;
+
+			case SDL_DROPFILE:
+				Com_Printf(S_COLOR_YELLOW "Drop file: %s received\n", e.drop.file);
+
+				dropLogic_t drop;
+				if (isSupported(e.drop.file, &drop))
+				{
+					char cmd[MAX_PATH+16] = {0};
+					Q_strcat(cmd, sizeof(cmd), drop.cmd);
+					Q_strcat(cmd, sizeof(cmd), " \"");
+					Q_strcat(cmd, sizeof(cmd), e.drop.file);
+					Q_strcat(cmd, sizeof(cmd), "\" ");
+					if (drop.args)
+						Q_strcat(cmd, sizeof(cmd), drop.args);
+					if (!Q_stricmp(drop.cmd, "demo")) {
+						switchMod();
+					}
+					Cbuf_ExecuteText(EXEC_APPEND, cmd);
+					Cbuf_ExecuteText(EXEC_APPEND, "\n");
+				}
+
+				SDL_free(e.drop.file);
+				break;
+
+			case SDL_SYSWMEVENT:
+#if (_WIN32)
+				if (e.syswm.msg->subsystem == SDL_SYSWM_WINDOWS)
+				{
+extern void Sys_WMMessage(
+	HWND    hWnd,
+	UINT    uMsg,
+	WPARAM  wParam,
+	LPARAM  lParam);
+					SDL_SysWMmsg *msg = e.syswm.msg;
+					Sys_WMMessage(msg->msg.win.hwnd, msg->msg.win.msg, msg->msg.win.wParam, msg->msg.win.lParam);
+				}
+#endif
 				break;
 
 			default:

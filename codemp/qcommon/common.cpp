@@ -126,7 +126,31 @@ to the appropriate place.
 A raw string should NEVER be passed as fmt, because of "%f" type crashers.
 =============
 */
+#ifdef USE_AIO
+class autolock
+{
+	pthread_mutex_t *lock_;
+
+public:
+	autolock(pthread_mutex_t *lock )
+		: lock_(lock)
+	{
+		pthread_mutex_lock( lock );
+	}
+	~autolock()
+	{
+		pthread_mutex_unlock( lock_ );
+	}
+};
+
+static pthread_mutex_t printfLock;
+static pthread_mutex_t pushLock;
+#endif
 void QDECL Com_Printf( const char *fmt, ... ) {
+#ifdef USE_AIO
+	autolock autolock( &printfLock );
+#endif
+
 	va_list		argptr;
 	char		msg[MAXPRINTMSG];
 	static qboolean opening_qconsole = qfalse;
@@ -260,7 +284,7 @@ void QDECL Com_OPrintf( const char *fmt, ...)
 	va_end (argptr);
 #ifdef _WIN32
 	OutputDebugString(msg);
-#else
+#elif !defined(__ANDROID__)
 	printf("%s", msg);
 #endif
 }
@@ -372,6 +396,65 @@ quake3 set test blah + map test
 int		com_numConsoleLines;
 char	*com_consoleLines[MAX_CONSOLE_LINES];
 
+typedef enum {
+	PROTOCOL_CMD,
+	PROTOCOL_CVAR,
+} protocolParamType_t;
+typedef struct {
+	const char			*name;
+	protocolParamType_t	type;
+} protocolParams_t;
+//allowed parameters to get parsed out from ja://
+protocolParams_t parseParams[] = {
+	{"password",PROTOCOL_CVAR},
+	{"fs_game",PROTOCOL_CVAR},
+};
+
+//ja://ip:port&password=pass&fs_game=mod -> +connect ip:port +set password pass +set fs_game mod
+char *Com_ParseProtocol(char *commandLine) {
+	static char newCommandLine[256];
+	char *protocol;
+	//ip has to contain dots, doesn't it?
+	if ((protocol = strstr(commandLine, "ja:")) && (strchr(commandLine, '.') || strstr(commandLine, "localhost"))) {
+		protocol += 3;
+		//allow only alphanumeric with ".", ":" and "-"
+		char *ip = strtok(protocol, " /\\?!\"#$%&\'()*+,;<=>@[]^_`{|}~");
+		if (ip) {
+			Q_strcat(newCommandLine, sizeof(newCommandLine), "+connect ");
+			Q_strcat(newCommandLine, sizeof(newCommandLine), ip);
+			size_t len = ARRAY_LEN(parseParams);
+			char *param;
+			for (param = strtok(NULL, " /\\?&%\'"); param != NULL;
+				param = strtok(param + strlen(param) + 1, " /\\?&%\'")) {
+				char temp[64], *key, *val;
+				Q_strncpyz(temp, param, sizeof (temp));
+				key = strtok(temp, " =\"\'");
+				val = strtok(NULL, " =\"\'");
+				if (key && *key && val && *val && *val != '&') {
+					for (size_t i = 0; i < len; i++) {
+						if (!Q_stricmpn(key, parseParams[i].name, strlen(parseParams[i].name))) {
+							//entTODO: add ignoring params into protocolParams_t?
+							if (!Q_stricmp(parseParams[i].name, "fs_game") && !Q_stricmp(val, "base"))
+								break;
+							if (parseParams[i].type == PROTOCOL_CMD) {
+								Q_strcat(newCommandLine, sizeof(newCommandLine), " +");
+							} else {
+								Q_strcat(newCommandLine, sizeof(newCommandLine), " +set ");
+							}
+							Q_strcat(newCommandLine, sizeof(newCommandLine), parseParams[i].name);
+							Q_strcat(newCommandLine, sizeof(newCommandLine), " ");
+							Q_strcat(newCommandLine, sizeof(newCommandLine), val);
+							break;
+						}
+					}
+				}
+			}
+			return newCommandLine;
+		}
+	}
+	return commandLine;
+}
+
 /*
 ==================
 Com_ParseCommandLine
@@ -379,7 +462,8 @@ Com_ParseCommandLine
 Break it up into multiple console lines
 ==================
 */
-void Com_ParseCommandLine( char *commandLine ) {
+void Com_ParseCommandLine( char *cmdLine ) {
+	char *commandLine = Com_ParseProtocol(cmdLine);
 	int inq = 0;
 	com_consoleLines[0] = commandLine;
 	com_numConsoleLines = 1;
@@ -726,8 +810,14 @@ journaled file
 */
 
 #define	MAX_PUSHED_EVENTS	            1024
-static int		com_pushedEventsHead = 0;
-static int             com_pushedEventsTail = 0;
+#ifdef USE_AIO
+#define THREADACCESS volatile
+#else
+#define THREADACCESS
+#endif
+// bk001129 - init, also static
+static THREADACCESS int		com_pushedEventsHead = 0;
+static THREADACCESS int             com_pushedEventsTail = 0;
 static sysEvent_t	com_pushedEvents[MAX_PUSHED_EVENTS];
 
 /*
@@ -824,6 +914,10 @@ Com_PushEvent
 =================
 */
 void Com_PushEvent( sysEvent_t *event ) {
+#ifdef USE_AIO
+	autolock autolock( &pushLock );
+#endif
+
 	sysEvent_t		*ev;
 	static int printedWarning = 0;
 
@@ -855,6 +949,9 @@ Com_GetEvent
 =================
 */
 sysEvent_t	Com_GetEvent( void ) {
+#ifdef USE_AIO
+	autolock autolock(&pushLock);
+#endif
 	if ( com_pushedEventsHead > com_pushedEventsTail ) {
 		com_pushedEventsTail++;
 		return com_pushedEvents[ (com_pushedEventsTail-1) & (MAX_PUSHED_EVENTS-1) ];
@@ -952,6 +1049,14 @@ int Com_EventLoop( void ) {
 			}
 			Cbuf_AddText( "\n" );
 			break;
+#ifdef USE_AIO
+		case SE_AIO_FCLOSE:
+			{
+				extern void	FS_FCloseAio( int handle );
+				FS_FCloseAio( ev.evValue );
+				break;
+			}
+#endif
 		}
 
 		// free any block data
@@ -1147,6 +1252,12 @@ static void Com_CatchError ( int code )
 	}
 }
 
+char loadingMsg[64] = "Loading...";
+void Com_SetLoadingMsg(char *msg) {
+	if (!msg)
+		return;
+	Q_strncpyz(loadingMsg, msg, sizeof(loadingMsg));
+}
 /*
 =================
 Com_Init
@@ -1156,9 +1267,19 @@ void Com_Init( char *commandLine ) {
 	int		qport;
 
 	Com_Printf( "%s %s %s\n", JK_VERSION, PLATFORM_STRING, SOURCE_DATE );
+	Com_SetLoadingMsg("Starting the game...");
 
 	try
 	{
+#ifdef USE_AIO
+		{
+			pthread_mutexattr_t attr;
+			pthread_mutexattr_init(&attr);
+			pthread_mutexattr_settype(&attr, PTHREAD_MUTEX_RECURSIVE);
+			pthread_mutex_init(&printfLock, &attr);
+			pthread_mutex_init(&pushLock, &attr);
+		}
+#endif
 		// initialize the weak pseudo-random number generator for use later.
 		Com_InitRand();
 
@@ -1343,7 +1464,7 @@ void Com_WriteConfigToFile( const char *filename ) {
 		return;
 	}
 
-	FS_Printf (f, "// generated by OpenJK MP, do not modify\n");
+	FS_Printf (f, "// generated by Star Wars Jedi Academy MP, do not modify\n");
 	Key_WriteBindings (f);
 	Cvar_WriteVariables (f);
 	FS_FCloseFile( f );
@@ -2066,4 +2187,12 @@ uint32_t ConvertUTF8ToUTF32( char *utf8CurrentChar, char **utf8NextChar )
 	*utf8NextChar = c;
 
 	return utf32;
+}
+
+void Com_ShowNotification( const char *message, const int flags ) {
+	if ( !com_minimized->integer && !com_unfocused->integer )
+		return;
+	Sys_ShowNotification( message, flags );
+	if ( flags & NOTIFICATION_CONSOLE )
+		Com_Printf( "^#00FFBB> %s\n", message );
 }
