@@ -1264,7 +1264,7 @@ static void RB_SubmitDrawSurfsForDepthFill(
 		// seperate entities merged into a single batch, like smoke and blood
 		// puff sprites
 		if ( shader != oldShader ||
-				(entityNum != oldEntityNum && !shader->entityMergable) )
+				(entityNum != oldEntityNum && !tess.entityMergable) )
 		{
 			if ( oldShader != nullptr )
 			{
@@ -1360,7 +1360,7 @@ static void RB_SubmitDrawSurfs(
 				dlighted != oldDlighted ||
 				postRender != oldPostRender ||
 				cubemapIndex != oldCubemapIndex ||
-				(entityNum != oldEntityNum && !shader->entityMergable)) )
+				(entityNum != oldEntityNum && !tess.entityMergable)) )
 		{
 			if ( oldShader != nullptr )
 			{
