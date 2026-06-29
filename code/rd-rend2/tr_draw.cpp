@@ -292,11 +292,9 @@ static void RE_Blit(float fX0, float fY0, float fX1, float fY1, float fX2, float
 	RB_BindUniformBlock(tr.staticUbo, UNIFORM_BLOCK_CAMERA, tr.camera2DUboOffset);
 	RB_BindUniformBlock(tr.staticUbo, UNIFORM_BLOCK_ENTITY, tr.entity2DUboOffset);
 
-	vec4_t color = { 1.0f, 1.0f, 1.0f, 1.0f };
-	vec4_t vcolor = { 0.0f, 0.0f, 0.0f, 1.0f };
-	GLSL_SetUniformVec4(shaderProgram, UNIFORM_BASECOLOR, color);
-	GLSL_SetUniformVec4(shaderProgram, UNIFORM_VERTCOLOR, vcolor);
-	GLSL_SetUniformInt(shaderProgram, UNIFORM_ALPHA_TEST_TYPE, ALPHA_TEST_LT128);
+	GLSL_SetUniformVec4(shaderProgram, UNIFORM_BASECOLOR, colorWhite);
+	GLSL_SetUniformVec4(shaderProgram, UNIFORM_VERTCOLOR, colorBlack);
+	GLSL_SetUniformInt(shaderProgram, UNIFORM_ALPHA_TEST_TYPE, atest ? ALPHA_TEST_LT128 : ALPHA_TEST_NONE);
 
 	vec4_t quadVerts[4] = {
 		{fX0, fY0, 0.f},
@@ -635,6 +633,7 @@ qboolean RE_InitDissolve(qboolean bForceCircularExtroWipe)
 		{
 			// read current screen image...  (GL_RGBA should work even on 3DFX in that the RGB parts will be valid at least)
 			//
+			qglReadBuffer (GL_FRONT_LEFT);
 			qglReadPixels (0, 0, glConfig.vidWidth, glConfig.vidHeight, GL_RGBA, GL_UNSIGNED_BYTE, pBuffer );
 			//
 			// now expand the pic over the top of itself so that it has a stride value of {PowerOf2(glConfig.vidWidth)}
@@ -803,7 +802,7 @@ qboolean RE_InitDissolve(qboolean bForceCircularExtroWipe)
 				//
 				
 				Dissolve.pDissolve = R_FindImageFile(	"gfx/2d/iris_mono", type, flags);
-				Dissolve.pDissolve = R_FindImageFile(	"textures/common/dissolve", type, flags);
+				Dissolve.pDissolve = R_FindImageFile(	"textures/common/dissolve", type, IMGFLAG_NONE);
 			}
 
 			switch (Dissolve.eDissolveType)
