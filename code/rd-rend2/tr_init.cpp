@@ -1789,6 +1789,25 @@ static void R_InitGoreVertexData(gpuFrame_t *currentFrame)
 		sizeof(glIndex_t) * (MAX_GORE_RECORDS + 1) * MAX_GORE_INDECIES,
 		VBO_USAGE_DYNAMIC, va("Gore_%i", numGoreArrays));
 
+	if ( glRefConfig.immutableBuffers )
+	{
+		const GLbitfield mapFlags = GL_MAP_WRITE_BIT | GL_MAP_PERSISTENT_BIT | GL_MAP_COHERENT_BIT;
+
+		R_BindVBO(currentFrame->goreVBO);
+		currentFrame->goreVBOMemory = qglMapBufferRange(GL_ARRAY_BUFFER, 0,
+			currentFrame->goreVBO->vertexesSize, mapFlags);
+
+		R_BindIBO(currentFrame->goreIBO);
+		currentFrame->goreIBOMemory = qglMapBufferRange(GL_ELEMENT_ARRAY_BUFFER, 0,
+			currentFrame->goreIBO->indexesSize, mapFlags);
+	}
+	else
+	{
+		currentFrame->goreVBOMemory = nullptr;
+		currentFrame->goreIBOMemory = nullptr;
+	}
+
+	numGoreArrays++;
 	GL_CheckErrors();
 }
 #endif
@@ -2032,6 +2051,13 @@ static void R_ShutdownBackEndFrameData()
 			R_BindIBO(frame->dynamicIbo);
 			qglUnmapBuffer(GL_ARRAY_BUFFER);
 			qglUnmapBuffer(GL_ELEMENT_ARRAY_BUFFER);
+
+#ifdef _G2_GORE
+			R_BindVBO(frame->goreVBO);
+			R_BindIBO(frame->goreIBO);
+			qglUnmapBuffer(GL_ARRAY_BUFFER);
+			qglUnmapBuffer(GL_ELEMENT_ARRAY_BUFFER);
+#endif
 		}
 
 		for ( int j = 0; j < MAX_GPU_TIMERS; j++ )
