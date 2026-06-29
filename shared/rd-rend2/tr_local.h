@@ -3794,8 +3794,10 @@ struct gpuFrame_t
 
 #ifdef _G2_GORE
 	VBO_t					*goreVBO;
+	void					*goreVBOMemory;
 	int						goreVBOCurrentIndex;
 	IBO_t					*goreIBO;
+	void					*goreIBOMemory;
 	int						goreIBOCurrentIndex;
 #endif
 
