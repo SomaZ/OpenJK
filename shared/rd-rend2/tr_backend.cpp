@@ -1302,7 +1302,6 @@ static void RB_SubmitDrawSurfs(
 {
 	shader_t *oldShader = nullptr;
 	int oldEntityNum = -1;
-	int oldSort = -1;
 	int oldFogNum = -1;
 	int oldDlighted = 0;
 	int oldPostRender = 0;
@@ -1330,6 +1329,7 @@ static void RB_SubmitDrawSurfs(
 			{
 				RB_EndSurface();
 				RB_BeginSurface(shader, fogNum, cubemapIndex);
+				tess.dlightBits = dlighted;
 				oldBoneCache = ((CRenderableSurface*)drawSurf->surface)->boneCache;
 				tr.animationBoneUboOffset = RB_GetBoneUboOffset((CRenderableSurface*)drawSurf->surface);
 				tr.previousAnimationBoneUboOffset = RB_GetPreviousBoneUboOffset((CRenderableSurface*)drawSurf->surface);
@@ -1348,8 +1348,6 @@ static void RB_SubmitDrawSurfs(
 			rb_surfaceTable[*drawSurf->surface](drawSurf->surface);
 			continue;
 		}
-
-		oldSort = drawSurf->sort;
 
 		//
 		// change the tess parameters if needed
@@ -1374,6 +1372,7 @@ static void RB_SubmitDrawSurfs(
 			oldDlighted = dlighted;
 			oldPostRender = postRender;
 			oldCubemapIndex = cubemapIndex;
+			tess.dlightBits = dlighted;
 		}
 
 		if ( entityNum != oldEntityNum )
@@ -1387,10 +1386,6 @@ static void RB_SubmitDrawSurfs(
 
 		if (backEnd.refractionFill != isDistortionShader)
 			continue;
-
-		// ugly hack for now...
-		// find better way to pass dlightbits
-		tess.dlightBits = drawSurf->dlightBits;
 
 		// add the triangles for this surface
 		rb_surfaceTable[*drawSurf->surface](drawSurf->surface);
