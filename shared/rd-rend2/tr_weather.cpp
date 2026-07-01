@@ -184,7 +184,6 @@ namespace
 			qglClear(GL_DEPTH_BUFFER_BIT);
 			qglClearDepth(1.0f);
 
-			vec4_t color = { 0.0f, 0.0f, 0.0f, 1.0f };
 			backEnd.currentEntity = &tr.worldEntity;
 
 			vec3_t stepSize = {
