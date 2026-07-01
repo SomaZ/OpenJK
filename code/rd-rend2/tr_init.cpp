@@ -2068,11 +2068,19 @@ static void R_ShutdownBackEndFrameData()
 	}
 }
 
-// need to do this hackery so ghoul2 doesn't crash the game because of ITS hackery...
-//
-void R_ClearStuffToStopGhoul2CrashingThings(void)
+static bool r_cacheGPUShaders = false;
+
+void R_ClearTr(void)
 {
-	memset(&tr, 0, sizeof(tr));
+	if (r_cacheGPUShaders)
+	{
+		// clear all but GPU shaders in tr
+		Com_Memset(&tr, 0, (byte*)&tr.splashScreenShader - (byte*)&tr);
+		Com_Memset(&tr.staticUbo, 0, sizeof(tr) - ((byte*)&tr.staticUbo - (byte*)&tr));	
+	}
+	else
+		// clear all of tr
+		Com_Memset(&tr, 0, sizeof(tr));
 }
 
 static bool r_inited = false;
@@ -2091,7 +2099,7 @@ void R_Init( void ) {
 	ri.Printf( PRINT_ALL, "----- R_Init -----\n" );
 
 	// clear all our internal state
-	Com_Memset( &tr, 0, sizeof( tr ) );
+	R_ClearTr();
 	Com_Memset( &backEnd, 0, sizeof( backEnd ) );
 	Com_Memset( &tess, 0, sizeof( tess ) );
 	
@@ -2170,7 +2178,9 @@ void R_Init( void ) {
 
 	FBO_Init();
 
-	GLSL_LoadGPUShaders();
+	if (!r_cacheGPUShaders)
+		GLSL_LoadGPUShaders();
+	r_cacheGPUShaders = false;
 
 	R_InitShaders(qfalse);
 
@@ -2229,7 +2239,15 @@ void RE_Shutdown( qboolean destroyWindow, qboolean restarting ) {
 		FBO_Shutdown();
 		R_DeleteTextures();
 		R_DestroyGPUBuffers();
-		GLSL_ShutdownGPUShaders();
+
+		if (!destroyWindow && !restarting)
+		{
+			r_cacheGPUShaders = true;
+			glState.currentProgram = 0;
+			qglUseProgram(0);
+		}
+		else
+			GLSL_ShutdownGPUShaders();
 	}
 
 	if (destroyWindow && restarting && tr.registered)
@@ -2490,7 +2508,7 @@ Q_EXPORT refexport_t* QDECL GetRefAPI ( int apiVersion, refimport_t *rimp ) {
 #endif
 
 	re.R_InitWorldEffects = stub_R_InitWorldEffects;
-	re.R_ClearStuffToStopGhoul2CrashingThings = R_ClearStuffToStopGhoul2CrashingThings;
+	re.R_ClearStuffToStopGhoul2CrashingThings = R_ClearTr;
 	re.inPVS = R_inPVS;
 
 	re.tr_distortionAlpha = stub_get_tr_distortionAlpha;
