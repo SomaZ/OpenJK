@@ -3202,6 +3202,8 @@ const void *RB_PostProcess(const void *data)
 		}
 	}
 
+	float exposure = r_cameraExposure->value + tr.overbrightBits;
+
 	if (srcFbo)
 	{
 		if (r_hdr->integer && (r_toneMap->integer || r_forceToneMap->integer))
@@ -3217,7 +3219,7 @@ const void *RB_PostProcess(const void *data)
 			GL_BindToTMU(tr.renderImage, 0);
 			GL_BindToTMU(tr.smaaBlendImage, 1);
 			GL_BindToTMU(tr.velocityImage, 2);
-			if (r_cameraExposure->value == 0.0f)
+			if (exposure == 0.0f)
 			{
 				GLSL_SetUniformVec4(&tr.smaaResolveShader, UNIFORM_COLOR, colorWhite);
 			}
@@ -3226,13 +3228,13 @@ const void *RB_PostProcess(const void *data)
 				vec4_t color;
 				color[0] =
 				color[1] =
-				color[2] = pow(2, r_cameraExposure->value);
+				color[2] = pow(2, exposure);
 				color[3] = 1.0f;
 				GLSL_SetUniformVec4(&tr.smaaResolveShader, UNIFORM_COLOR, color);
 			}
 			qglDrawArrays(GL_TRIANGLES, 0, 3);
 		}
-		else if (r_cameraExposure->value == 0.0f)
+		else if (exposure == 0.0f)
 		{
 			FBO_FastBlit(srcFbo, srcBox, NULL, dstBox, GL_COLOR_BUFFER_BIT, GL_NEAREST);
 		}
@@ -3242,7 +3244,7 @@ const void *RB_PostProcess(const void *data)
 
 			color[0] =
 			color[1] =
-			color[2] = pow(2, r_cameraExposure->value);
+			color[2] = pow(2, exposure);
 			color[3] = 1.0f;
 
 			FBO_FastBlitFromTexture(srcFbo->colorImage[0], NULL, dstBox, color, 0);
@@ -3302,7 +3304,11 @@ const void *RB_PostProcess(const void *data)
 	{
 		// Composite the glow/bloom texture
 		int blendFunc = 0;
-		vec4_t color = { 1.0f, 1.0f, 1.0f, 1.0f };
+		vec4_t color;
+		color[0] =
+		color[1] =
+		color[2] = pow(2, exposure);
+		color[3] = 1.0f;
 
 		if ( r_dynamicGlow->integer == 2 )
 		{

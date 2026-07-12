@@ -1600,7 +1600,11 @@ void R_Register( void )
 	// temporary latched variables that can only change over a restart
 	//
 	r_fullbright = ri_Cvar_Get_NoComm ("r_fullbright", "0", CVAR_LATCH|CVAR_CHEAT, "" );
+#ifdef JK2_MODE
+	r_mapOverBrightBits = ri_Cvar_Get_NoComm ("r_mapOverBrightBits", "1", CVAR_LATCH, "" );
+#else
 	r_mapOverBrightBits = ri_Cvar_Get_NoComm ("r_mapOverBrightBits", "0", CVAR_LATCH, "" );
+#endif
 	r_intensity = ri_Cvar_Get_NoComm ("r_intensity", "1", CVAR_LATCH, "" );
 	r_singleShader = ri_Cvar_Get_NoComm ("r_singleShader", "0", CVAR_CHEAT | CVAR_LATCH, "" );
 
