@@ -1413,7 +1413,7 @@ static qboolean SurfIsOffscreen( const msurface_t *surface, int64_t entityNum, v
 	int numTriangles;
 	vec4_t clip, eye;
 	int i;
-	unsigned int pointOr = 0;
+	//unsigned int pointOr = 0;
 	unsigned int pointAnd = (unsigned int)~0;
 
 	// TODO: Check if set properly here already
@@ -1451,7 +1451,7 @@ static qboolean SurfIsOffscreen( const msurface_t *surface, int64_t entityNum, v
 			}
 		}
 		pointAnd &= pointFlags;
-		pointOr |= pointFlags;
+		//pointOr |= pointFlags;
 	}
 
 	// trivially reject
@@ -1554,12 +1554,12 @@ qboolean R_MirrorViewBySurface (msurface_t *surface, int64_t entityNum) {
 		newParms.flags |= VPF_NOVIEWMODEL;
 
 	// Calculate window coordinates of this surface to get tight fitting scissor rectangle
-	int viewportWidth = oldParms.viewportWidth;
+	/*int viewportWidth = oldParms.viewportWidth;
 	int viewportHeight = oldParms.viewportHeight;
 	float viewportCenterX = oldParms.viewportX + 0.5f * viewportWidth;
 	float viewportCenterY = oldParms.viewportY + 0.5f * viewportHeight;
 
-	/*int minRectX = INT_MAX;
+	int minRectX = INT_MAX;
 	int minRectY = INT_MAX;
 	int maxRectX = 0;
 	int maxRectY = 0;
@@ -2374,17 +2374,11 @@ void R_SetupPshadowMaps(trRefdef_t *refdef)
 			model_t *model = R_GetModelByHandle( ent->e.hModel );
 			pshadow_t shadow;
 			float radius = 0.0f;
-			float scale = 1.0f;
 			vec3_t diff;
 			int j;
 
 			if (!model)
 				continue;
-
-			if (ent->e.nonNormalizedAxes)
-			{
-				scale = VectorLength( ent->e.axis[0] );
-			}
 
 			switch (model->type)
 			{
@@ -2515,7 +2509,6 @@ void R_SetupPshadowMaps(trRefdef_t *refdef)
 void R_RenderCubemapSide(int cubemapIndex, int cubemapSide, bool bounce)
 {
 	refdef_t refdef = {};
-	float oldColorScale = tr.refdef.colorScale;
 
 	VectorCopy(tr.cubemaps[cubemapIndex].origin, refdef.vieworg);
 	refdef.fov_x = 90;

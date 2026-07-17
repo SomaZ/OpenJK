@@ -315,7 +315,7 @@ void G2_SetSurfaceOnOffFromSkin(CGhoul2Info *ghlInfo, qhandle_t renderSkin)
 
 		for (int j = 0; j < skin->numSurfaces; j++)
 		{
-			uint32_t flags;
+			uint32_t flags = 0;
 			int surfaceNum = G2_IsSurfaceLegal(ghlInfo->currentModel, skin->surfaces[j]->name, &flags);
 
 			// the names have both been lowercased
@@ -456,9 +456,9 @@ qboolean G2_SetRootSurface(CGhoul2Info_v &ghoul2, const int modelIndex, const ch
 	assert(ghoul2[modelIndex].currentModel && ghoul2[modelIndex].animModel);
 
 	model_t				*mod_m = (model_t *)ghoul2[modelIndex].currentModel;
-	model_t				*mod_a = (model_t *)ghoul2[modelIndex].animModel;
+	//model_t				*mod_a = (model_t *)ghoul2[modelIndex].animModel;
 	mdxmHeader_t *mdxm = mod_m->data.glm->header;
-	mdxaHeader_t *mdxa = mod_a->data.gla;
+	//mdxaHeader_t *mdxa = mod_a->data.gla;
 
 	// did we find a ghoul 2 model or not?
 	if (!mdxm)
@@ -600,7 +600,7 @@ int G2_IsSurfaceRendered(CGhoul2Info *ghlInfo, const char *surfaceName, surfaceI
 		while (surfNum != -1)
 		{
 			const mdxmSurface_t*		parentSurf;
-			uint32_t					parentFlags;
+			uint32_t					parentFlags = 0;
 			const mdxmSurfHierarchy_t*	parentSurfInfo;
 
 			parentSurfInfo = (mdxmSurfHierarchy_t *)((byte *)surfIndexes + surfIndexes->offsets[surfNum]);
