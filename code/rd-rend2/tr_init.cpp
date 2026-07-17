@@ -177,6 +177,7 @@ cvar_t  *r_shadowCascadeZNear;
 cvar_t  *r_shadowCascadeZFar;
 cvar_t  *r_shadowCascadeZBias;
 cvar_t	*r_ignoreDstAlpha;
+cvar_t	*r_refractionChromaticAberration;
 
 cvar_t	*r_ignoreGLErrors;
 cvar_t	*r_logFile;
@@ -1595,6 +1596,8 @@ void R_Register( void )
 	r_shadowCascadeZFar = ri_Cvar_Get_NoComm( "r_shadowCascadeZFar", "3072", CVAR_ARCHIVE | CVAR_LATCH, "" );
 	r_shadowCascadeZBias = ri_Cvar_Get_NoComm( "r_shadowCascadeZBias", "-320", CVAR_ARCHIVE | CVAR_LATCH, "" );
 	r_ignoreDstAlpha = ri_Cvar_Get_NoComm( "r_ignoreDstAlpha", "1", CVAR_ARCHIVE | CVAR_LATCH, "" );
+	r_refractionChromaticAberration = ri_Cvar_Get_NoComm( "r_refractionChromaticAberration", "0.05", CVAR_ARCHIVE, "" );
+	ri.Cvar_CheckRange(r_refractionChromaticAberration, 0.f, 0.3f, qfalse);
 
 	//
 	// temporary latched variables that can only change over a restart
