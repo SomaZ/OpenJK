@@ -484,7 +484,7 @@ static const char *GetGLExtensionsString()
 	}
 
 	*p = '\0';
-	assert((p - extensionString) == extensionStringLen);
+	assert((size_t)(p - extensionString) == extensionStringLen);
 
 	return extensionString;
 }
@@ -1968,7 +1968,7 @@ static void R_InitStaticConstants()
 		GL_UNIFORM_BUFFER, tr.defaultShaderInstanceUboOffset, sizeof(shaderInstanceBlock), &shaderInstanceBlock);
 	alignedBlockSize += (sizeof(ShaderInstanceBlock) + alignment) & ~alignment;
 
-	qglBindBuffer(GL_UNIFORM_BUFFER, NULL);
+	qglBindBuffer(GL_UNIFORM_BUFFER, 0);
 	glState.currentGlobalUBO = -1;
 
 	GL_CheckErrors();

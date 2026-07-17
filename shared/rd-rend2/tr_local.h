@@ -1211,7 +1211,7 @@ enum
 #ifdef REND2_SP_MD3
 	ATTR_TANGENT2		= 0x2000,
 	ATTR_NORMAL2		= 0x4000,
-#endif // REND2_SP
+#endif // REND2_SP_MD3
 
 	ATTR_DEFAULT		= ATTR_POSITION,
 	ATTR_BITS			= ATTR_POSITION |
@@ -1231,7 +1231,7 @@ enum
 							| 
 							ATTR_TANGENT2 |
 							ATTR_NORMAL2
-#endif // REND2_SP
+#endif // REND2_SP_MD3
 };
 
 enum
@@ -2683,16 +2683,16 @@ typedef struct trGlobals_s {
 	size_t defaultFogsUboOffset;
 	size_t defaultShaderInstanceUboOffset;
 
-	size_t cameraUboOffsets[3 + MAX_DLIGHTS * 6 + 3 + MAX_DRAWN_PSHADOWS];
-	size_t sceneUboOffset;
-	size_t temporalInfoUboOffset;
-	size_t lightsUboOffset;
-	size_t fogsUboOffset;
-	size_t skyEntityUboOffset;
-	size_t entityUboOffsets[REFENTITYNUM_WORLD + 1];
-	size_t previousEntityUboOffsets[REFENTITYNUM_WORLD + 1];
-	size_t animationBoneUboOffset;
-	size_t previousAnimationBoneUboOffset;
+	long cameraUboOffsets[3 + MAX_DLIGHTS * 6 + 3 + MAX_DRAWN_PSHADOWS];
+	long sceneUboOffset;
+	long temporalInfoUboOffset;
+	long lightsUboOffset;
+	long fogsUboOffset;
+	long skyEntityUboOffset;
+	long entityUboOffsets[REFENTITYNUM_WORLD + 1];
+	long previousEntityUboOffsets[REFENTITYNUM_WORLD + 1];
+	long animationBoneUboOffset;
+	long previousAnimationBoneUboOffset;
 
 	// -----------------------------------------
 
@@ -3488,7 +3488,7 @@ ANIMATED MODELS
 
 void R_MDRAddAnimSurfaces( trRefEntity_t *ent, int entityNum );
 void RB_MDRSurfaceAnim( mdrSurface_t *surface );
-qboolean R_LoadIQM (model_t *mod, void *buffer, int filesize, const char *name );
+qboolean R_LoadIQM (model_t *mod, void *buffer, size_t filesize, const char *name );
 void R_AddIQMSurfaces( trRefEntity_t *ent, int entityNum );
 void RB_IQMSurfaceAnim( surfaceType_t *surface );
 int R_IQMLerpTag( orientation_t *tag, iqmData_t *data,

@@ -709,9 +709,11 @@ void SaveGhoul2InfoArray()
 {
 	size_t size = singleton->GetSerializedSize();
 	void *data = R_Malloc (size, TAG_GHOUL2, qfalse);
-	size_t written = singleton->Serialize ((char *)data);
 #ifdef _DEBUG
+	size_t written = singleton->Serialize ((char *)data);
 	assert(written == size);
+#else
+	singleton->Serialize ((char *)data);
 #endif // _DEBUG
 
 	if ( !ri.PD_Store (PERSISTENT_G2DATA, data, size) )
@@ -1101,7 +1103,7 @@ qboolean G2API_SetBoneAnimIndex(CGhoul2Info *ghlInfo, const int index, const int
 qboolean G2API_SetBoneAnim(CGhoul2Info* ghlInfo, const char* boneName, const int startFrame, const int endFrame,
 						   const int flags, const float animSpeed, const int currentTime, const float setFrame, const int blendTime)
 {
-	qboolean ret = qfalse;
+	//qboolean ret = qfalse;
 	G2ERROR(boneName, "G2API_SetBoneAnim: NULL boneName");
 	if (boneName)
 	{
@@ -1478,8 +1480,8 @@ qboolean G2API_StopBoneAngles(CGhoul2Info *ghlInfo, const char *boneName)
 void G2API_AbsurdSmoothing(CGhoul2Info_v &ghoul2, qboolean status)
 {
 	assert(ghoul2.size());
-	CGhoul2Info *ghlInfo = &ghoul2[0];
 #ifndef REND2_SP
+	CGhoul2Info *ghlInfo = &ghoul2[0];
 	if (status)
 	{ //turn it on
 		ghlInfo->mFlags |= GHOUL2_CRAZY_SMOOTH;

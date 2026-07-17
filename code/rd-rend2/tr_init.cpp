@@ -517,7 +517,7 @@ static const char *GetGLExtensionsString()
 	}
 
 	*p = '\0';
-	assert((p - extensionString) == extensionStringLen);
+	assert((size_t)(p - extensionString) == extensionStringLen);
 
 	return extensionString;
 }
@@ -2028,7 +2028,7 @@ static void R_InitStaticConstants()
 		GL_UNIFORM_BUFFER, tr.defaultShaderInstanceUboOffset, sizeof(shaderInstanceBlock), &shaderInstanceBlock);
 	alignedBlockSize += (sizeof(ShaderInstanceBlock) + alignment) & ~alignment;
 
-	qglBindBuffer(GL_UNIFORM_BUFFER, NULL);
+	qglBindBuffer(GL_UNIFORM_BUFFER, 0);
 	glState.currentGlobalUBO = -1;
 
 	GL_CheckErrors();
@@ -2295,18 +2295,20 @@ void RE_EndRegistration( void ) {
 // HACK
 extern qboolean gG2_GBMNoReconstruct;
 extern qboolean gG2_GBMUseSPMethod;
+extern void R_SVModelInit( void ); //tr_model.cpp
+/*
 static void G2API_BoltMatrixReconstruction( qboolean reconstruct ) { gG2_GBMNoReconstruct = (qboolean)!reconstruct; }
 static void G2API_BoltMatrixSPMethod( qboolean spMethod ) { gG2_GBMUseSPMethod = spMethod; }
 
 static float GetDistanceCull( void ) { return tr.distanceCull; }
 
-extern void R_SVModelInit( void ); //tr_model.cpp
+
 
 static void GetRealRes( int *w, int *h ) {
 	*w = glConfig.vidWidth;
 	*h = glConfig.vidHeight;
 }
-
+*/
 // STUBS, REPLACEME
 qboolean stub_InitializeWireframeAutomap() { return qtrue; }
 
@@ -2340,7 +2342,7 @@ void RE_GetBModelVerts(int bmodelIndex, vec3_t *verts, vec3_t normal);
 
 
 void stub_RE_AddWeatherZone ( vec3_t mins, vec3_t maxs ) {} // Intentionally left blank. Rend2 reads the zones manually on bsp load
-static void RE_SetRefractionProperties ( float distortionAlpha, float distortionStretch, qboolean distortionPrePost, qboolean distortionNegate ) { }
+//static void RE_SetRefractionProperties ( float distortionAlpha, float distortionStretch, qboolean distortionPrePost, qboolean distortionNegate ) { }
 
 void C_LevelLoadBegin(const char *psMapName, ForceReload_e eForceReload, qboolean bAllowScreenDissolve)
 {

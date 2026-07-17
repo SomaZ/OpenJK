@@ -600,7 +600,7 @@ qboolean R_LoadMDXM_Server( model_t *mod, void *buffer, const char *mod_name, qb
 	lod = (mdxmLOD_t *) ( (byte *)mdxm + mdxm->ofsLODs );
 	for ( l = 0 ; l < mdxm->numLODs ; l++)
 	{
-		int	triCount = 0;
+		//int	triCount = 0;
 
 		LL(lod->ofsEnd);
 		// swap all the surfaces
@@ -617,7 +617,7 @@ qboolean R_LoadMDXM_Server( model_t *mod, void *buffer, const char *mod_name, qb
 			LL(surf->ofsBoneReferences);
 //			LL(surf->maxVertBoneWeights);
 
-			triCount += surf->numTriangles;
+			//triCount += surf->numTriangles;
 
 			if ( surf->numVerts > SHADER_MAX_VERTEXES ) {
 				return qfalse;
@@ -1109,8 +1109,8 @@ static qboolean R_LoadMD3(model_t * mod, int lod, void *buffer, const char *modN
 		int dataSize = 0;
 		int ofsPosition, ofsNormals, ofsTexcoords, ofsTangents, ofsColor, ofsLMCoords, ofsLightDir;
 		int stride = 0;
-		int numVerts = 0;
-		int numIndexes = 0;
+		uint32_t numVerts = 0;
+		uint32_t numIndexes = 0;
 
 		// +1 to add total vertex count
 		int *baseVertexes = (int *)Hunk_AllocateTempMemory(sizeof(int) * (mdvModel->numSurfaces + 1));
@@ -1339,7 +1339,7 @@ static qboolean R_LoadMDR( model_t *mod, void *buffer, int filesize, const char 
 
 	// simple bounds check
 	if(pinmodel->numBones < 0 ||
-		sizeof(*mdr) + pinmodel->numFrames * (sizeof(*frame) + (pinmodel->numBones - 1) * sizeof(*frame->bones)) > size)
+		sizeof(*mdr) + pinmodel->numFrames * (sizeof(*frame) + (pinmodel->numBones - 1) * sizeof(*frame->bones)) > (unsigned)size)
 	{
 		ri.Printf(PRINT_WARNING, "R_LoadMDR: %s has broken structure.\n", mod_name);
 		return qfalse;
@@ -1392,7 +1392,7 @@ static qboolean R_LoadMDR( model_t *mod, void *buffer, int filesize, const char 
 
 			for(j = 0; j < mdr->numBones; j++)
 			{
-				for(k = 0; k < (sizeof(cframe->bones[j].Comp) / 2); k++)
+				for(k = 0; (unsigned)k < (sizeof(cframe->bones[j].Comp) / 2); k++)
 				{
 					// Do swapping for the uncompressing functions. They seem to use shorts
 					// values only, so I assume this will work. Never tested it on other
