@@ -441,6 +441,7 @@ static void ComputeShaderColors( shaderStage_t *pStage, vec4_t baseColor, vec4_t
 			break;
 		case AGEN_IDENTITY:
 		case AGEN_LIGHTING_SPECULAR:
+		case AGEN_LIGHTING_SPECULAR_STATIC:
 		case AGEN_PORTAL:
 			// Done entirely in vertex program
 			baseColor[3] = 1.0f;
@@ -1662,6 +1663,23 @@ static void RB_IterateStagesGeneric( shaderCommands_t *input, const VertexArrays
 				// also remove all depth writes on flares
 				stateBits &= ~GLS_DEPTHMASK_TRUE;
 			}
+
+			if (pStage->alphaGen == AGEN_LIGHTING_SPECULAR 
+				&& backEnd.currentEntity 
+				&& (backEnd.currentEntity->e.hModel||backEnd.currentEntity->e.ghoul2))	//this is a model so we can use world lights instead fake light
+			{
+				forceAlphaGen = AGEN_LIGHTING_SPECULAR_STATIC;
+			}
+#ifdef REND2_SP
+			if (backEnd.currentEntity->e.renderfx & RF_ALPHA_FADE)
+			{
+				if (backEnd.currentEntity->e.shaderRGBA[3] < 255)
+				{
+					stateBits = GLS_SRCBLEND_SRC_ALPHA | GLS_DSTBLEND_ONE_MINUS_SRC_ALPHA;
+					forceAlphaGen = AGEN_ENTITY;
+				}
+			}
+#endif
 		}
 
 		if (backEnd.viewParms.flags & VPF_POINTSHADOW)
