@@ -44,6 +44,7 @@ set(MPRend2Files
 	"${SharedDir}/rd-rend2/tr_ghoul2.cpp"
 	"${SharedDir}/rd-rend2/tr_glsl.cpp"
 	"${SharedDir}/rd-rend2/tr_glsl_parse.cpp"
+	"${SharedDir}/rd-rend2/tr_ibsp.cpp"
 	"${SharedDir}/rd-rend2/tr_image.cpp"
 	"${SharedDir}/rd-rend2/tr_image_stb.cpp"
 	"${MPDir}/rd-rend2/tr_init.cpp"

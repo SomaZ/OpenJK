@@ -251,7 +251,7 @@ void CMod_LoadBrushes( lump_t *l, clipMap_t &cm ) {
 
 	in = (dbrush_t *)(cmod_base + l->fileofs);
 	if (l->filelen % sizeof(*in)) {
-		Com_Error (ERR_DROP, "MOD_LoadBmodel: funny lump size");
+		Com_Error (ERR_DROP, "CMod_LoadBrushes: funny lump size");
 	}
 	count = l->filelen / sizeof(*in);
 
@@ -298,7 +298,7 @@ void CMod_LoadLeafs (lump_t *l, clipMap_t &cm)
 
 	in = (dleaf_t *)(cmod_base + l->fileofs);
 	if (l->filelen % sizeof(*in))
-		Com_Error (ERR_DROP, "MOD_LoadBmodel: funny lump size");
+		Com_Error (ERR_DROP, "CMod_LoadLeafs: funny lump size");
 	count = l->filelen / sizeof(*in);
 
 	if (count < 1)
@@ -342,7 +342,7 @@ void CMod_LoadPlanes (lump_t *l, clipMap_t &cm)
 
 	in = (dplane_t *)(cmod_base + l->fileofs);
 	if (l->filelen % sizeof(*in))
-		Com_Error (ERR_DROP, "MOD_LoadBmodel: funny lump size");
+		Com_Error (ERR_DROP, "CMod_LoadPlanes: funny lump size");
 	count = l->filelen / sizeof(*in);
 
 	if (count < 1)
@@ -382,7 +382,7 @@ void CMod_LoadLeafBrushes (lump_t *l, clipMap_t &cm)
 
 	in = (int *)(cmod_base + l->fileofs);
 	if (l->filelen % sizeof(*in))
-		Com_Error (ERR_DROP, "MOD_LoadBmodel: funny lump size");
+		Com_Error (ERR_DROP, "CMod_LoadLeafBrushes: funny lump size");
 	count = l->filelen / sizeof(*in);
 
 	cm.leafbrushes = (int *) Z_Malloc( ( BOX_BRUSHES + count ) * sizeof( *cm.leafbrushes ), TAG_BSP, qfalse);
@@ -409,7 +409,7 @@ void CMod_LoadLeafSurfaces( lump_t *l, clipMap_t &cm )
 
 	in = (int *)(cmod_base + l->fileofs);
 	if (l->filelen % sizeof(*in))
-		Com_Error (ERR_DROP, "MOD_LoadBmodel: funny lump size");
+		Com_Error (ERR_DROP, "CMod_LoadLeafSurfaces: funny lump size");
 	count = l->filelen / sizeof(*in);
 
 	cm.leafsurfaces = (int *) Z_Malloc( count * sizeof( *cm.leafsurfaces ), TAG_BSP, qfalse);
@@ -437,7 +437,7 @@ void CMod_LoadBrushSides (lump_t *l, clipMap_t &cm)
 
 	in = (dbrushside_t *)(cmod_base + l->fileofs);
 	if ( l->filelen % sizeof(*in) ) {
-		Com_Error (ERR_DROP, "MOD_LoadBmodel: funny lump size");
+		Com_Error (ERR_DROP, "CMod_LoadBrushSides: funny lump size");
 	}
 	count = l->filelen / sizeof(*in);
 
@@ -454,6 +454,41 @@ void CMod_LoadBrushSides (lump_t *l, clipMap_t &cm)
 			Com_Error( ERR_DROP, "CMod_LoadBrushSides: bad shaderNum: %i", out->shaderNum );
 		}
 //		out->surfaceFlags = cm.shaders[out->shaderNum].surfaceFlags;
+	}
+}
+
+typedef struct {
+	int			planeNum;			// positive plane side faces out of the leaf
+	int			shaderNum;
+} dbrushsideIBSP_t;
+
+void CMod_LoadBrushSidesIBSP(lump_t* l, clipMap_t& cm)
+{
+	int				i;
+	cbrushside_t* out;
+	dbrushsideIBSP_t* in;
+	int				count;
+	int				num;
+
+	in = (dbrushsideIBSP_t*)(cmod_base + l->fileofs);
+	if (l->filelen % sizeof(*in)) {
+		Com_Error(ERR_DROP, "CMod_LoadBrushSidesIBSP: funny lump size");
+	}
+	count = l->filelen / sizeof(*in);
+
+	cm.brushsides = (cbrushside_t*)Z_Malloc((BOX_SIDES + count) * sizeof(*cm.brushsides), TAG_BSP, qfalse);
+	cm.numBrushSides = count;
+
+	out = cm.brushsides;
+
+	for (i = 0; i < count; i++, in++, out++) {
+		num = LittleLong(in->planeNum);
+		out->plane = &cm.planes[num];
+		out->shaderNum = LittleLong(in->shaderNum);
+		if (out->shaderNum < 0 || out->shaderNum >= cm.numShaders) {
+			Com_Error(ERR_DROP, "CMod_LoadBrushSides: bad shaderNum: %i", out->shaderNum);
+		}
+		//		out->surfaceFlags = cm.shaders[out->shaderNum].surfaceFlags;
 	}
 }
 
@@ -538,13 +573,13 @@ void CMod_LoadPatches( lump_t *surfs, lump_t *verts, clipMap_t &cm ) {
 
 	in = (dsurface_t *)(cmod_base + surfs->fileofs);
 	if (surfs->filelen % sizeof(*in))
-		Com_Error (ERR_DROP, "MOD_LoadBmodel: funny lump size");
+		Com_Error (ERR_DROP, "CMod_LoadPatches: funny lump size");
 	cm.numSurfaces = count = surfs->filelen / sizeof(*in);
 	cm.surfaces = (cPatch_t **) Z_Malloc( cm.numSurfaces * sizeof( cm.surfaces[0] ), TAG_BSP, qtrue );
 
 	dv = (mapVert_t *)(cmod_base + verts->fileofs);
 	if (verts->filelen % sizeof(*dv))
-		Com_Error (ERR_DROP, "MOD_LoadBmodel: funny lump size");
+		Com_Error (ERR_DROP, "CMod_LoadPatches: funny lump size");
 
 	// scan through all the surfaces, but only load patches,
 	// not planar faces
@@ -579,6 +614,94 @@ void CMod_LoadPatches( lump_t *surfs, lump_t *verts, clipMap_t &cm ) {
 
 		// create the internal facet structure
 		patch->pc = CM_GeneratePatchCollide( width, height, points );
+	}
+}
+
+typedef struct {
+	vec3_t		xyz;
+	float		st[2];
+	float		lightmap[2];
+	vec3_t		normal;
+	byte		color[4];
+} mapVertIBSP_t;
+
+typedef struct {
+	int			shaderNum;
+	int			fogNum;
+	int			surfaceType;
+
+	int			firstVert;
+	int			numVerts;
+
+	int			firstIndex;
+	int			numIndexes;
+
+	int			lightmapIndex;
+
+	int			lightmapX, lightmapY;
+	int			lightmapWidth, lightmapHeight;
+
+	vec3_t		lightmapOrigin;
+	vec3_t		lightmapVecs[3];	// for patches, [0] and [1] are lodbounds
+
+	int			patchWidth;
+	int			patchHeight;
+} dsurfaceIBSP_t;
+
+void CMod_LoadPatchesIBSP(lump_t* surfs, lump_t* verts, clipMap_t& cm) {
+	mapVertIBSP_t* dv, * dv_p;
+	dsurfaceIBSP_t* in;
+	int			count;
+	int			i, j;
+	int			c;
+	cPatch_t* patch;
+	vec3_t		points[MAX_PATCH_VERTS];
+	int			width, height;
+	int			shaderNum;
+
+	in = (dsurfaceIBSP_t*)(cmod_base + surfs->fileofs);
+	if (surfs->filelen % sizeof(*in))
+		Com_Error(ERR_DROP, "CMod_LoadPatchesIBSP: funny lump size");
+	cm.numSurfaces = count = surfs->filelen / sizeof(*in);
+	cm.surfaces = (cPatch_t**)Z_Malloc(cm.numSurfaces * sizeof(cm.surfaces[0]), TAG_BSP, qtrue);
+
+	dv = (mapVertIBSP_t*)(cmod_base + verts->fileofs);
+	if (verts->filelen % sizeof(*dv))
+		Com_Error(ERR_DROP, "CMod_LoadPatchesIBSP: funny lump size");
+
+	// scan through all the surfaces, but only load patches,
+	// not planar faces
+	for (i = 0; i < count; i++, in++) {
+		if (LittleLong(in->surfaceType) != MST_PATCH) {
+			continue;		// ignore other surfaces
+		}
+		// FIXME: check for non-colliding patches
+
+		cm.surfaces[i] = patch = (cPatch_t*)Z_Malloc(sizeof(*patch), TAG_BSP, qtrue);
+
+		// load the full drawverts onto the stack
+		width = LittleLong(in->patchWidth);
+		height = LittleLong(in->patchHeight);
+		c = width * height;
+		if (c > MAX_PATCH_VERTS) {
+			Com_Error(ERR_DROP, "ParseMesh: MAX_PATCH_VERTS");
+		}
+
+		dv_p = dv + LittleLong(in->firstVert);
+		for (j = 0; j < c; j++, dv_p++) {
+			points[j][0] = LittleFloat(dv_p->xyz[0]);
+			points[j][1] = LittleFloat(dv_p->xyz[1]);
+			points[j][2] = LittleFloat(dv_p->xyz[2]);
+		}
+
+		shaderNum = LittleLong(in->shaderNum);
+		patch->contents = cm.shaders[shaderNum].contentFlags;
+		CM_OrOfAllContentsFlagsInMap |= patch->contents;
+
+		patch->surfaceFlags = cm.shaders[shaderNum].surfaceFlags;
+
+		// create the internal facet structure
+		patch->pc = CM_GeneratePatchCollide(width, height, points);
 	}
 }
 
@@ -761,7 +884,7 @@ static void CM_LoadMap_Actual( const char *name, qboolean clientload, int *check
 			((int *)&header)[i] = LittleLong ( ((int *)&header)[i]);
 		}
 
-		if ( header.version != BSP_VERSION )
+		if ( header.version != BSP_VERSION && header.version != 46 )
 		{
 			Z_Free(	gpvCachedMapDiskImage);
 					gpvCachedMapDiskImage = NULL;
@@ -778,13 +901,22 @@ static void CM_LoadMap_Actual( const char *name, qboolean clientload, int *check
 		CMod_LoadLeafBrushes (&header.lumps[LUMP_LEAFBRUSHES], cm);
 		CMod_LoadLeafSurfaces (&header.lumps[LUMP_LEAFSURFACES], cm);
 		CMod_LoadPlanes (&header.lumps[LUMP_PLANES], cm);
-		CMod_LoadBrushSides (&header.lumps[LUMP_BRUSHSIDES], cm);
+
+		if (header.version != 46)
+			CMod_LoadBrushSides (&header.lumps[LUMP_BRUSHSIDES], cm);
+		else
+			CMod_LoadBrushSidesIBSP(&header.lumps[LUMP_BRUSHSIDES], cm);
+
 		CMod_LoadBrushes (&header.lumps[LUMP_BRUSHES], cm);
 		CMod_LoadSubmodels (&header.lumps[LUMP_MODELS], cm);
 		CMod_LoadNodes (&header.lumps[LUMP_NODES], cm);
 		CMod_LoadEntityString (&header.lumps[LUMP_ENTITIES], cm, name );
 		CMod_LoadVisibility( &header.lumps[LUMP_VISIBILITY], cm );
-		CMod_LoadPatches( &header.lumps[LUMP_SURFACES], &header.lumps[LUMP_DRAWVERTS], cm );
+
+		if (header.version != 46)
+			CMod_LoadPatches( &header.lumps[LUMP_SURFACES], &header.lumps[LUMP_DRAWVERTS], cm );
+		else
+			CMod_LoadPatchesIBSP(&header.lumps[LUMP_SURFACES], &header.lumps[LUMP_DRAWVERTS], cm);
 
 		TotalSubModels += cm.numSubModels;
 
