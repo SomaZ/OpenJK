@@ -5028,12 +5028,18 @@ static void ScanAndLoadShaderFiles( void )
 
 	long sum = 0, summand;
 	// scan for shader files
-	shaderFiles = ri.FS_ListFiles( "shaders", ".shader", &numShaderFiles );
+	shaderFiles = ri.FS_ListFiles("scripts", ".shader", &numShaderFiles);
+	bool isScriptsPath = true;
 
 	if ( !shaderFiles || !numShaderFiles )
 	{
-		ri.Printf( PRINT_WARNING, "WARNING: no shader files found\n" );
-		return;
+		shaderFiles = ri.FS_ListFiles("shaders", ".shader", &numShaderFiles);
+		if (!shaderFiles || !numShaderFiles)
+		{
+			ri.Printf(PRINT_WARNING, "WARNING: no shader files found\n");
+			return;
+		}
+		isScriptsPath = false;
 	}
 
 	if ( numShaderFiles > MAX_SHADER_FILES ) {
@@ -5048,7 +5054,11 @@ static void ScanAndLoadShaderFiles( void )
 		// look for a .mtr file first
 		{
 			char *ext;
-			Com_sprintf( filename, sizeof( filename ), "shaders/%s", shaderFiles[i] );
+			if (isScriptsPath)
+				Com_sprintf( filename, sizeof( filename ), "scripts/%s", shaderFiles[i] );
+			else
+				Com_sprintf(filename, sizeof(filename), "shaders/%s", shaderFiles[i]);
+
 			if ( (ext = strrchr(filename, '.')) )
 			{
 				strcpy(ext, ".mtr");
@@ -5056,7 +5066,10 @@ static void ScanAndLoadShaderFiles( void )
 
 			if ( ri.FS_ReadFile( filename, NULL ) <= 0 )
 			{
-				Com_sprintf( filename, sizeof( filename ), "shaders/%s", shaderFiles[i] );
+				if (isScriptsPath)
+					Com_sprintf( filename, sizeof( filename ), "scripts/%s", shaderFiles[i] );
+				else
+					Com_sprintf(filename, sizeof(filename), "shaders/%s", shaderFiles[i]);
 			}
 		}
 
