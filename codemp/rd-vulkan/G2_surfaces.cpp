@@ -223,7 +223,7 @@ void G2_SetSurfaceOnOffFromSkin (CGhoul2Info *ghlInfo, qhandle_t renderSkin)
 		}
 		else
 		{
-			uint32_t flags;
+			int	flags;
 			int surfaceNum = G2_IsSurfaceLegal((void *)ghlInfo->currentModel, skin->surfaces[j]->name, &flags);
 			if ( (surfaceNum != -1) && (!(flags&G2SURFACEFLAG_OFF)) )	//only turn on if it's not an "_off" surface
 			{
@@ -637,9 +637,9 @@ int G2_IsSurfaceRendered(CGhoul2Info *ghlInfo, const char *surfaceName, surfaceI
 		// walk the surface hierarchy up until we hit the root
 		while (surfNum != -1)
 		{
-			const mdxmSurface_t*		parentSurf;
-			uint32_t					parentFlags = 0;
-			const mdxmSurfHierarchy_t*	parentSurfInfo;
+			const mdxmSurface_t		*parentSurf;
+			int						parentFlags = 0;
+			const mdxmSurfHierarchy_t		*parentSurfInfo;
 
 			parentSurfInfo = (mdxmSurfHierarchy_t *)((byte *)surfIndexes + surfIndexes->offsets[surfNum]);
 
