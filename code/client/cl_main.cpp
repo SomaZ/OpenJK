@@ -87,6 +87,7 @@ cvar_t	*r_Ghoul2NoLerp;
 cvar_t	*r_Ghoul2NoBlend;
 cvar_t	*r_Ghoul2UnSqashAfterSmooth;
 cvar_t	*r_Ghoul2BlendMultiplier;
+cvar_t	*r_lodbias;
 
 cvar_t	*broadsword;
 cvar_t	*broadsword_kickbones;
@@ -1301,6 +1302,27 @@ void CL_Init( void ) {
 	cl_consoleKeys = Cvar_Get( "cl_consoleKeys", "~ ` 0x7e 0x60 0xb2", CVAR_ARCHIVE);
 	cl_consoleUseScanCode = Cvar_Get( "cl_consoleUseScanCode", "1", CVAR_ARCHIVE );
 	cl_consoleShiftRequirement = Cvar_Get( "cl_consoleShiftRequirement", "0", CVAR_ARCHIVE );
+
+	r_verbose = Cvar_Get( "r_verbose", "0", CVAR_CHEAT);
+	r_Ghoul2AnimSmooth					= Cvar_Get( "r_ghoul2animsmooth",			"0.3",						CVAR_TEMP );
+	r_Ghoul2UnSqash 					= Cvar_Get( "r_ghoul2unsquash", "1", 0);
+	//r_Ghoul2TimeBase 					= Cvar_Get( "r_ghoul2timebase", "2", 0);
+	r_Ghoul2NoLerp 						= Cvar_Get( "r_ghoul2nolerp", "0", 0);
+	r_Ghoul2NoBlend 					= Cvar_Get( "r_ghoul2noblend", "0", 0);
+	r_Ghoul2BlendMultiplier 			= Cvar_Get( "r_ghoul2blendmultiplier", "1", 0);
+	r_Ghoul2UnSqashAfterSmooth			= Cvar_Get( "r_ghoul2unsqashaftersmooth",	"1",						CVAR_TEMP );
+	broadsword							= Cvar_Get( "broadsword",					"0",						CVAR_ARCHIVE );
+	broadsword_kickbones				= Cvar_Get( "broadsword_kickbones",			"1",					CVAR_TEMP );
+	broadsword_kickorigin				= Cvar_Get( "broadsword_kickorigin",			"1",					CVAR_TEMP );
+	broadsword_dontstopanim				= Cvar_Get( "broadsword_dontstopanim",		"0",					CVAR_TEMP );
+	broadsword_waitforshot				= Cvar_Get( "broadsword_waitforshot",		"0",						CVAR_TEMP );
+	broadsword_playflop					= Cvar_Get( "broadsword_playflop",			"1",					CVAR_TEMP );
+	//broadsword_smallbbox				= Cvar_Get( "broadsword_smallbbox",			"0",					CVAR_TEMP);
+	broadsword_extra1					= Cvar_Get( "broadsword_extra1",				"0",					CVAR_TEMP );
+	broadsword_extra2					= Cvar_Get( "broadsword_extra2",				"0",					CVAR_TEMP );
+	broadsword_effcorr					= Cvar_Get( "broadsword_effcorr",			"1",						CVAR_TEMP);
+	broadsword_ragtobase				= Cvar_Get( "broadsword_ragtobase",			"2",					CVAR_TEMP );
+	broadsword_dircap					= Cvar_Get( "broadsword_dircap",				"64",						CVAR_TEMP );
 
 	// userinfo
 #ifdef JK2_MODE

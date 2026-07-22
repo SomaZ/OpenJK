@@ -48,6 +48,7 @@ extern mdxaBone_t		worldMatrix;
 extern mdxaBone_t		worldMatrixInv;
 
 extern	cvar_t	*r_Ghoul2TimeBase;
+extern	cvar_t	*r_lodbias;
 
 extern refexport_t	re;
 
@@ -754,7 +755,7 @@ void SaveGhoul2InfoArray()
 void G2API_CleanGhoul2Models(CGhoul2Info_v &ghoul2)
 {
 #ifdef _G2_GORE
-	re.G2API_ClearSkinGore ( ghoul2 );
+	G2API_ClearSkinGore ( ghoul2 );
 #endif
 	ghoul2.~CGhoul2Info_v();
 }
@@ -2135,7 +2136,7 @@ void G2API_LoadSaveCodeDestructGhoul2Info(CGhoul2Info_v &ghoul2)
 {
 	ghoul2.~CGhoul2Info_v();	// so I can load junk over it then memset to 0 without orphaning
 }
-/*
+
 #ifdef _G2_GORE
 void ResetGoreTag(); // put here to reduce coupling
 
@@ -2183,13 +2184,13 @@ void G2API_AddSkinGore(CGhoul2Info_v &ghoul2,SSkinGoreData &gore)
 	int lod;
 	ResetGoreTag();
 	const int lodbias=Com_Clamp ( 0, 2,G2_DecideTraceLod(ghoul2[0],r_lodbias->integer));
-	const int maxLod =Com_Clamp (0,ghoul2[0].currentModel->numLods,3);	//limit to the number of lods the main model has
+	const int maxLod =Com_Clamp (0,re.G2ABI_GetNumLods(ghoul2[0].currentModel),3);	//limit to the number of lods the main model has
 	for(lod=lodbias;lod<maxLod;lod++)
 	{
 		// now having done that, time to build the model
-		GetG2VertSpaceServer()->ResetHeap();
+		G2VertSpaceServer->ResetHeap();
 
-		G2_TransformModel(ghoul2, gore.currentTime, gore.scale,GetG2VertSpaceServer(),lod,true,&gore);
+		G2_TransformModel(ghoul2, gore.currentTime, gore.scale,G2VertSpaceServer,lod,true,&gore);
 
 		// now walk each model and compute new texture coordinates
 		G2_TraceModels(ghoul2, transHitLocation, transRayDirection, 0, gore.entNum, G2_NOCOLLIDE,lod,1.0f,gore.SSize,gore.TSize,gore.theta,gore.shader,&gore,qtrue);
@@ -2205,7 +2206,7 @@ void G2API_AddSkinGore(CGhoul2Info_v &ghoul2,SSkinGoreData &gore)
 }
 #endif
 
-
+/*
 bool G2_TestModelPointers(CGhoul2Info *ghlInfo) // returns true if the model is properly set up
 {
 	G2ERROR(ghlInfo,"NULL ghlInfo");

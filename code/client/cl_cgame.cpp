@@ -1078,18 +1078,18 @@ Ghoul2 Insert Start
 */
 
 	case CG_G2_LISTSURFACES:
-		re.G2API_ListSurfaces( (CGhoul2Info *) VMA(1) );
+		G2API_ListSurfaces( (CGhoul2Info *) VMA(1) );
 		return 0;
 
 	case CG_G2_LISTBONES:
-		re.G2API_ListBones( (CGhoul2Info *) VMA(1), args[2]);
+		G2API_ListBones( (CGhoul2Info *) VMA(1), args[2]);
 		return 0;
 
 	case CG_G2_HAVEWEGHOULMODELS:
-		return re.G2API_HaveWeGhoul2Models( *((CGhoul2Info_v *)VMA(1)) );
+		return G2API_HaveWeGhoul2Models( *((CGhoul2Info_v *)VMA(1)) );
 
 	case CG_G2_SETMODELS:
-		re.G2API_SetGhoul2ModelIndexes( *((CGhoul2Info_v *)VMA(1)),(qhandle_t *)VMA(2),(qhandle_t *)VMA(3));
+		G2API_SetGhoul2ModelIndexes( *((CGhoul2Info_v *)VMA(1)),(qhandle_t *)VMA(2),(qhandle_t *)VMA(3));
 		return 0;
 
 /*
@@ -1471,7 +1471,7 @@ void CL_CGameRendering( stereoFrame_t stereo ) {
 	{
 		timei-=0;
 	}
-	re.G2API_SetTime(cl.serverTime,G2T_CG_TIME);
+	G2API_SetTime(cl.serverTime,G2T_CG_TIME);
 	VM_Call( CG_DRAW_ACTIVE_FRAME,timei, stereo, qfalse );
 //	VM_Debug( 0 );
 }

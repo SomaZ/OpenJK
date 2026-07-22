@@ -40,6 +40,7 @@ class CMiniHeap;
 #define		ENTITY_SHIFT (MODEL_SHIFT + MODEL_WIDTH)
 
 //rww - RAGDOLL_BEGIN
+class CRagDollParams;
 class CRagDollUpdateParams;
 //rww - RAGDOLL_END
 
@@ -208,6 +209,19 @@ void		G2API_LoadSaveCodeDestructGhoul2Info(CGhoul2Info_v &ghoul2);
 char		*G2API_GetAnimFileNameIndex(qhandle_t modelIndex);
 char		*G2API_GetAnimFileInternalNameIndex(qhandle_t modelIndex);
 int			G2API_GetSurfaceRenderStatus(CGhoul2Info *ghlInfo, const char *surfaceName);
+
+//rww - RAGDOLL_BEGIN
+void 		G2API_AnimateG2Models(CGhoul2Info_v &ghoul2, int AcurrentTime,CRagDollUpdateParams *params);
+qboolean	G2API_GetRagBonePos(CGhoul2Info_v &ghoul2, const char *boneName, vec3_t pos, vec3_t entAngles, vec3_t entPos, vec3_t entScale);
+qboolean	G2API_RagEffectorGoal(CGhoul2Info_v &ghoul2, const char *boneName, vec3_t pos);
+qboolean	G2API_RagEffectorKick(CGhoul2Info_v &ghoul2, const char *boneName, vec3_t velocity);
+qboolean	G2API_RagForceSolve(CGhoul2Info_v &ghoul2, qboolean force);
+qboolean	G2API_RagPCJConstraint(CGhoul2Info_v &ghoul2, const char *boneName, vec3_t min, vec3_t max);
+qboolean	G2API_RagPCJGradientSpeed(CGhoul2Info_v &ghoul2, const char *boneName, const float speed);
+void		G2API_SetRagDoll(CGhoul2Info_v &ghoul2,CRagDollParams *parms);
+//rww - RAGDOLL_END
+qboolean	G2API_IKMove(CGhoul2Info_v &ghoul2, int time, sharedIKMoveParams_t *params);
+qboolean	G2API_SetBoneIKState(CGhoul2Info_v &ghoul2, int time, const char *boneName, int ikState, sharedSetBoneIKStateParams_t *params);
 
 // From tr_ghoul2.cpp
 void		G2_ConstructGhoulSkeleton( CGhoul2Info_v &ghoul2,const int frameNum,bool checkForNewOrigin,const vec3_t scale);

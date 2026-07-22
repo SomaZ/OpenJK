@@ -45,8 +45,13 @@ struct GoreTextureCoordinates
 		{
 			if ( tex[i] )
 			{
+#ifdef RENDERER
+				extern void R_Free( void *ptr );
+				R_Free(tex[i]);
+#else
 				extern int Z_Free( void *ptr );
 				Z_Free(tex[i]);
+#endif
 				tex[i] = 0;
 			}
 		}
