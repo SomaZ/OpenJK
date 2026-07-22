@@ -209,6 +209,8 @@ if(BuildSPEngine OR BuildJK2SPEngine)
 		"${SharedDir}/qcommon/safe/files.h"
 		${SharedCommonSafeFiles}
 		"${SPDir}/qcommon/safe/memory.h"
+		"${SPDir}/qcommon/matcomp.h"
+		"${SPDir}/qcommon/matcomp.cpp"
 		)
 	source_group("common/safe" FILES ${SPEngineCommonSafeFiles})
 	set(SPEngineFiles ${SPEngineFiles} ${SPEngineCommonSafeFiles})
@@ -325,6 +327,12 @@ if(BuildSPEngine OR BuildJK2SPEngine)
 	set(SPEngineGhoul2Files
 		"${SPDir}/ghoul2/G2.h"
 		"${SPDir}/ghoul2/ghoul2_gore.h"
+		"${SPDir}/ghoul2/G2_API.cpp"
+		"${SPDir}/ghoul2/G2_bolts.cpp"
+		"${SPDir}/ghoul2/G2_boneCache.cpp"
+		"${SPDir}/ghoul2/G2_bones.cpp"
+		"${SPDir}/ghoul2/G2_misc.cpp"
+		"${SPDir}/ghoul2/G2_surfaces.cpp"
 		)
 	source_group("ghoul2" FILES ${SPEngineGhoul2Files})
 	set(SPEngineFiles ${SPEngineFiles} ${SPEngineGhoul2Files})

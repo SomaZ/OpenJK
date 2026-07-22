@@ -2179,6 +2179,15 @@ extern "C" Q_EXPORT refexport_t* QDECL GetRefAPI ( int apiVersion, refimport_t *
 	G2EX(ClearSkinGore);
 #endif
 
+	re.G2ABI_TestModelPointers = G2_TestModelPointers;
+	re.G2ABI_SetupModelPointers = G2_SetupModelPointers;
+	re.G2ABI_GetMdxmByHandle = G2ABI_GetMdxmByHandle;
+	re.G2ABI_GetMdxaByHandle = G2ABI_GetMdxaByHandle;
+	re.G2ABI_GetMdxmByModel = G2ABI_GetMdxmByModel;
+	re.G2ABI_GetMdxaByModel = G2ABI_GetMdxaByModel;
+	re.G2ABI_GetNumLods = G2ABI_GetNumLods;
+	re.G2ABI_SetSurfaceOnOffFromSkin = G2API_SetSurfaceOnOffFromSkin;
+
 #ifdef G2_PERFORMANCE_ANALYSIS
 	re.G2Time_ReportTimers = G2Time_ReportTimers;
 	re.G2Time_ResetTimers = G2Time_ResetTimers;

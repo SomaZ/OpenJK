@@ -1842,11 +1842,17 @@ qboolean R_FogParmsMatch( int fog1, int fog2 );
 Ghoul2 Insert Start
 */
 
-// tr_ghoul2.cpp
-void		Create_Matrix(const float *angle, mdxaBone_t *matrix);
-void		Multiply_3x4Matrix(mdxaBone_t *out,const mdxaBone_t *in2,const mdxaBone_t *in);
+
 extern qboolean R_LoadMDXM (model_t *mod, void *buffer, const char *name, qboolean &bAlreadyCached );
 extern qboolean R_LoadMDXA (model_t *mod, void *buffer, const char *name, qboolean &bAlreadyCached );
+
+bool G2_TestModelPointers(CGhoul2Info *ghlInfo);
+mdxmHeader_t *G2ABI_GetMdxmByHandle(qhandle_t modelIndex);
+mdxaHeader_t *G2ABI_GetMdxaByHandle(qhandle_t modelIndex);
+mdxmHeader_t *G2ABI_GetMdxmByModel(const model_t *mod_m);
+mdxaHeader_t *G2ABI_GetMdxaByModel(const model_t *mod_a);
+int G2ABI_GetNumLods(const model_t *mod_m);
+void G2API_SetSurfaceOnOffFromSkin (CGhoul2Info *ghlInfo, qhandle_t renderSkin);
 /*
 Ghoul2 Insert End
 */

@@ -372,6 +372,16 @@ typedef struct {
 	void		(*G2API_ClearSkinGore)(CGhoul2Info_v &ghoul2);
 #endif
 
+	// New g2 abi
+	bool 			(*G2ABI_TestModelPointers)(CGhoul2Info *ghlInfo);
+	qboolean		(*G2ABI_SetupModelPointers)(CGhoul2Info* ghlInfo);
+	mdxmHeader_t*	(*G2ABI_GetMdxmByHandle)(qhandle_t modelIndex);
+	mdxaHeader_t*	(*G2ABI_GetMdxaByHandle)(qhandle_t modelIndex);
+	mdxmHeader_t*	(*G2ABI_GetMdxmByModel)(const model_s *mod_m);
+	mdxaHeader_t*	(*G2ABI_GetMdxaByModel)(const model_s *mod_a);
+	int				(*G2ABI_GetNumLods)(const model_s *mod_m);
+	void			(*G2ABI_SetSurfaceOnOffFromSkin)(CGhoul2Info *ghlInfo, qhandle_t renderSkin);
+
 	// Performance analysis (perform anal)
 	void		(*G2Time_ResetTimers)(void);
 	void		(*G2Time_ReportTimers)(void);

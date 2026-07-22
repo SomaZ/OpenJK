@@ -80,6 +80,30 @@ cvar_t	*cl_consoleKeys;
 cvar_t	*cl_consoleUseScanCode;
 cvar_t	*cl_consoleShiftRequirement;
 
+cvar_t	*r_verbose;
+cvar_t	*r_Ghoul2UnSqash;
+cvar_t	*r_Ghoul2AnimSmooth;
+cvar_t	*r_Ghoul2NoLerp;
+cvar_t	*r_Ghoul2NoBlend;
+cvar_t	*r_Ghoul2UnSqashAfterSmooth;
+cvar_t	*r_Ghoul2BlendMultiplier;
+
+cvar_t	*broadsword;
+cvar_t	*broadsword_kickbones;
+cvar_t	*broadsword_kickorigin;
+cvar_t	*broadsword_dontstopanim;
+cvar_t	*broadsword_waitforshot;
+cvar_t	*broadsword_playflop;
+
+cvar_t	*broadsword_effcorr;
+
+cvar_t	*broadsword_ragtobase;
+
+cvar_t	*broadsword_dircap;
+
+cvar_t	*broadsword_extra1;
+cvar_t	*broadsword_extra2;
+
 clientActive_t		cl;
 clientConnection_t	clc;
 clientStatic_t		cls;
