@@ -1208,6 +1208,12 @@ void CL_InitRef( void ) {
 	rit.G2API_GetTime = G2API_GetTime;
 	rit.SaveGhoul2InfoArray = SaveGhoul2InfoArray;
 	rit.RestoreGhoul2InfoArray = RestoreGhoul2InfoArray;
+	rit.G2_FindSurface = G2_FindSurface;
+	rit.G2_FindOverrideSurface = G2_FindOverrideSurface;
+	rit.G2_TransformGhoulSkeleton = G2_TransformGhoulSkeleton;
+	rit.EvalBoneCache = EvalBoneCache;
+	rit.G2_IsSurfaceLegal = G2_IsSurfaceLegal;
+	rit.G2_SetSurfaceOnOff = G2_SetSurfaceOnOff;
 #ifdef _G2_GORE
 	rit.FindGoreRecord = FindGoreRecord;
 	rit.FindGoreSet = FindGoreSet;

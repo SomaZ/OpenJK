@@ -389,24 +389,7 @@ public:
 	}
 	//rww - RAGDOLL_END
 
-	// Added by BTO (VV) - This is probably broken
-	// Need to add in smoothing step?
-	CTransformBone *EvalFull(int index)
-	{
-#ifdef JK2_MODE
-//		Eval(index);
 
-// FIXME BBi Was commented
-		Eval(index);
-#else
-		EvalRender(index);
-#endif // JK2_MODE
-		if (mSmoothingActive)
-		{
-			return mSmoothBones + index;
-		}
-		return mFinalBones + index;
-	}
 };
 
 static inline float G2_GetVertBoneWeightNotSlow( const mdxmVertex_t *pVert, const int iWeightNum)
@@ -509,6 +492,7 @@ void G2_GetBoneBasepose(CGhoul2Info &ghoul2,int boneNum,mdxaBone_t *&retBasepose
 	retBaseposeInv=&skel->BasePoseMatInv;
 }
 
+#if 0
 char *G2_GetBoneNameFromSkel(CGhoul2Info &ghoul2, int boneNum)
 {
 	if (!ghoul2.mBoneCache)
@@ -526,6 +510,7 @@ char *G2_GetBoneNameFromSkel(CGhoul2Info &ghoul2, int boneNum)
 
 	return skel->name;
 }
+#endif
 
 void G2_RagGetBoneBasePoseMatrixLow(CGhoul2Info &ghoul2, int boneNum, mdxaBone_t &boneMatrix, mdxaBone_t &retMatrix, vec3_t scale)
 {
@@ -611,6 +596,7 @@ void G2_GetBoneMatrixLow(CGhoul2Info &ghoul2,int boneNum,const vec3_t scale,mdxa
 #endif// _DEBUG
 }
 
+#if 0
 int G2_GetParentBoneMatrixLow(CGhoul2Info &ghoul2,int boneNum,const vec3_t scale,mdxaBone_t &retMatrix,mdxaBone_t *&retBasepose,mdxaBone_t *&retBaseposeInv)
 {
 	int parent=-1;
@@ -635,6 +621,7 @@ int G2_GetParentBoneMatrixLow(CGhoul2Info &ghoul2,int boneNum,const vec3_t scale
 	}
 	return parent;
 }
+#endif
 //rww - RAGDOLL_END
 
 void RemoveBoneCache(CBoneCache *boneCache)
@@ -645,7 +632,11 @@ void RemoveBoneCache(CBoneCache *boneCache)
 const mdxaBone_t &EvalBoneCache(int index,CBoneCache *boneCache)
 {
 	assert(boneCache);
+#ifdef JK2_MODE
 	return boneCache->Eval(index);
+#else
+	return boneCache->EvalRender(index);
+#endif
 }
 
 void Multiply_3x4Matrix(mdxaBone_t *out,const  mdxaBone_t *in2,const mdxaBone_t *in)
@@ -1566,9 +1557,7 @@ void G2_TransformBone (int child,CBoneCache &BC)
 		VectorScale(&tempMatrix.matrix[2][0],maxl,&tempMatrix.matrix[2][0]);
 		Multiply_3x4Matrix(&BC.mFinalBones[child].boneMatrix,&tempMatrix,&skel->BasePoseMatInv);
 	}
-
 }
-
 
 #define		GHOUL2_RAG_STARTED						0x0010
 
@@ -2107,4 +2096,55 @@ void G2_ConstructGhoulSkeleton( CGhoul2Info_v &ghoul2,const int frameNum,bool ch
 			}
 		}
 	}
+}
+
+/*
+==============
+G2_TransformGhoulSkeleton - builds a complete skeleton for all ghoul models in a CGhoul2Info_v class	- using LOD 0
+==============
+*/
+void G2_TransformGhoulSkeleton(
+	CGhoul2Info_v &ghoul2,
+	const int frameNum,
+	const vec3_t scale,
+	int * const modelList,
+	int * const modelCount)
+{
+	int				i, j;
+	mdxaBone_t		rootMatrix;
+
+	assert(ghoul2.size()<=31);
+	modelList[31]=548;
+
+	HackadelicOnClient=true;
+
+	RootMatrix(ghoul2,frameNum,scale,rootMatrix);
+
+	G2_Sort_Models(ghoul2, modelList, modelCount);
+	assert(modelList[31]==548);
+
+	for (j=0; j<*modelCount; j++)
+	{
+		// get the sorted model to play with
+		i = modelList[j];
+
+		if (ghoul2[i].mValid)
+		{
+			if (j&&ghoul2[i].mModelBoltLink != -1)
+			{
+				int	boltMod = (ghoul2[i].mModelBoltLink >> MODEL_SHIFT) & MODEL_AND;
+				int	boltNum = (ghoul2[i].mModelBoltLink >> BOLT_SHIFT) & BOLT_AND;
+
+				mdxaBone_t bolt;
+				G2_GetBoltMatrixLow(ghoul2[boltMod],boltNum,scale,bolt);
+				G2_TransformGhoulBones(ghoul2[i].mBlist,bolt,ghoul2[i],frameNum);
+			}
+			else
+			{
+				G2_TransformGhoulBones(ghoul2[i].mBlist,rootMatrix,ghoul2[i],frameNum);
+			}
+			G2_FindOverrideSurface(-1,ghoul2[i].mSlist); //reset the quick surface override lookup;
+		}
+	}
+	HackadelicOnClient=false;
 }

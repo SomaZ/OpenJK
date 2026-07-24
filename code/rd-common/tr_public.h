@@ -132,6 +132,12 @@ typedef struct {
 	IGhoul2InfoArray	&(*TheGhoul2InfoArray)				( void );
 	void				(*SaveGhoul2InfoArray)				( void );
 	void				(*RestoreGhoul2InfoArray)			( void );
+	void*				(*G2_FindSurface)					( const model_s *mod, int index, int lod );
+	const surfaceInfo_t *(*G2_FindOverrideSurface)			( int surfaceNum,const surfaceInfo_v &surfaceList );
+	void				(*G2_TransformGhoulSkeleton)		( CGhoul2Info_v &ghoul2, const int frameNum, const vec3_t scale, int * const modelList,	int * const modelCount );
+	const mdxaBone_t&	(*EvalBoneCache)					( int index,CBoneCache *boneCache);
+	int					(*G2_IsSurfaceLegal)				( const model_s* mod_m, const char* surfaceName, uint32_t* flags );
+	qboolean			(*G2_SetSurfaceOnOff)				( CGhoul2Info *ghlInfo, const char *surfaceName, const int offFlags );
 #ifdef _G2_GORE
 	GoreTextureCoordinates *(*FindGoreRecord)				( int tag );
 	CGoreSet 			*(*FindGoreSet)						( int goreSetTag );
