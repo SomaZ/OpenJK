@@ -401,11 +401,11 @@ int G2_DecideTraceLod(CGhoul2Info &ghoul2, int useLod)
 	assert(ghoul2.currentModel->mdxm);
 	//what about r_lodBias?
 
+	mdxmHeader_t *mdxm = re.G2ABI_GetMdxmByModel(ghoul2.currentModel);
 	// now ensure that we haven't selected a lod that doesn't exist for this model
-	int modelLods = re.G2ABI_GetNumLods(ghoul2.currentModel);
-	if ( returnLod > modelLods )
+	if ( returnLod >= mdxm->numLODs )
  	{
- 		returnLod = modelLods;
+ 		returnLod = mdxm->numLODs - 1;
  	}
 
 	return returnLod;

@@ -1192,134 +1192,6 @@ void G2_TimingModel(boneInfo_t &bone,int currentTime,int numFramesInFile,int &cu
 	*/
 }
 
-//basically construct a seperate skeleton with full hierarchy to store a matrix
-//off which will give us the desired settling position given the frame in the skeleton
-//that should be used -rww
-int G2_Add_Bone (const model_t *mod, boneInfo_v &blist, const char *boneName);
-int G2_Find_Bone(CGhoul2Info *ghlInfo, boneInfo_v &blist, const char *boneName);
-void G2_RagGetAnimMatrix(CGhoul2Info &ghoul2, const int boneNum, mdxaBone_t &matrix, const int frame)
-{
-	mdxaBone_t animMatrix;
-	mdxaSkel_t *skel;
-	mdxaSkel_t *pskel;
-	mdxaSkelOffsets_t *offsets;
-	int parent;
-	int bListIndex;
-	int parentBlistIndex;
-#ifdef _RAG_PRINT_TEST
-	bool actuallySet = false;
-#endif
-
-	assert(ghoul2.mBoneCache);
-	assert(ghoul2.animModel);
-
-	offsets = (mdxaSkelOffsets_t *)((byte *)ghoul2.mBoneCache->header + sizeof(mdxaHeader_t));
-	skel = (mdxaSkel_t *)((byte *)ghoul2.mBoneCache->header + sizeof(mdxaHeader_t) + offsets->offsets[boneNum]);
-
-	//find/add the bone in the list
-	if (!skel->name[0])
-	{
-		bListIndex = -1;
-	}
-	else
-	{
-		bListIndex = G2_Find_Bone(&ghoul2, ghoul2.mBlist, skel->name);
-		if (bListIndex == -1)
-		{
-#ifdef _RAG_PRINT_TEST
-			Com_Printf("Attempting to add %s\n", skel->name);
-#endif
-			bListIndex = G2_Add_Bone(ghoul2.animModel, ghoul2.mBlist, skel->name);
-		}
-	}
-
-	assert(bListIndex != -1);
-
-	boneInfo_t &bone = ghoul2.mBlist[bListIndex];
-
-	if (bone.hasAnimFrameMatrix == frame)
-	{ //already calculated so just grab it
-		matrix = bone.animFrameMatrix;
-		return;
-	}
-
-	//get the base matrix for the specified frame
-	UnCompressBone(animMatrix.matrix, boneNum, ghoul2.mBoneCache->header, frame);
-
-	parent = skel->parent;
-	if (boneNum > 0 && parent > -1)
-	{
-		//recursively call to assure all parent matrices are set up
-		G2_RagGetAnimMatrix(ghoul2, parent, matrix, frame);
-
-		//assign the new skel ptr for our parent
-		pskel = (mdxaSkel_t *)((byte *)ghoul2.mBoneCache->header + sizeof(mdxaHeader_t) + offsets->offsets[parent]);
-
-		//taking bone matrix for the skeleton frame and parent's animFrameMatrix into account, determine our final animFrameMatrix
-		if (!pskel->name[0])
-		{
-			parentBlistIndex = -1;
-		}
-		else
-		{
-			parentBlistIndex = G2_Find_Bone(&ghoul2, ghoul2.mBlist, pskel->name);
-			if (parentBlistIndex == -1)
-			{
-				parentBlistIndex = G2_Add_Bone(ghoul2.animModel, ghoul2.mBlist, pskel->name);
-			}
-		}
-
-		assert(parentBlistIndex != -1);
-
-		boneInfo_t &pbone = ghoul2.mBlist[parentBlistIndex];
-
-		assert(pbone.hasAnimFrameMatrix == frame); //this should have been calc'd in the recursive call
-
-		Multiply_3x4Matrix(&bone.animFrameMatrix, &pbone.animFrameMatrix, &animMatrix);
-
-#ifdef _RAG_PRINT_TEST
-		if (parentBlistIndex != -1 && bListIndex != -1)
-		{
-			actuallySet = true;
-		}
-		else
-		{
-			Com_Printf("BAD LIST INDEX: %s, %s [%i]\n", skel->name, pskel->name, parent);
-		}
-#endif
-	}
-	else
-	{ //root
-		Multiply_3x4Matrix(&bone.animFrameMatrix, &ghoul2.mBoneCache->rootMatrix, &animMatrix);
-#ifdef _RAG_PRINT_TEST
-		if (bListIndex != -1)
-		{
-			actuallySet = true;
-		}
-		else
-		{
-			Com_Printf("BAD LIST INDEX: %s\n", skel->name);
-		}
-#endif
-		//bone.animFrameMatrix = ghoul2.mBoneCache->mFinalBones[boneNum].boneMatrix;
-		//Maybe use this for the root, so that the orientation is in sync with the current
-		//root matrix? However this would require constant recalculation of this base
-		//skeleton which I currently do not want.
-	}
-
-	//never need to figure it out again
-	bone.hasAnimFrameMatrix = frame;
-
-#ifdef _RAG_PRINT_TEST
-	if (!actuallySet)
-	{
-		Com_Printf("SET FAILURE\n");
-	}
-#endif
-
-	matrix = bone.animFrameMatrix;
-}
-
 // transform each individual bone's information - making sure to use any override information provided, both for angles and for animations, as
 // well as multiplying each bone's matrix by it's parents matrix
 void G2_TransformBone (int child,CBoneCache &BC)
@@ -2341,7 +2213,7 @@ void RenderSurfaces(CRenderSurface &RS)
 #ifdef _G2_GORE
 			if (RS.gore_set && drawGore)
 			{
-				int curTime = G2API_GetTime(tr.refdef.time);
+				int curTime = ri.G2API_GetTime(tr.refdef.time);
 				std::pair<std::multimap<int,SGoreSurface>::iterator,std::multimap<int,SGoreSurface>::iterator> range=
 					RS.gore_set->mGoreRecords.equal_range(RS.surfaceNum);
 				std::multimap<int,SGoreSurface>::iterator k,kcur;
@@ -2350,7 +2222,7 @@ void RenderSurfaces(CRenderSurface &RS)
 				{
 					kcur=k;
 					++k;
-					GoreTextureCoordinates *tex=FindGoreRecord((*kcur).second.mGoreTag);
+					GoreTextureCoordinates *tex=ri.FindGoreRecord((*kcur).second.mGoreTag);
 					if (!tex ||											 // it is gone, lets get rid of it
 						(kcur->second.mDeleteTime && curTime>=kcur->second.mDeleteTime)) // out of time
 					{
@@ -2582,7 +2454,7 @@ void R_AddGhoulSurfaces( trRefEntity_t *ent ) {
 		return;
 	}
 
-	int currentTime=G2API_GetTime(tr.refdef.time);
+	int currentTime=ri.G2API_GetTime(tr.refdef.time);
 
 
 	// cull the entire model if merged bounding box of both frames
@@ -2594,7 +2466,7 @@ void R_AddGhoulSurfaces( trRefEntity_t *ent ) {
 	}
 	HackadelicOnClient=true;
 	// are any of these models setting a new origin?
-	RootMatrix(ghoul2,currentTime, ent->e.modelScale,rootMatrix);
+	RootMatrix(ghoul2,currentTime, ent->e.modelScale, rootMatrix);
 
    	// don't add third_person objects if not in a portal
 	personalModel = (qboolean)((ent->e.renderfx & RF_THIRD_PERSON) && !tr.viewParms.isPortal);
@@ -2677,7 +2549,7 @@ void R_AddGhoulSurfaces( trRefEntity_t *ent ) {
 			CGoreSet *gore=0;
 			if (ghoul2[i].mGoreSetTag)
 			{
-				gore=FindGoreSet(ghoul2[i].mGoreSetTag);
+				gore=ri.FindGoreSet(ghoul2[i].mGoreSetTag);
 				if (!gore) // my gore is gone, so remove it
 				{
 					ghoul2[i].mGoreSetTag=0;

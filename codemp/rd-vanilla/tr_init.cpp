@@ -199,7 +199,6 @@ cvar_t	*broadsword_kickorigin=0;
 cvar_t	*broadsword_playflop=0;
 cvar_t	*broadsword_dontstopanim=0;
 cvar_t	*broadsword_waitforshot=0;
-cvar_t	*broadsword_smallbbox=0;
 cvar_t	*broadsword_extra1=0;
 cvar_t	*broadsword_extra2=0;
 
@@ -1690,7 +1689,6 @@ Ghoul2 Insert Start
 	broadsword_dontstopanim				= ri.Cvar_Get( "broadsword_dontstopanim",			"0",						CVAR_NONE, "" );
 	broadsword_waitforshot				= ri.Cvar_Get( "broadsword_waitforshot",			"0",						CVAR_NONE, "" );
 	broadsword_playflop					= ri.Cvar_Get( "broadsword_playflop",				"1",						CVAR_NONE, "" );
-	broadsword_smallbbox				= ri.Cvar_Get( "broadsword_smallbbox",				"0",						CVAR_NONE, "" );
 	broadsword_extra1					= ri.Cvar_Get( "broadsword_extra1",				"0",						CVAR_NONE, "" );
 	broadsword_extra2					= ri.Cvar_Get( "broadsword_extra2",				"0",						CVAR_NONE, "" );
 	broadsword_effcorr					= ri.Cvar_Get( "broadsword_effcorr",				"1",						CVAR_NONE, "" );

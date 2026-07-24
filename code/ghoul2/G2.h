@@ -128,6 +128,7 @@ int			G2_Add_Bolt_Surf_Num(CGhoul2Info *ghlInfo, boltInfo_v &bltlist, surfaceInf
 
 
 // API calls - G2_API.cpp
+IGhoul2InfoArray &TheGhoul2InfoArray();
 void		RestoreGhoul2InfoArray();
 void		SaveGhoul2InfoArray();
 

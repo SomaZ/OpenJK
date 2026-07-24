@@ -43,11 +43,11 @@ if(BuildSPRdVanilla OR BuildJK2SPRdVanilla)
 		"${SPDir}/ghoul2/G2.h"
 		"${SPDir}/ghoul2/ghoul2_gore.h"
 		"${SPDir}/rd-vanilla/G2_ABI.cpp"
-		"${SPDir}/rd-vanilla/G2_API.cpp"
-		"${SPDir}/rd-vanilla/G2_bolts.cpp"
-		"${SPDir}/rd-vanilla/G2_bones.cpp"
-		"${SPDir}/rd-vanilla/G2_misc.cpp"
-		"${SPDir}/rd-vanilla/G2_surfaces.cpp"
+		#"${SPDir}/rd-vanilla/G2_API.cpp"
+		#"${SPDir}/rd-vanilla/G2_bolts.cpp"
+		#"${SPDir}/rd-vanilla/G2_bones.cpp"
+		#"${SPDir}/rd-vanilla/G2_misc.cpp"
+		#"${SPDir}/rd-vanilla/G2_surfaces.cpp"
 		)
 	source_group("ghoul2" FILES ${SPRDVanillaG2Files})
 	set(SPRDVanillaFiles ${SPRDVanillaFiles} ${SPRDVanillaG2Files})

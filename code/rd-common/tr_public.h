@@ -127,6 +127,15 @@ typedef struct {
 	qboolean			*(*gbAlreadyDoingLoad)				( void );
 	int					(*com_frameTime)					( void );
 
+	// GHOUL 2
+	int					(*G2API_GetTime)					( int argTime );
+	IGhoul2InfoArray	&(*TheGhoul2InfoArray)				( void );
+	void				(*SaveGhoul2InfoArray)				( void );
+	void				(*RestoreGhoul2InfoArray)			( void );
+#ifdef _G2_GORE
+	GoreTextureCoordinates *(*FindGoreRecord)				( int tag );
+	CGoreSet 			*(*FindGoreSet)						( int goreSetTag );
+#endif
 } refimport_t;
 
 extern refimport_t ri;
@@ -271,9 +280,6 @@ typedef struct {
 	bool	(*SetTempGlobalFogColor)( vec3_t color );
 
 	void	(*SetRangedFog)(float dist);
-
-	// GHOUL 2
-	IGhoul2InfoArray &(*TheGhoul2InfoArray)(void);
 
 	// New g2 abi
 	bool 			(*G2ABI_TestModelPointers)(CGhoul2Info *ghlInfo);

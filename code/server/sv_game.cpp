@@ -825,7 +825,7 @@ static void SV_G2API_ClearSkinGore(
 
 static IGhoul2InfoArray& SV_TheGhoul2InfoArray( void )
 {
-	return re.TheGhoul2InfoArray();
+	return TheGhoul2InfoArray();
 }
 
 static qhandle_t SV_RE_RegisterSkin( const char *name )

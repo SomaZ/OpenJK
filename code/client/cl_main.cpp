@@ -113,11 +113,6 @@ clientStatic_t		cls;
 refexport_t	re;
 static void *rendererLib = NULL;
 
-//RAZFIXME: BAD BAD, maybe? had to move it out of ghoul2_shared.h -> CGhoul2Info_v at the least..
-IGhoul2InfoArray &_TheGhoul2InfoArray( void ) {
-	return re.TheGhoul2InfoArray();
-}
-
 static void CL_ShutdownRef( qboolean restarting );
 void CL_InitRef( void );
 void CL_CheckForResend( void );
@@ -1209,6 +1204,14 @@ void CL_InitRef( void ) {
 
 	rit.saved_game = &ojk::SavedGame::get_instance();
 
+	rit.TheGhoul2InfoArray = TheGhoul2InfoArray;
+	rit.G2API_GetTime = G2API_GetTime;
+	rit.SaveGhoul2InfoArray = SaveGhoul2InfoArray;
+	rit.RestoreGhoul2InfoArray = RestoreGhoul2InfoArray;
+#ifdef _G2_GORE
+	rit.FindGoreRecord = FindGoreRecord;
+	rit.FindGoreSet = FindGoreSet;
+#endif
 	ret = GetRefAPI( REF_API_VERSION, &rit );
 
 	if ( !ret ) {
@@ -1304,6 +1307,7 @@ void CL_Init( void ) {
 	cl_consoleShiftRequirement = Cvar_Get( "cl_consoleShiftRequirement", "0", CVAR_ARCHIVE );
 
 	r_verbose = Cvar_Get( "r_verbose", "0", CVAR_CHEAT);
+	r_lodbias = Cvar_Get( "r_lodbias", "0", CVAR_ARCHIVE_ND );
 	r_Ghoul2AnimSmooth					= Cvar_Get( "r_ghoul2animsmooth",			"0.3",						CVAR_TEMP );
 	r_Ghoul2UnSqash 					= Cvar_Get( "r_ghoul2unsquash", "1", 0);
 	//r_Ghoul2TimeBase 					= Cvar_Get( "r_ghoul2timebase", "2", 0);
@@ -1317,7 +1321,6 @@ void CL_Init( void ) {
 	broadsword_dontstopanim				= Cvar_Get( "broadsword_dontstopanim",		"0",					CVAR_TEMP );
 	broadsword_waitforshot				= Cvar_Get( "broadsword_waitforshot",		"0",						CVAR_TEMP );
 	broadsword_playflop					= Cvar_Get( "broadsword_playflop",			"1",					CVAR_TEMP );
-	//broadsword_smallbbox				= Cvar_Get( "broadsword_smallbbox",			"0",					CVAR_TEMP);
 	broadsword_extra1					= Cvar_Get( "broadsword_extra1",				"0",					CVAR_TEMP );
 	broadsword_extra2					= Cvar_Get( "broadsword_extra2",				"0",					CVAR_TEMP );
 	broadsword_effcorr					= Cvar_Get( "broadsword_effcorr",			"1",						CVAR_TEMP);

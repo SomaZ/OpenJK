@@ -166,7 +166,6 @@ cvar_t	*broadsword_kickorigin;
 cvar_t	*broadsword_playflop;
 cvar_t	*broadsword_dontstopanim;
 cvar_t	*broadsword_waitforshot;
-cvar_t	*broadsword_smallbbox;
 cvar_t	*broadsword_extra1;
 cvar_t	*broadsword_extra2;
 
@@ -1660,7 +1659,6 @@ Ghoul2 Insert Start
 	broadsword_dontstopanim = ri.Cvar_Get( "broadsword_dontstopanim", "0", 0);
 	broadsword_waitforshot = ri.Cvar_Get( "broadsword_waitforshot", "0", 0);
 	broadsword_playflop = ri.Cvar_Get( "broadsword_playflop", "1", 0);
-	broadsword_smallbbox = ri.Cvar_Get( "broadsword_smallbbox", "0", 0);
 	broadsword_extra1 = ri.Cvar_Get( "broadsword_extra1", "0", 0);
 	broadsword_extra2 = ri.Cvar_Get( "broadsword_extra2", "0", 0);
 	broadsword_effcorr = ri.Cvar_Get( "broadsword_effcorr", "1", 0);
@@ -1780,7 +1778,7 @@ void R_Init( void ) {
 	if ( err != GL_NO_ERROR )
 		ri.Printf (PRINT_ALL, "glGetError() = 0x%x\n", err);
 
-	RestoreGhoul2InfoArray();
+	ri.RestoreGhoul2InfoArray();
 	// print info
 	GfxInfo_f();
 
@@ -1841,7 +1839,7 @@ void RE_Shutdown( qboolean destroyWindow, qboolean restarting ) {
 
 			if ( restarting )
 			{
-				SaveGhoul2InfoArray();
+				ri.SaveGhoul2InfoArray();
 			}
 		}
 	}
@@ -1976,13 +1974,17 @@ extern void G2API_SetRagDoll(CGhoul2Info_v &ghoul2,CRagDollParams *parms);
 extern void G2Time_ResetTimers(void);
 extern void G2Time_ReportTimers(void);
 #endif
-extern IGhoul2InfoArray &TheGhoul2InfoArray();
 
 #ifdef JK2_MODE
 unsigned int AnyLanguage_ReadCharFromString_JK2 ( char **text, qboolean *pbIsTrailingPunctuation ) {
 	return AnyLanguage_ReadCharFromString (text, pbIsTrailingPunctuation);
 }
 #endif
+
+//RAZFIXME: BAD BAD, maybe? had to move it out of ghoul2_shared.h -> CGhoul2Info_v at the least..
+IGhoul2InfoArray &_TheGhoul2InfoArray( void ) {
+	return ri.TheGhoul2InfoArray();
+}
 
 extern "C" Q_EXPORT refexport_t* QDECL GetRefAPI ( int apiVersion, refimport_t *refimp ) {
 	static refexport_t	re;
@@ -2096,8 +2098,6 @@ extern "C" Q_EXPORT refexport_t* QDECL GetRefAPI ( int apiVersion, refimport_t *
 	re.SetTempGlobalFogColor = R_SetTempGlobalFogColor;
 
 	REX(SetRangedFog);
-
-	re.TheGhoul2InfoArray = TheGhoul2InfoArray;
 
 #define G2EX(x)	re.G2API_##x = G2API_##x
 

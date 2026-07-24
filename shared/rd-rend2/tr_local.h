@@ -299,7 +299,6 @@ extern cvar_t	*broadsword_kickorigin;
 extern cvar_t	*broadsword_playflop;
 extern cvar_t	*broadsword_dontstopanim;
 extern cvar_t	*broadsword_waitforshot;
-extern cvar_t	*broadsword_smallbbox;
 extern cvar_t	*broadsword_extra1;
 extern cvar_t	*broadsword_extra2;
 

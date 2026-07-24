@@ -251,7 +251,6 @@ cvar_t	*broadsword_kickorigin=0;
 cvar_t	*broadsword_playflop=0;
 cvar_t	*broadsword_dontstopanim=0;
 cvar_t	*broadsword_waitforshot=0;
-cvar_t	*broadsword_smallbbox=0;
 cvar_t	*broadsword_extra1=0;
 cvar_t	*broadsword_extra2=0;
 
@@ -1717,7 +1716,6 @@ void R_Register( void )
 	broadsword_dontstopanim				= ri_Cvar_Get_NoComm( "broadsword_dontstopanim",		"0",					CVAR_TEMP, "" );
 	broadsword_waitforshot				= ri_Cvar_Get_NoComm( "broadsword_waitforshot",		"0",						CVAR_TEMP, "" );
 	broadsword_playflop					= ri_Cvar_Get_NoComm( "broadsword_playflop",			"1",					CVAR_TEMP, "" );
-	broadsword_smallbbox				= ri_Cvar_Get_NoComm( "broadsword_smallbbox",			"0",					CVAR_TEMP, "" );
 	broadsword_extra1					= ri_Cvar_Get_NoComm( "broadsword_extra1",				"0",					CVAR_TEMP, "" );
 	broadsword_extra2					= ri_Cvar_Get_NoComm( "broadsword_extra2",				"0",					CVAR_TEMP, "" );
 	broadsword_effcorr					= ri_Cvar_Get_NoComm( "broadsword_effcorr",			"1",						CVAR_TEMP, "" );
@@ -2193,7 +2191,7 @@ void R_Init( void ) {
 		ri.Printf( PRINT_ALL, "glGetError() = 0x%x\n", err );
 #endif
 
-	RestoreGhoul2InfoArray();
+	ri.RestoreGhoul2InfoArray();
 
 	// print info
 	GfxInfo_f();
@@ -2247,7 +2245,7 @@ void RE_Shutdown( qboolean destroyWindow, qboolean restarting ) {
 		ri.Z_Free((void *)glConfigExt.originalExtensionString);
 
 		qglDeleteVertexArrays(1, &tr.globalVao);
-		SaveGhoul2InfoArray();
+		ri.SaveGhoul2InfoArray();
 	}
 
 	// shut down platform specific OpenGL stuff
@@ -2523,7 +2521,6 @@ Q_EXPORT refexport_t* QDECL GetRefAPI ( int apiVersion, refimport_t *rimp ) {
 	//re.GetDistanceCull = GetDistanceCull; // MP
 	//re.GetRealRes = GetRealRes; // MP
 
-	re.TheGhoul2InfoArray = TheGhoul2InfoArray;
 	//re.GetEntityToken = R_GetEntityToken;  //MP only, but need this for cubemaps...
 	
 #ifdef G2_PERFORMANCE_ANALYSIS
