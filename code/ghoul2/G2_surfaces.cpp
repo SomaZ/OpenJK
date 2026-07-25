@@ -254,7 +254,7 @@ void G2_FindRecursiveSurface(const model_s *currentModel, int surfaceNum, surfac
 {
 	assert(currentModel);
 	mdxmHeader_t *mdxm = re.G2ABI_GetMdxmByModel(currentModel);
-	assert(currentModel->mdxm);
+	assert(mdxm);
 	int							i;
  	const mdxmSurface_t			*surface = (mdxmSurface_t *)G2_FindSurface(currentModel, surfaceNum, 0);
 	const mdxmHierarchyOffsets_t	*surfIndexes = (mdxmHierarchyOffsets_t *)((byte *)mdxm + sizeof(mdxmHeader_t));
@@ -299,7 +299,6 @@ qboolean G2_SetRootSurface( CGhoul2Info_v &ghoul2, const int modelIndex, const c
 	uint32_t			flags;
 	assert(modelIndex>=0&&modelIndex<ghoul2.size());
 	assert(ghoul2[modelIndex].currentModel);
-	assert(ghoul2[modelIndex].currentModel->mdxm);
  	// first find if we already have this surface in the list
 	surf = G2_IsSurfaceLegal(ghoul2[modelIndex].currentModel, surfaceName, &flags);
 	if (surf != -1)

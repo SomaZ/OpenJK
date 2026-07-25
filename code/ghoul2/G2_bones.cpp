@@ -115,7 +115,7 @@ int G2_Add_Bone (const model_s *mod, boneInfo_v &blist, const char *boneName)
 	if (x == mdxa->numBones)
 	{
 #if _DEBUG
-		G2_Bone_Not_Found(boneName,mod->name);
+		//G2_Bone_Not_Found(boneName, mod->name);
 #endif
 		return -1;
 	}
@@ -2674,11 +2674,11 @@ int ragTraceCount = 0;
 void Rag_Trace( trace_t *results, const vec3_t start, const vec3_t mins, const vec3_t maxs, const vec3_t end, const int passEntityNum, const int contentmask, const EG2_Collision eG2TraceType, const int useLod )
 {
 #ifdef _DEBUG
-	int ragPreTrace = Milliseconds();
+	int ragPreTrace = Sys_Milliseconds2();
 #endif
 	SV_Trace(results, start, mins, maxs, end, passEntityNum, contentmask, eG2TraceType, useLod);
 #ifdef _DEBUG
-	int ragPostTrace = Milliseconds();
+	int ragPostTrace = Sys_Milliseconds2();
 
 	ragTraceTime += (ragPostTrace - ragPreTrace);
 	if (results->startsolid)

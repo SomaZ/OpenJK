@@ -1084,10 +1084,6 @@ extern qboolean S_FileExists( const char *psFilename );
 extern bool CM_CullWorldBox (const cplane_t *frustum, const vec3pair_t bounds);
 extern qboolean SND_RegisterAudio_LevelLoadEnd(qboolean bDeleteEverythingNotUsedThisLevel /* 99% qfalse */);
 extern cvar_t *Cvar_Set2( const char *var_name, const char *value, qboolean force);
-extern CMiniHeap *G2VertSpaceServer;
-static CMiniHeap *GetG2VertSpaceServer( void ) {
-	return G2VertSpaceServer;
-}
 
 // NOTENOTE: If you change the output name of rd-vanilla, change this define too!
 #ifdef JK2_MODE
@@ -1165,7 +1161,6 @@ void CL_InitRef( void ) {
 	RIT(Hunk_ClearToMark);
 	RIT(SND_RegisterAudio_LevelLoadEnd);
 	//RIT(SV_PointContents);
-	RIT(SV_Trace);
 	RIT(S_RestartMusic);
 	RIT(Z_Free);
 	RIT(Z_Malloc);
@@ -1181,18 +1176,13 @@ void CL_InitRef( void ) {
 	rit.GL_GetProcAddress = WIN_GL_GetProcAddress;
 	rit.GL_ExtensionSupported = WIN_GL_ExtensionSupported;
 
-	rit.PD_Load = PD_Load;
-	rit.PD_Store = PD_Store;
-
 	rit.Error = Com_Error;
 	rit.FS_FileExists = S_FileExists;
-	rit.GetG2VertSpaceServer = GetG2VertSpaceServer;
 	rit.LowPhysicalMemory = Sys_LowPhysicalMemory;
 	rit.Milliseconds = Sys_Milliseconds2;
 	rit.Printf = CL_RefPrintf;
 	rit.SE_GetString = String_GetStringValue;
 
-	rit.SV_Trace = SV_Trace;
 
 	rit.gpvCachedMapDiskImage = get_gpvCachedMapDiskImage;
 	rit.gsCachedMapDiskImage = get_gsCachedMapDiskImage;
@@ -1202,8 +1192,6 @@ void CL_InitRef( void ) {
 
 	rit.SV_PointContents = SV_PointContents;
 
-	rit.saved_game = &ojk::SavedGame::get_instance();
-
 	rit.TheGhoul2InfoArray = TheGhoul2InfoArray;
 	rit.G2API_GetTime = G2API_GetTime;
 	rit.SaveGhoul2InfoArray = SaveGhoul2InfoArray;
@@ -1212,6 +1200,8 @@ void CL_InitRef( void ) {
 	rit.G2_FindOverrideSurface = G2_FindOverrideSurface;
 	rit.G2_TransformGhoulSkeleton = G2_TransformGhoulSkeleton;
 	rit.EvalBoneCache = EvalBoneCache;
+	rit.G2_SetBCExtraData = G2_SetBCExtraData;
+	rit.G2_GetBCExtraData = G2_GetBCExtraData;
 	rit.G2_IsSurfaceLegal = G2_IsSurfaceLegal;
 	rit.G2_SetSurfaceOnOff = G2_SetSurfaceOnOff;
 #ifdef _G2_GORE

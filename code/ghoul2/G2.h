@@ -224,6 +224,8 @@ void		G2API_SetRagDoll(CGhoul2Info_v &ghoul2,CRagDollParams *parms);
 qboolean	G2API_IKMove(CGhoul2Info_v &ghoul2, int time, sharedIKMoveParams_t *params);
 qboolean	G2API_SetBoneIKState(CGhoul2Info_v &ghoul2, int time, const char *boneName, int ikState, sharedSetBoneIKStateParams_t *params);
 const mdxaBone_t &EvalBoneCache(int index,CBoneCache *boneCache);
+void G2_SetBCExtraData(CBoneCache *BC, extraData_s *extraData);
+extraData_s *G2_GetBCExtraData(CBoneCache *BC);
 
 // From tr_ghoul2.cpp
 void 		G2_TransformGhoulSkeleton( CGhoul2Info_v &ghoul2, const int frameNum, const vec3_t scale, int * const modelList, int * const modelCount);

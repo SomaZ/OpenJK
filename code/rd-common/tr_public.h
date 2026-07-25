@@ -102,19 +102,6 @@ typedef struct {
 	void *			(*GL_GetProcAddress)				( const char *name );
 	qboolean		(*GL_ExtensionSupported)			( const char *extension );
 
-	CMiniHeap *			(*GetG2VertSpaceServer)				( void );
-
-	// Persistent data store
-	bool			(*PD_Store)							( const char *name, const void *data, size_t size );
-	const void *	(*PD_Load)							( const char *name, size_t *size );
-
-	// ============= NOT IN MP BEYOND THIS POINT
-	void				(*SV_Trace)							( trace_t *results, const vec3_t start, const vec3_t mins, const vec3_t maxs, const vec3_t end,
-															const int passEntityNum, const int contentmask,
-															const EG2_Collision eG2TraceType, const int useLod );
-
-	ojk::ISavedGame* saved_game;
-
 	int					(*SV_PointContents)					( const vec3_t p, clipHandle_t model );
 
 	qboolean			(*CM_DeleteCachedMap)				( qboolean bGuaranteedOkToDelete );	// NOT IN MP
@@ -135,7 +122,9 @@ typedef struct {
 	void*				(*G2_FindSurface)					( const model_s *mod, int index, int lod );
 	const surfaceInfo_t *(*G2_FindOverrideSurface)			( int surfaceNum,const surfaceInfo_v &surfaceList );
 	void				(*G2_TransformGhoulSkeleton)		( CGhoul2Info_v &ghoul2, const int frameNum, const vec3_t scale, int * const modelList,	int * const modelCount );
-	const mdxaBone_t&	(*EvalBoneCache)					( int index,CBoneCache *boneCache);
+	const mdxaBone_t&	(*EvalBoneCache)					( int index,CBoneCache *boneCache );
+	void				(*G2_SetBCExtraData)				( CBoneCache *BC, extraData_s *extraData );
+	extraData_s			*(*G2_GetBCExtraData)				( CBoneCache *BC );
 	int					(*G2_IsSurfaceLegal)				( const model_s* mod_m, const char* surfaceName, uint32_t* flags );
 	qboolean			(*G2_SetSurfaceOnOff)				( CGhoul2Info *ghlInfo, const char *surfaceName, const int offFlags );
 #ifdef _G2_GORE

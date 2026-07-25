@@ -416,6 +416,7 @@ typedef std::vector <mdxaBone_t> mdxaBone_v;
 // NOTE order in here matters. We save out from mModelindex to mFlags, but not the STL vectors that are at the top or the bottom.
 class CBoneCache;
 struct model_s;
+struct extraData_s;
 //struct mdxaHeader_t;
 
 #ifdef VV_GHOUL_HACKS

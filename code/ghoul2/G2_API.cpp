@@ -93,7 +93,7 @@ public:
 	}
 	int AnimTest(CGhoul2Info_v &ghoul2,const char *m,const char *, int line)
 	{
-		if (re.G2ABI_SetupModelPointers(ghoul2))
+		if (G2_SetupModelPointers(ghoul2))
 		{
 			int i;
 			for (i=0; i<ghoul2.size(); i++)
@@ -119,10 +119,10 @@ public:
 		char GLMName1[1000];
 		char GLMName2[1000];
 
-		strcpy(GLAName1,ghlInfo->animModel->name);
-		strcpy(GLAName2,ghlInfo->aHeader->name);
+		//strcpy(GLAName1,ghlInfo->animModel->name);
+		//strcpy(GLAName2,ghlInfo->aHeader->name);
 		strcpy(GLMName1,ghlInfo->mFileName);
-		strcpy(GLMName2,ghlInfo->currentModel->name);
+		//strcpy(GLMName2,ghlInfo->currentModel->name);
 
 		int numFramesInFile=ghlInfo->aHeader->numFrames;
 

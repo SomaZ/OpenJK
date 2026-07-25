@@ -231,6 +231,7 @@ public:
 	bool			mUnsquash;
 	float			mSmoothFactor;
 //	int				mWraithID; // this is just used for debug prints, can use it for any int of interest in JK2
+	extraData_s		*mExtra; // rend2 needs to cache some additional info, so might other renderers
 
 	CBoneCache(const model_s *amod,const mdxaHeader_t *aheader) :
 		header(aheader),
@@ -250,6 +251,7 @@ public:
 		mdxaSkelOffsets_t *offsets;
 		mdxaSkel_t		*skel;
 		offsets = (mdxaSkelOffsets_t *)((byte *)header + sizeof(mdxaHeader_t));
+		mExtra = nullptr;
 
 		int i;
 		for (i=0;i<mNumBones;i++)
@@ -272,6 +274,8 @@ public:
 		Z_Free(mFinalBones);
 		Z_Free(mSmoothBones);
 		delete [] mSkels;
+		if (mExtra)
+			Z_Free(mExtra);
 	}
 
 	SBoneCalc &Root()
@@ -388,9 +392,17 @@ public:
 		return mFinalBones[index].parent;
 	}
 	//rww - RAGDOLL_END
-
-
 };
+
+void G2_SetBCExtraData(CBoneCache *BC, extraData_s *extraData)
+{
+	BC->mExtra = extraData;
+}
+
+extraData_s *G2_GetBCExtraData(CBoneCache *BC)
+{
+	return BC->mExtra;
+}
 
 static inline float G2_GetVertBoneWeightNotSlow( const mdxmVertex_t *pVert, const int iWeightNum)
 {
@@ -1569,7 +1581,6 @@ void G2_TransformGhoulBones(boneInfo_v &rootBoneList,mdxaBone_t &rootMatrix, CGh
 #endif
 	assert(ghoul2.aHeader);
 	assert(ghoul2.currentModel);
-	assert(ghoul2.currentModel->mdxm);
 	if (!ghoul2.aHeader->numBones)
 	{
 		assert(0); // this would be strange

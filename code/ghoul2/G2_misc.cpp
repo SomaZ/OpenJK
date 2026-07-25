@@ -398,10 +398,10 @@ int G2_DecideTraceLod(CGhoul2Info &ghoul2, int useLod)
 	assert(G2_MODEL_OK(&ghoul2));
 
 	assert(ghoul2.currentModel);
-	assert(ghoul2.currentModel->mdxm);
 	//what about r_lodBias?
 
 	mdxmHeader_t *mdxm = re.G2ABI_GetMdxmByModel(ghoul2.currentModel);
+	assert(mdxm);
 	// now ensure that we haven't selected a lod that doesn't exist for this model
 	if ( returnLod >= mdxm->numLODs )
  	{
@@ -1762,7 +1762,7 @@ void *G2_FindSurface(const model_s *mod, int index, int lod)
 	int i;
 
 	//walk the lods
-	assert(lod>=0&&lod<mod->mdxm->numLODs);
+	assert(lod>=0&&lod<mdxm->numLODs);
 	for (i=0; i<lod; i++)
 	{
 		mdxmLOD_t *lodData = (mdxmLOD_t *)current;
@@ -1774,7 +1774,7 @@ void *G2_FindSurface(const model_s *mod, int index, int lod)
 
 	mdxmLODSurfOffset_t *indexes = (mdxmLODSurfOffset_t *)current;
 	// we are now looking at the offset array
-	assert(index>=0&&index<mod->mdxm->numSurfaces);
+	assert(index>=0&&index<mdxm->numSurfaces);
 	current += indexes->offsets[index];
 
 	return (void *)current;

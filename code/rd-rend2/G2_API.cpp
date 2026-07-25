@@ -652,84 +652,6 @@ public:
 #endif
 };
 
-static Ghoul2InfoArray *singleton = NULL;
-IGhoul2InfoArray &TheGhoul2InfoArray()
-{
-	if(!singleton) {
-		singleton = new Ghoul2InfoArray;
-	}
-	return *singleton;
-}
-
-#if G2API_DEBUG
-std::vector<CGhoul2Info>& DebugG2Info(int handle)
-{
-	return ((Ghoul2InfoArray*)(&TheGhoul2InfoArray()))->GetDebug(handle);
-}
-
-CGhoul2Info& DebugG2InfoI(int handle, int item)
-{
-	return ((Ghoul2InfoArray*)(&TheGhoul2InfoArray()))->GetDebug(handle)[item];
-}
-
-void TestAllGhoul2Anims()
-{
-	((Ghoul2InfoArray*)(&TheGhoul2InfoArray()))->TestAllAnims();
-}
-#endif
-
-#define PERSISTENT_G2DATA "g2infoarray"
-
-void RestoreGhoul2InfoArray()
-{
-	if (singleton == NULL)
-	{
-		// Create the ghoul2 info array
-		TheGhoul2InfoArray();
-
-		size_t size;
-		const void *data = ri.PD_Load (PERSISTENT_G2DATA, &size);
-		if ( data == NULL )
-		{
-			return;
-		}
-
-#ifdef _DEBUG
-		size_t read =
-#endif // _DEBUG
-			singleton->Deserialize((const char*)data, size);
-		Z_Free((void*)data);
-#ifdef _DEBUG
-		assert(read == size);
-#endif
-	}
-}
-
-void SaveGhoul2InfoArray()
-{
-	size_t size = singleton->GetSerializedSize();
-	void *data = R_Malloc (size, TAG_GHOUL2, qfalse);
-#ifdef _DEBUG
-	size_t written = singleton->Serialize ((char *)data);
-	assert(written == size);
-#else
-	singleton->Serialize ((char *)data);
-#endif // _DEBUG
-
-	if ( !ri.PD_Store (PERSISTENT_G2DATA, data, size) )
-	{
-		Com_Printf (S_COLOR_RED "ERROR: Failed to store persistent renderer data.\n");
-	}
-}
-
-void Ghoul2InfoArray_Free(void)
-{
-	if(singleton) {
-		delete singleton;
-		singleton = NULL;
-	}
-}
-
 // this is the ONLY function to read entity states directly
 void G2API_CleanGhoul2Models(CGhoul2Info_v& ghoul2)
 {
@@ -2018,13 +1940,13 @@ void G2API_CollisionDetect(
 		// pre generate the world matrix - used to transform the incoming ray
 		G2_GenerateWorldMatrix(angles, position);
 
-		ri.GetG2VertSpaceServer()->ResetHeap();
+		//ri.GetG2VertSpaceServer()->ResetHeap();
 
 // now having done that, time to build the model
 #ifdef _G2_GORE
-		G2_TransformModel(ghoul2, frameNumber, scale, ri.GetG2VertSpaceServer(), useLod, false);
+		//G2_TransformModel(ghoul2, frameNumber, scale, ri.GetG2VertSpaceServer(), useLod, false);
 #else
-		G2_TransformModel(ghoul2, frameNumber, scale, ri.GetG2VertSpaceServer(), useLod);
+		//G2_TransformModel(ghoul2, frameNumber, scale, ri.GetG2VertSpaceServer(), useLod);
 #endif
 
 		// model is built. Lets check to see if any triangles are actually hit.
@@ -2039,7 +1961,7 @@ void G2API_CollisionDetect(
 		G2_TraceModels(ghoul2, transRayStart, transRayEnd, collRecMap, entNum, eG2TraceType, useLod, fRadius);
 #endif
 
-		ri.GetG2VertSpaceServer()->ResetHeap();
+		//ri.GetG2VertSpaceServer()->ResetHeap();
 		// now sort the resulting array of collision records so they are distance ordered
 		qsort(collRecMap, MAX_G2_COLLISIONS, sizeof(CCollisionRecord), QsortDistance);
 		G2ANIM(ghoul2, "G2API_CollisionDetect");
@@ -2355,9 +2277,9 @@ void G2API_AddSkinGore(CGhoul2Info_v &ghoul2,SSkinGoreData &gore)
 	for(lod = lodbias; lod < maxLod; lod++)
 	{
 		// now having done that, time to build the model
-		ri.GetG2VertSpaceServer()->ResetHeap();
+		//ri.GetG2VertSpaceServer()->ResetHeap();
 
-		G2_TransformModel(ghoul2, gore.currentTime, gore.scale, ri.GetG2VertSpaceServer(), lod, true, &gore);
+		//G2_TransformModel(ghoul2, gore.currentTime, gore.scale, ri.GetG2VertSpaceServer(), lod, true, &gore);
 
 		// now walk each model and compute new texture coordinates
 		G2_TraceModels(ghoul2, transHitLocation, transRayDirection, 0, gore.entNum, G2_NOCOLLIDE, lod, 1.0f, gore.SSize, gore.TSize, gore.theta, gore.shader, &gore, qtrue);

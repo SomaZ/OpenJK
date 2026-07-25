@@ -2628,7 +2628,7 @@ void Rag_Trace( trace_t *results, const vec3_t start, const vec3_t mins, const v
 #endif
 	// AntiAnti: should we set entityNum?
 	results->entityNum = ENTITYNUM_NONE;
-	ri.SV_Trace(results, start, mins, maxs, end, passEntityNum, contentmask, eG2TraceType, useLod);
+	//ri.SV_Trace(results, start, mins, maxs, end, passEntityNum, contentmask, eG2TraceType, useLod);
 	results->entityNum = results->fraction != 1.0 ? ENTITYNUM_WORLD : ENTITYNUM_NONE;
 
 #ifdef _DEBUG

@@ -1772,7 +1772,7 @@ void* G2_FindSurface(const model_s* mod, int index, int lod)
 #define SURFACE_SAVE_BLOCK_SIZE	sizeof(surfaceInfo_t)
 #define BOLT_SAVE_BLOCK_SIZE (sizeof(boltInfo_t) - sizeof(mdxaBone_t))
 #define BONE_SAVE_BLOCK_SIZE sizeof(boneInfo_t)
-
+/*
 void G2_SaveGhoul2Models(CGhoul2Info_v& ghoul2)
 {
 	ojk::SavedGameHelper saved_game(::ri.saved_game);
@@ -1945,7 +1945,7 @@ void G2_LoadGhoul2Model(
 
 	saved_game.ensure_all_data_read();
 }
-
+*/
 void G2_LerpAngles(CGhoul2Info_v &ghoul2,CGhoul2Info_v &nextGhoul2, float interpolation)
 {
 	// loop each model
