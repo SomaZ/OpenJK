@@ -35,6 +35,7 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 typedef struct {
 	void				(QDECL *Printf)						( int printLevel, const char *fmt, ...) __attribute__ ((format (printf, 2, 3)));
 	void				(QDECL *Error)						( int errorLevel, const char *fmt, ...) NORETURN_PTR __attribute__ ((format (printf, 2, 3)));
+	void				(QDECL* OPrintf)					( const char* fmt, ...) __attribute__ ((format(printf, 1, 2)));
 
 	// milliseconds should only be used for profiling, never for anything game related. Get time from the refdef
 	int					(*Milliseconds)						( void );
@@ -123,6 +124,7 @@ typedef struct {
 	const surfaceInfo_t *(*G2_FindOverrideSurface)			( int surfaceNum,const surfaceInfo_v &surfaceList );
 	void				(*G2_TransformGhoulSkeleton)		( CGhoul2Info_v &ghoul2, const int frameNum, const vec3_t scale, int * const modelList,	int * const modelCount );
 	const mdxaBone_t&	(*EvalBoneCache)					( int index,CBoneCache *boneCache );
+	int					(*G2_GetBCNumBones)					( CBoneCache *BC );
 	void				(*G2_SetBCExtraData)				( CBoneCache *BC, extraData_s *extraData );
 	extraData_s			*(*G2_GetBCExtraData)				( CBoneCache *BC );
 	int					(*G2_IsSurfaceLegal)				( const model_s* mod_m, const char* surfaceName, uint32_t* flags );

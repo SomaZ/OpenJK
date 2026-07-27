@@ -1200,6 +1200,7 @@ void CL_InitRef( void ) {
 	rit.G2_FindOverrideSurface = G2_FindOverrideSurface;
 	rit.G2_TransformGhoulSkeleton = G2_TransformGhoulSkeleton;
 	rit.EvalBoneCache = EvalBoneCache;
+	rit.G2_GetBCNumBones = G2_GetBCNumBones;
 	rit.G2_SetBCExtraData = G2_SetBCExtraData;
 	rit.G2_GetBCExtraData = G2_GetBCExtraData;
 	rit.G2_IsSurfaceLegal = G2_IsSurfaceLegal;

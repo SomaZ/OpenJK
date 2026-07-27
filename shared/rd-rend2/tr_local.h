@@ -4139,4 +4139,13 @@ uint32_t RB_CreateSortKey( const DrawItem& item, int stage, int layer );
 void RB_AddDrawItem( Pass *pass, uint32_t sortKey, const DrawItem& drawItem );
 DepthRange RB_GetDepthRange( const trRefEntity_t *re, const shader_t *shader );
 
+qboolean G2_SetupModelPointers(CGhoul2Info_v& ghoul2);
+bool G2_TestModelPointers(CGhoul2Info* ghlInfo);
+mdxmHeader_t* G2ABI_GetMdxmByHandle(qhandle_t modelIndex);
+mdxaHeader_t* G2ABI_GetMdxaByHandle(qhandle_t modelIndex);
+mdxmHeader_t* G2ABI_GetMdxmByModel(const model_t* mod_m);
+mdxaHeader_t* G2ABI_GetMdxaByModel(const model_t* mod_a);
+int G2ABI_GetNumLods(const model_t* mod_m);
+void G2API_SetSurfaceOnOffFromSkin(CGhoul2Info* ghlInfo, qhandle_t renderSkin);
+
 #endif //TR_LOCAL_H

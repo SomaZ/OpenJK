@@ -2258,6 +2258,11 @@ void RE_Shutdown( qboolean destroyWindow, qboolean restarting ) {
 	backEndData = NULL;
 }
 
+//RAZFIXME: BAD BAD, maybe? had to move it out of ghoul2_shared.h -> CGhoul2Info_v at the least..
+IGhoul2InfoArray& _TheGhoul2InfoArray(void) {
+	return ri.TheGhoul2InfoArray();
+}
+
 /*
 =============
 RE_EndRegistration
@@ -2374,16 +2379,6 @@ void C_LevelLoadEnd( void )
 }
 
 extern void RE_GetModelBounds(refEntity_t *refEnt, vec3_t bounds1, vec3_t bounds2);
-extern void G2API_AnimateG2ModelsRag(CGhoul2Info_v &ghoul2, int AcurrentTime, CRagDollUpdateParams *params);
-extern qboolean G2API_GetRagBonePos(CGhoul2Info_v &ghoul2, const char *boneName, vec3_t pos, vec3_t entAngles, vec3_t entPos, vec3_t entScale);
-extern qboolean G2API_RagEffectorKick(CGhoul2Info_v &ghoul2, const char *boneName, vec3_t velocity);
-extern qboolean G2API_RagForceSolve(CGhoul2Info_v &ghoul2, qboolean force);
-extern qboolean G2API_SetBoneIKState(CGhoul2Info_v &ghoul2, int time, const char *boneName, int ikState, sharedSetBoneIKStateParams_t *params);
-extern qboolean G2API_IKMove(CGhoul2Info_v &ghoul2, int time, sharedIKMoveParams_t *params);
-extern qboolean G2API_RagEffectorGoal(CGhoul2Info_v &ghoul2, const char *boneName, vec3_t pos);
-extern qboolean G2API_RagPCJGradientSpeed(CGhoul2Info_v &ghoul2, const char *boneName, const float speed);
-extern qboolean G2API_RagPCJConstraint(CGhoul2Info_v &ghoul2, const char *boneName, vec3_t min, vec3_t max);
-extern void G2API_SetRagDoll(CGhoul2Info_v &ghoul2, CRagDollParams *parms);
 #ifdef G2_PERFORMANCE_ANALYSIS
 extern void G2Time_ResetTimers(void);
 extern void G2Time_ReportTimers(void);
@@ -2522,6 +2517,15 @@ Q_EXPORT refexport_t* QDECL GetRefAPI ( int apiVersion, refimport_t *rimp ) {
 	//re.GetRealRes = GetRealRes; // MP
 
 	//re.GetEntityToken = R_GetEntityToken;  //MP only, but need this for cubemaps...
+
+	re.G2ABI_TestModelPointers = G2_TestModelPointers;
+	re.G2ABI_SetupModelPointers = G2_SetupModelPointers;
+	re.G2ABI_GetMdxmByHandle = G2ABI_GetMdxmByHandle;
+	re.G2ABI_GetMdxaByHandle = G2ABI_GetMdxaByHandle;
+	re.G2ABI_GetMdxmByModel = G2ABI_GetMdxmByModel;
+	re.G2ABI_GetMdxaByModel = G2ABI_GetMdxaByModel;
+	re.G2ABI_GetNumLods = G2ABI_GetNumLods;
+	re.G2ABI_SetSurfaceOnOffFromSkin = G2API_SetSurfaceOnOffFromSkin;
 	
 #ifdef G2_PERFORMANCE_ANALYSIS
 	re.G2Time_ReportTimers = G2Time_ReportTimers;

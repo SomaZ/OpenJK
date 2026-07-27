@@ -394,6 +394,10 @@ public:
 	//rww - RAGDOLL_END
 };
 
+int G2_GetBCNumBones(CBoneCache* BC) {
+	return BC->mNumBones;
+}
+
 void G2_SetBCExtraData(CBoneCache *BC, extraData_s *extraData)
 {
 	BC->mExtra = extraData;

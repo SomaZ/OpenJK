@@ -1977,7 +1977,7 @@ static void R_AddEntitySurface(const trRefdef_t *refdef, trRefEntity_t *ent, int
 				}
 
 				if ( ent->e.ghoul2 &&
-					G2API_HaveWeGhoul2Models(*((CGhoul2Info_v *)ent->e.ghoul2)) )
+					((CGhoul2Info_v*)ent->e.ghoul2)->IsValid())
 				{
 					R_AddGhoulSurfaces(ent, entityNum);
 					break;
@@ -2331,7 +2331,7 @@ void R_SetupPshadowMaps(trRefdef_t *refdef)
 				case MOD_MDXM:
 				case MOD_BAD:
 				{
-					if (ent->e.ghoul2 && G2API_HaveWeGhoul2Models(*((CGhoul2Info_v *)ent->e.ghoul2)))
+					if (ent->e.ghoul2 && ((CGhoul2Info_v*)ent->e.ghoul2)->IsValid())
 					{
 						shader_t *cust_shader = nullptr;
 						if (ent->e.customShader)
