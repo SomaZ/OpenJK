@@ -133,7 +133,7 @@ public:
 	boltInfo_v		&boltList;
 #ifdef _G2_GORE
 	shader_t		*gore_shader;
-	CGoreSet		*gore_set;
+	int				*goreSetTag;
 #endif
 
 	CRenderSurface(
@@ -150,7 +150,7 @@ public:
 #ifdef _G2_GORE
 		boltInfo_v		&initboltList,
 		shader_t		*initgore_shader,
-		CGoreSet		*initgore_set
+		int				*initgoreSetTag
 #else
 		boltInfo_v		&initboltList
 #endif
@@ -168,7 +168,7 @@ public:
 		, boltList(initboltList)
 #ifdef _G2_GORE
 		, gore_shader(initgore_shader)
-		, gore_set(initgore_set)
+		, goreSetTag(initgoreSetTag)
 #endif
 	{
 	}
@@ -512,11 +512,17 @@ void RenderSurfaces( CRenderSurface &RS, const trRefEntity_t *ent, int entityNum
 				cubemapIndex);
 
 #ifdef _G2_GORE
-			if ( RS.gore_set && drawGore )
+			if ( *RS.goreSetTag && drawGore )
 			{
 				int curTime = ri.G2API_GetTime(tr.refdef.time);
 
-				auto range = RS.gore_set->mGoreRecords.equal_range(RS.surfaceNum);
+				CGoreSet* gore = ri.FindGoreSet(*RS.goreSetTag);
+				if (!gore) // my gore is gone, so remove it
+				{
+					*RS.goreSetTag = 0;
+				}
+
+				auto range = gore->mGoreRecords.equal_range(RS.surfaceNum);
 				CRenderableSurface *last = newSurf;
 				for ( auto k = range.first; k != range.second; /* blank */ )
 				{
@@ -528,7 +534,7 @@ void RenderSurfaces( CRenderSurface &RS, const trRefEntity_t *ent, int entityNum
 						(kcur->second.mDeleteTime &&
 						 curTime >= kcur->second.mDeleteTime)) // out of time
 					{
-						RS.gore_set->mGoreRecords.erase(kcur);
+						gore->mGoreRecords.erase(kcur);
 					}
 					else if (tex->tex[RS.lod])
 					{
@@ -759,16 +765,6 @@ void R_AddGhoulSurfaces( trRefEntity_t *ent, int entityNum )
 		int whichLod = G2_ComputeLOD( ent, g2Info.currentModel, g2Info.mLodBias );
 
 #ifdef _G2_GORE
-		CGoreSet *gore = nullptr;
-		if ( g2Info.mGoreSetTag )
-		{
-			gore = ri.FindGoreSet(g2Info.mGoreSetTag);
-			if ( !gore ) // my gore is gone, so remove it
-			{
-				g2Info.mGoreSetTag = 0;
-			}
-		}
-
 		CRenderSurface RS(g2Info.mSurfaceRoot,
 			g2Info.mSlist,
 			cust_shader,
@@ -781,7 +777,7 @@ void R_AddGhoulSurfaces( trRefEntity_t *ent, int entityNum )
 			whichLod,
 			g2Info.mBltlist,
 			nullptr,
-			gore);
+			&g2Info.mGoreSetTag);
 #else
 		CRenderSurface RS(g2Info.mSurfaceRoot,
 			g2Info.mSlist,

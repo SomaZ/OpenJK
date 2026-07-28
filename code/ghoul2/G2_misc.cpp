@@ -81,7 +81,7 @@ static inline void DestroyGoreTexCoordinates(int tag)
 //TODO: This needs to be set via a scalability cvar with some reasonable minimum value if pgore is used at all
 #define MAX_GORE_RECORDS (500)
 
-int AllocGoreRecord()
+GoreTextureCoordinates *AllocGoreRecord( int currentTag )
 {
 	while (GoreRecords.size()>MAX_GORE_RECORDS)
 	{
@@ -113,10 +113,8 @@ int AllocGoreRecord()
 			GoreRecords.erase(GoreRecords.begin());
 		}
 	}
-	int ret=CurrentTag;
-	GoreRecords[CurrentTag]=GoreTextureCoordinates();
-	CurrentTag++;
-	return ret;
+	GoreRecords[currentTag-1]=GoreTextureCoordinates();
+	return &GoreRecords[currentTag-1];
 }
 
 void ResetGoreTag()
@@ -801,15 +799,20 @@ struct SVertexTemp
 	int flags;
 	int touch;
 	int newindex;
-	float tex[2];
 	SVertexTemp()
 	{
 		touch=0;
 	}
 };
 
+struct TextureCoordsTemp
+{
+	float tex[2];
+};
+
 #define MAX_GORE_VERTS (3000)
 static SVertexTemp GoreVerts[MAX_GORE_VERTS];
+static TextureCoordsTemp GoreTCs[MAX_GORE_VERTS];
 static int GoreIndexCopy[MAX_GORE_VERTS];
 static int GoreTouch=1;
 
@@ -920,8 +923,8 @@ static void G2_GorePolys( const mdxmSurface_t *surface, CTraceSurface &TS, const
 		vflags=(~vflags);
 		flags&=vflags;
 		GoreVerts[j].flags=vflags;
-		GoreVerts[j].tex[0]=s;
-		GoreVerts[j].tex[1]=t;
+		GoreTCs[j].tex[0]=s;
+		GoreTCs[j].tex[1]=t;
 	}
 	if (flags)
 	{
@@ -1002,7 +1005,7 @@ static void G2_GorePolys( const mdxmSurface_t *surface, CTraceSurface &TS, const
 	std::map<std::pair<int,int>,int>::iterator f=GoreTagsTemp.find(std::make_pair(goreModelIndex,TS.surfaceNum));
 	if (f==GoreTagsTemp.end()) // need to generate a record
 	{
-		newTag=AllocGoreRecord();
+		newTag = ++CurrentTag;
 		CGoreSet *goreSet=0;
 		if (TS.ghoul2info->mGoreSetTag)
 		{
@@ -1046,7 +1049,21 @@ static void G2_GorePolys( const mdxmSurface_t *surface, CTraceSurface &TS, const
 	{
 		newTag=(*f).second;
 	}
+
+	 /*ri.AddGoreSurface(
+		const mdxmSurface_t *surface,
+		int tag,
+		int lod,
+		int newNumVerts,
+		int newNumTris,
+		int *GoreIndexCopy,
+		TextureCoordsTemp *GoreTCs,
+		int *GoreIndecies);*/
+
 	GoreTextureCoordinates *gore=FindGoreRecord(newTag);
+	if (!gore)
+		gore = AllocGoreRecord(newTag);
+
 	if (gore)
 	{
 		assert(sizeof(float)==sizeof(int));
@@ -1060,7 +1077,7 @@ static void G2_GorePolys( const mdxmSurface_t *surface, CTraceSurface &TS, const
 			sizeof(float)*2*newNumVerts+ // texture coordinates
 			sizeof(int)*newNumTris*3;  // new indecies
 
-		int *data=(int *)Z_Malloc ( sizeof(int)*size, TAG_GHOUL2, qtrue );
+		int *data=(int *)Z_Malloc ( size, TAG_GHOUL2, qtrue );
 
 		if ( gore->tex[TS.lod] )
 			Z_Free(gore->tex[TS.lod]);
@@ -1075,32 +1092,33 @@ static void G2_GorePolys( const mdxmSurface_t *surface, CTraceSurface &TS, const
 
 		for (j=0;j<newNumVerts;j++)
 		{
-			*fdata++=GoreVerts[GoreIndexCopy[j]].tex[0];
-			*fdata++=GoreVerts[GoreIndexCopy[j]].tex[1];
+			*fdata++=GoreTCs[GoreIndexCopy[j]].tex[0];
+			*fdata++=GoreTCs[GoreIndexCopy[j]].tex[1];
 		}
 		data=(int *)fdata;
 		memcpy(data,GoreIndecies,sizeof(int)*newNumTris*3);
 		data+=newNumTris*3;
 		assert((data-(int *)gore->tex[TS.lod])*sizeof(int)==size);
-		fdata = (float *)data;
-		// build the entity to gore matrix
-		VectorCopy(saxis,fdata+0);
-		VectorCopy(taxis,fdata+4);
-		VectorCopy(TS.rayEnd,fdata+8);
-		VectorNormalize(fdata+0);
-		VectorNormalize(fdata+4);
-		VectorNormalize(fdata+8);
-		fdata[3]=-0.5f; // subtract texture center
-		fdata[7]=-0.5f;
-		fdata[11]=0.0f;
-		vec3_t shotOriginInCurrentSpace; // unknown space
-		TransformPoint(TS.rayStart,shotOriginInCurrentSpace,(mdxaBone_t *)fdata); // dest middle arg
-		// this will insure the shot origin in our unknown space is now the shot origin, making it a known space
-		fdata[3]-=shotOriginInCurrentSpace[0];
-		fdata[7]-=shotOriginInCurrentSpace[1];
-		fdata[11]-=shotOriginInCurrentSpace[2];
-		Inverse_Matrix((mdxaBone_t *)fdata,(mdxaBone_t *)(fdata+12));  // dest 2nd arg
-		data+=24;
+
+		//fdata = (float *)data;
+		//// build the entity to gore matrix
+		//VectorCopy(saxis,fdata+0);
+		//VectorCopy(taxis,fdata+4);
+		//VectorCopy(TS.rayEnd,fdata+8);
+		//VectorNormalize(fdata+0);
+		//VectorNormalize(fdata+4);
+		//VectorNormalize(fdata+8);
+		//fdata[3]=-0.5f; // subtract texture center
+		//fdata[7]=-0.5f;
+		//fdata[11]=0.0f;
+		//vec3_t shotOriginInCurrentSpace; // unknown space
+		//TransformPoint(TS.rayStart,shotOriginInCurrentSpace,(mdxaBone_t *)fdata); // dest middle arg
+		//// this will insure the shot origin in our unknown space is now the shot origin, making it a known space
+		//fdata[3]-=shotOriginInCurrentSpace[0];
+		//fdata[7]-=shotOriginInCurrentSpace[1];
+		//fdata[11]-=shotOriginInCurrentSpace[2];
+		//Inverse_Matrix((mdxaBone_t *)fdata,(mdxaBone_t *)(fdata+12));  // dest 2nd arg
+		//data+=24;
 
 //		assert((data - (int *)gore->tex[TS.lod]) * sizeof(int) == size);
 	}
