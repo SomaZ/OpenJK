@@ -106,8 +106,8 @@ public:
 	int				lod;
 	boltInfo_v		&boltList;
 #ifdef _G2_GORE
-	shader_t		*gore_shader;
-	CGoreSet		*gore_set;
+	shader_t		*goreShader;
+	int				*goreSetTag;
 #endif
 
 	CRenderSurface(
@@ -123,8 +123,8 @@ public:
 		int				initlod,
 #ifdef _G2_GORE
 		boltInfo_v		&initboltList,
-		shader_t		*initgore_shader,
-		CGoreSet		*initgore_set):
+		shader_t		*initGoreShader,
+		int				*initGoreSetTag):
 #else
 		boltInfo_v		&initboltList):
 #endif
@@ -140,8 +140,8 @@ public:
 	lod(initlod),
 #ifdef _G2_GORE
 	boltList(initboltList),
-	gore_shader(initgore_shader),
-	gore_set(initgore_set)
+	goreShader(initGoreShader),
+	goreSetTag(initGoreSetTag)
 #else
 	boltList(initboltList)
 #endif
@@ -658,20 +658,20 @@ void G2API_SetSurfaceOnOffFromSkin (CGhoul2Info *ghlInfo, qhandle_t renderSkin)
 		for ( j = 0 ; j < skin->numSurfaces ; j++ )
 		{
 			uint32_t flags;
-			int surfaceNum = ri.G2_IsSurfaceLegal(ghlInfo->currentModel, skin->surfaces[j]->name, &flags);
+			// int surfaceNum = ri.G2_IsSurfaceLegal(ghlInfo->currentModel, skin->surfaces[j]->name, &flags);
 			// the names have both been lowercased
 			if ( !(flags&G2SURFACEFLAG_OFF) && !strcmp( skin->surfaces[j]->shader->name , "*off") )
 			{
 				ri.G2_SetSurfaceOnOff(ghlInfo, skin->surfaces[j]->name, G2SURFACEFLAG_OFF);
 			}
-			else
+			/*else
 			{
 				//if ( strcmp( &skin->surfaces[j]->name[strlen(skin->surfaces[j]->name)-4],"_off") )
 				if ( (surfaceNum != -1) && (!(flags&G2SURFACEFLAG_OFF)) )	//only turn on if it's not an "_off" surface
 				{
 					//ri.G2_SetSurfaceOnOff(ghlInfo, skin->surfaces[j]->name, 0);
 				}
-			}
+			}*/
 		}
 	}
 }
@@ -780,18 +780,24 @@ void RenderSurfaces(CRenderSurface &RS)
 			R_AddDrawSurf( (surfaceType_t *)newSurf, shader, RS.fogNum, qfalse );
 
 #ifdef _G2_GORE
-			if (RS.gore_set && drawGore)
+			if (*RS.goreSetTag && drawGore)
 			{
+				CGoreSet *gore=ri.FindGoreSet(*RS.goreSetTag);
+				if (!gore) // my gore is gone, so remove it
+				{
+					*RS.goreSetTag=0;
+				}
+
 				int curTime = ri.G2API_GetTime(tr.refdef.time);
 				std::pair<std::multimap<int,SGoreSurface>::iterator,std::multimap<int,SGoreSurface>::iterator> range=
-					RS.gore_set->mGoreRecords.equal_range(RS.surfaceNum);
+					gore->mGoreRecords.equal_range(RS.surfaceNum);
 				std::multimap<int,SGoreSurface>::iterator k,kcur;
 				CRenderableSurface *last=newSurf;
 				for (k=range.first;k!=range.second;)
 				{
 					kcur=k;
 					++k;
-					GoreTextureCoordinates *tex=ri.FindGoreRecord((*kcur).second.mGoreTag);
+					GoreTextureCoordinates *tex=FindGoreRecord((*kcur).second.mGoreTag);
 					if (!tex ||											 // it is gone, lets get rid of it
 						(kcur->second.mDeleteTime && curTime>=kcur->second.mDeleteTime)) // out of time
 					{
@@ -802,7 +808,7 @@ void RenderSurfaces(CRenderSurface &RS)
 							//this when it erases the record but sometimes it doesn't. -rww
 						}
 
-						RS.gore_set->mGoreRecords.erase(kcur);
+						gore->mGoreRecords.erase(kcur);
 					}
 					else if (tex->tex[RS.lod])
 					{
@@ -919,9 +925,6 @@ void R_AddGhoulSurfaces( trRefEntity_t *ent ) {
 		return;
 	}
 
-	int currentTime=ri.G2API_GetTime(tr.refdef.time);
-
-
 	// cull the entire model if merged bounding box of both frames
 	// is outside the view frustum.
 	cull = R_GCullModel (ent );
@@ -934,7 +937,7 @@ void R_AddGhoulSurfaces( trRefEntity_t *ent ) {
 	int	modelCount;
 	ri.G2_TransformGhoulSkeleton(
 		ghoul2,
-		currentTime,
+		tr.refdef.time,
 		ent->e.modelScale,
 		modelList,
 		&modelCount
@@ -993,17 +996,7 @@ void R_AddGhoulSurfaces( trRefEntity_t *ent ) {
 				whichLod = G2_ComputeLOD( ent, ghoul2[i].currentModel, ghoul2[i].mLodBias );
 			}
 #ifdef _G2_GORE
-			CGoreSet *gore=0;
-			if (ghoul2[i].mGoreSetTag)
-			{
-				gore=ri.FindGoreSet(ghoul2[i].mGoreSetTag);
-				if (!gore) // my gore is gone, so remove it
-				{
-					ghoul2[i].mGoreSetTag=0;
-				}
-			}
-
-			CRenderSurface RS(ghoul2[i].mSurfaceRoot, ghoul2[i].mSlist, cust_shader, fogNum, personalModel, ghoul2[i].mBoneCache, ent->e.renderfx, skin,ghoul2[i].currentModel, whichLod, ghoul2[i].mBltlist, gore_shader, gore);
+			CRenderSurface RS(ghoul2[i].mSurfaceRoot, ghoul2[i].mSlist, cust_shader, fogNum, personalModel, ghoul2[i].mBoneCache, ent->e.renderfx, skin,ghoul2[i].currentModel, whichLod, ghoul2[i].mBltlist, gore_shader, &ghoul2[i].mGoreSetTag);
 #else
 			CRenderSurface RS(ghoul2[i].mSurfaceRoot, ghoul2[i].mSlist, cust_shader, fogNum, personalModel, ghoul2[i].mBoneCache, ent->e.renderfx, skin,ghoul2[i].currentModel, whichLod, ghoul2[i].mBltlist);
 #endif
@@ -2018,7 +2011,7 @@ qboolean R_LoadMDXM( model_t *mod, void *buffer, const char *mod_name, qboolean 
 	lod = (mdxmLOD_t *) ( (byte *)mdxm + mdxm->ofsLODs );
 	for ( l = 0 ; l < mdxm->numLODs ; l++)
 	{
-		int	triCount = 0;
+		//int	triCount = 0;
 
 		LL(lod->ofsEnd);
 		// swap all the surfaces
@@ -2035,7 +2028,7 @@ qboolean R_LoadMDXM( model_t *mod, void *buffer, const char *mod_name, qboolean 
 			LL(surf->ofsBoneReferences);
 			LL(surf->ofsEnd);
 
-			triCount += surf->numTriangles;
+			//triCount += surf->numTriangles;
 
 			if ( surf->numVerts > SHADER_MAX_VERTEXES ) {
 				Com_Error (ERR_DROP, "R_LoadMDXM: %s has more than %i verts on a surface (%i)",

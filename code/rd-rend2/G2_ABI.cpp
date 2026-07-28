@@ -408,3 +408,144 @@ bool G2_TestModelPointers(CGhoul2Info *ghlInfo) // returns true if the model is 
 	}
 	return ghlInfo->mValid;
 }
+
+#ifdef _G2_GORE
+#include "G2_gore_r2.h"
+static std::map<int,R2GoreTextureCoordinates> GoreRecords;
+
+//TODO: This needs to be set via a scalability cvar with some reasonable minimum value if pgore is used at all
+#define MAX_GORE_RECORDS (500)
+#define GORE_TAG_MASK (~255)
+
+R2GoreTextureCoordinates *FindR2GoreRecord(int tag)
+{
+	std::map<int,R2GoreTextureCoordinates>::iterator i=GoreRecords.find(tag);
+	if (i!=GoreRecords.end())
+	{
+		return &(*i).second;
+	}
+	return 0;
+}
+
+static inline void DestroyGoreTexCoordinates(int tag)
+{
+	R2GoreTextureCoordinates *gTC = FindR2GoreRecord(tag);
+	if (!gTC)
+	{
+		return;
+	}
+	(*gTC).~R2GoreTextureCoordinates();
+	//I don't know what's going on here, it should call the destructor for
+	//this when it erases the record but sometimes it doesn't. -rww
+}
+
+R2GoreTextureCoordinates *AllocGoreRecord( int currentTag )
+{
+	while (GoreRecords.size()>MAX_GORE_RECORDS)
+	{
+		int tagHigh=(*GoreRecords.begin()).first&GORE_TAG_MASK;
+		std::map<int,R2GoreTextureCoordinates>::iterator it;
+		R2GoreTextureCoordinates *gTC;
+
+		it = GoreRecords.begin();
+		gTC = &(*it).second;
+
+		if (gTC)
+		{
+			gTC->~R2GoreTextureCoordinates();
+		}
+		GoreRecords.erase(GoreRecords.begin());
+		while (GoreRecords.size())
+		{
+			if (((*GoreRecords.begin()).first&GORE_TAG_MASK)!=tagHigh)
+			{
+				break;
+			}
+			it = GoreRecords.begin();
+			gTC = &(*it).second;
+
+			if (gTC)
+			{
+				gTC->~R2GoreTextureCoordinates();
+			}
+			GoreRecords.erase(GoreRecords.begin());
+		}
+	}
+	GoreRecords[currentTag]=R2GoreTextureCoordinates();
+	return &GoreRecords[currentTag];
+}
+
+void AddGoreRecord(const mdxmSurface_t *surface, int tag, int lod, int newNumVerts, int newNumTris, int *GoreIndexCopy, TextureCoordsTemp *GoreTCs, int *GoreIndecies)
+{
+	R2GoreTextureCoordinates *gore=FindR2GoreRecord(tag);
+	if (!gore)
+		gore = AllocGoreRecord(tag);
+
+	if (gore)
+	{
+		// fill srfG2GoreSurface_t
+		//------------------------------------------------------------------------------------------------------------------
+
+		srfG2GoreSurface_t* goreSurface = (srfG2GoreSurface_t*)ri.Z_Malloc(sizeof(srfG2GoreSurface_t), TAG_GHOUL2_GORE, qtrue, 4);
+
+		// cleanup old data
+		if (gore->tex[lod])
+		{
+			if (gore->tex[lod]->verts)
+				Z_Free(gore->tex[lod]->verts);
+			if (gore->tex[lod]->indexes)
+				Z_Free(gore->tex[lod]->indexes);
+			Z_Free(gore->tex[lod]);
+		}
+
+		// set pointer to allocated memory
+		gore->tex[lod] = (srfG2GoreSurface_t*)goreSurface;
+		goreSurface->numVerts = newNumVerts;
+		// allocate space for vertices
+		goreSurface->verts = (g2GoreVert_t*)ri.Z_Malloc(sizeof(g2GoreVert_t) * newNumVerts, TAG_GHOUL2_GORE, qtrue, 4);
+
+		// and set uv for vertices
+		for (int j = 0; j < newNumVerts; j++)
+		{
+			goreSurface->verts[j].texCoords[0] = GoreTCs[GoreIndexCopy[j]].tex[0];
+			goreSurface->verts[j].texCoords[1] = GoreTCs[GoreIndexCopy[j]].tex[1];
+		}
+
+		// set skinning mesh data (weights for bones) for our vertices
+		mdxmVertex_t* v = (mdxmVertex_t*)((byte*)surface + surface->ofsVerts);
+		int* boneRef = (int*)((byte*)surface + surface->ofsBoneReferences);
+		for (int j = 0; j < newNumVerts; j++)
+		{
+			mdxmVertex_t currentVert = v[GoreIndexCopy[j]];
+			VectorCopy(currentVert.vertCoords, goreSurface->verts[j].position);
+			goreSurface->verts[j].normal = R_VboPackNormal(currentVert.normal);
+
+			int numWeights = G2_GetVertWeights(&currentVert);
+			float fTotalWeight = 0.0f;
+			for (int w = 0; w < numWeights; w++)
+			{
+				float weight = G2_GetVertBoneWeight(&currentVert, w, fTotalWeight, numWeights);
+				goreSurface->verts[j].weights[w] = (byte)(weight * 255.0f);
+				int packedIndex = G2_GetVertBoneIndex(&currentVert, w);
+				goreSurface->verts[j].bonerefs[w] = boneRef[packedIndex];
+			}
+		}
+
+		// allocate memory for indices and fill them
+		goreSurface->indexes = (glIndex_t*)ri.Z_Malloc(sizeof(glIndex_t) * newNumTris * 3, TAG_GHOUL2_GORE, qtrue, 4);
+		for (int j = 0; j < newNumTris * 3; j++)
+		{
+			goreSurface->indexes[j] = GoreIndecies[j] + backEndData->currentFrame->goreVBOCurrentIndex;
+		}
+		goreSurface->numIndexes = newNumTris * 3;
+
+		RB_UpdateGoreVertexData(backEndData->currentFrame, goreSurface, true);
+	}
+}
+
+void DeleteGoreRecord(int tag)
+{
+	DestroyGoreTexCoordinates(tag);
+	GoreRecords.erase(tag);
+}
+#endif

@@ -1152,6 +1152,11 @@ void RB_SurfaceWeather( srfWeather_t *surf )
 {
 	assert(tr.weatherSystem);
 
+#ifdef REND2_SP
+	if (ri.CL_IsRunningInGameCinematic())
+		return;
+#endif
+
 	weatherSystem_t& ws = *tr.weatherSystem;
 	assert(surf == &ws.weatherSurface);
 

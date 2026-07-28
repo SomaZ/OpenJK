@@ -35,7 +35,6 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 typedef struct {
 	void				(QDECL *Printf)						( int printLevel, const char *fmt, ...) __attribute__ ((format (printf, 2, 3)));
 	void				(QDECL *Error)						( int errorLevel, const char *fmt, ...) NORETURN_PTR __attribute__ ((format (printf, 2, 3)));
-	void				(QDECL* OPrintf)					( const char* fmt, ...) __attribute__ ((format(printf, 1, 2)));
 
 	// milliseconds should only be used for profiling, never for anything game related. Get time from the refdef
 	int					(*Milliseconds)						( void );
@@ -53,6 +52,7 @@ typedef struct {
 	void				(*Cmd_ArgsBuffer)					( char *buffer, int bufferLength );
 	void				(*Cmd_AddCommand)					( const char *cmd_name, xcommand_t function );
 	void				(*Cmd_RemoveCommand)				( const char *cmd_name );
+	
 	void				(*Cvar_Set)							( const char *var_name, const char *value );
 	cvar_t *			(*Cvar_Get)							( const char *var_name, const char *value, int flags );
 	void				(*Cvar_SetValue)					( const char *name, float value );
@@ -107,13 +107,13 @@ typedef struct {
 
 	qboolean			(*CM_DeleteCachedMap)				( qboolean bGuaranteedOkToDelete );	// NOT IN MP
 
-	qboolean			(*CL_IsRunningInGameCinematic)		( void );
+	qboolean			(*CL_IsRunningInGameCinematic)		( void ); // SP
 
-	void*				(*gpvCachedMapDiskImage)			( void );
-	char*				(*gsCachedMapDiskImage)				( void );
-	qboolean			*(*gbUsingCachedMapDataRightNow)	( void );
-	qboolean			*(*gbAlreadyDoingLoad)				( void );
-	int					(*com_frameTime)					( void );
+	void*				(*gpvCachedMapDiskImage)			( void ); // SP & MP
+	char*				(*gsCachedMapDiskImage)				( void ); // SP & MP
+	qboolean			*(*gbUsingCachedMapDataRightNow)	( void ); // SP & MP
+	qboolean			*(*gbAlreadyDoingLoad)				( void ); // SP
+	int					(*com_frameTime)					( void ); // SP noise init
 
 	// GHOUL 2
 	int					(*G2API_GetTime)					( int argTime );
@@ -127,10 +127,8 @@ typedef struct {
 	int					(*G2_GetBCNumBones)					( CBoneCache *BC );
 	void				(*G2_SetBCExtraData)				( CBoneCache *BC, extraData_s *extraData );
 	extraData_s			*(*G2_GetBCExtraData)				( CBoneCache *BC );
-	int					(*G2_IsSurfaceLegal)				( const model_s* mod_m, const char* surfaceName, uint32_t* flags );
 	qboolean			(*G2_SetSurfaceOnOff)				( CGhoul2Info *ghlInfo, const char *surfaceName, const int offFlags );
 #ifdef _G2_GORE
-	GoreTextureCoordinates *(*FindGoreRecord)				( int tag );
 	CGoreSet 			*(*FindGoreSet)						( int goreSetTag );
 #endif
 } refimport_t;
@@ -162,7 +160,7 @@ typedef struct {
 	qhandle_t (*RegisterShader)( const char *name );
 	qhandle_t (*RegisterShaderNoMip)( const char *name );
 	void	(*LoadWorld)( const char *name );
-	void	(*R_LoadImage)( const char *name, byte **pic, int *width, int *height );
+	void	(*R_LoadImage)( const char *name, byte **pic, int *width, int *height ); // DEAD CODE
 
 	// these two functions added to help with the new model alloc scheme...
 	//
@@ -287,7 +285,11 @@ typedef struct {
 	mdxaHeader_t*	(*G2ABI_GetMdxaByModel)(const model_s *mod_a);
 	int				(*G2ABI_GetNumLods)(const model_s *mod_m);
 	void			(*G2ABI_SetSurfaceOnOffFromSkin)(CGhoul2Info *ghlInfo, qhandle_t renderSkin);
-
+	// Gore
+#ifdef _G2_GORE
+	void			(*AddGoreRecord)(const mdxmSurface_t *surface,	int tag, int lod, int newNumVerts, int newNumTris, int *GoreIndexCopy, TextureCoordsTemp *GoreTCs, int *GoreIndecies);
+	void 			(*DeleteGoreRecord)(int tag);
+#endif
 	// Performance analysis (perform anal)
 	void		(*G2Time_ResetTimers)(void);
 	void		(*G2Time_ReportTimers)(void);

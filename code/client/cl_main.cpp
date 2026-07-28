@@ -1203,10 +1203,8 @@ void CL_InitRef( void ) {
 	rit.G2_GetBCNumBones = G2_GetBCNumBones;
 	rit.G2_SetBCExtraData = G2_SetBCExtraData;
 	rit.G2_GetBCExtraData = G2_GetBCExtraData;
-	rit.G2_IsSurfaceLegal = G2_IsSurfaceLegal;
 	rit.G2_SetSurfaceOnOff = G2_SetSurfaceOnOff;
 #ifdef _G2_GORE
-	rit.FindGoreRecord = FindGoreRecord;
 	rit.FindGoreSet = FindGoreSet;
 #endif
 	ret = GetRefAPI( REF_API_VERSION, &rit );

@@ -2120,7 +2120,7 @@ G2_TransformGhoulSkeleton - builds a complete skeleton for all ghoul models in a
 */
 void G2_TransformGhoulSkeleton(
 	CGhoul2Info_v &ghoul2,
-	const int frameNum,
+	const int time,
 	const vec3_t scale,
 	int * const modelList,
 	int * const modelCount)
@@ -2133,6 +2133,7 @@ void G2_TransformGhoulSkeleton(
 
 	HackadelicOnClient=true;
 
+	int frameNum=G2API_GetTime(time);
 	RootMatrix(ghoul2,frameNum,scale,rootMatrix);
 
 	G2_Sort_Models(ghoul2, modelList, modelCount);

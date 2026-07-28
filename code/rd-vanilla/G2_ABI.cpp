@@ -406,3 +406,141 @@ bool G2_TestModelPointers(CGhoul2Info *ghlInfo) // returns true if the model is 
 	}
 	return ghlInfo->mValid;
 }
+
+#ifdef _G2_GORE
+static std::map<int,GoreTextureCoordinates> GoreRecords;
+
+//TODO: This needs to be set via a scalability cvar with some reasonable minimum value if pgore is used at all
+#define MAX_GORE_RECORDS (500)
+#define GORE_TAG_MASK (~255)
+
+GoreTextureCoordinates *FindGoreRecord(int tag)
+{
+	std::map<int,GoreTextureCoordinates>::iterator i=GoreRecords.find(tag);
+	if (i!=GoreRecords.end())
+	{
+		return &(*i).second;
+	}
+	return 0;
+}
+
+static inline void DestroyGoreTexCoordinates(int tag)
+{
+	GoreTextureCoordinates *gTC = FindGoreRecord(tag);
+	if (!gTC)
+	{
+		return;
+	}
+	(*gTC).~GoreTextureCoordinates();
+	//I don't know what's going on here, it should call the destructor for
+	//this when it erases the record but sometimes it doesn't. -rww
+}
+
+GoreTextureCoordinates *AllocGoreRecord( int currentTag )
+{
+	while (GoreRecords.size()>MAX_GORE_RECORDS)
+	{
+		int tagHigh=(*GoreRecords.begin()).first&GORE_TAG_MASK;
+		std::map<int,GoreTextureCoordinates>::iterator it;
+		GoreTextureCoordinates *gTC;
+
+		it = GoreRecords.begin();
+		gTC = &(*it).second;
+
+		if (gTC)
+		{
+			gTC->~GoreTextureCoordinates();
+		}
+		GoreRecords.erase(GoreRecords.begin());
+		while (GoreRecords.size())
+		{
+			if (((*GoreRecords.begin()).first&GORE_TAG_MASK)!=tagHigh)
+			{
+				break;
+			}
+			it = GoreRecords.begin();
+			gTC = &(*it).second;
+
+			if (gTC)
+			{
+				gTC->~GoreTextureCoordinates();
+			}
+			GoreRecords.erase(GoreRecords.begin());
+		}
+	}
+	GoreRecords[currentTag]=GoreTextureCoordinates();
+	return &GoreRecords[currentTag];
+}
+
+void AddGoreRecord(const mdxmSurface_t *surface, int tag, int lod, int newNumVerts, int newNumTris, int *GoreIndexCopy, TextureCoordsTemp *GoreTCs, int *GoreIndecies)
+{
+	GoreTextureCoordinates *gore=FindGoreRecord(tag);
+	if (!gore)
+		gore = AllocGoreRecord(tag);
+
+	if (gore)
+	{
+		assert(sizeof(float)==sizeof(int));
+		// data block format:
+		unsigned int size=
+			sizeof(int)+ // num verts
+			sizeof(int)+ // num tris
+			sizeof(int)*newNumVerts+ // which verts to copy from original surface
+			sizeof(float)*4*newNumVerts+ // storgage for deformed verts
+			sizeof(float)*4*newNumVerts+ // storgage for deformed normal
+			sizeof(float)*2*newNumVerts+ // texture coordinates
+			sizeof(int)*newNumTris*3;  // new indecies
+
+		int *data=(int *)ri.Z_Malloc ( size, TAG_GHOUL2, qtrue, 4 );
+
+		if ( gore->tex[lod] )
+			ri.Z_Free(gore->tex[lod]);
+
+		gore->tex[lod]=(float *)data;
+		*data++=newNumVerts;
+		*data++=newNumTris;
+
+		memcpy(data,GoreIndexCopy,sizeof(int)*newNumVerts);
+		data+=newNumVerts*9; // skip verts and normals
+		float *fdata=(float *)data;
+
+		for (int j=0;j<newNumVerts;j++)
+		{
+			*fdata++=GoreTCs[GoreIndexCopy[j]].tex[0];
+			*fdata++=GoreTCs[GoreIndexCopy[j]].tex[1];
+		}
+		data=(int *)fdata;
+		memcpy(data,GoreIndecies,sizeof(int)*newNumTris*3);
+		data+=newNumTris*3;
+		assert((data-(int *)gore->tex[TS.lod])*sizeof(int)==size);
+
+		//fdata = (float *)data;
+		//// build the entity to gore matrix
+		//VectorCopy(saxis,fdata+0);
+		//VectorCopy(taxis,fdata+4);
+		//VectorCopy(TS.rayEnd,fdata+8);
+		//VectorNormalize(fdata+0);
+		//VectorNormalize(fdata+4);
+		//VectorNormalize(fdata+8);
+		//fdata[3]=-0.5f; // subtract texture center
+		//fdata[7]=-0.5f;
+		//fdata[11]=0.0f;
+		//vec3_t shotOriginInCurrentSpace; // unknown space
+		//TransformPoint(TS.rayStart,shotOriginInCurrentSpace,(mdxaBone_t *)fdata); // dest middle arg
+		//// this will insure the shot origin in our unknown space is now the shot origin, making it a known space
+		//fdata[3]-=shotOriginInCurrentSpace[0];
+		//fdata[7]-=shotOriginInCurrentSpace[1];
+		//fdata[11]-=shotOriginInCurrentSpace[2];
+		//Inverse_Matrix((mdxaBone_t *)fdata,(mdxaBone_t *)(fdata+12));  // dest 2nd arg
+		//data+=24;
+
+//		assert((data - (int *)gore->tex[TS.lod]) * sizeof(int) == size);
+	}
+}
+
+void DeleteGoreRecord(int tag)
+{
+	DestroyGoreTexCoordinates(tag);
+	GoreRecords.erase(tag);
+}
+#endif

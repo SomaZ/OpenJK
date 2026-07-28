@@ -2526,7 +2526,10 @@ Q_EXPORT refexport_t* QDECL GetRefAPI ( int apiVersion, refimport_t *rimp ) {
 	re.G2ABI_GetMdxaByModel = G2ABI_GetMdxaByModel;
 	re.G2ABI_GetNumLods = G2ABI_GetNumLods;
 	re.G2ABI_SetSurfaceOnOffFromSkin = G2API_SetSurfaceOnOffFromSkin;
-	
+#ifdef _G2_GORE
+	re.AddGoreRecord = AddGoreRecord;
+	re.DeleteGoreRecord = DeleteGoreRecord;
+#endif
 #ifdef G2_PERFORMANCE_ANALYSIS
 	re.G2Time_ReportTimers = G2Time_ReportTimers;
 	re.G2Time_ResetTimers = G2Time_ResetTimers;

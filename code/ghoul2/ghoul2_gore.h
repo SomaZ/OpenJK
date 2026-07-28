@@ -25,6 +25,11 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 
 #ifdef _G2_GORE
 
+struct TextureCoordsTemp
+{
+	float tex[2];
+};
+
 #define MAX_LODS (8)
 struct GoreTextureCoordinates
 {

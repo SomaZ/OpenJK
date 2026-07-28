@@ -132,7 +132,7 @@ public:
 	int				lod;
 	boltInfo_v		&boltList;
 #ifdef _G2_GORE
-	shader_t		*gore_shader;
+	shader_t		*goreShader;
 	int				*goreSetTag;
 #endif
 
@@ -149,7 +149,7 @@ public:
 		int				initlod,
 #ifdef _G2_GORE
 		boltInfo_v		&initboltList,
-		shader_t		*initgore_shader,
+		shader_t		*initgoreShader,
 		int				*initgoreSetTag
 #else
 		boltInfo_v		&initboltList
@@ -167,7 +167,7 @@ public:
 		, lod(initlod)
 		, boltList(initboltList)
 #ifdef _G2_GORE
-		, gore_shader(initgore_shader)
+		, goreShader(initgoreShader)
 		, goreSetTag(initgoreSetTag)
 #endif
 	{
@@ -395,20 +395,20 @@ void G2API_SetSurfaceOnOffFromSkin(CGhoul2Info* ghlInfo, qhandle_t renderSkin)
 		for (j = 0; j < skin->numSurfaces; j++)
 		{
 			uint32_t flags;
-			int surfaceNum = ri.G2_IsSurfaceLegal(ghlInfo->currentModel, skin->surfaces[j]->name, &flags);
+			// int surfaceNum = ri.G2_IsSurfaceLegal(ghlInfo->currentModel, skin->surfaces[j]->name, &flags);
 			// the names have both been lowercased
 			if (!(flags & G2SURFACEFLAG_OFF) && !strcmp(skin->surfaces[j]->shader->name, "*off"))
 			{
 				ri.G2_SetSurfaceOnOff(ghlInfo, skin->surfaces[j]->name, G2SURFACEFLAG_OFF);
 			}
-			else
+			/*else
 			{
 				//if ( strcmp( &skin->surfaces[j]->name[strlen(skin->surfaces[j]->name)-4],"_off") )
 				if ((surfaceNum != -1) && (!(flags & G2SURFACEFLAG_OFF)))	//only turn on if it's not an "_off" surface
 				{
 					//ri.G2_SetSurfaceOnOff(ghlInfo, skin->surfaces[j]->name, 0);
 				}
-			}
+			}*/
 		}
 	}
 }
@@ -529,7 +529,7 @@ void RenderSurfaces( CRenderSurface &RS, const trRefEntity_t *ent, int entityNum
 					auto kcur = k;
 					k++;
 
-					R2GoreTextureCoordinates* tex = nullptr; //FindR2GoreRecord(kcur->second.mGoreTag);
+					R2GoreTextureCoordinates* tex = FindR2GoreRecord(kcur->second.mGoreTag);
 					if (!tex ||	// it is gone, lets get rid of it
 						(kcur->second.mDeleteTime &&
 						 curTime >= kcur->second.mDeleteTime)) // out of time
@@ -681,8 +681,6 @@ void R_AddGhoulSurfaces( trRefEntity_t *ent, int entityNum )
 		return;
 	}
 
-	int currentTime = ri.G2API_GetTime(tr.refdef.time);
-
 	// cull the entire model if merged bounding box of both frames is outside
 	// the view frustum.
 	int cull = R_GCullModel(ent);
@@ -695,7 +693,7 @@ void R_AddGhoulSurfaces( trRefEntity_t *ent, int entityNum )
 	int	modelCount;
 	ri.G2_TransformGhoulSkeleton(
 		ghoul2,
-		currentTime,
+		tr.refdef.time,
 		ent->e.modelScale,
 		modelList,
 		&modelCount
@@ -828,13 +826,11 @@ void RB_TransformBones(const trRefEntity_t* ent, const trRefdef_t* refdef, int c
 		return;
 	}
 
-	int currentTime = ri.G2API_GetTime(tr.refdef.time);
-
 	int modelList[32];
 	int	modelCount;
 	ri.G2_TransformGhoulSkeleton(
 		ghoul2,
-		currentTime,
+		tr.refdef.time,
 		ent->e.modelScale,
 		modelList,
 		&modelCount

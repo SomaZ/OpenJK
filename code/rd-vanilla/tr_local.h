@@ -1853,6 +1853,10 @@ mdxmHeader_t *G2ABI_GetMdxmByModel(const model_t *mod_m);
 mdxaHeader_t *G2ABI_GetMdxaByModel(const model_t *mod_a);
 int G2ABI_GetNumLods(const model_t *mod_m);
 void G2API_SetSurfaceOnOffFromSkin (CGhoul2Info *ghlInfo, qhandle_t renderSkin);
+#ifdef _G2_GORE
+void AddGoreRecord(const mdxmSurface_t *surface, int tag, int lod, int newNumVerts, int newNumTris, int *GoreIndexCopy, TextureCoordsTemp *GoreTCs, int *GoreIndecies);
+void DeleteGoreRecord(int tag);
+#endif
 /*
 Ghoul2 Insert End
 */
