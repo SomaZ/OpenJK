@@ -530,10 +530,6 @@ void RE_EndScene()
 	tr.refdef.doLAGoggles = false;
 	tr.refdef.doFullbright = false;
 	backEndData->currentFrame->currentScene++;
-	if (backEndData->currentFrame->currentScene > MAX_SCENES)
-	{
-		ri.Error(ERR_DROP, "Tried to render to many subscenes per frame");
-	}
 }
 
 /*
@@ -561,6 +557,10 @@ void RE_RenderScene( const refdef_t *fd )
 	}
 
 	startTime = ri.Milliseconds();
+
+	if (backEndData->currentFrame->currentScene >= MAX_SCENES) {
+		ri.Error(ERR_DROP, "Tried to render to many subscenes per frame. Developer: Increase MAX_SCENES");
+	}
 
 	if (!tr.world && !( fd->rdflags & RDF_NOWORLDMODEL ) ) {
 		ri.Error (ERR_DROP, "R_RenderScene: NULL worldmodel");
