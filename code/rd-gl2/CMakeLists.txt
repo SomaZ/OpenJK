@@ -239,7 +239,7 @@ if(BuildSPRdGL2)
 		${SPDir}/rd-gl2/tr_glsl_parse.cpp
 		)
 	# set_target_properties(compact_glsl PROPERTIES COMPILE_DEFINITIONS "GLSL_BUILDTOOL")
-	target_compile_definitions(compact_glsl PRIVATE "GLSL_BUILDTOOL" ${SharedDefines})
+	target_compile_definitions(compact_glsl PRIVATE "GLSL_BUILDTOOL" "NOMINMAX" ${SharedDefines})
 	set_target_properties(compact_glsl PROPERTIES INCLUDE_DIRECTORIES "${SPRDGL2RendererIncludeDirectories}")
 	add_custom_command(
 		OUTPUT

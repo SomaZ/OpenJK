@@ -4688,7 +4688,7 @@ void	R_ShaderList_f (void) {
 
 		ri.Printf( PRINT_ALL, "%i ", shader->numUnfoggedPasses );
 
-		if (shader->lightmapIndex >= 0 ) {
+		if (shader->lightmapIndex[0] >= 0 ) {
 			ri.Printf (PRINT_ALL, "L ");
 		} else {
 			ri.Printf (PRINT_ALL, "  ");

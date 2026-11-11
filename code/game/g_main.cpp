@@ -604,6 +604,9 @@ void G_FindTeams( void ) {
 	//gi.Printf ("%i teams with %i entities\n", c, c2);
 }
 
+#ifndef SOURCE_DATE
+#define SOURCE_DATE "Unknown"
+#endif
 
 /*
 ============
