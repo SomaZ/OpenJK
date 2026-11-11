@@ -354,7 +354,7 @@ qboolean MenuParse_font( itemDef_t *item)
 
 	if (!DC->Assets.fontRegistered)
 	{
-		DC->Assets.qhMediumFont = DC->registerFont(menu->font);
+		DC->Assets.qhMediumFont = UI_RegisterFont(menu->font);
 		DC->Assets.fontRegistered = qtrue;
 	}
 	return qtrue;
@@ -1071,7 +1071,7 @@ static void Item_ApplyHacks( itemDef_t *item ) {
 			Com_Printf( "Disabling eax field because current platform does not support EAX.\n");
 		}
 	}
-	
+
 	if ( item->type == ITEM_TYPE_TEXT && item->window.name && !Q_stricmp( item->window.name, "eax_icon") && item->cvarTest && !Q_stricmp( item->cvarTest, "s_UseOpenAL" ) && item->enableCvar && (item->cvarFlags & CVAR_HIDE) ) {
 		if( item->parent )
 		{
@@ -1109,7 +1109,7 @@ static void Item_ApplyHacks( itemDef_t *item ) {
 			Com_Printf( "Extended sound quality field to contain very high option.\n");
 		}
 	}
-	
+
 	if ( item->type == ITEM_TYPE_MULTI && item->window.name && !Q_stricmp( item->window.name, "voice") && item->cvar && !Q_stricmp( item->cvar, "g_subtitles" ) ) {
 		multiDef_t *multiPtr = (multiDef_t *)item->typeData;
 		int i;
@@ -3097,7 +3097,20 @@ qboolean ItemParse_name( itemDef_t *item)
 	return qtrue;
 }
 
+int UI_MenuFontToReal( int menuFontIndex )
+{
+	// The font array starts at 0, but the valid font indexes start at 1. As the
+	// original menu files have direct font indexes we need to subtract 1 from
+	// the given index to get the correct index for our mapping array.
+	menuFontIndex--;
 
+	// Make sure we don't go out of bound, fallback to medium font
+	if ( menuFontIndex < 0 || menuFontIndex >= registeredFontsCount )
+		return DC->Assets.qhMediumFont;
+
+	// Use the mapped index
+	return registeredFonts[menuFontIndex];
+}
 
 qboolean ItemParse_font( itemDef_t *item )
 {
@@ -3105,6 +3118,10 @@ qboolean ItemParse_font( itemDef_t *item )
 	{
 		return qfalse;
 	}
+
+	// Translate to real font
+	item->font = UI_MenuFontToReal( item->font );
+
 	return qtrue;
 }
 
@@ -8636,7 +8653,8 @@ static qboolean Item_Paint(itemDef_t *item, qboolean bDraw)
 				float fDescScaleCopy = fDescScale;
 				while (1)
 				{
-					textWidth = DC->textWidth(textPtr, fDescScale, item->descFont);
+					// FIXME - add some type of parameter in the menu file like descfont to specify the font for the descriptions for this menu.
+					textWidth = DC->textWidth(textPtr, fDescScale, UI_MenuFontToReal(4));	//  item->font);
 
 					if (parent->descAlignment == ITEM_ALIGN_RIGHT)
 					{
@@ -8671,7 +8689,8 @@ static qboolean Item_Paint(itemDef_t *item, qboolean bDraw)
 						iYadj = iOriginalTextHeight - DC->textHeight(textPtr, fDescScale, uiInfo.uiDC.Assets.qhMediumFont);
 					}
 
-					DC->drawText(xPos, parent->descY + iYadj, fDescScale, parent->descColor, textPtr, 0, parent->descTextStyle, item->descFont);
+					// FIXME - add some type of parameter in the menu file like descfont to specify the font for the descriptions for this menu.
+					DC->drawText(xPos, parent->descY + iYadj, fDescScale, parent->descColor, textPtr, 0, parent->descTextStyle, UI_MenuFontToReal(4));	//item->font);
 					break;
 				}
 			}

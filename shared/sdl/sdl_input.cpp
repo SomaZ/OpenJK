@@ -253,6 +253,23 @@ static void IN_TranslateNumpad( SDL_Keysym *keysym, fakeAscii_t *key )
 
 /*
 ===============
+IN_ModTogglesConsole
+===============
+*/
+static qboolean IN_ModTogglesConsole( int mod ) {
+	switch (cl_consoleShiftRequirement->integer) {
+	case 0:
+		return qtrue;
+	case 2:
+		return (qboolean)!!(mod & KMOD_SHIFT);
+	case 1:
+	default:
+		return (qboolean)((mod & KMOD_SHIFT) || (Key_GetCatcher() & KEYCATCH_CONSOLE));
+	}
+}
+
+/*
+===============
 IN_TranslateSDLToJKKey
 ===============
 */
@@ -321,10 +338,10 @@ static fakeAscii_t IN_TranslateSDLToJKKey( SDL_Keysym *keysym, qboolean down ) {
 			case SDLK_KP_5:         key = A_KP_5;          break;
 			case SDLK_INSERT:       key = A_INSERT;        break;
 			case SDLK_KP_0:         key = A_KP_0;          break;
-			case SDLK_KP_MULTIPLY:  key = A_STAR;          break;
+			case SDLK_KP_MULTIPLY:  key = A_MULTIPLY;      break;
 			case SDLK_KP_PLUS:      key = A_KP_PLUS;       break;
 			case SDLK_KP_MINUS:     key = A_KP_MINUS;      break;
-			case SDLK_KP_DIVIDE:    key = A_FORWARD_SLASH; break;
+			case SDLK_KP_DIVIDE:    key = A_DIVIDE;        break;
 
 			case SDLK_SCROLLLOCK:   key = A_SCROLLLOCK;    break;
 			case SDLK_NUMLOCKCLEAR: key = A_NUMLOCK;       break;
@@ -376,11 +393,7 @@ static fakeAscii_t IN_TranslateSDLToJKKey( SDL_Keysym *keysym, qboolean down ) {
 	{
 		if ( keysym->scancode == SDL_SCANCODE_GRAVE )
 		{
-			SDL_Keycode translated = SDL_GetKeyFromScancode( SDL_SCANCODE_GRAVE );
-
-			if ( (translated != SDLK_CARET) || (translated == SDLK_CARET && (keysym->mod & KMOD_SHIFT)) )
-			{
-				// Console keys can't be bound or generate characters
+			if ( IN_ModTogglesConsole(keysym->mod) ) {
 				key = A_CONSOLE;
 			}
 		}
@@ -439,10 +452,13 @@ static void IN_ActivateMouse( void )
 	{
 		if( in_nograb->modified || !mouseActive )
 		{
-			if( in_nograb->integer )
+			if( in_nograb->integer ) {
+				SDL_SetRelativeMouseMode( SDL_FALSE );
 				SDL_SetWindowGrab( SDL_window, SDL_FALSE );
-			else
+			} else {
+				SDL_SetRelativeMouseMode( SDL_TRUE );
 				SDL_SetWindowGrab( SDL_window, SDL_TRUE );
+			}
 
 			in_nograb->modified = qfalse;
 		}
@@ -842,7 +858,7 @@ static void IN_ProcessEvents( void )
 						uint32_t utf32 = ConvertUTF8ToUTF32( c, &c );
 						if( utf32 != 0 )
 						{
-							if( IN_IsConsoleKey( A_NULL, utf32 ) )
+							if( IN_IsConsoleKey( A_NULL, utf32 ) && !cl_consoleUseScanCode->integer )
 							{
 								Sys_QueEvent( 0, SE_KEY, A_CONSOLE, qtrue, 0, NULL );
 								Sys_QueEvent( 0, SE_KEY, A_CONSOLE, qfalse, 0, NULL );
@@ -1147,7 +1163,7 @@ void IN_Frame (void) {
 		// Console is down in windowed mode
 		IN_DeactivateMouse( );
 	}
-	else if( !cls.glconfig.isFullscreen && loading )
+	else if( !cls.glconfig.isFullscreen && loading && !cls.cursorActive )
 	{
 		// Loading in windowed mode
 		IN_DeactivateMouse( );

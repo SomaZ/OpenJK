@@ -1491,9 +1491,10 @@ void CG_AddViewWeapon( playerState_t *ps )
 	AnglesToAxis( angles, hand.axis );
 
 
-	if ( cg_fovViewmodel.integer ) {
-		float fracDistFOV = tanf( cg.refdef.fov_x * ( M_PI/180 ) * 0.5f );
-		float fracWeapFOV = (1.0f / fracDistFOV) * tanf( actualFOV * (M_PI / 180) * 0.5f );
+	if ( cg_fovViewmodel.integer )
+	{
+		float fracDistFOV = tanf( cg_fov.value  * ( M_PI/180 ) * 0.5f );
+		float fracWeapFOV = (1.0f / fracDistFOV) * tanf( cg_fovViewmodel.value * (M_PI / 180) * 0.5f );
 		VectorScale( hand.axis[0], fracWeapFOV, hand.axis[0] );
 	}
 
@@ -2107,7 +2108,7 @@ void CG_DrawDataPadWeaponSelect( void )
 			textboxXPos, textboxYPos,
 			textboxWidth, textboxHeight,
 			text,
-			cgs.media.qhFontArimob,
+			CG_MagicFontToReal(4),
 			textScale,
 			colorTable[CT_HUD_GREEN]);
 	}

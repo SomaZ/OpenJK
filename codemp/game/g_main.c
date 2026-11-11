@@ -28,6 +28,11 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 #include "g_nav.h"
 #include "bg_saga.h"
 #include "b_local.h"
+#include "game/bg_public.h"
+#include "qcommon/game_version.h"
+
+NORETURN_PTR void (*Com_Error)( int level, const char *error, ... );
+void (*Com_Printf)( const char *msg, ... );
 
 level_locals_t	level;
 
@@ -175,6 +180,9 @@ void G_InitGame( int levelTime, int randomSeed, int restart ) {
 	vmCvar_t	ckSum;
 	char serverinfo[MAX_INFO_STRING] = {0};
 
+	Rand_Init( randomSeed );
+	srand( randomSeed );
+
 	//Init RMG to 0, it will be autoset to 1 if there is terrain on the level.
 	trap->Cvar_Set("RMG", "0");
 	RMG.integer = 0;
@@ -192,10 +200,12 @@ void G_InitGame( int levelTime, int randomSeed, int restart ) {
 	BG_VehicleLoadParms();
 
 	trap->Print ("------- Game Initialization -------\n");
-	trap->Print ("gamename: %s\n", GAMEVERSION);
+	trap->Print ("gamename: %s\n", JK_VERSION);
 	trap->Print ("gamedate: %s\n", SOURCE_DATE);
 
-	srand( randomSeed );
+	// init as zero, to be updated by the following cvar registration
+	// relevant cvars call their update func to modify CS_LEGACY_FIXES when necessary
+	trap->SetConfigstring(CS_LEGACY_FIXES, "0");
 
 	G_RegisterCvars();
 

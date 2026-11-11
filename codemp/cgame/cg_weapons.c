@@ -848,8 +848,8 @@ void CG_AddViewWeapon( playerState_t *ps ) {
 
 	if ( cg_fovViewmodel.integer )
 	{
-		float fracDistFOV = tanf( cg.refdef.fov_x * ( M_PI/180 ) * 0.5f );
-		float fracWeapFOV = ( 1.0f / fracDistFOV ) * tanf( cgFov * ( M_PI/180 ) * 0.5f );
+		float fracDistFOV = tanf( cg_fov.value * ( M_PI/180 ) * 0.5f );
+		float fracWeapFOV = ( 1.0f / fracDistFOV ) * tanf( cg_fovViewmodel.value * ( M_PI/180 ) * 0.5f );
 		VectorScale( hand.axis[0], fracWeapFOV, hand.axis[0] );
 	}
 
@@ -1910,12 +1910,10 @@ void CG_FireWeapon( centity_t *cent, qboolean altFire ) {
 		}
 	}
 
-	#ifdef BASE_COMPAT
-		// play quad sound if needed
-		if ( cent->currentState.powerups & ( 1 << PW_QUAD ) ) {
-			//trap->S_StartSound (NULL, cent->currentState.number, CHAN_ITEM, cgs.media.quadSound );
-		}
-	#endif // BASE_COMPAT
+	// play quad sound if needed
+	if ( cent->currentState.powerups & ( 1 << PW_QUAD ) ) {
+		//trap->S_StartSound (NULL, cent->currentState.number, CHAN_ITEM, cgs.media.quadSound );
+	}
 
 
 	// play a sound
